@@ -43,9 +43,9 @@ Spec: ./spec.md · Status: approved
 - [x] 10. Accessibility pass (axe in Playwright on /login, /clients, /settings/users) — proof: 0 serious/critical violations
 - [x] 11. CI workflow (local Supabase in runner) — proof: green run on the PR
 - [x] 12. SDLC tooling: REVIEW.md, verifier + sdlc-reviewer agents, production-gate hook — proof: hook blocks `git push origin main` in a dry test
-- [ ] 13. Link dev: `supabase db push` to dev project `ysddbwskljzhbjjohool` + seed; user imports repo in Vercel, sets env vars; bom1 verified — proof: Admin signs in on dev URL (AC-1, 16)
-- [ ] 14. README environment procedure + dry-run on a scratch Supabase project (then deleted, with your OK) — proof: AC-17 timed < 30 min
-- [ ] 15. sdlc-reviewer pass, fix Important findings, open PR — proof: PR green, review requested
+- [x] 13. Link dev: `supabase db push` to dev project `ysddbwskljzhbjjohool` + seed; user imports repo in Vercel, sets env vars; bom1 verified — proof: Admin signs in on dev URL (AC-1, 16)
+- [x] 14. (deferred by agreement → timed dry-run at staging creation) README environment procedure + dry-run on a scratch Supabase project (then deleted, with your OK) — proof: AC-17 timed < 30 min
+- [x] 15. sdlc-reviewer pass, fix Important findings, open PR — proof: PR green, review requested
 
 ## Deviations from plan
 - Review (step 15): nonce-based CSP added in `proxy.ts` (was planned for step 8 but missed). Not delivered in 01 and tracked: forced re-sign-in after 7 days inactivity (Supabase session inactivity timeout is a paid-plan setting — enable at prod setup); LCP < 2.5 s not measured yet (measure on prod URL before pilot).
@@ -84,3 +84,11 @@ AC table (AC-1..17 → test file → pass) in the PR description; CI green; scre
 - Blocked / failing: none. Cowork egress blocks *.supabase.co (DB tests run in CI) and Playwright browser download.
 - Decisions: link sign-in while on default Supabase email (approved); AC-10 asserts Not Found content (HTTP 200 due to streaming); e2e uses per-run test offices; no local Supabase.
 - Flag for architecture.md: custom SMTP (SES) required before pilot for codes + invites to non-members (already in risks).
+
+### 2026-09-25 (ship)
+- Done: steps 13–15. Vercel dev (team `cad-oc-vault`, bom1) + preview deploys; dev email via custom SMTP (Gmail `cadocvault.dev@gmail.com`, App Password); Admin rajak@pulsebay.in signed in with code on the preview → Active, audited. Review finding fixed: nonce-based CSP. CI: RLS tests + 14 e2e green. Dev test data purged; tests now reuse fixture users.
+- In progress: merge PR #1 (owner approved in chat).
+- Blocked / failing: none.
+- Next step: on main — mark 01 shipped, release locks, apply architecture flags; then Parallel planning checkpoint for 02–06.
+- Decisions: AC-17 timed dry-run happens at staging creation (owner OK); `main` protected (PR + both CI checks, 0 required approvals because single maintainer).
+- Flag for architecture.md: SMTP per env (dev Gmail, prod SES) — already recorded; Supabase OTP length is 8 on new projects (app accepts 6–8).
