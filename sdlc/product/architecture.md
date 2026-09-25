@@ -50,7 +50,8 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **No hard delete;** every mutation writes `activity`.
 - **Uploads:** allow-list PDF, JPG, PNG, XLSX, DOCX, ZIP; size limit from settings; filenames sanitised.
 - **Dates:** stored UTC, shown IST; periods follow Indian FY.
-- **Accessibility:** WCAG 2.1 AA.
+- **UI:** the mockup is the UI source of truth — see `references/ui-reference.md` (tokens, components, agreed deviations, screenshots). Each feature spec cites its screens.
+- **Accessibility:** WCAG 2.1 AA (wins over pixel fidelity).
 - **Errors:** plain user messages; server errors logged with request ID, no PII.
 
 ## External integrations
