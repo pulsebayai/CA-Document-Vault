@@ -17,7 +17,7 @@ Product docs: `sdlc/product/` · Working rules for Claude: `CLAUDE.md` · Review
 
 ## Checks
 `npm run lint && npm run typecheck && npm test && npm run build` · `npm run test:db` (dev DB) · `npm run test:e2e` (Playwright).
-Tests create a throwaway office per run (`e2e office …`), so they never touch real users. Staff/audit rows cannot be deleted by design; see "Dev maintenance".
+Tests use fixed test offices (`e2e office …`) and reusable test users on the reserved `.test` domain (reset each run; no emails are ever sent to them), so they never touch real users and the database does not fill up. Only the invite test adds one new user per run. Staff/audit rows cannot be deleted by design; see "Dev maintenance".
 
 ## Create a new environment (staging / prod) — target < 30 min
 1. **Supabase** (org Pulsebay, region **ap-south-1**): create `<env> - CA Document Vault`. Plan: Pro for prod (backups).

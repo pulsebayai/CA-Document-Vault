@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import "../support/setup-env";
 import { adminClient, createStaff, createTestOffice, retireStaff } from "../support/db";
-import { RUN_TAG } from "../support/test-data";
+import { uniqueTestEmail } from "../support/test-data";
 import { appAlert, signIn } from "./helpers";
 
 let officeId: string;
@@ -68,7 +68,7 @@ test("AC-5, AC-6, AC-11: admin invites a person, who signs in and becomes Active
   const adminPage = await adminCtx.newPage();
   await signIn(adminPage, admin.email, baseURL);
   await adminPage.goto("/settings/users");
-  const email = `${RUN_TAG}-invitee@example.test`.toLowerCase();
+  const email = uniqueTestEmail("invitee"); // a brand-new person each run (invites refuse existing accounts)
   await adminPage.getByRole("button", { name: "+ Invite a person" }).click();
   const dialog = adminPage.getByRole("dialog", { name: "Invite a person" });
   await dialog.getByLabel("Name").fill("Test users-invitee");
