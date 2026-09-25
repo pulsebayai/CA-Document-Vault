@@ -3,9 +3,9 @@ Intent: ./intent.md · Status: approved · Screens: references/mockup/01-today.j
 
 ## User stories & acceptance criteria
 **Sign-in**
-- AC-1 Given the seeded Admin (rajak@pulsebay.in), when they enter their email on `/login`, then a 6-digit code is emailed; entering it signs them in and lands on `/clients`.
+- AC-1 Given the seeded Admin (rajak@pulsebay.in), when they enter their email on `/login`, then a **sign-in link** is emailed; opening it in the same browser signs them in (via `/auth/callback`) and lands on `/clients`. If the email also shows a 6-digit code (custom SMTP template, before pilot), entering the code works too. *(Changed 2026-09-25: Supabase default email cannot show codes without custom SMTP.)*
 - AC-2 Given an email with **no** staff record, when entered on `/login`, then the page shows the same neutral message as AC-1 ("If this email has access, we've sent a code") and **no auth user is created** (`shouldCreateUser: false`).
-- AC-3 Given a wrong or expired code, then an inline error is shown; after 5 failed attempts the email is locked for 15 minutes.
+- AC-3 Given a wrong or expired code, then an inline error is shown; after 5 failed attempts the email is locked for 15 minutes. Given an expired/used link or one opened in another browser, `/auth/callback` shows a clear message and a way back to sign in.
 - AC-4 Given a signed-in user, when they choose *Sign out* from the avatar menu, then the session ends and `/login` is shown; back-button does not reveal app pages.
 
 **Staff management (Settings › Users and roles, Admin only)**
@@ -28,7 +28,7 @@ Intent: ./intent.md · Status: approved · Screens: references/mockup/01-today.j
 - AC-17 A fresh environment (staging/prod later) is created by: create Supabase project → `supabase db push` → run seed script with the first Admin email. Documented in README; < 30 min.
 
 ## Functional requirements
-- Auth: Supabase Auth email OTP only (magic link disabled in template; template shows `{{ .Token }}`). Session in HTTP-only cookies via `@supabase/ssr`. Sign-ups disabled at project level.
+- Auth: Supabase Auth email OTP — link (PKCE, `/auth/callback`) with default templates now; code entry once custom SMTP templates show `{{ .Token }}`. Session in HTTP-only cookies via `@supabase/ssr`. Sign-ups disabled at project level.
 - Invite: server action checks caller is active Admin → creates `staff_user` → `auth.admin.inviteUserByEmail`. **Only place the service-role key is used**, in a server-only module (`import 'server-only'`).
 - Deactivate: set `status = deactivated` → revoke sessions (`auth.admin.signOut` / ban) → RLS helper rejects immediately regardless.
 - Middleware refreshes session and loads `staff_user`; missing or deactivated → sign out + redirect.
@@ -81,6 +81,7 @@ Unit: role helpers, input validation (zod), initials/avatar formatting.
 Clients data, documents, catalogue, search, Today/Inbox/Activity screens, SES, custom domain, full permission-matrix UI (08), staging/prod creation.
 
 ## Decisions (resolved open questions)
+- 2026-09-25 (approved): sign-in by **email link** while on Supabase default email (templates need custom SMTP); code entry kept for later. Links must be opened in the same browser; lockout applies to codes only (links rely on Supabase's per-email rate limit).
 - Office: **Kushal Associates**, branch **Pondicherry** (seeded; editable in Settings › Office in a later feature).
 - Nav shows only shipped screens (Clients, Settings in 01); no "coming soon" pages.
 - Muted text darkened to meet WCAG AA (approved deviation from mockup).

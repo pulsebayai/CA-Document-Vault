@@ -29,7 +29,7 @@ export function LoginForm() {
       <form action={act} className="space-y-4" noValidate>
         <input type="hidden" name="intent" value="verify" />
         <label className="block text-[13.5px] font-medium">
-          6-digit code
+          6-digit code (if your email shows one)
           <input name="code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required autoFocus className={`${input} tracking-[0.4em]`} aria-invalid={Boolean(state.error)} aria-describedby={state.error ? "login-error" : undefined} />
         </label>
         {state.error && <p id="login-error" role="alert" className="text-[13.5px] text-bad">{state.error}</p>}

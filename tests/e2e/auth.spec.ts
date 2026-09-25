@@ -67,3 +67,20 @@ test("login page is accessible", async ({ page }) => {
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(axe.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? ""))).toEqual([]);
 });
+
+test("AC-1 (link): the emailed sign-in link signs an invited user in and activates them", async ({ page, baseURL }) => {
+  const invitee = await createStaff(officeId, "auth-invitee", "staff", "invited");
+  const { data, error } = await adminClient().auth.admin.generateLink({
+    type: "magiclink", email: invitee.email, options: { redirectTo: `${baseURL}/auth/callback` },
+  });
+  if (error) throw error;
+  await page.goto(data.properties.action_link);
+  await expect(page).toHaveURL(/\/clients$/);
+  await expect.poll(async () => (await adminClient().from("staff_user").select("status").eq("id", invitee.id).single()).data?.status).toBe("active");
+  await retireStaff([invitee.id]);
+});
+
+test("a used or foreign link shows a clear message", async ({ page }) => {
+  await page.goto("/auth/callback?code=not-a-real-code");
+  await expect(page.getByRole("alert")).toContainText("opened in a different browser");
+});

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
@@ -32,7 +33,11 @@ export async function inviteStaff(_prev: ActionResult | null, form: FormData): P
   const { data: existing } = await admin.from("staff_user").select("id").eq("email", email).maybeSingle();
   if (existing) return { ok: false, error: "This person already has an account." };
 
-  const { data: invited, error } = await admin.auth.admin.inviteUserByEmail(email);
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const origin = `${h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https")}://${host}`;
+  // Supabase only honours redirect URLs on its allow-list (Auth → URL Configuration).
+  const { data: invited, error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo: `${origin}/auth/callback` });
   if (error || !invited.user) {
     console.error("staff.invite_failed", { code: error?.code, status: error?.status });
     return { ok: false, error: "Could not send the invite. Please try again." };

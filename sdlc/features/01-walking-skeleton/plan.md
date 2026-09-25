@@ -48,6 +48,7 @@ Spec: ./spec.md · Status: approved
 - [ ] 15. sdlc-reviewer pass, fix Important findings, open PR — proof: PR green, review requested
 
 ## Deviations from plan
+- Sign-in: link (PKCE) + invite-link handler added at `/auth/callback` (approved spec change 2026-09-25); `/auth/removed` route clears the session for deactivated users (Server Components cannot clear cookies).
 - Step 2: Playwright browser download is blocked in the Cowork workspace → e2e runs in GitHub Actions (step 11) only; everything else runs locally each step.
 - Step 1: Next.js 16 renamed middleware → `proxy.ts`; Google Fonts blocked → IBM Plex Sans self-hosted via @fontsource (also avoids a third-party request).
 

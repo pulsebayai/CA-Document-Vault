@@ -1,10 +1,11 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { logActivity } from "@/lib/activity";
+import { finishSignIn } from "./finish";
 import { clearFailures, isLocked, recordFailure } from "./lockout";
 import { normaliseEmail } from "./roles";
 
@@ -12,7 +13,7 @@ export type LoginState =
   | { step: "email"; error?: string }
   | { step: "code"; email: string; message: string; error?: string };
 
-const NEUTRAL = "If this email has access, we've sent a 6-digit code. It expires in 1 hour.";
+const NEUTRAL = "If this email has access, we've emailed a sign-in link. Open it in this browser. If the email shows a 6-digit code, you can enter it below instead.";
 const LOCKED = "Too many wrong codes. Try again in 15 minutes.";
 const emailSchema = z.email({ message: "Enter a valid email address." });
 const codeSchema = z.string().regex(/^\d{6}$/, "Enter the 6-digit code from the email.");
@@ -35,7 +36,10 @@ async function requestCode(_prev: LoginState, form: FormData): Promise<LoginStat
     .from("staff_user").select("status").eq("email", email).maybeSingle();
   if (staff && staff.status !== "deactivated") {
     const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } });
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false, emailRedirectTo: `${await appOrigin()}/auth/callback` },
+    });
     if (error) console.error("auth.otp_send_failed", { code: error.code, status: error.status });
   }
   return { step: "code", email, message: NEUTRAL };
@@ -56,20 +60,36 @@ async function verifyCode(prev: LoginState, form: FormData): Promise<LoginState>
     return { ...prev, error: locked ? LOCKED : "That code is wrong or has expired. Check the latest email or request a new code." };
   }
   await clearFailures(email);
-
-  const admin = createAdminClient();
-  const { data: staff } = await admin
-    .from("staff_user").select("id, office_id, status").eq("id", data.user.id).maybeSingle();
-  if (!staff || staff.status === "deactivated") {
-    await supabase.auth.signOut();
+  if ((await finishSignIn(supabase, "code")) === "removed") {
     return { step: "email", error: "Your access has been removed. Contact your administrator." };
   }
-  if (staff.status === "invited") {
-    await admin.from("staff_user").update({ status: "active", activated_at: new Date().toISOString() }).eq("id", staff.id);
-    await logActivity({ officeId: staff.office_id, actorId: staff.id, action: "staff.activated", entityType: "staff_user", entityId: staff.id });
-  }
-  await logActivity({ officeId: staff.office_id, actorId: staff.id, action: "auth.signed_in", entityType: "staff_user", entityId: staff.id });
   redirect("/clients");
+}
+
+/** Link sign-in (PKCE): exchange the one-time code from the email link for a session. */
+export async function completeLinkSignIn(code: string): Promise<{ error: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  if (error) return { error: LINK_FAILED };
+  if ((await finishSignIn(supabase, "link")) === "removed") redirect("/login?reason=removed");
+  redirect("/clients");
+}
+
+/** Invite link: the browser has stored the session from the URL fragment; finish on the server. */
+export async function completeInviteSignIn(): Promise<{ error: string }> {
+  const supabase = await createClient();
+  const result = await finishSignIn(supabase, "invite");
+  redirect(result === "removed" ? "/login?reason=removed" : "/clients");
+}
+
+const LINK_FAILED = "This sign-in link has expired, was already used, or was opened in a different browser. Request a new link on this device.";
+
+/** Origin of the current request (used for email redirect links). Supabase also checks it against the allow-list. */
+async function appOrigin(): Promise<string> {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
 }
 
 export async function signOut(): Promise<void> {

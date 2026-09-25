@@ -20,7 +20,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </div>
         <Card className="p-6">
           <h1 className="text-[22px] font-semibold">Sign in</h1>
-          <p className="mt-1 text-ink-2">We&apos;ll email you a 6-digit code. No password needed.</p>
+          <p className="mt-1 text-ink-2">We&apos;ll email you a sign-in link. No password needed.</p>
           {reason === "removed" && (
             <p role="alert" className="mt-4 rounded-lg bg-bad-soft px-3 py-2 text-[13.5px] text-bad">
               Your access has been removed. Contact your administrator.
