@@ -1,5 +1,5 @@
 # Roadmap: CA Document Vault
-Updated: 2026-09-25 · Architecture lock: none · Schema lock: none
+Updated: 2026-09-25 · Architecture lock: 01 · Schema lock: 01
 
 | # | Feature slug | One-line intent | Product metric | Depends on | Touches (entities / screens / shared code) | Arch change? | Batch | Status |
 |---|---|---|---|---|---|---|---|---|

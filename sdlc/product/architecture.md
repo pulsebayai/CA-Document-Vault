@@ -65,9 +65,9 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 | Date | Decision | Reason | Feature |
 |---|---|---|---|
 | 2026-09-25 | v1 is staff-only; no client login or upload links | Owner decision: scope v1 to the CA office | — |
-| 2026-09-25 | WhatsApp reminders via click-to-chat (wa.me), not WhatsApp Business API | Zero cost/approval; staff send from own WhatsApp; API deferred | 05 |
-| 2026-09-25 | Only manual reminders in v1; automatic scheduled reminders later | Avoid mass mis-sends before schedule logic is proven | 05 |
-| 2026-09-25 | "Remind" sends an email to the client via SES Mumbai; replies go to assigned staff | Owner decision; matches mockup; keeps data in India | 05 |
+| 2026-09-25 | WhatsApp reminders via click-to-chat (wa.me), not WhatsApp Business API | Zero cost/approval; staff send from own WhatsApp; API deferred | 06 |
+| 2026-09-25 | Only manual reminders in v1; automatic scheduled reminders later | Avoid mass mis-sends before schedule logic is proven | 06 |
+| 2026-09-25 | "Remind" sends an email to the client via SES Mumbai; replies go to assigned staff | Owner decision; matches mockup; keeps data in India | 06 |
 | 2026-09-25 | Staff accounts admin-provisioned; email OTP sign-in | No self sign-up; no passwords to manage | — |
 | 2026-09-25 | Single office, single tenant | Own-firm-first; avoid multi-tenancy before validation | — |
 | 2026-09-25 | Data in Supabase ap-south-1; Vercel functions bom1 | India data residency | — |
