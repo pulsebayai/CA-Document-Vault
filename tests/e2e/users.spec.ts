@@ -15,8 +15,8 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => { await retireStaff([staff?.id, admin?.id].filter(Boolean) as string[]); });
 
-test("AC-10: non-admins do not see Settings; the URL shows Not Found and no staff data", async ({ page }) => {
-  await signIn(page, staff.email);
+test("AC-10: non-admins do not see Settings; the URL shows Not Found and no staff data", async ({ page, baseURL }) => {
+  await signIn(page, staff.email, baseURL);
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Settings" })).toHaveCount(0);
   await page.goto("/settings/users");
   // Streaming responses keep HTTP 200; what matters is that nothing admin-only renders.
@@ -25,8 +25,8 @@ test("AC-10: non-admins do not see Settings; the URL shows Not Found and no staf
   await expect(page.getByText(admin.email)).toHaveCount(0);
 });
 
-test("AC-7, AC-9, AC-11: admin changes a role; last admin controls are disabled; changes are logged", async ({ page }) => {
-  await signIn(page, admin.email);
+test("AC-7, AC-9, AC-11: admin changes a role; last admin controls are disabled; changes are logged", async ({ page, baseURL }) => {
+  await signIn(page, admin.email, baseURL);
   await page.goto("/settings/users");
   await expect(page.getByRole("heading", { name: "Users and roles" })).toBeVisible();
   await expect(page.getByLabel(`Role for Test users-admin`)).toBeDisabled();
@@ -38,16 +38,16 @@ test("AC-7, AC-9, AC-11: admin changes a role; last admin controls are disabled;
   expect(axe.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? ""))).toEqual([]);
 });
 
-test("AC-8: a deactivated user is removed on their next request", async ({ browser }) => {
+test("AC-8: a deactivated user is removed on their next request", async ({ browser, baseURL }) => {
   const victim = await createStaff(officeId, "users-victim", "staff");
   const ctx = await browser.newContext();
   const victimPage = await ctx.newPage();
-  await signIn(victimPage, victim.email);
+  await signIn(victimPage, victim.email, baseURL);
   await expect(victimPage).toHaveURL(/\/clients$/);
 
   const adminCtx = await browser.newContext();
   const adminPage = await adminCtx.newPage();
-  await signIn(adminPage, admin.email);
+  await signIn(adminPage, admin.email, baseURL);
   await adminPage.goto("/settings/users");
   adminPage.once("dialog", (d) => d.accept());
   await adminPage.getByRole("row", { name: /Test users-victim/ }).getByRole("button", { name: "Deactivate" }).click();

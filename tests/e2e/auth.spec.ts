@@ -32,8 +32,8 @@ test("AC-2: unknown email gets the same neutral message and no user is created",
   expect(data.users.some((u) => u.email === email)).toBe(false);
 });
 
-test("AC-1 (link), AC-12, AC-13, AC-4: admin signs in, sees the shell and empty Clients, signs out", async ({ page }) => {
-  await signIn(page, admin.email);
+test("AC-1 (link), AC-12, AC-13, AC-4: admin signs in, sees the shell and empty Clients, signs out", async ({ page, baseURL }) => {
+  await signIn(page, admin.email, baseURL);
   await expect(page).toHaveURL(/\/clients$/);
   await expect(page.getByRole("heading", { name: "Clients" })).toBeVisible();
   await expect(page.getByText("No clients yet")).toBeVisible();

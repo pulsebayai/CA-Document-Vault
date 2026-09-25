@@ -10,10 +10,9 @@ export function appAlert(page: Page): Locator {
  * Signs in the way staff do on dev today: the emailed sign-in link, opened in this browser.
  * The link comes from the admin API instead of an inbox (spec AC-1, link variant).
  */
-export async function signIn(page: Page, email: string) {
-  const baseURL = test_baseURL(page);
+export async function signIn(page: Page, email: string, baseURL: string | undefined) {
   const { data, error } = await adminClient().auth.admin.generateLink({
-    type: "magiclink", email, options: { redirectTo: `${baseURL}/auth/callback` },
+    type: "magiclink", email, options: { redirectTo: `${baseURL ?? "http://localhost:3000"}/auth/callback` },
   });
   if (error) throw new Error(`generateLink failed: ${error.message}`);
   await page.goto(data.properties.action_link);
@@ -24,9 +23,4 @@ export async function signIn(page: Page, email: string) {
     }),
   ]);
   await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
-}
-
-function test_baseURL(page: Page): string {
-  const fromConfig = (page.context() as unknown as { _options?: { baseURL?: string } })._options?.baseURL;
-  return process.env.E2E_BASE_URL ?? fromConfig ?? `http://localhost:${process.env.PORT ?? 3000}`;
 }
