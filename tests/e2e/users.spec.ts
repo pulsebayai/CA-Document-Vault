@@ -32,8 +32,11 @@ test("AC-7, AC-9, AC-11: admin changes a role; last admin controls are disabled;
   await expect(page.getByLabel(`Role for Test users-admin`)).toBeDisabled();
   await page.getByLabel("Role for Test users-staff").selectOption("manager");
   await expect.poll(async () => (await adminClient().from("staff_user").select("role").eq("id", staff.id).single()).data?.role).toBe("manager");
-  const { data: log } = await adminClient().from("activity").select("action").eq("office_id", officeId).eq("entity_id", staff.id);
-  expect(log?.map((l) => l.action)).toContain("staff.role_changed");
+  // The audit row is written right after the update; wait for it rather than racing.
+  await expect.poll(async () => {
+    const { data: log } = await adminClient().from("activity").select("action").eq("office_id", officeId).eq("entity_id", staff.id);
+    return log?.map((l) => l.action) ?? [];
+  }).toContain("staff.role_changed");
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   expect(axe.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? ""))).toEqual([]);
 });
