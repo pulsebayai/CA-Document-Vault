@@ -63,7 +63,7 @@ test("AC-1 (code): entering the emailed 6-digit code signs in", async ({ page })
   await expect(page.getByRole("status")).toContainText("If this email has access");
   const { data, error } = await adminClient().auth.admin.generateLink({ type: "magiclink", email: staff.email });
   if (error) throw error;
-  await page.getByLabel("6-digit code").fill(data.properties.email_otp);
+  await page.getByLabel("Sign-in code").fill(data.properties.email_otp);
   await page.getByRole("button", { name: "Verify and sign in" }).click();
   await expect(page).toHaveURL(/\/clients$/);
   await clearLockout(staff.email);
@@ -76,8 +76,8 @@ test("AC-3: wrong code shows an error; five wrong codes lock the email", async (
   const verify = page.getByRole("button", { name: "Verify and sign in" });
   for (let i = 0; i < 5; i++) {
     await expect(verify).toBeEnabled(); // wait for the previous attempt (and form reset) to finish
-    await page.getByLabel("6-digit code").fill("000000");
-    await expect(page.getByLabel("6-digit code")).toHaveValue("000000");
+    await page.getByLabel("Sign-in code").fill("000000");
+    await expect(page.getByLabel("Sign-in code")).toHaveValue("000000");
     await verify.click();
     await expect(appAlert(page)).toContainText(/wrong|Too many/);
   }

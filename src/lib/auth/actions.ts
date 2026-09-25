@@ -13,10 +13,11 @@ export type LoginState =
   | { step: "email"; error?: string }
   | { step: "code"; email: string; message: string; error?: string };
 
-const NEUTRAL = "If this email has access, we've emailed a sign-in link. Open it in this browser. If the email shows a 6-digit code, you can enter it below instead.";
+const NEUTRAL = "If this email has access, we've emailed a sign-in link. Open it in this browser. Or enter the sign-in code from the email below.";
 const LOCKED = "Too many wrong codes. Try again in 15 minutes.";
 const emailSchema = z.email({ message: "Enter a valid email address." });
-const codeSchema = z.string().regex(/^\d{6}$/, "Enter the 6-digit code from the email.");
+// Supabase issues 6–8 digit codes depending on project settings; accept either.
+const codeSchema = z.string().regex(/^\d{6,8}$/, "Enter the sign-in code from the email.");
 
 /** Single entry point for the two-step form: intent = "send" | "verify". */
 export async function loginStep(prev: LoginState, form: FormData): Promise<LoginState> {
