@@ -15,7 +15,7 @@ Updated: 2026-09-25 · Architecture lock: 01 · Schema lock: 01
 Later: client portal / upload links · automatic scheduled client reminders · AI type suggestions · receipt & dispatch acknowledgement emails · staff nudge emails · retention & archive rules · pause/resume groups · storage quota view · WhatsApp Business intake · multi-office.
 
 ## Releases
-- **R1 — Pilot (target: as early as possible):** 01–06, used by 2–3 staff on a 20–30 client subset for the monthly GST cycle, then all clients.
+- **R1 — Pilot (target: as early as possible):** 01–06, then create staging + prod Supabase projects and prod Vercel env *before* any real client data, used by 2–3 staff on a 20–30 client subset for the monthly GST cycle, then all clients.
 - **R2 — Full v1:** 07–08.
 
 ## Batches
