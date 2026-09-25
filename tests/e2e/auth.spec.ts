@@ -1,0 +1,69 @@
+import AxeBuilder from "@axe-core/playwright";
+import { expect, test } from "@playwright/test";
+import "../support/setup-env";
+import { adminClient, createStaff, createTestOffice, retireStaff } from "../support/db";
+import { testEmail } from "../support/test-data";
+import { signIn } from "./helpers";
+
+let officeId: string;
+let admin: { id: string; email: string };
+let staff: { id: string; email: string };
+
+test.beforeAll(async () => {
+  officeId = await createTestOffice("e2e-auth");
+  admin = await createStaff(officeId, "auth-admin", "admin");
+  staff = await createStaff(officeId, "auth-staff", "staff");
+});
+test.afterAll(async () => { await retireStaff([staff.id, admin.id]); });
+
+test("AC-14: signed-out users are sent to /login", async ({ page }) => {
+  await page.goto("/clients");
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
+});
+
+test("AC-2: unknown email gets the same neutral message and no user is created", async ({ page }) => {
+  const email = testEmail("nobody");
+  await page.goto("/login");
+  await page.getByLabel("Work email").fill(email);
+  await page.getByRole("button", { name: "Send code" }).click();
+  await expect(page.getByRole("status")).toContainText("If this email has access");
+  const { data } = await adminClient().auth.admin.listUsers({ perPage: 1000 });
+  expect(data.users.some((u) => u.email === email)).toBe(false);
+});
+
+test("AC-1, AC-12, AC-13, AC-4: admin signs in, sees the shell and empty Clients, signs out", async ({ page }) => {
+  await signIn(page, admin.email);
+  await expect(page).toHaveURL(/\/clients$/);
+  await expect(page.getByRole("heading", { name: "Clients" })).toBeVisible();
+  await expect(page.getByText("No clients yet")).toBeVisible();
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await expect(nav.getByRole("link", { name: "Clients" })).toHaveAttribute("aria-current", "page");
+  await expect(nav.getByRole("link", { name: "Settings" })).toBeVisible();
+  const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(axe.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? ""))).toEqual([]);
+
+  await page.getByLabel(/Account menu/).click();
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await page.goto("/clients");
+  await expect(page).toHaveURL(/\/login$/);
+});
+
+test("AC-3: wrong code shows an error; five wrong codes lock the email", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("Work email").fill(staff.email);
+  await page.getByRole("button", { name: "Send code" }).click();
+  for (let i = 0; i < 5; i++) {
+    await page.getByLabel("6-digit code").fill("000000");
+    await page.getByRole("button", { name: "Verify and sign in" }).click();
+    await expect(page.getByRole("alert")).toBeVisible();
+  }
+  await expect(page.getByRole("alert")).toContainText("Too many wrong codes");
+});
+
+test("login page is accessible", async ({ page }) => {
+  await page.goto("/login");
+  const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(axe.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? ""))).toEqual([]);
+});
