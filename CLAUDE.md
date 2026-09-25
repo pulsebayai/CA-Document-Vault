@@ -8,12 +8,13 @@
 Determined by branch: a branch containing <NN-slug> → sdlc/features/<NN-slug>/. At session start read its plan.md (checkboxes + latest session log). On main: product-level work only.
 
 ## Verification commands (must all pass before a step is done)
-- npm run lint → 0 errors
-- npm run typecheck → 0 errors
-- npm run test → all pass
-- npm run test:e2e → all pass
-- npm run build → exits 0
-(Scripts are created in 01-walking-skeleton.)
+- `npm run lint` → 0 errors, 0 warnings
+- `npm run typecheck` → 0 errors
+- `npm test` → unit tests pass
+- `npm run test:db` → RLS/integration tests pass against the **dev** Supabase project (needs SUPABASE_SECRET_KEY in .env.local)
+- `npm run test:e2e` → Playwright passes (runs in CI; browser download is blocked in Cowork)
+- `npm run build` → exits 0
+Subagents: `verifier` (after each step), `sdlc-reviewer` (before a PR). Hook: `.claude/hooks/production-gate.sh`.
 
 ## Rules
 - Follow the AI-native SDLC session start/end routines.
