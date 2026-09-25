@@ -32,4 +32,6 @@ Rule: build screens to match the mockup (layout, components, copy, tokens) **exc
 | Client › "Send upload link" button | Removed | 2026-09-25 |
 | Remind = email | Email **+ WhatsApp** (click-to-chat) button | 2026-09-25 |
 | Proposed types: Approve / Merge / Reject | + Edit & approve; in-app notification to proposer | 2026-09-25 |
-| Screens appear all at once | Nav items appear as their feature ships (no dead links) | spec 01 |
+| Screens appear all at once | Nav items appear as their feature ships (no dead links) | 2026-09-25 |
+| Muted text --ink-3 #8A909D (3.3:1) | Darkened to ≥ 4.5:1 for text < 18px | 2026-09-25 |
+| Brand "Sharma & Co" | "Kushal Associates" · Pondicherry | 2026-09-25 |

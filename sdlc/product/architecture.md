@@ -33,7 +33,7 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **To-do / Today = derived view:** expected_doc with no linked document, filtered by assigned staff and dates. Not stored.
 
 **Operational**
-- `office` (one row: name, FY start, DOC-ID prefix/counter, retention, file-size limit, reminder timings)
+- `office` (one row: Kushal Associates, branch Pondicherry; name, FY start, DOC-ID prefix/counter, retention, file-size limit, reminder timings)
 - `staff_user` (role admin|manager|staff|limited, active)
 - `client_group` (client × group: assigned staff, active/paused + remark)
 - `dispatch` · `follow_up` (email|whatsapp|phone, sent_by, sent_at, delivery status) — **unit of chasing load** · `activity` (append-only audit)
@@ -64,7 +64,7 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
   - **staging** — "staging - CA Document Vault". Created before the pilot; migrations rehearsed here first.
   - **prod** — "prod - CA Document Vault". Created before the pilot starts; the only place real client data (PAN, GSTIN, files) ever lives.
   - **Never use the older "CA Doc Vault Project" (ukbpwhxqflksmgrhrfbc)** — unrelated, owner-managed.
-- Flow: `local` (Supabase CLI) → `dev` (Vercel preview per PR + dev DB) → `staging` → `prod` (Vercel prod + prod DB, Mumbai).
+- Flow: `dev` (Vercel preview per PR + hosted dev DB; all automated tests run here — no local Supabase/Docker) → `staging` → `prod` (Vercel prod + prod DB, Mumbai).
 - Production deploys and prod migrations only after PR merge to `main`, gated by hook + user confirmation.
 
 ## Decision log
@@ -81,5 +81,7 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 | 2026-09-25 | Master templates copied into per-client instances (`client_doc_type`); no silent propagation | Each client's schedule is tracked independently; owner requirement | 02 |
 | 2026-09-25 | Staff-proposed types + admin governance in pilot; similarity matching, no AI in v1 | CA expects ~60% of types to be added in use; AI deferred for cost/residency | 03, 05 |
 | 2026-09-25 | Separate Supabase projects per env (dev now; staging + prod before pilot), named `<env> - CA Document Vault`; real client data only in prod; older CA Doc Vault project off-limits | Owner decision; isolation of real client data from test data | 01 |
+| 2026-09-25 | No local Supabase; tests run against hosted dev with tagged data + serialised CI; staging mandatory before prod | Owner decision: avoid Docker; staging is the migration rehearsal | 01 |
+| 2026-09-25 | `office_id` on every business table | Cheap now; avoids migration if multi-office/branch comes | 01 |
 | 2026-09-25 | Archive instead of delete | Audit trail and record-retention obligations | — |
 | 2026-09-25 | Configurable catalogue + timings; fixed status workflow | Configurability where firms differ, without a workflow builder | — |
