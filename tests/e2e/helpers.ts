@@ -6,21 +6,27 @@ export function appAlert(page: Page): Locator {
   return page.locator('[role="alert"]:not(#__next-route-announcer__)');
 }
 
-/** Real UI sign-in; the 6-digit code comes from the admin API instead of an inbox. */
+/**
+ * Signs in the way staff do on dev today: the emailed sign-in link, opened in this browser.
+ * The link comes from the admin API instead of an inbox (spec AC-1, link variant).
+ */
 export async function signIn(page: Page, email: string) {
-  await page.goto("/login");
-  await page.getByLabel("Work email").fill(email);
-  await page.getByRole("button", { name: "Send code" }).click();
-  await expect(page.getByRole("status")).toContainText("If this email has access");
-  const { data, error } = await adminClient().auth.admin.generateLink({ type: "magiclink", email });
+  const baseURL = test_baseURL(page);
+  const { data, error } = await adminClient().auth.admin.generateLink({
+    type: "magiclink", email, options: { redirectTo: `${baseURL}/auth/callback` },
+  });
   if (error) throw new Error(`generateLink failed: ${error.message}`);
-  await page.getByLabel("6-digit code").fill(data.properties.email_otp);
-  await page.getByRole("button", { name: "Verify and sign in" }).click();
-  // Either we land in the app, or the page shows why not (fail with that text).
+  await page.goto(data.properties.action_link);
   await Promise.race([
-    page.waitForURL(/\/clients$/, { timeout: 20_000 }),
-    appAlert(page).first().waitFor({ timeout: 20_000 }).then(async () => {
+    page.waitForURL(/\/clients$/, { timeout: 30_000 }),
+    appAlert(page).first().waitFor({ timeout: 30_000 }).then(async () => {
       throw new Error(`Sign-in failed for ${email}: ${await appAlert(page).first().innerText()}`);
     }),
   ]);
+  await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
+}
+
+function test_baseURL(page: Page): string {
+  const fromConfig = (page.context() as unknown as { _options?: { baseURL?: string } })._options?.baseURL;
+  return process.env.E2E_BASE_URL ?? fromConfig ?? `http://localhost:${process.env.PORT ?? 3000}`;
 }

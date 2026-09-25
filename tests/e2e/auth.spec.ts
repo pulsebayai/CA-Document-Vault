@@ -32,7 +32,7 @@ test("AC-2: unknown email gets the same neutral message and no user is created",
   expect(data.users.some((u) => u.email === email)).toBe(false);
 });
 
-test("AC-1, AC-12, AC-13, AC-4: admin signs in, sees the shell and empty Clients, signs out", async ({ page }) => {
+test("AC-1 (link), AC-12, AC-13, AC-4: admin signs in, sees the shell and empty Clients, signs out", async ({ page }) => {
   await signIn(page, admin.email);
   await expect(page).toHaveURL(/\/clients$/);
   await expect(page.getByRole("heading", { name: "Clients" })).toBeVisible();
@@ -54,10 +54,13 @@ test("AC-3: wrong code shows an error; five wrong codes lock the email", async (
   await page.goto("/login");
   await page.getByLabel("Work email").fill(staff.email);
   await page.getByRole("button", { name: "Send code" }).click();
+  const verify = page.getByRole("button", { name: "Verify and sign in" });
   for (let i = 0; i < 5; i++) {
+    await expect(verify).toBeEnabled(); // wait for the previous attempt (and form reset) to finish
     await page.getByLabel("6-digit code").fill("000000");
-    await page.getByRole("button", { name: "Verify and sign in" }).click();
-    await expect(appAlert(page)).toBeVisible();
+    await expect(page.getByLabel("6-digit code")).toHaveValue("000000");
+    await verify.click();
+    await expect(appAlert(page)).toContainText(/wrong|Too many/);
   }
   await expect(appAlert(page)).toContainText("Too many wrong codes");
 });
