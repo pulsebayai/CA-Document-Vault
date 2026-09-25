@@ -32,7 +32,7 @@ Spec: ./spec.md · Status: approved
 
 ## Steps
 - [x] 1. Scaffold Next.js + TS + Tailwind + ESLint; scripts; `vercel.json` (bom1, headers) — proof: `npm run lint && npm run typecheck && npm run build`
-- [ ] 2. Test harness: Vitest + RTL, Playwright config, test-data tagging + cleanup helpers, one smoke test each — proof: `npm test`, `npm run test:e2e`
+- [x] 2. Test harness: Vitest + RTL, Playwright config, test-data tagging + cleanup helpers, one smoke test each — proof: `npm test`, `npm run test:e2e`
 - [ ] 3. Dev project auth settings: sign-ups off, email OTP 6-digit template, site URL — proof: settings verified via MCP/dashboard; `supabase/config.toml` records them
 - [ ] 4. Migration 0001 applied to dev (MCP `apply_migration`) + seed (Kushal Associates · Pondicherry, Admin rajak@pulsebay.in) — proof: tables/policies listed; Supabase security advisor shows no RLS warnings
 - [ ] 5. RLS tests first (Vitest as each role against dev): deactivated → 0 rows; non-admin write denied; activity immutable — proof: `npm run test:rls` green
@@ -46,6 +46,10 @@ Spec: ./spec.md · Status: approved
 - [ ] 13. Link dev: `supabase db push` to dev project `ysddbwskljzhbjjohool` + seed; user imports repo in Vercel, sets env vars; bom1 verified — proof: Admin signs in on dev URL (AC-1, 16)
 - [ ] 14. README environment procedure + dry-run on a scratch Supabase project (then deleted, with your OK) — proof: AC-17 timed < 30 min
 - [ ] 15. sdlc-reviewer pass, fix Important findings, open PR — proof: PR green, review requested
+
+## Deviations from plan
+- Step 2: Playwright browser download is blocked in the Cowork workspace → e2e runs in GitHub Actions (step 11) only; everything else runs locally each step.
+- Step 1: Next.js 16 renamed middleware → `proxy.ts`; Google Fonts blocked → IBM Plex Sans self-hosted via @fontsource (also avoids a third-party request).
 
 ## Risks
 | Risk | Mitigation |

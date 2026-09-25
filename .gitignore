@@ -39,3 +39,6 @@ coverage/
 playwright-report/
 test-results/
 supabase/.temp/
+/playwright-report/
+/test-results/
+/blob-report/
