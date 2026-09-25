@@ -5,7 +5,7 @@ Status: approved · Updated: 2026-09-25
 - **Next.js (App Router) + TypeScript** — one codebase for UI and server actions/API routes.
 - **Supabase (Postgres + Auth + Storage), region ap-south-1 (Mumbai)** — relational data, row-level security, private file storage in India.
 - **Vercel, functions pinned to bom1 (Mumbai)** — preview deploys per PR; no document bytes cached (private bucket, short-lived signed URLs).
-- **Email:** Supabase Auth for staff sign-in codes/invites; **client reminder emails via AWS SES ap-south-1** from the firm's domain (SPF/DKIM/DMARC required), Reply-To = assigned staff.
+- **Email:** Supabase Auth for staff sign-in codes/invites (dev: custom SMTP via dedicated Gmail `cadocvault.dev@gmail.com`; staging/prod: SES); **client reminder emails via AWS SES ap-south-1** from the firm's domain (SPF/DKIM/DMARC required), Reply-To = assigned staff.
 - **Scheduled jobs:** Supabase pg_cron for expected-doc generation and overdue/nudge calculation.
 - Tailwind · Vitest + React Testing Library · Playwright · ESLint · GitHub Actions.
 

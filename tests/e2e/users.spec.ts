@@ -2,6 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import "../support/setup-env";
 import { adminClient, createStaff, createTestOffice, retireStaff } from "../support/db";
+import { RUN_TAG } from "../support/test-data";
 import { appAlert, signIn } from "./helpers";
 
 let officeId: string;
@@ -62,6 +63,29 @@ test("AC-8: a deactivated user is removed on their next request", async ({ brows
   await ctx.close(); await adminCtx.close();
 });
 
-// AC-5/AC-6 (invite by email) needs an email provider that can deliver to real addresses.
-// Supabase's built-in email on dev only delivers to project team members — see plan.md risks.
-test.fixme("AC-5, AC-6: admin invites a person who then signs in and becomes Active", async () => {});
+test("AC-5, AC-6, AC-11: admin invites a person, who signs in and becomes Active", async ({ browser, baseURL }) => {
+  const adminCtx = await browser.newContext();
+  const adminPage = await adminCtx.newPage();
+  await signIn(adminPage, admin.email, baseURL);
+  await adminPage.goto("/settings/users");
+  const email = `${RUN_TAG}-invitee@example.test`.toLowerCase();
+  await adminPage.getByRole("button", { name: "+ Invite a person" }).click();
+  const dialog = adminPage.getByRole("dialog", { name: "Invite a person" });
+  await dialog.getByLabel("Name").fill("Test users-invitee");
+  await dialog.getByLabel("Work email").fill(email);
+  await dialog.getByLabel("Role").selectOption("limited");
+  await dialog.getByRole("button", { name: "Send invite" }).click();
+  await expect(dialog.getByRole("status")).toContainText(`Invite sent to ${email}`);
+
+  const { data: row } = await adminClient().from("staff_user").select("id, status, role, office_id").eq("email", email).single();
+  expect(row).toMatchObject({ status: "invited", role: "limited", office_id: officeId });
+
+  const inviteeCtx = await browser.newContext();
+  const inviteePage = await inviteeCtx.newPage();
+  await signIn(inviteePage, email, baseURL);
+  await expect.poll(async () => (await adminClient().from("staff_user").select("status").eq("id", row!.id).single()).data?.status).toBe("active");
+  const { data: log } = await adminClient().from("activity").select("action").eq("entity_id", row!.id);
+  expect(log?.map((l) => l.action)).toEqual(expect.arrayContaining(["staff.invited", "staff.activated"]));
+  await retireStaff([row!.id]);
+  await adminCtx.close(); await inviteeCtx.close();
+});

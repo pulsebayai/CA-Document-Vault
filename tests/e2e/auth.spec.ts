@@ -3,6 +3,11 @@ import { expect, test } from "@playwright/test";
 import "../support/setup-env";
 import { adminClient, createStaff, createTestOffice, retireStaff } from "../support/db";
 import { testEmail } from "../support/test-data";
+import { createHash } from "node:crypto";
+
+async function clearLockout(email: string) {
+  await adminClient().from("login_attempt").delete().eq("email_hash", createHash("sha256").update(email).digest("hex"));
+}
 import { appAlert, signIn } from "./helpers";
 
 let officeId: string;
@@ -48,6 +53,20 @@ test("AC-1 (link), AC-12, AC-13, AC-4: admin signs in, sees the shell and empty 
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/clients");
   await expect(page).toHaveURL(/\/login$/);
+});
+
+test("AC-1 (code): entering the emailed 6-digit code signs in", async ({ page }) => {
+  // requestCode sends no email to .test addresses, so the admin-API code is the only valid one.
+  await page.goto("/login");
+  await page.getByLabel("Work email").fill(staff.email);
+  await page.getByRole("button", { name: "Send code" }).click();
+  await expect(page.getByRole("status")).toContainText("If this email has access");
+  const { data, error } = await adminClient().auth.admin.generateLink({ type: "magiclink", email: staff.email });
+  if (error) throw error;
+  await page.getByLabel("6-digit code").fill(data.properties.email_otp);
+  await page.getByRole("button", { name: "Verify and sign in" }).click();
+  await expect(page).toHaveURL(/\/clients$/);
+  await clearLockout(staff.email);
 });
 
 test("AC-3: wrong code shows an error; five wrong codes lock the email", async ({ page }) => {

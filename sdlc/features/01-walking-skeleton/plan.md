@@ -48,7 +48,8 @@ Spec: ./spec.md · Status: approved
 - [ ] 15. sdlc-reviewer pass, fix Important findings, open PR — proof: PR green, review requested
 
 ## Deviations from plan
-- E2E sign-in uses the emailed-link route (what dev users use). The code route's success path is covered at API level (`tests/rls`, verifyOtp); UI coverage of a *correct* code is added when custom SMTP puts codes in emails (pre-pilot). Wrong-code + lockout remain UI-tested.
+- E2E sign-in helper uses the emailed-link route. Correct-code and invite flows are UI-tested too: the app never emails reserved `.test` addresses (protects the send quota), so the admin-API code/link is the only valid one in tests.
+- Dev email: custom SMTP via dedicated Gmail `cadocvault.dev@gmail.com` (App Password), chosen to avoid DNS changes on pulsebay.in; unlocks templates (code + link). Prod remains SES ap-south-1 on the firm's domain.
 - Sign-in: link (PKCE) + invite-link handler added at `/auth/callback` (approved spec change 2026-09-25); `/auth/removed` route clears the session for deactivated users (Server Components cannot clear cookies).
 - Step 2: Playwright browser download is blocked in the Cowork workspace → e2e runs in GitHub Actions (step 11) only; everything else runs locally each step.
 - Step 1: Next.js 16 renamed middleware → `proxy.ts`; Google Fonts blocked → IBM Plex Sans self-hosted via @fontsource (also avoids a third-party request).
