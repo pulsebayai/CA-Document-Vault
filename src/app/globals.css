@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+/* Design tokens from sdlc/product/references/ui-reference.md (mockup). */
+:root {
+  --canvas: #f5f6f8;
+  --panel: #ffffff;
+  --ink: #181c24;
+  --ink-2: #565d6b;
+  --ink-3: #6b7180; /* darkened from mockup #8A909D to meet WCAG AA (4.5:1) */
+  --line: #e6e8ec;
+  --line-2: #d5d8df;
+  --accent: #2e5ba8;
+  --accent-soft: #eaf0fa;
+  --ok: #22754f;
+  --ok-soft: #e4f2ea;
+  --warn: #b0611a;
+  --warn-soft: #fbefe2;
+  --bad: #b23a3a;
+  --bad-soft: #fbe9e9;
+  --sh: 0 1px 2px rgba(24, 28, 36, 0.04), 0 4px 14px rgba(24, 28, 36, 0.05);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-panel: var(--panel);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --shadow-card: var(--sh);
+  --font-sans: var(--font-plex), -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+}

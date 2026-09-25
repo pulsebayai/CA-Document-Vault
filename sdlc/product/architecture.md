@@ -5,7 +5,7 @@ Status: approved · Updated: 2026-09-25
 - **Next.js (App Router) + TypeScript** — one codebase for UI and server actions/API routes.
 - **Supabase (Postgres + Auth + Storage), region ap-south-1 (Mumbai)** — relational data, row-level security, private file storage in India.
 - **Vercel, functions pinned to bom1 (Mumbai)** — preview deploys per PR; no document bytes cached (private bucket, short-lived signed URLs).
-- **Email:** Supabase Auth for staff sign-in codes/invites; **client reminder emails via AWS SES ap-south-1** from the firm's domain (SPF/DKIM/DMARC required), Reply-To = assigned staff.
+- **Email:** Supabase Auth for staff sign-in codes/invites (dev: custom SMTP via dedicated Gmail `cadocvault.dev@gmail.com`; staging/prod: SES); **client reminder emails via AWS SES ap-south-1** from the firm's domain (SPF/DKIM/DMARC required), Reply-To = assigned staff.
 - **Scheduled jobs:** Supabase pg_cron for expected-doc generation and overdue/nudge calculation.
 - Tailwind · Vitest + React Testing Library · Playwright · ESLint · GitHub Actions.
 
@@ -33,7 +33,7 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **To-do / Today = derived view:** expected_doc with no linked document, filtered by assigned staff and dates. Not stored.
 
 **Operational**
-- `office` (one row: name, FY start, DOC-ID prefix/counter, retention, file-size limit, reminder timings)
+- `office` (one row: Kushal Associates, branch Pondicherry; name, FY start, DOC-ID prefix/counter, retention, file-size limit, reminder timings)
 - `staff_user` (role admin|manager|staff|limited, active)
 - `client_group` (client × group: assigned staff, active/paused + remark)
 - `dispatch` · `follow_up` (email|whatsapp|phone, sent_by, sent_at, delivery status) — **unit of chasing load** · `activity` (append-only audit)
@@ -50,7 +50,8 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **No hard delete;** every mutation writes `activity`.
 - **Uploads:** allow-list PDF, JPG, PNG, XLSX, DOCX, ZIP; size limit from settings; filenames sanitised.
 - **Dates:** stored UTC, shown IST; periods follow Indian FY.
-- **Accessibility:** WCAG 2.1 AA.
+- **UI:** the mockup is the UI source of truth — see `references/ui-reference.md` (tokens, components, agreed deviations, screenshots). Each feature spec cites its screens.
+- **Accessibility:** WCAG 2.1 AA (wins over pixel fidelity).
 - **Errors:** plain user messages; server errors logged with request ID, no PII.
 
 ## External integrations
@@ -58,7 +59,12 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **WhatsApp (click-to-chat, no API):** "WhatsApp" button opens `https://wa.me/<client mobile>?text=<pending list>` in the staff member's browser (WhatsApp Web/app); the staff member presses Send. Same content rules as email. Logged as `follow_up` channel=whatsapp, status=opened (the vault cannot confirm delivery). Documented exception to the no-PII-in-URLs rule: the client's own mobile number is sent only to WhatsApp, by the staff member's browser, never to our servers/logs.
 
 ## Environments & deploy
-- `local` (Supabase CLI) → `preview` (Vercel per PR + Supabase staging project, Mumbai) → `production` (Vercel prod + Supabase prod, Mumbai).
+- Supabase projects, all org Pulsebay, ap-south-1, named `<env> - CA Document Vault`:
+  - **dev** — "dev - CA Document Vault" (ref `ysddbwskljzhbjjohool`, created 2026-09-25). Synthetic test data only. **Exists now.**
+  - **staging** — "staging - CA Document Vault". Created before the pilot; migrations rehearsed here first.
+  - **prod** — "prod - CA Document Vault". Created before the pilot starts; the only place real client data (PAN, GSTIN, files) ever lives.
+  - **Never use the older "CA Doc Vault Project" (ukbpwhxqflksmgrhrfbc)** — unrelated, owner-managed.
+- Flow: `dev` (Vercel preview per PR + hosted dev DB; all automated tests run here — no local Supabase/Docker) → `staging` → `prod` (Vercel prod + prod DB, Mumbai).
 - Production deploys and prod migrations only after PR merge to `main`, gated by hook + user confirmation.
 
 ## Decision log
@@ -74,5 +80,8 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 | 2026-09-25 | Dimensional document model: 5 dimensions (client, group, type, FY, period); GSTIN/TAN optional attribute; no folder hierarchy; group & FY derived | Multiple views/search over one file; consistent master data | 02–03 |
 | 2026-09-25 | Master templates copied into per-client instances (`client_doc_type`); no silent propagation | Each client's schedule is tracked independently; owner requirement | 02 |
 | 2026-09-25 | Staff-proposed types + admin governance in pilot; similarity matching, no AI in v1 | CA expects ~60% of types to be added in use; AI deferred for cost/residency | 03, 05 |
+| 2026-09-25 | Separate Supabase projects per env (dev now; staging + prod before pilot), named `<env> - CA Document Vault`; real client data only in prod; older CA Doc Vault project off-limits | Owner decision; isolation of real client data from test data | 01 |
+| 2026-09-25 | No local Supabase; tests run against hosted dev with tagged data + serialised CI; staging mandatory before prod | Owner decision: avoid Docker; staging is the migration rehearsal | 01 |
+| 2026-09-25 | `office_id` on every business table | Cheap now; avoids migration if multi-office/branch comes | 01 |
 | 2026-09-25 | Archive instead of delete | Audit trail and record-retention obligations | — |
 | 2026-09-25 | Configurable catalogue + timings; fixed status workflow | Configurability where firms differ, without a workflow builder | — |
