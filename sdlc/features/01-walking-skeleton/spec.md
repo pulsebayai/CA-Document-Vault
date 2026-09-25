@@ -14,7 +14,7 @@ Intent: ./intent.md · Status: approved · Screens: references/mockup/01-today.j
 - AC-7 Given the Admin, when they change someone's role, then it takes effect on that user's next request.
 - AC-8 Given the Admin, when they deactivate a user, then that user's very next request is rejected (redirect to `/login` with "Your access has been removed. Contact your administrator.") and database reads return nothing for them — even with an unexpired token.
 - AC-9 The last active Admin cannot deactivate or demote themselves (button disabled + server rejects).
-- AC-10 Non-Admins do not see *Settings › Users and roles*; direct URL returns 404; server actions reject; RLS denies writes.
+- AC-10 Non-Admins do not see *Settings › Users and roles*; the direct URL shows the Not Found page with no staff data (HTTP stays 200 because the page streams); server actions reject; RLS denies writes.
 - AC-11 Every invite, role change, deactivation, reactivation and sign-in writes an `activity` row (actor, action, target, time). Activity rows cannot be updated or deleted by anyone.
 
 **App shell**

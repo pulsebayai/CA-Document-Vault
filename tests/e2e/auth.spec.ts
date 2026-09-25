@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 import "../support/setup-env";
 import { adminClient, createStaff, createTestOffice, retireStaff } from "../support/db";
 import { testEmail } from "../support/test-data";
-import { signIn } from "./helpers";
+import { appAlert, signIn } from "./helpers";
 
 let officeId: string;
 let admin: { id: string; email: string };
@@ -57,9 +57,9 @@ test("AC-3: wrong code shows an error; five wrong codes lock the email", async (
   for (let i = 0; i < 5; i++) {
     await page.getByLabel("6-digit code").fill("000000");
     await page.getByRole("button", { name: "Verify and sign in" }).click();
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(appAlert(page)).toBeVisible();
   }
-  await expect(page.getByRole("alert")).toContainText("Too many wrong codes");
+  await expect(appAlert(page)).toContainText("Too many wrong codes");
 });
 
 test("login page is accessible", async ({ page }) => {
@@ -82,5 +82,5 @@ test("AC-1 (link): the emailed sign-in link signs an invited user in and activat
 
 test("a used or foreign link shows a clear message", async ({ page }) => {
   await page.goto("/auth/callback?code=not-a-real-code");
-  await expect(page.getByRole("alert")).toContainText("opened in a different browser");
+  await expect(appAlert(page)).toContainText("opened in a different browser");
 });

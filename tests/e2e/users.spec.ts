@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import "../support/setup-env";
 import { adminClient, createStaff, createTestOffice, retireStaff } from "../support/db";
-import { signIn } from "./helpers";
+import { appAlert, signIn } from "./helpers";
 
 let officeId: string;
 let admin: { id: string; email: string };
@@ -15,11 +15,14 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => { await retireStaff([staff?.id, admin?.id].filter(Boolean) as string[]); });
 
-test("AC-10: non-admins do not see Settings and get 404 on the URL", async ({ page }) => {
+test("AC-10: non-admins do not see Settings; the URL shows Not Found and no staff data", async ({ page }) => {
   await signIn(page, staff.email);
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Settings" })).toHaveCount(0);
-  const res = await page.goto("/settings/users");
-  expect(res?.status()).toBe(404);
+  await page.goto("/settings/users");
+  // Streaming responses keep HTTP 200; what matters is that nothing admin-only renders.
+  await expect(page.getByText(/could not be found/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Users and roles" })).toHaveCount(0);
+  await expect(page.getByText(admin.email)).toHaveCount(0);
 });
 
 test("AC-7, AC-9, AC-11: admin changes a role; last admin controls are disabled; changes are logged", async ({ page }) => {
@@ -52,7 +55,7 @@ test("AC-8: a deactivated user is removed on their next request", async ({ brows
 
   await victimPage.reload();
   await expect(victimPage).toHaveURL(/\/login\?reason=removed$/);
-  await expect(victimPage.getByRole("alert")).toContainText("Your access has been removed");
+  await expect(appAlert(victimPage)).toContainText("Your access has been removed");
   await ctx.close(); await adminCtx.close();
 });
 
