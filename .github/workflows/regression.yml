@@ -1,0 +1,65 @@
+name: Regression
+
+# Release & regression policy (architecture.md):
+# - nightly full suite against dev (catches drift: settings, paused DB, expired secrets)
+# - manual run against staging before every release (release gate)
+# - manual run against prod after release: SMOKE ONLY (never data-writing tests)
+on:
+  schedule:
+    - cron: "0 20 * * *" # 20:00 UTC = 01:30 IST
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Environment to test"
+        type: choice
+        options: [dev, staging, prod]
+        default: dev
+      base_url:
+        description: "Deployed URL (leave empty for dev: https://ca-document-vault.vercel.app)"
+        required: false
+
+permissions:
+  contents: read
+
+concurrency: { group: dev-database, cancel-in-progress: false }
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TARGET: ${{ inputs.target || 'dev' }}
+      E2E_BASE_URL: ${{ inputs.base_url || 'https://ca-document-vault.vercel.app' }}
+      # Dev values by default. Staging/prod secrets are added when those environments exist.
+      NEXT_PUBLIC_SUPABASE_URL: ${{ (inputs.target == 'staging' && vars.STAGING_SUPABASE_URL) || vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ (inputs.target == 'staging' && vars.STAGING_SUPABASE_PUBLISHABLE_KEY) || vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ (inputs.target == 'staging' && secrets.STAGING_SUPABASE_SECRET_KEY) || (inputs.target != 'prod' && secrets.DEV_SUPABASE_SECRET_KEY) || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Unit
+        if: env.TARGET != 'prod'
+        run: npm run test:ci
+      - name: RLS (database security)
+        if: env.TARGET != 'prod'
+        run: npm run test:db:ci
+      - name: E2E (full) against deployed URL
+        if: env.TARGET != 'prod'
+        run: npm run test:e2e
+      - name: Smoke only (prod — no data-writing tests)
+        if: env.TARGET == 'prod'
+        run: npm run test:smoke
+      - name: Evidence summary
+        if: always()
+        run: node scripts/regression-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-evidence-${{ env.TARGET }}
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 90

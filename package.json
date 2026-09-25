@@ -11,7 +11,10 @@
     "test": "vitest run --project unit",
     "test:e2e": "playwright test",
     "test:db": "vitest run --project db",
-    "test:all": "npm run test && npm run test:db && npm run test:e2e"
+    "test:all": "npm run test && npm run test:db && npm run test:e2e",
+    "test:ci": "vitest run --project unit --reporter=default --reporter=junit --outputFile.junit=test-results/junit-unit.xml",
+    "test:db:ci": "vitest run --project db --reporter=default --reporter=junit --outputFile.junit=test-results/junit-db.xml",
+    "test:smoke": "playwright test tests/e2e/smoke.spec.ts"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",

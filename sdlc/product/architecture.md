@@ -58,6 +58,15 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **AWS SES (Mumbai):** client reminder emails triggered by staff "Remind". Content: which documents are pending for which period; **no attachments, no links into the app, no PAN/GSTIN in the body**. Rate-limited per client; every send logged in `follow_up` + `activity`.
 - **WhatsApp (click-to-chat, no API):** "WhatsApp" button opens `https://wa.me/<client mobile>?text=<pending list>` in the staff member's browser (WhatsApp Web/app); the staff member presses Send. Same content rules as email. Logged as `follow_up` channel=whatsapp, status=opened (the vault cannot confirm delivery). Documented exception to the no-PII-in-URLs rule: the client's own mobile number is sent only to WhatsApp, by the staff member's browser, never to our servers/logs.
 
+## Release & regression policy (every release)
+Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature by feature and are never edited to pass.
+1. **Every PR:** full suite in CI against dev (`ci.yml`). Merge only when green. Each PR description carries the AC → test → result table.
+2. **Nightly:** `regression.yml` runs the full suite against dev at 01:30 IST; failure emails the owner. Catches drift (settings, paused DB, expired secrets).
+3. **Every release (R1, R2 …) — gate before prod:**
+   a. `main` green · b. `regression.yml` (manual run) **passes against staging's deployed URL** · c. manual checklist signed off on staging (key screens vs mockup + one real end-to-end path) · d. owner approval in chat.
+   Prod after deploy: **smoke only** (`smoke.spec.ts`: login page, CSP, redirects) — no data-writing tests ever run against prod.
+4. **Evidence (kept):** every CI/regression run uploads machine-readable results (JUnit XML + Playwright JSON/HTML) as artifacts (90-day retention). For each release, a record `sdlc/releases/<Rn>.md` is committed with: commit SHA, environment, run URLs, pass/fail/skipped counts per suite, AC coverage, manual checklist results, sign-off (name, date) — plus the result summaries copied to `sdlc/releases/<Rn>/evidence/` so evidence outlives artifact retention.
+
 ## Environments & deploy
 - Supabase projects, all org Pulsebay, ap-south-1, named `<env> - CA Document Vault`:
   - **dev** — "dev - CA Document Vault" (ref `ysddbwskljzhbjjohool`, created 2026-09-25). Synthetic test data only. **Exists now.**
@@ -85,5 +94,6 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 | 2026-09-25 | `office_id` on every business table | Cheap now; avoids migration if multi-office/branch comes | 01 |
 | 2026-09-25 | Auth: email link + code (accept 6–8 digits); per-env SMTP (dev Gmail App Password, prod SES); nonce-based CSP in proxy | Supabase default email limits; new projects use 8-digit OTP; defence against injected scripts | 01 |
 | 2026-09-25 | Tests run against hosted dev with reusable fixture users on reserved `.test` domain; app never emails `.test` | Protect the email quota; keep dev DB clean | 01 |
+| 2026-09-25 | Release & regression policy: full suite per PR, nightly on dev, staging gate + manual checklist per release, prod smoke-only, evidence committed per release | Owner requirement: every release regression-tested with stored evidence | — |
 | 2026-09-25 | Archive instead of delete | Audit trail and record-retention obligations | — |
 | 2026-09-25 | Configurable catalogue + timings; fixed status workflow | Configurability where firms differ, without a workflow builder | — |
