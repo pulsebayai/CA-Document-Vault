@@ -1,5 +1,5 @@
 # Architecture: CA Document Vault
-Status: approved · Updated: 2026-09-25
+Status: approved · Updated: 2026-09-25 (after 01)
 
 ## Stack
 - **Next.js (App Router) + TypeScript** — one codebase for UI and server actions/API routes.
@@ -83,5 +83,7 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 | 2026-09-25 | Separate Supabase projects per env (dev now; staging + prod before pilot), named `<env> - CA Document Vault`; real client data only in prod; older CA Doc Vault project off-limits | Owner decision; isolation of real client data from test data | 01 |
 | 2026-09-25 | No local Supabase; tests run against hosted dev with tagged data + serialised CI; staging mandatory before prod | Owner decision: avoid Docker; staging is the migration rehearsal | 01 |
 | 2026-09-25 | `office_id` on every business table | Cheap now; avoids migration if multi-office/branch comes | 01 |
+| 2026-09-25 | Auth: email link + code (accept 6–8 digits); per-env SMTP (dev Gmail App Password, prod SES); nonce-based CSP in proxy | Supabase default email limits; new projects use 8-digit OTP; defence against injected scripts | 01 |
+| 2026-09-25 | Tests run against hosted dev with reusable fixture users on reserved `.test` domain; app never emails `.test` | Protect the email quota; keep dev DB clean | 01 |
 | 2026-09-25 | Archive instead of delete | Audit trail and record-retention obligations | — |
 | 2026-09-25 | Configurable catalogue + timings; fixed status workflow | Configurability where firms differ, without a workflow builder | — |

@@ -1,5 +1,5 @@
 # Roadmap: CA Document Vault
-Updated: 2026-09-25 · Architecture lock: 01 · Schema lock: 01
+Updated: 2026-09-25 (01 shipped) · Architecture lock: none · Schema lock: none
 
 | # | Feature slug | One-line intent | Product metric | Depends on | Touches (entities / screens / shared code) | Arch change? | Batch | Status |
 |---|---|---|---|---|---|---|---|---|
@@ -17,6 +17,9 @@ Later: client portal / upload links · automatic scheduled client reminders · A
 ## Releases
 - **R1 — Pilot (target: as early as possible):** 01–06, then create staging + prod Supabase projects and prod Vercel env *before* any real client data, used by 2–3 staff on a 20–30 client subset for the monthly GST cycle, then all clients.
 - **R2 — Full v1:** 07–08.
+
+## Before pilot (carried from 01)
+- Create staging + prod (timed run of README procedure = AC-17 proof) · prod email via SES ap-south-1 on the firm's domain · Supabase session inactivity timeout (paid) · LCP measurement on prod URL · consider GitHub Pro for branch protection on `main`.
 
 ## Batches
 (filled in by the Parallel planning checkpoint)
