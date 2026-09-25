@@ -58,7 +58,12 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **WhatsApp (click-to-chat, no API):** "WhatsApp" button opens `https://wa.me/<client mobile>?text=<pending list>` in the staff member's browser (WhatsApp Web/app); the staff member presses Send. Same content rules as email. Logged as `follow_up` channel=whatsapp, status=opened (the vault cannot confirm delivery). Documented exception to the no-PII-in-URLs rule: the client's own mobile number is sent only to WhatsApp, by the staff member's browser, never to our servers/logs.
 
 ## Environments & deploy
-- `local` (Supabase CLI) → `preview` (Vercel per PR + Supabase staging project, Mumbai) → `production` (Vercel prod + Supabase prod, Mumbai).
+- Supabase projects, all org Pulsebay, ap-south-1, named `<env> - CA Document Vault`:
+  - **dev** — "dev - CA Document Vault" (ref `ysddbwskljzhbjjohool`, created 2026-09-25). Synthetic test data only. **Exists now.**
+  - **staging** — "staging - CA Document Vault". Created before the pilot; migrations rehearsed here first.
+  - **prod** — "prod - CA Document Vault". Created before the pilot starts; the only place real client data (PAN, GSTIN, files) ever lives.
+  - **Never use the older "CA Doc Vault Project" (ukbpwhxqflksmgrhrfbc)** — unrelated, owner-managed.
+- Flow: `local` (Supabase CLI) → `dev` (Vercel preview per PR + dev DB) → `staging` → `prod` (Vercel prod + prod DB, Mumbai).
 - Production deploys and prod migrations only after PR merge to `main`, gated by hook + user confirmation.
 
 ## Decision log
@@ -74,5 +79,6 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 | 2026-09-25 | Dimensional document model: 5 dimensions (client, group, type, FY, period); GSTIN/TAN optional attribute; no folder hierarchy; group & FY derived | Multiple views/search over one file; consistent master data | 02–03 |
 | 2026-09-25 | Master templates copied into per-client instances (`client_doc_type`); no silent propagation | Each client's schedule is tracked independently; owner requirement | 02 |
 | 2026-09-25 | Staff-proposed types + admin governance in pilot; similarity matching, no AI in v1 | CA expects ~60% of types to be added in use; AI deferred for cost/residency | 03, 05 |
+| 2026-09-25 | Separate Supabase projects per env (dev now; staging + prod before pilot), named `<env> - CA Document Vault`; real client data only in prod; older CA Doc Vault project off-limits | Owner decision; isolation of real client data from test data | 01 |
 | 2026-09-25 | Archive instead of delete | Audit trail and record-retention obligations | — |
 | 2026-09-25 | Configurable catalogue + timings; fixed status workflow | Configurability where firms differ, without a workflow builder | — |
