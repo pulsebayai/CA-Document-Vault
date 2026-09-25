@@ -34,7 +34,9 @@ async function requestCode(_prev: LoginState, form: FormData): Promise<LoginStat
   // Only send to staff who are not deactivated. Never create users here.
   const { data: staff } = await createAdminClient()
     .from("staff_user").select("status").eq("email", email).maybeSingle();
-  if (staff && staff.status !== "deactivated") {
+  // Never spend the (small) email quota on reserved test domains (RFC 2606 ".test") — CI uses them.
+  const isTestAddress = email.endsWith(".test");
+  if (staff && staff.status !== "deactivated" && !isTestAddress) {
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
