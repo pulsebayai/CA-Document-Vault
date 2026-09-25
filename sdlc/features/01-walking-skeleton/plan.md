@@ -33,16 +33,16 @@ Spec: ./spec.md · Status: approved
 ## Steps
 - [x] 1. Scaffold Next.js + TS + Tailwind + ESLint; scripts; `vercel.json` (bom1, headers) — proof: `npm run lint && npm run typecheck && npm run build`
 - [x] 2. Test harness: Vitest + RTL, Playwright config, test-data tagging + cleanup helpers, one smoke test each — proof: `npm test`, `npm run test:e2e`
-- [ ] 3. Dev project auth settings: sign-ups off, email OTP 6-digit template, site URL — proof: settings verified via MCP/dashboard; `supabase/config.toml` records them
-- [ ] 4. Migration 0001 applied to dev (MCP `apply_migration`) + seed (Kushal Associates · Pondicherry, Admin rajak@pulsebay.in) — proof: tables/policies listed; Supabase security advisor shows no RLS warnings
-- [ ] 5. RLS tests first (Vitest as each role against dev): deactivated → 0 rows; non-admin write denied; activity immutable — proof: `npm run test:rls` green
-- [ ] 6. Supabase clients + proxy (session refresh, staff lookup, deactivated → sign out) — proof: integration tests
-- [ ] 7. Login flow (request code, verify, neutral message, lockout 5/15 min) — proof: e2e AC-1..3
-- [ ] 8. App shell per ui-reference (tokens, header, nav, avatar menu, sign out) + Clients empty state — proof: e2e AC-4, 12–14 + screenshot vs mockup 01/03
-- [ ] 9. Users and roles: list, invite, change role, deactivate/reactivate, last-admin guard, activity logging — proof: integration + e2e AC-5..11
-- [ ] 10. Accessibility pass (axe in Playwright on /login, /clients, /settings/users) — proof: 0 serious/critical violations
-- [ ] 11. CI workflow (local Supabase in runner) — proof: green run on the PR
-- [ ] 12. SDLC tooling: REVIEW.md, verifier + sdlc-reviewer agents, production-gate hook — proof: hook blocks `git push origin main` in a dry test
+- [x] 3. Dev project auth settings: sign-ups off, email OTP 6-digit template, site URL — proof: settings verified via MCP/dashboard; `supabase/config.toml` records them
+- [x] 4. Migration 0001 applied to dev (MCP `apply_migration`) + seed (Kushal Associates · Pondicherry, Admin rajak@pulsebay.in) — proof: tables/policies listed; Supabase security advisor shows no RLS warnings
+- [x] 5. RLS tests first (Vitest as each role against dev): deactivated → 0 rows; non-admin write denied; activity immutable — proof: `npm run test:rls` green
+- [x] 6. Supabase clients + proxy (session refresh, staff lookup, deactivated → sign out) — proof: integration tests
+- [x] 7. Login flow (request code, verify, neutral message, lockout 5/15 min) — proof: e2e AC-1..3
+- [x] 8. App shell per ui-reference (tokens, header, nav, avatar menu, sign out) + Clients empty state — proof: e2e AC-4, 12–14 + screenshot vs mockup 01/03
+- [x] 9. Users and roles: list, invite, change role, deactivate/reactivate, last-admin guard, activity logging — proof: integration + e2e AC-5..11
+- [x] 10. Accessibility pass (axe in Playwright on /login, /clients, /settings/users) — proof: 0 serious/critical violations
+- [x] 11. CI workflow (local Supabase in runner) — proof: green run on the PR
+- [x] 12. SDLC tooling: REVIEW.md, verifier + sdlc-reviewer agents, production-gate hook — proof: hook blocks `git push origin main` in a dry test
 - [ ] 13. Link dev: `supabase db push` to dev project `ysddbwskljzhbjjohool` + seed; user imports repo in Vercel, sets env vars; bom1 verified — proof: Admin signs in on dev URL (AC-1, 16)
 - [ ] 14. README environment procedure + dry-run on a scratch Supabase project (then deleted, with your OK) — proof: AC-17 timed < 30 min
 - [ ] 15. sdlc-reviewer pass, fix Important findings, open PR — proof: PR green, review requested
@@ -73,5 +73,12 @@ AC table (AC-1..17 → test file → pass) in the PR description; CI green; scre
 - Done: product foundation approved; intent approved; mockup captured; spec + plan drafted
 - In progress: spec + plan approved (no local Supabase; tests against hosted dev; staging mandatory before prod)
 - Blocked / failing: —
-- Next step: step 1 (scaffold), built in this Cowork session against hosted dev (no Docker)
+- Next step: step 13 (Vercel import by user), 14 (env procedure dry-run), 15 (review + PR ready)
 - Decisions made (cross-cutting → flag for architecture.md): office_id everywhere (applied); env naming (applied)
+
+### 2026-09-25 (build)
+- Done: steps 1–12. Migrations applied to dev; Admin rajak@pulsebay.in linked (invited). CI green on PR #1: verify job + RLS (10 tests) + e2e (10 passed, 1 skipped: invite email).
+- In progress: step 13 (Vercel), 14, 15.
+- Blocked / failing: none. Cowork egress blocks *.supabase.co (DB tests run in CI) and Playwright browser download.
+- Decisions: link sign-in while on default Supabase email (approved); AC-10 asserts Not Found content (HTTP 200 due to streaming); e2e uses per-run test offices; no local Supabase.
+- Flag for architecture.md: custom SMTP (SES) required before pilot for codes + invites to non-members (already in risks).
