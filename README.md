@@ -6,7 +6,7 @@ Product docs: `sdlc/product/` · Working rules for Claude: `CLAUDE.md` · Review
 ## Environments
 | Env | Supabase project | Data |
 |---|---|---|
-| dev | `dev - CA Document Vault` (ysddbwskljzhbjjohool) | synthetic only; all automated tests run here |
+| dev | `dev - CA Document Vault` (ysddbwskljzhbjjohool) · Vercel `ca-document-vault` → https://ca-document-vault.vercel.app (team `cad-oc-vault`) | synthetic only; all automated tests run here |
 | staging | `staging - CA Document Vault` | created before the pilot; migrations rehearsed here |
 | prod | `prod - CA Document Vault` | the only place real client data lives |
 
@@ -29,7 +29,7 @@ Tests create a throwaway office per run (`e2e office …`), so they never touch 
    select u.id, (select id from public.office where branch <> 'test' order by created_at limit 1), '<Full name>', lower(u.email), 'admin', 'invited'
    from auth.users u where lower(u.email) = lower('<admin email>');
    ```
-5. **Vercel**: project env vars `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` (server-only). Region is pinned by `vercel.json` (`bom1`).
+5. **Vercel**: use a **separate Vercel project per environment** (e.g. `ca-document-vault` = dev, `ca-document-vault-prod` = prod) so dev and prod keys never share a project. In each, set env vars for **Production + Preview** scopes (Vercel's "Development" scope is only for `vercel dev` on a laptop): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` (server-only). Region is pinned by `vercel.json` (`bom1`).
 6. **Verify**: Security Advisor shows no RLS warnings; Admin signs in with a code; `/settings/users` loads.
 
 ## Dev maintenance
