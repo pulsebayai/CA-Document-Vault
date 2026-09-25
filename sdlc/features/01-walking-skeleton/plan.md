@@ -48,6 +48,7 @@ Spec: ./spec.md · Status: approved
 - [ ] 15. sdlc-reviewer pass, fix Important findings, open PR — proof: PR green, review requested
 
 ## Deviations from plan
+- Review (step 15): nonce-based CSP added in `proxy.ts` (was planned for step 8 but missed). Not delivered in 01 and tracked: forced re-sign-in after 7 days inactivity (Supabase session inactivity timeout is a paid-plan setting — enable at prod setup); LCP < 2.5 s not measured yet (measure on prod URL before pilot).
 - E2E sign-in helper uses the emailed-link route. Correct-code and invite flows are UI-tested too: the app never emails reserved `.test` addresses (protects the send quota), so the admin-API code/link is the only valid one in tests.
 - Dev email: custom SMTP via dedicated Gmail `cadocvault.dev@gmail.com` (App Password), chosen to avoid DNS changes on pulsebay.in; unlocks templates (code + link). Prod remains SES ap-south-1 on the firm's domain.
 - Sign-in: link (PKCE) + invite-link handler added at `/auth/callback` (approved spec change 2026-09-25); `/auth/removed` route clears the session for deactivated users (Server Components cannot clear cookies).
