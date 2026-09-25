@@ -23,9 +23,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Keep one admin active per office until the end, then retire everyone.
-  await retireStaff([staff.id, ...ids.slice(2)]);
-  await retireStaff([admin.id]);
+  // Keep one admin active per office until the end, then retire everyone (skip if setup failed).
+  await retireStaff([staff?.id, ...ids.slice(2)].filter(Boolean) as string[]);
+  if (admin) await retireStaff([admin.id]);
 });
 
 describe("tenant isolation", () => {

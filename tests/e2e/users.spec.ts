@@ -13,7 +13,7 @@ test.beforeAll(async () => {
   admin = await createStaff(officeId, "users-admin", "admin");
   staff = await createStaff(officeId, "users-staff", "staff");
 });
-test.afterAll(async () => { await retireStaff([staff.id, admin.id]); });
+test.afterAll(async () => { await retireStaff([staff?.id, admin?.id].filter(Boolean) as string[]); });
 
 test("AC-10: non-admins do not see Settings and get 404 on the URL", async ({ page }) => {
   await signIn(page, staff.email);

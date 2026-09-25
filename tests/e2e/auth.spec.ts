@@ -14,7 +14,7 @@ test.beforeAll(async () => {
   admin = await createStaff(officeId, "auth-admin", "admin");
   staff = await createStaff(officeId, "auth-staff", "staff");
 });
-test.afterAll(async () => { await retireStaff([staff.id, admin.id]); });
+test.afterAll(async () => { await retireStaff([staff?.id, admin?.id].filter(Boolean) as string[]); });
 
 test("AC-14: signed-out users are sent to /login", async ({ page }) => {
   await page.goto("/clients");
