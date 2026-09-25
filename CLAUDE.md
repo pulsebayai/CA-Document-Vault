@@ -24,5 +24,6 @@ Subagents: `verifier` (after each step), `sdlc-reviewer` (before a PR). Hook: `.
 - Only the feature holding the schema lock may add database migrations.
 - All data access goes through RLS-protected tables; never use the service-role key in client-reachable code.
 - No PII (PAN, mobile, email, client names) in URLs, logs or analytics.
+- Every release follows the Release & regression policy in architecture.md (staging gate, manual checklist, evidence in sdlc/releases/). Never run data-writing tests against prod.
 - Never hard-delete documents or clients (archive only).
 - v1 is staff-only: no client-facing auth or links. The only client-facing outputs are staff-triggered reminders: email via SES and pre-filled WhatsApp click-to-chat (no attachments, no app links, no PAN/GSTIN). No automatic sends.
