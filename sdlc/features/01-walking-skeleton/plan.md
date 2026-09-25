@@ -5,17 +5,17 @@ Spec: ./spec.md · Status: approved
 | Path | New/Mod | Why |
 |---|---|---|
 | package.json, package-lock.json, tsconfig.json, next.config.ts, eslint.config.mjs, postcss/tailwind config | new | Next.js (App Router) + TS + Tailwind scaffold; scripts lint/typecheck/test/test:e2e/build |
-| vercel.json | new | `regions: ["bom1"]`, security headers |
+| vercel.json, next.config.ts | new | `regions: ["bom1"]`; security headers in next.config |
 | .env.example | new | variable names only (no values) |
 | src/app/layout.tsx, src/app/globals.css | new | IBM Plex Sans, design tokens from ui-reference.md |
 | src/app/(auth)/login/page.tsx, src/app/auth/confirm/route.ts | new | email → code sign-in |
 | src/app/(app)/layout.tsx, src/components/app-header.tsx, src/components/avatar-menu.tsx | new | mockup header, nav (Clients, Settings), sign out |
 | src/app/(app)/clients/page.tsx | new | empty state |
 | src/app/(app)/settings/users/page.tsx, src/components/invite-dialog.tsx | new | Users and roles (Admin only) |
-| src/lib/supabase/{server,client,middleware}.ts | new | @supabase/ssr clients |
+| src/lib/supabase/{server,client,proxy}.ts | new | @supabase/ssr clients |
 | src/lib/supabase/admin.ts | new | **server-only** service-role client (invite, sign-out) |
 | src/lib/auth/{actions,staff,roles}.ts | new | server actions, current staff, role checks, lockout |
-| src/middleware.ts | new | session refresh, staff/active check, redirects |
+| src/proxy.ts | new | session refresh, staff/active check, redirects (Next.js 16 renamed middleware → proxy; Node.js runtime) |
 | supabase/config.toml | new | CLI project config (migrations dir); auth settings mirrored from dev dashboard |
 | supabase/migrations/0001_foundation.sql | new | office, staff_user, activity, enums, helper fns, RLS, login_attempt |
 | supabase/seed.sql, scripts/bootstrap-env.ts | new | office seed + first Admin for any environment |
@@ -31,12 +31,12 @@ Spec: ./spec.md · Status: approved
 - `0001_foundation.sql` (schema lock held by 01): enums `staff_role`, `staff_status`; tables `office`, `staff_user`, `activity`, `login_attempt`; functions `current_staff()`, `is_active_staff()`, `has_role()`, `log_activity()`; RLS default-deny + policies from spec.
 
 ## Steps
-- [ ] 1. Scaffold Next.js + TS + Tailwind + ESLint; scripts; `vercel.json` (bom1, headers) — proof: `npm run lint && npm run typecheck && npm run build`
+- [x] 1. Scaffold Next.js + TS + Tailwind + ESLint; scripts; `vercel.json` (bom1, headers) — proof: `npm run lint && npm run typecheck && npm run build`
 - [ ] 2. Test harness: Vitest + RTL, Playwright config, test-data tagging + cleanup helpers, one smoke test each — proof: `npm test`, `npm run test:e2e`
 - [ ] 3. Dev project auth settings: sign-ups off, email OTP 6-digit template, site URL — proof: settings verified via MCP/dashboard; `supabase/config.toml` records them
 - [ ] 4. Migration 0001 applied to dev (MCP `apply_migration`) + seed (Kushal Associates · Pondicherry, Admin rajak@pulsebay.in) — proof: tables/policies listed; Supabase security advisor shows no RLS warnings
 - [ ] 5. RLS tests first (Vitest as each role against dev): deactivated → 0 rows; non-admin write denied; activity immutable — proof: `npm run test:rls` green
-- [ ] 6. Supabase clients + middleware (session refresh, staff lookup, deactivated → sign out) — proof: integration tests
+- [ ] 6. Supabase clients + proxy (session refresh, staff lookup, deactivated → sign out) — proof: integration tests
 - [ ] 7. Login flow (request code, verify, neutral message, lockout 5/15 min) — proof: e2e AC-1..3
 - [ ] 8. App shell per ui-reference (tokens, header, nav, avatar menu, sign out) + Clients empty state — proof: e2e AC-4, 12–14 + screenshot vs mockup 01/03
 - [ ] 9. Users and roles: list, invite, change role, deactivate/reactivate, last-admin guard, activity logging — proof: integration + e2e AC-5..11

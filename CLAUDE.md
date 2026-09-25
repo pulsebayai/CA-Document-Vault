@@ -1,4 +1,5 @@
 # CA Document Vault — working rules for Claude
+@AGENTS.md
 @sdlc/product/product.md
 @sdlc/product/architecture.md
 @sdlc/product/roadmap.md
