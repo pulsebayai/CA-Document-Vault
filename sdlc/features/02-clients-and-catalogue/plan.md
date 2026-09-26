@@ -1,5 +1,5 @@
 # Plan: Clients and document catalogue
-Spec: ./spec.md · Seed: ./seed-catalogue.md · Status: draft · Date: 2026-09-26
+Spec: ./spec.md · Seed: ./seed-catalogue.md · Status: approved (2026-09-26, Raja; D1 + D2 approved) · Date: 2026-09-26
 Holds: **schema lock** (roadmap) + **architecture lock** for spec's 5 approved changes (applied to architecture.md at merge).
 
 ## Files that change
