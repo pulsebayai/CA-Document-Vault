@@ -42,8 +42,8 @@ Holds: **schema lock** (roadmap) + **architecture lock** for spec's 5 approved c
 Applied to **dev only** (project ysddbwskljzhbjjohool) via `apply_migration` after RLS tests are written; staging/prod get them at release.
 
 ## Steps (estimates = build sessions with Claude; your review time in brackets)
-- [ ] 0. Wait for evidence-fix PR merge → rebase on main → full suite green — proof: CI run with Unit + RLS + E2E rows [5 min]
-- [ ] 1. **Retarget the one skeleton test** (decision D1 below) — `clients-page.test.tsx` renders the new `ClientsView` with 0 clients; same assertions (heading, "0 clients") + empty-state text — proof: fails on current code (component missing), passes after step 7 [approve D1]
+- [x] 0. Wait for evidence-fix PR merge → rebase on main → full suite green — proof: CI run with Unit + RLS + E2E rows [5 min]
+- [x] 1. **Retarget the one skeleton test** (decision D1 below) — `clients-page.test.tsx` renders the new `ClientsView` with 0 clients; same assertions (heading, "0 clients") + empty-state text — proof: fails on current code (component missing), passes after step 7 [approve D1]
 - [ ] 2. RLS/DB tests first (red): tenant isolation on all 10 tables; staff/limited catalogue writes denied (AC-6); incharge/archive Admin/Manager only (AC-10/11); DELETE rejected; limited sees only assigned (AC-12); PAN partial-unique; firm-source check (AC-1); code sequence no gaps/reuse; activity has no PII values (AC-23) — proof: `npm run test:db` fails for the right reasons (1 session)
 - [ ] 3. Migration 1 written, reviewed, applied to dev; Supabase security + performance advisors clean — proof: step-2 tests green except seed/plan/import ones (1 session) [review SQL: 30 min]
 - [ ] 4. Migration 2 (seed + FY/periods) + `add_financial_year` — proof: DB tests AC-1, AC-5 (2 × 17 periods, duplicate FY rejected) (0.5)
@@ -78,7 +78,8 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - **D2 (test data):** add `office.is_test` + service-role-only purge for test offices (above). Alternative: never purge, and accept dev growth (~1,000 rows/night from AC-17).
 
 ## Deviations from plan
-(none yet)
+- Step 0: base proof = Regression #3 on main 581c64d (Unit 15, RLS 10, E2E 14, one table); 02 rebased onto it 2026-09-26.
+- Step 1: minimal `ClientsView` added now (not in step 7) so the retargeted test goes red → green in one step; page renders it with 0 clients until step 7. Empty-state hint text changed from "Clients are added in the next release" to "Add a client or import a CSV to get started." (no test asserted the old text).
 
 ## Session log
 ### 2026-09-26
