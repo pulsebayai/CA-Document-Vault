@@ -3,13 +3,14 @@ Intent: ./intent.md · Status: draft · Date: 2026-09-26
 Screens: references/mockup/03-clients.jpg, 05-settings-catalogue.jpg, 11-client-settings.jpg · Seed data: ./seed-catalogue.md
 
 ## Key definitions
-- **Catalogue type = a document the firm collects or keeps** (e.g. "Sales invoices", "Bank statement", "Form 16"), not a return the firm files. Its schedule says **when the firm needs it from the client**, so the overdue day is set *before* the related statutory due date (see seed-catalogue.md).
+- **Catalogue = the documents the firm needs FROM THE CLIENT to do its work** (e.g. "Sales invoices", "Bank statement", "Form 16 from employer", "Loan statement") — never a return or form the firm files. Each type is named after what the client hands over; the filing it feeds is shown only as a secondary "Used for" note. Its schedule says **when the firm needs it from the client**, so overdue is set *before* the filing due date (see seed-catalogue.md).
+- **Firm records** (returns filed, acknowledgements, signed financials) are a separate, small list with `source = firm`: they exist so 03 can file and search them, have no ask/overdue/reminders, are shown in their own section of the catalogue screen, and never become expected documents.
 - **Schedule offsets** are counted from the **end of the period**: `ask = +A months, day a` and `overdue = +O months, day o` (day clamped to month end). The same offsets work whether a client collects monthly, quarterly or yearly. 04 turns them into dates; 02 only stores them.
 - **Period kinds:** month, quarter (FY quarters: Q1 = Apr–Jun), year (FY). Frequency options: monthly · quarterly · yearly · as needed (no expected docs).
 
 ## User stories & acceptance criteria
 **Catalogue (Settings › Document catalogue; Admin + Manager)**
-- AC-1 Given a fresh office, the catalogue shows the seeded groups (GST, TDS/TCS, Income Tax, Banking, ROC/MCA, Payroll, Audit, Accounting, Registrations, Other) and types from seed-catalogue.md, each with frequency, ask/overdue offsets and reminders on/off.
+- AC-1 Given a fresh office, the catalogue shows the seeded groups (GST, TDS/TCS, Income Tax, Banking, ROC/MCA, Payroll, Audit, Accounting, Registrations, Other) and types from seed-catalogue.md, each with frequency, ask/overdue offsets, reminders on/off and "Used for". Firm records appear in a separate "Firm records" section below the client documents, with no schedule columns.
 - AC-2 Admin/Manager can add a type to a group, rename it, change its default frequency/schedule/reminders, set aliases, and deactivate/reactivate it; names are unique per group (case-insensitive). Deactivated types are not offered for new plans but stay on existing clients.
 - AC-3 Admin/Manager can add, rename, reorder and deactivate groups, and toggle **"Enabled for new clients"** per group (mockup 05).
 - AC-4 Changing a master type's default schedule **does not** change any existing client's `client_doc_type` (verified by test); the screen says so ("Existing clients keep their own schedule").
@@ -33,7 +34,7 @@ Screens: references/mockup/03-clients.jpg, 05-settings-catalogue.jpg, 11-client-
 
 **Client collection plan (Client › Settings; mockup 11)**
 - AC-18 `/clients/[id]` shows the client header (name, type, PAN, GSTIN count, incharge, email, mobile), a client card with Edit, and tabs; in 02 only **Settings** is active (Documents/Expected/Activity appear with 03/04/08).
-- AC-19 Enabling a group for a client copies every **active** master type in that group into `client_doc_type` rows with the master's frequency, offsets and reminders, start period = the current period for that frequency, assigned staff = the group's assignee (default: incharge).
+- AC-19 Enabling a group for a client copies every **active client-source** master type in that group (firm records are never copied) into `client_doc_type` rows with the master's frequency, offsets and reminders, start period = the current period for that frequency, assigned staff = the group's assignee (default: incharge).
 - AC-20 Per group: assign staff, and **pause/resume** with a remark (Admin/Manager only). Per type: change frequency, reminders on/off, assigned staff override, start period; **remove** (doesn't apply) or restore (Staff+); **pause/resume** (Admin/Manager). "+ Add type to <group>" offers active master types of that group not yet on the client.
 - AC-21 Disabling a group sets it and its types to removed (history kept); re-enabling restores the previous rows rather than creating duplicates, and adds any master types added since.
 - AC-22 Setting up one client's plan (enable 3 groups, remove 4 types, change 1 frequency) takes ≤ 2 minutes for a staff member (timed manual check, recorded in the PR).
@@ -60,7 +61,7 @@ New enums: `client_type` (11 values), `frequency` (monthly, quarterly, yearly, a
 - `client_registration` (id, office_id, client_id, kind, number, state_code, active). Unique `(office_id, number)`.
 - `client_contact` (id, office_id, client_id, name, role, email, mobile) — reference only, not in UI yet.
 - `doc_group` (id, office_id, code, name, sort, active, enabled_for_new_clients).
-- `doc_type` (id, office_id, doc_group_id, code, name, aliases text[], period_kind, default_frequency, ask_after_months 0–12, ask_day 1–31, overdue_after_months 0–12, overdue_day 1–31, registration_kind null|gstin|tan, reminders bool, status approved|proposed (only approved in 02), proposed_by null, active). Unique `(doc_group_id, lower(name))`. Check: overdue ≥ ask.
+- `doc_type` (id, office_id, doc_group_id, code, name, aliases text[], period_kind, default_frequency, source client|firm, used_for text (the filing it feeds; display only), ask_after_months 0–12, ask_day 1–31, overdue_after_months 0–12, overdue_day 1–31 (all four null for "as needed" and firm), registration_kind null|gstin|tan, reminders bool, status approved|proposed (only approved in 02), proposed_by null, active). Unique `(doc_group_id, lower(name))`. Checks: overdue ≥ ask; `source = firm` ⇒ offsets null and reminders false.
 - `financial_year` (id, office_id, code `2026-27`, start_date, end_date). Unique `(office_id, code)`.
 - `period` (id, office_id, financial_year_id, kind, code `2026-06` / `2026-27-Q1` / `2026-27`, label, start_date, end_date). Unique `(office_id, kind, code)`.
 - `client_group` (id, office_id, client_id, doc_group_id, assigned_staff_id, state, remark, paused_at). Unique `(client_id, doc_group_id)`.
@@ -92,6 +93,7 @@ Only the dev DB exists; no real data. Migrations are additive. The office row ga
 | AC | Test | Suite |
 |---|---|---|
 | 1, 5 | seed present; periods count 2×17; add-FY; duplicate rejected | RLS/DB |
+| 1, 19 | firm-source type with offsets or reminders rejected by DB check; enabling a group copies no firm records | RLS/DB |
 | 2, 3, 6 | catalogue writes by admin/manager OK; staff/limited rejected | RLS/DB + e2e (admin edits a type) |
 | 4 | edit master schedule → client_doc_type unchanged | RLS/DB |
 | 7 | list, search by PAN/GSTIN/prev ref; URL contains no query text | e2e |
