@@ -54,6 +54,8 @@ jobs:
         run: npm run test:smoke
       - name: Evidence summary
         if: always()
+        env:
+          EXPECT_SUITES: ${{ env.TARGET == 'prod' && 'e2e' || 'unit,db,e2e' }}
         run: node scripts/regression-summary.mjs >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
