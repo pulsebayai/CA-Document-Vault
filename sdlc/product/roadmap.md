@@ -1,14 +1,14 @@
 # Roadmap: CA Document Vault
-Updated: 2026-09-25 (01 shipped) · Architecture lock: none · Schema lock: none
+Updated: 2026-09-26 (batch plan; 02 started) · Architecture lock: none · Schema lock: 02
 
 | # | Feature slug | One-line intent | Product metric | Depends on | Touches (entities / screens / shared code) | Arch change? | Batch | Status |
 |---|---|---|---|---|---|---|---|---|
 | 01 | walking-skeleton | Admin-provisioned staff login (email OTP), office + roles, empty Clients screen, CI, deployed to Mumbai | 5 | — | auth, office, staff_user, layout, CI | yes | — | shipped (2026-09-25, PR #1) |
-| 02 | clients-and-catalogue | Masters (groups, types with default schedules, FY/period); add/edit/archive clients + CSV import; enabling a group copies its types into client instances with own schedule | enabler | 01 | client*, doc_group, doc_type, financial_year, period, client_doc_type; Clients, Add client, Client›Settings, Settings›Catalogue | schema | — | planned |
-| 03 | document-intake-and-search | Add document with dimensions from context, DOC-IDs, Inbox, inline "new type" (proposed, client-only); Documents screen filtering on every dimension + facets + text | 1, 3 | 02 | document, document_version, storage; Inbox, Add document, Client›Documents, Documents/Search | schema | — | planned |
-| 04 | expected-docs-schedule | Generate expected docs from client instances; due/overdue; link files to expected docs; metric 1 measurable | 1 | 02 | expected_doc, pg_cron; Client›Expected | schema | — | planned |
-| 05 | type-governance | Admin review queue for proposed types: approve / edit / map to existing (re-points documents) / reject; audit; in-app notifications | 3 | 03 | doc_type_proposal, notification; Settings›Catalogue, notification centre | schema | — | planned |
-| 06 | today-and-reminders | Per-staff Today (overdue, due this week, to review, inbox); "Remind" emails client (SES); "WhatsApp" opens pre-filled chat; both logged | 1, 2 | 03, 04 | follow_up, email; Today, Client›Documents | yes (email provider) | — | planned |
+| 02 | clients-and-catalogue | Masters (groups, types with default schedules, FY/period); add/edit/archive clients + CSV import; enabling a group copies its types into client instances with own schedule | enabler | 01 | client*, doc_group, doc_type, financial_year, period, client_doc_type; Clients, Add client, Client›Settings, Settings›Catalogue | schema | A | in-progress |
+| 03 | document-intake-and-search | Add document with dimensions from context, DOC-IDs, Inbox, inline "new type" (proposed, client-only); Documents screen filtering on every dimension + facets + text | 1, 3 | 02 | document, document_version, storage; Inbox, Add document, Client›Documents, Documents/Search | schema | B | planned |
+| 04 | expected-docs-schedule | Generate expected docs from client instances; due/overdue; link files to expected docs; metric 1 measurable | 1 | 02, 03 | expected_doc, pg_cron; Client›Expected | schema | C | planned |
+| 05 | type-governance | Admin review queue for proposed types: approve / edit / map to existing (re-points documents) / reject; audit; in-app notifications | 3 | 03 | doc_type_proposal, notification; Settings›Catalogue, notification centre | schema | C | planned |
+| 06 | today-and-reminders | Per-staff Today (overdue, due this week, to review, inbox); "Remind" emails client (SES); "WhatsApp" opens pre-filled chat; both logged | 1, 2 | 03, 04 | follow_up, email; Today, Client›Documents | yes (email provider) | D | planned |
 | 07 | review-and-dispatch | Received → reviewed → ready to dispatch → dispatched for originals; history | 1 | 03 | document status, dispatch; drawer | schema | — | planned |
 | 08 | bulk-activity-roles | Bulk zip download / bulk mark reviewed, Activity log screen, Users & roles screen with full RLS matrix | 5 | 03 | activity, RLS; Activity, Settings›Users | no | — | planned |
 
@@ -23,4 +23,9 @@ Every release passes the *Release & regression policy* (architecture.md); record
 - Create staging + prod (timed run of README procedure = AC-17 proof) · prod email via SES ap-south-1 on the firm's domain · Supabase session inactivity timeout (paid) · LCP measurement on prod URL · consider GitHub Pro for branch protection on `main`.
 
 ## Batches
-(filled in by the Parallel planning checkpoint)
+Parallel planning checkpoint 2026-09-26 (preliminary — reconfirm from plans before C). Review capacity ~6 h/day → max 2 parallel.
+- **A:** 02 alone (schema foundation for everything).
+- **B:** 03 alone (04 needs `document` to link files; 03 and 04 both need the schema lock).
+- **C:** 04 ∥ 05 — merge 04 first, then 05 rebases; schema lock handed over at 04's merge. Soft overlap: 05's "map to existing" re-points `expected_doc` → 05 adds a test for it after rebase.
+- **D:** 06 alone (needs 03 + 04; architecture change: email provider).
+- Alternative (rejected): original 02 → 03∥04 → 05∥06 — hidden 04→03 dependency.

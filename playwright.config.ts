@@ -5,6 +5,9 @@ const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "tests/e2e",
+  // Playwright empties outputDir at start. Keep it in its own sub-folder so it never deletes the
+  // Unit/RLS JUnit files that earlier steps wrote to test-results/ (evidence bug, 2026-09-26).
+  outputDir: "test-results/playwright",
   fullyParallel: false, // shared dev database — keep runs serial
   workers: 1,
   retries: process.env.CI ? 1 : 0,

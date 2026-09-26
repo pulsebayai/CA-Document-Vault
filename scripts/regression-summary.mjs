@@ -1,32 +1,71 @@
 // Writes a Markdown evidence summary from JUnit/Playwright result files (used by CI and release records).
+// EXPECT_SUITES (comma list of unit, db, e2e) names the suites this job ran. A named suite whose result
+// file is missing is reported as MISSING and the script exits 1, so evidence can never be silently incomplete.
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
-const rows = [];
-function junit(file, suite) {
-  if (!existsSync(file)) return;
-  const xml = readFileSync(file, "utf8");
-  const m = xml.match(/<testsuites[^>]*tests="(\d+)"[^>]*failures="(\d+)"[^>]*errors="(\d+)"[^>]*/) ?? [];
+export const SUITES = {
+  unit: { label: "Unit", file: "junit-unit.xml", kind: "junit" },
+  db: { label: "RLS (DB security)", file: "junit-db.xml", kind: "junit" },
+  e2e: { label: "E2E / smoke", file: "e2e-results.json", kind: "playwright" },
+};
+
+function readJunit(path) {
+  const xml = readFileSync(path, "utf8");
+  const tag = xml.match(/<testsuites\b[^>]*>/)?.[0] ?? "";
+  const attr = (name) => Number(tag.match(new RegExp(`\\b${name}="(\\d+)"`))?.[1] ?? 0);
   const skipped = (xml.match(/<skipped/g) ?? []).length;
-  const total = Number(m[1] ?? 0), failed = Number(m[2] ?? 0) + Number(m[3] ?? 0);
-  rows.push([suite, total - failed - skipped, failed, skipped]);
+  const failed = attr("failures") + attr("errors");
+  return { passed: attr("tests") - failed - skipped, failed, skipped };
 }
-junit("test-results/junit-unit.xml", "Unit");
-junit("test-results/junit-db.xml", "RLS (DB security)");
-if (existsSync("test-results/e2e-results.json")) {
-  const s = JSON.parse(readFileSync("test-results/e2e-results.json", "utf8")).stats ?? {};
-  rows.push(["E2E / smoke", s.expected ?? 0, s.unexpected ?? 0, s.skipped ?? 0]);
+
+function readPlaywright(path) {
+  const s = JSON.parse(readFileSync(path, "utf8")).stats ?? {};
+  return { passed: s.expected ?? 0, failed: (s.unexpected ?? 0) + (s.flaky ?? 0), skipped: s.skipped ?? 0 };
 }
-const env = process.env.TARGET ?? "ci";
-const run = process.env.GITHUB_SERVER_URL ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}` : "local";
-const out = [
-  `## Regression evidence — ${env}`,
-  `Commit: \`${process.env.GITHUB_SHA ?? "local"}\` · Target: ${process.env.E2E_BASE_URL ?? "localhost"} · Run: ${run} · Date (UTC): ${new Date().toISOString()}`,
-  "",
-  "| Suite | Passed | Failed | Skipped |",
-  "|---|---|---|---|",
-  ...rows.map((r) => `| ${r.join(" | ")} |`),
-  "",
-].join("\n");
-mkdirSync("test-results", { recursive: true });
-writeFileSync("test-results/summary.md", out);
-process.stdout.write(out);
+
+/**
+ * Builds the summary. Returns { markdown, missing } — missing lists expected suites without results.
+ * @param {{ dir?: string, expect?: string[], env?: Record<string, string | undefined> }} [options]
+ */
+export function buildSummary({ dir = "test-results", expect = [], env = {} } = {}) {
+  const rows = [];
+  const missing = [];
+  for (const [key, suite] of Object.entries(SUITES)) {
+    const path = join(dir, suite.file);
+    if (existsSync(path)) {
+      const r = suite.kind === "junit" ? readJunit(path) : readPlaywright(path);
+      rows.push([suite.label, r.passed, r.failed, r.skipped]);
+    } else if (expect.includes(key)) {
+      missing.push(key);
+      rows.push([suite.label, "MISSING", "MISSING", "MISSING"]);
+    }
+  }
+  const run = env.GITHUB_SERVER_URL
+    ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`
+    : "local";
+  const markdown = [
+    `## Regression evidence — ${env.TARGET ?? "ci"}`,
+    `Commit: \`${env.GITHUB_SHA ?? "local"}\` · Target: ${env.E2E_BASE_URL ?? "localhost"} · Run: ${run} · Date (UTC): ${new Date().toISOString()}`,
+    "",
+    "| Suite | Passed | Failed | Skipped |",
+    "|---|---|---|---|",
+    ...rows.map((r) => `| ${r.join(" | ")} |`),
+    "",
+    ...(missing.length ? [`**Evidence incomplete — no result file for: ${missing.join(", ")}**`, ""] : []),
+  ].join("\n");
+  return { markdown, missing };
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
+  const expect = (process.env.EXPECT_SUITES ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const { markdown, missing } = buildSummary({ expect, env: process.env });
+  mkdirSync("test-results", { recursive: true });
+  writeFileSync("test-results/summary.md", markdown);
+  process.stdout.write(markdown);
+  if (missing.length) {
+    process.stderr.write(`::error::Evidence incomplete: no result file for ${missing.join(", ")}\n`);
+    process.exit(1);
+  }
+}
