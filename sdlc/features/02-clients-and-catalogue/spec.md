@@ -1,5 +1,5 @@
 # Spec: Clients and document catalogue
-Intent: ./intent.md · Status: draft · Date: 2026-09-26
+Intent: ./intent.md · Status: approved (2026-09-26, Raja) · Date: 2026-09-26
 Screens: references/mockup/03-clients.jpg, 05-settings-catalogue.jpg, 11-client-settings.jpg · Seed data: ./seed-catalogue.md
 
 ## Key definitions

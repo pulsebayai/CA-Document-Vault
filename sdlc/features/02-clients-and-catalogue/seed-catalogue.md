@@ -1,5 +1,5 @@
 # Seed catalogue — 02-clients-and-catalogue
-Status: draft (rev 2, 2026-09-26) · Generic Indian CA catalogue (intent decision 1). The CA overrides anything in Settings › Document catalogue.
+Status: approved (rev 2, 2026-09-26, Raja) · Generic Indian CA catalogue (intent decision 1). The CA overrides anything in Settings › Document catalogue.
 
 **What this list is:** the documents the firm needs **from the client** to do the client's work. Every row is named after **what the client hands over**. The return or form it feeds is only a secondary note ("Used for").
 **What it is not:** a list of returns the firm files. The firm's own outputs (returns filed, acknowledgements, signed financials) are in the separate **Firm records** list at the end. They have no schedule, no reminders, and are never chased from the client.
@@ -82,7 +82,7 @@ Groups enabled for new clients by default: **none** (staff tick groups on Add cl
 - Rows renamed from the filing to the document the client gives ("Deposit / loan details (DPT-3)" → "Loans & deposits outstanding at 31 Mar"; "Shareholding & director details (MGT-7)" → "Shareholding changes & share transfer details"; etc.). "Statutory anchor" column → "Used for".
 - "Annual GST data (GSTR-9 / 9C)" removed: its inputs are the year's books (Audit › Trial balance) and the returns already filed (firm record).
 - "(firm)" rows moved to section B with explicit `source = firm`; added "Computation of income", "Tax audit report", "ROC filings", "TDS certificates issued".
-- Challans marked "(if the client pays)": when the firm pays on the client's behalf, the CA removes that type for the client.
+- Challans stay in Part A: usually the client pays and sends the challan (confirmed by Raja at gate). If the firm pays for a particular client, staff remove that type for that client.
 
 ## Sources (checked 2026-09-26)
 - GST: GSTR-1 11th (QRMP 13th), GSTR-3B 20th (QRMP 22nd/24th), GSTR-9/9C 31 Dec — https://www.taxaj.com/gst-due-date-calendar
