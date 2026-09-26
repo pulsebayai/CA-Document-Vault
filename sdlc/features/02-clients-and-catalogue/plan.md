@@ -99,3 +99,8 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Next step: step 2 — RLS/DB tests first (red), then step 3 migration.
 - Watch in step 7: `tests/e2e/auth.spec.ts:44` expects "No clients yet" in its fixture office → client e2e tests must use a separate fixture office.
 - Decisions made (cross-cutting → flag for architecture.md at merge): spec's 5 changes + `doc_type.source`; `office.is_test` + purge function. Debt: GitHub Actions on Node 20 (bump action versions); `ubuntu-latest` → Ubuntu 26 on 19 Oct 2026 (pin `ubuntu-24.04` before then).
+
+### 2026-09-26 (late)
+- Done: step 5 — `src/lib/validation/{identifiers,gst-states,client}.ts` + 2 unit test files (red → green); unit 65/65, lint 0, typecheck 0.
+- Next step: step 2 (RLS/DB tests, red) → step 3 (migration 1 to dev) → step 4 (seed). Steps 0, 1, 5 done.
+- Raja to push: `git push origin feat/02-clients-and-catalogue` (fast-forward, no force needed).
