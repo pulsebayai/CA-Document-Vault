@@ -88,3 +88,11 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Blocked / failing: nothing pushed — Mac git has no GitHub credentials (Raja running `gh auth login`); evidence-fix PR not open yet.
 - Next step: plan approval → step 0 after evidence-fix merge.
 - Decisions made (cross-cutting → flag for architecture.md): spec's 5 changes + `doc_type.source client|firm`; `office.is_test` + purge function (if D2 approved).
+
+### 2026-09-26 (evening)
+- Done: plan approved (D1, D2). Evidence fix merged (PR #3); CI #21 and Regression #3 on main 581c64d show Unit 15 / RLS 10 / E2E 14. 02 rebased onto main. Steps 0–1 done (ClientsView + retargeted test; unit 15/15, lint 0, typecheck 0 — run locally in the device VM, which works for unit/lint/typecheck).
+- In progress: —
+- Blocked / failing: none. Rebased branch not yet force-pushed (Raja: `git push --force-with-lease origin feat/02-clients-and-catalogue`).
+- Next step: step 2 — RLS/DB tests first (red), then step 3 migration.
+- Watch in step 7: `tests/e2e/auth.spec.ts:44` expects "No clients yet" in its fixture office → client e2e tests must use a separate fixture office.
+- Decisions made (cross-cutting → flag for architecture.md at merge): spec's 5 changes + `doc_type.source`; `office.is_test` + purge function. Debt: GitHub Actions on Node 20 (bump action versions); `ubuntu-latest` → Ubuntu 26 on 19 Oct 2026 (pin `ubuntu-24.04` before then).
