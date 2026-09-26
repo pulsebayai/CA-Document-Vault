@@ -58,6 +58,7 @@ Statutory anchor = the filing it feeds (verified 2026-09-26; see Sources). Overd
 | Registrations | KYC of proprietor / partners / directors | | none | as needed | — | — | off | — |
 | Other | Correspondence / miscellaneous | | none | as needed | — | — | off | — |
 
+GST types have `registration_kind = gstin`, TDS/TCS types `tan` (one expected doc per registration in 04); others none.
 "(firm)" types are documents the firm produces; they are catalogued for filing and search but have no ask/overdue and reminders off.
 Groups enabled for new clients by default: **none** (staff tick groups on Add client) — the CA can switch on e.g. GST + Banking later.
 

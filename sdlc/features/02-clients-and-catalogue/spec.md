@@ -60,7 +60,7 @@ New enums: `client_type` (11 values), `frequency` (monthly, quarterly, yearly, a
 - `client_registration` (id, office_id, client_id, kind, number, state_code, active). Unique `(office_id, number)`.
 - `client_contact` (id, office_id, client_id, name, role, email, mobile) — reference only, not in UI yet.
 - `doc_group` (id, office_id, code, name, sort, active, enabled_for_new_clients).
-- `doc_type` (id, office_id, doc_group_id, code, name, aliases text[], period_kind, default_frequency, ask_after_months 0–12, ask_day 1–31, overdue_after_months 0–12, overdue_day 1–31, reminders bool, status approved|proposed (only approved in 02), proposed_by null, active). Unique `(doc_group_id, lower(name))`. Check: overdue ≥ ask.
+- `doc_type` (id, office_id, doc_group_id, code, name, aliases text[], period_kind, default_frequency, ask_after_months 0–12, ask_day 1–31, overdue_after_months 0–12, overdue_day 1–31, registration_kind null|gstin|tan, reminders bool, status approved|proposed (only approved in 02), proposed_by null, active). Unique `(doc_group_id, lower(name))`. Check: overdue ≥ ask.
 - `financial_year` (id, office_id, code `2026-27`, start_date, end_date). Unique `(office_id, code)`.
 - `period` (id, office_id, financial_year_id, kind, code `2026-06` / `2026-27-Q1` / `2026-27`, label, start_date, end_date). Unique `(office_id, kind, code)`.
 - `client_group` (id, office_id, client_id, doc_group_id, assigned_staff_id, state, remark, paused_at). Unique `(client_id, doc_group_id)`.
@@ -85,7 +85,7 @@ Only the dev DB exists; no real data. Migrations are additive. The office row ga
 - Add client: single page form, groups as checkboxes at the bottom; on save → `/clients/[id]` Settings.
 - Import: 3 steps — upload → preview (counts + table, filter "errors only") → result.
 - Client › Settings per mockup 11, minus "Send upload link" (deviation already agreed) and "History" links (activity viewer = 08). Client reminders card shows the toggle read-only text "Reminders arrive with feature 06".
-- Catalogue per mockup 05 minus "Proposed by staff" panel (05) and "Used by N clients" (shown — count of active client_doc_types).
+- Catalogue per mockup 05 minus the "Proposed by staff" panel (05). "Used by N clients" = count of active client_doc_types.
 - Every screen: empty, loading (skeleton), error (banner + retry) states.
 
 ## Test strategy
@@ -111,7 +111,8 @@ Only the dev DB exists; no real data. Migrations are additive. The office row ga
 2. `doc_type.aliases text[]` — old and new form names (Income-tax Act 2025 renumbered TDS forms from 1 Apr 2026, e.g. Form 16 → Form 130, 24Q → 138) so 03's type search finds either.
 3. `client_group` / `client_doc_type` use a 3-state `plan_state` (active / paused / removed): "removed" = doesn't apply (Staff), "paused" = temporary stop (Admin/Manager, per architecture).
 4. Client code vault-generated; `previous_reference` attribute (intent decisions 2, 6).
-(Architecture lock is not held by anyone; 02 takes it for these four lines, applied at merge.)
+5. `doc_type.registration_kind` (gstin | tan | null): marks types collected **per registration** (GST types → per GSTIN, TDS types → per TAN), so 04 generates one expected doc per active registration, as architecture's `expected_doc [× registration]` already implies. Seeded for GST and TDS/TCS types.
+(Architecture lock is not held by anyone; 02 takes it for these five lines, applied at merge.)
 
 ## Risks & areas of concern
 - **Seed schedules are generic** [Likely wrong for some clients] — e.g. QRMP clients file GSTR-1 by the 13th, not 11th. Mitigation: offsets are per client; CA reviews the seed table before build (see gate question).
