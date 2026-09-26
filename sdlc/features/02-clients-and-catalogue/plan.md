@@ -47,7 +47,7 @@ Applied to **dev only** (project ysddbwskljzhbjjohool) via `apply_migration` aft
 - [ ] 2. RLS/DB tests first (red): tenant isolation on all 10 tables; staff/limited catalogue writes denied (AC-6); incharge/archive Admin/Manager only (AC-10/11); DELETE rejected; limited sees only assigned (AC-12); PAN partial-unique; firm-source check (AC-1); code sequence no gaps/reuse; activity has no PII values (AC-23) — proof: `npm run test:db` fails for the right reasons (1 session)
 - [ ] 3. Migration 1 written, reviewed, applied to dev; Supabase security + performance advisors clean — proof: step-2 tests green except seed/plan/import ones (1 session) [review SQL: 30 min]
 - [ ] 4. Migration 2 (seed + FY/periods) + `add_financial_year` — proof: DB tests AC-1, AC-5 (2 × 17 periods, duplicate FY rejected) (0.5)
-- [ ] 5. Shared validators + GST states — proof: unit tests for every AC-9 rule incl. warn-only letters (G/L/J, society/co-op) (0.5)
+- [x] 5. Shared validators + GST states — proof: unit tests for every AC-9 rule incl. warn-only letters (G/L/J, society/co-op) (0.5)
 - [ ] 6. Catalogue screen + actions + Settings sub-nav + nav change — proof: e2e admin edits a type; staff sees read-only; AC-4 DB test (master edit leaves client copies unchanged) (1)
 - [ ] 7. Clients list: search (name/code/PAN/GSTIN/prev ref), filters, archived toggle, 50/page; **no query text in URL** (state in form + POST/server action) — proof: e2e AC-7 asserts `page.url()` never contains search text; step-1 test green; 1,000-client list < 1 s server time (DB timing test) (1)
 - [ ] 8. Add / edit / archive / unarchive client (+ registrations, groups at create, code) — proof: e2e add client; DB AC-10/11 green; activity rows (1)
@@ -78,6 +78,9 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - **D2 (test data):** add `office.is_test` + service-role-only purge for test offices (above). Alternative: never purge, and accept dev growth (~1,000 rows/night from AC-17).
 
 ## Deviations from plan
+- Step 5 done before steps 2–4 (2026-09-26): pure code, fully verifiable in the local VM; DB steps need CI. No dependency on the schema.
+- GST state list = 01–38 + 97 (spec said "37 codes"; Ladakh 38 and legacy 25/28 included so older GSTINs validate). GSTIN 14th char not forced to "Z" (TDS/NRI registrations use other letters); GSTIN check-character is **not** verified (not in spec) — candidate for later if typos show up in the pilot.
+- PAN letter rules: AOP/BOI accept A or B (BOI PANs use B); G/L/J always warn-only.
 - Step 0: base proof = Regression #3 on main 581c64d (Unit 15, RLS 10, E2E 14, one table); 02 rebased onto it 2026-09-26.
 - Step 1: minimal `ClientsView` added now (not in step 7) so the retargeted test goes red → green in one step; page renders it with 0 clients until step 7. Empty-state hint text changed from "Clients are added in the next release" to "Add a client or import a CSV to get started." (no test asserted the old text).
 
