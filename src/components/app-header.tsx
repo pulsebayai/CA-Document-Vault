@@ -7,8 +7,8 @@ import { NavLink } from "./nav-link";
 
 /** Mockup header (references/mockup/01-today.jpg). Only shipped screens appear in the nav. */
 export function AppHeader({ me }: { me: CurrentStaff }) {
-  const nav = [{ href: "/clients", label: "Clients" }];
-  if (me.role === "admin") nav.push({ href: "/settings/users", label: "Settings" });
+  // Settings is for everyone from 02: the catalogue is readable by all staff (AC-6); Users stays Admin only.
+  const nav = [{ href: "/clients", label: "Clients" }, { href: "/settings/catalogue", label: "Settings" }];
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-6 border-b border-line bg-white/[.92] px-6 backdrop-blur">

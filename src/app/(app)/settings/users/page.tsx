@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
 import { ROLE_LABEL, type Role } from "@/lib/auth/roles";
-import { Badge, Card, PageHeader } from "@/components/ui";
+import { Badge, Card } from "@/components/ui";
 import { InviteDialog } from "./invite-dialog";
 import { StaffRowActions } from "./staff-row-actions";
 
@@ -26,8 +26,15 @@ export default async function UsersPage() {
   const activeAdmins = rows.filter((r) => r.role === "admin" && r.status === "active").length;
 
   return (
-    <div className="mx-auto max-w-[900px]">
-      <PageHeader title="Users and roles" subtitle="Office-wide · Admin only" actions={<InviteDialog />} />
+    <div>
+      {/* Page title "Settings" comes from settings/layout.tsx; this section is Admin only. */}
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-lg font-semibold">Users and roles</h2>
+          <p className="mt-0.5 text-[13.5px] text-ink-3">Admin only</p>
+        </div>
+        <InviteDialog />
+      </div>
       <Card>
         <table className="w-full text-left">
           <caption className="sr-only">Staff with access to the vault</caption>

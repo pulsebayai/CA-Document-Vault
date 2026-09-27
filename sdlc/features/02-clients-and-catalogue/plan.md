@@ -99,6 +99,14 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 
 - CI run 36302068412 (b3c052e): DB suite 53 passed · 1 failed · 1 skipped (AC-17 nightly). Failure = `clients-catalogue › tenant isolation › cannot write into another office`: rejected by `INCHARGE`, not the tenant boundary — the SECURITY DEFINER client trigger locked/incremented the *other* office's code counter before RLS denied the row. Code fix (test unchanged): migration `20260927071425_client_trigger_tenant_first` checks office first (`OFFICE_DENIED`); verified on dev by impersonation (counter untouched). E2E did not run in that job (stops at first failing step), hence "Evidence incomplete".
 
+- Step 6 (2026-09-27):
+  - **New migration `20260927073233_doc_type_usage`** (not in the plan's list): security-invoker view `public.doc_type_usage` for "Used by N clients" (spec UX). PostgREST aggregates are off and fetching every plan row would not scale (~50k rows at 1,000 clients). Counts active plan rows on non-archived clients; RLS applies, so Limited users count only their clients. Dry-run in a rolled-back block, then applied to dev; security advisor shows no new findings. DB test `tests/rls/catalogue-usage.test.ts`.
+  - **D3 (approved by Raja 2026-09-27):** `tests/e2e/users.spec.ts` AC-10 retargeted from "non-admins see no Settings link" to "non-admins see no Users and roles link in the Settings sub-nav". /settings/users still 404s with no staff data; Settings is now for everyone (02 AC-6).
+  - `settings/users/page.tsx` modified (not listed): its h1 became an h2 under the shared Settings layout; no behaviour change.
+  - Mockup 05 shows an inline frequency dropdown per row; built as text + schedule summary, edited in the type dialog, because frequency and the ask/overdue offsets must change together (DB check: offsets set ⇔ scheduled). Reminders stay an inline switch as in the mockup.
+  - Frequency can't be more often than the type's period (month → any; quarter → quarterly/yearly; year → yearly; none → as needed). UI/validator rule only — the DB does not enforce it. [Likely] fine for 04, which generates per frequency.
+  - Group reorder = ↑/↓ buttons (swap `sort`); group/type "delete" = deactivate. Internal codes are generated (slug + random suffix), never shown.
+
 ## Session log
 ### 2026-09-26
 - Done: intent approved; spec + seed catalogue approved (rev 2: catalogue = documents from the client; firm records separate, `doc_type.source`); 5 architecture changes approved; no groups pre-ticked; challans stay client documents. Plan drafted.
