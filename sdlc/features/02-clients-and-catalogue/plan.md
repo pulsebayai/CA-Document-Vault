@@ -84,7 +84,7 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Step 0: base proof = Regression #3 on main 581c64d (Unit 15, RLS 10, E2E 14, one table); 02 rebased onto it 2026-09-26.
 - Step 1: minimal `ClientsView` added now (not in step 7) so the retargeted test goes red → green in one step; page renders it with 0 clients until step 7. Empty-state hint text changed from "Clients are added in the next release" to "Add a client or import a CSV to get started." (no test asserted the old text).
 
-- Step 2 (2026-09-27) — tests fix these interface choices for step 3 (**pending Raja's OK: S1–S3**):
+- Step 2 (2026-09-27) — tests fix these interface choices for step 3 (S1–S3 approved by Raja 2026-09-27):
   - Counts corrected: seed = **47** client documents (plan said 46) + 9 firm records; new tables = **9** (plan said 10).
   - Service-role test helper is `public.reset_test_office(office_id)` (not `private.purge_test_office_data`): PostgREST can't call functions in `private`, so it lives in `public` with EXECUTE revoked from anon/authenticated. It purges client data, restores catalogue + FYs to the seed and resets the code counter; refuses unless `office.is_test`. Existing "e2e office %" rows are flagged `is_test` in migration 1.
   - `public.add_financial_year()` (not `private.`) so the Admin screen can call it; security invoker, RLS = Admin only.
