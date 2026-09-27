@@ -93,10 +93,21 @@ test("screens vs mockups 03 / 05 / 11 + import + add client, desktop and phone w
   // Phone width (release checklist: mobile width check)
   // No sideways page scroll on a phone (wide plan tables scroll inside their card).
   const pageWidth = () => page.evaluate(() => document.documentElement.scrollWidth);
-  // On failure, name the elements that stick out past the viewport (innermost first).
-  const wide = () => page.evaluate(() => [...document.querySelectorAll("body *")]
-    .filter((e) => e.getBoundingClientRect().right > window.innerWidth + 0.5)
-    .slice(-6).map((e) => `${e.tagName.toLowerCase()}.${String(e.className).slice(0, 60)} → ${Math.round(e.getBoundingClientRect().right)}`));
+  // On failure, name the elements that widen the page: past the viewport and not inside a scroll box
+  // (content clipped by an overflow container doesn't count), widest first.
+  const wide = () => page.evaluate(() => {
+    const clipped = (e: Element) => {
+      for (let p = e.parentElement; p && p !== document.body; p = p.parentElement) {
+        if (["auto", "scroll", "hidden", "clip"].includes(getComputedStyle(p).overflowX)) return true;
+      }
+      return false;
+    };
+    return [...document.querySelectorAll("body *")]
+      .map((e) => ({ e, right: e.getBoundingClientRect().right }))
+      .filter(({ e, right }) => right > window.innerWidth + 0.5 && !clipped(e))
+      .sort((a, b) => b.right - a.right).slice(0, 8)
+      .map(({ e, right }) => `${e.tagName.toLowerCase()}.${String(e.className).slice(0, 70)} "${(e.textContent ?? "").trim().slice(0, 30)}" → ${Math.round(right)}`);
+  });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/clients");
   await expect(page.getByRole("list", { name: "Clients" })).toBeVisible();
