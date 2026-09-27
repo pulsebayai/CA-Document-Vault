@@ -95,7 +95,7 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
   - **S3** Re-enabling a group restores each type's pre-disable state (removed stays removed, paused stays paused); needs a `state_before_disable` column.
   - `client.code` has no INSERT/UPDATE grant — never client-supplied; counter increments inside the insert transaction, so a failed insert leaves no gap.
 
-- Steps 3–4 (2026-09-27): both migrations written together, dry-run on dev inside a rolled-back block, reviewed and approved by Raja, applied to dev as `20260927070322_clients_catalogue` + `20260927070427_seed_catalogue`. `reset_test_office` lives in migration 2 (it needs the seed). Security advisor: no new findings; performance: only "unused index" INFO (empty tables). Interpretations accepted at review: archived clients can't enable groups; FY always starts in April (`office.fy_start_month` ignored). **Proof still pending: CI run of the step-2 DB tests against the new schema.**
+- Steps 3–4 (2026-09-27): both migrations written together, dry-run on dev inside a rolled-back block, reviewed and approved by Raja, applied to dev as `20260927070322_clients_catalogue` + `20260927070427_seed_catalogue`. `reset_test_office` lives in migration 2 (it needs the seed). Security advisor: no new findings; performance: only "unused index" INFO (empty tables). Interpretations accepted at review: archived clients can't enable groups; FY always starts in April (`office.fy_start_month` ignored). **Proof: CI run 36302710875 (c21f580, PR #4) — Unit 67 · RLS 54 passed / 0 failed / 1 skipped (AC-17, nightly only) · E2E 14.**
 
 - CI run 36302068412 (b3c052e): DB suite 53 passed · 1 failed · 1 skipped (AC-17 nightly). Failure = `clients-catalogue › tenant isolation › cannot write into another office`: rejected by `INCHARGE`, not the tenant boundary — the SECURITY DEFINER client trigger locked/incremented the *other* office's code counter before RLS denied the row. Code fix (test unchanged): migration `20260927071425_client_trigger_tenant_first` checks office first (`OFFICE_DENIED`); verified on dev by impersonation (counter untouched). E2E did not run in that job (stops at first failing step), hence "Evidence incomplete".
 
@@ -122,7 +122,7 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 
 ### 2026-09-27
 - Done: step 2 (DB/RLS tests, 3 files + helpers; S1–S3 approved); steps 3–4 (migrations applied to dev, advisors clean). Unit 67/67, lint 0, typecheck 0.
-- In progress: proof of steps 2–4 = CI run of `npm run test:db` on this branch.
-- Blocked / failing: DB tests can only run in CI (sandbox can't reach Supabase) — Raja to push.
-- Next step: fix anything the CI DB run shows (code, never the tests unless a test is provably wrong — flag it), then step 6 (catalogue screen).
+- In progress: —
+- Blocked / failing: none. CI run 36302710875 green (Unit 67 · RLS 54/0/1 · E2E 14) after the tenant-first trigger fix. Draft PR #4 is open (Raja opened it early; stays draft until step 13).
+- Next step: step 6 — catalogue screen + actions + Settings sub-nav (read node_modules/next/dist/docs first, per AGENTS.md).
 - Decisions made (cross-cutting → flag for architecture.md at merge): DB-level ACTIVITY_PII guard on `activity` (S1); assignment = Admin/Manager (S2); service-role-only helpers live in `public` with EXECUTE revoked (PostgREST can't reach `private`); `app.plan_bulk` / `app.purge_office` transaction flags honoured by triggers.
