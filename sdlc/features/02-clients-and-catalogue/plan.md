@@ -135,7 +135,7 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
   - Not in "Files that change": `src/lib/clients/import.ts` (DB context loader, paged GETs so no PAN/name enters a request URL); `next.config.ts` → `experimental.serverActions.bodySizeLimit: "3mb"` (a 1 MB file's rows as JSON can exceed the 1 MB default).
   - Rules the spec didn't spell out: a GSTIN/TAN already on another client, or used by an earlier row, is an **error** (the DB would otherwise reject the whole chunk); `client_type` accepts the stored value or the label, any case; blank `groups` = the office's "Enabled for new clients" groups; `incharge_email` is required (active staff); cells > 500 chars are rejected; header columns may be in any order/case, and a trailing `error` column is ignored so the error file re-uploads as-is; rows are numbered as in a spreadsheet (header = row 1).
   - Error file = error rows only (plus rows not imported because a chunk call failed), **not** duplicates — skipped rows need no fix. Formula-looking cells (`= + - @`) get a `'` prefix in the file and it is stripped on re-upload (so `+91…` mobiles round-trip).
-  - AC-17 (1,000 rows < 60 s) runs in `regression.yml` with `RUN_SLOW=1`; nightly runs from `main`, so the first nightly proof comes after merge.
+  - AC-17 (1,000 rows < 60 s) runs in `regression.yml` with `RUN_SLOW=1`; nightly runs from `main`, so the first nightly proof comes after merge — **accepted by Raja 2026-09-27** as the AC-17 proof.
 
 ## Session log
 ### 2026-09-26
@@ -199,6 +199,6 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Done: step 10 — Clients › Import CSV: template download, browser parse (Papa Parse 5.7) + server preview (counts, per-row problems, "only rows with problems"), import in ≤ 200-row chunks via `import_clients` with server re-validation, result with code range + "Download error rows"; error file re-uploads as-is. "Import CSV" button on the clients list. No new migration. **Proof: CI run 36319719071 (7fa6436) green — lint/typecheck/unit (127)/build · RLS suite green (DB tests unchanged; AC-17 skipped, nightly) · E2E 24 / 0.**
 - First CI run (36319153205, ff87501): the new e2e test's `getByRole("alert")` also matched Next's route announcer — switched to the existing `appAlert` helper; app unchanged (test had never passed).
 - In progress: —
-- Blocked / failing: none. AC-17 (1,000-row import < 60 s) not yet proven: needs a `RUN_SLOW=1` run (nightly on main after merge, or a manual regression run on this branch).
+- Blocked / failing: none. AC-17 (1,000-row import < 60 s) not yet proven. **Raja 2026-09-27 18:24 IST: accept the first nightly `regression.yml` run after merge as AC-17 proof** (no manual branch run). The PR's AC table marks AC-17 "pending — first nightly after merge"; if that nightly fails, it is the top priority of the next session (fix-forward branch with the failing test kept).
 - Next step: step 11 — axe on the 5 new screens + empty/loading/error states + screenshots vs mockups 03/05/11.
 - Decisions made (cross-cutting → flag for architecture.md at merge): long-running bulk actions are driven from the browser in bounded chunks (each server action ≤ 200 rows, re-validated server-side); `experimental.serverActions.bodySizeLimit` = 3 MB; CSV exports neutralise formula-looking cells.
