@@ -50,7 +50,7 @@ Applied to **dev only** (project ysddbwskljzhbjjohool) via `apply_migration` aft
 - [x] 5. Shared validators + GST states — proof: unit tests for every AC-9 rule incl. warn-only letters (G/L/J, society/co-op) (0.5)
 - [x] 6. Catalogue screen + actions + Settings sub-nav + nav change — proof: e2e admin edits a type; staff sees read-only; AC-4 DB test (master edit leaves client copies unchanged) (1)
 - [x] 7. Clients list: search (name/code/PAN/GSTIN/prev ref), filters, archived toggle, 50/page; **no query text in URL** (state in form + POST/server action) — proof: e2e AC-7 asserts `page.url()` never contains search text; step-1 test green; 1,000-client list < 1 s server time (DB timing test) (1)
-- [ ] 8. Add / edit / archive / unarchive client (+ registrations, groups at create, code) — proof: e2e add client; DB AC-10/11 green; activity rows (1)
+- [x] 8. Add / edit / archive / unarchive client (+ registrations, groups at create, code) — proof: e2e add client; DB AC-10/11 green; activity rows (1)
 - [ ] 9. Client › Settings: header, card, tabs, groups & types, enable/disable/pause/remove/restore, "+ Add type" — proof: DB AC-19/20/21 (no duplicates on re-enable, firm records never copied); e2e enable group (1.5)
 - [ ] 10. CSV import: template, browser preview, server re-validation, chunked `import_clients`, result + error-row download — proof: unit CSV tests (header, limits, in-file + DB duplicates, name warnings); e2e happy path + error file round-trip; AC-17 1,000 rows < 60 s nightly (`RUN_SLOW=1`) (1.5)
 - [ ] 11. Accessibility (axe on 5 new screens) + empty/loading/error states + screenshots vs mockups 03/05/11 — proof: 0 serious/critical; screenshots in PR (0.5)
@@ -120,6 +120,7 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
   - **New migration `20260927084340_client_create_update_archive`**: `archive_reason` + guard in `client_before_write`; `public.create_client(jsonb)` (client + registrations + groups in one transaction — a clashing GSTIN leaves no half-created client and uses no code); `public.update_client(uuid, jsonb)` (details + registration set in one transaction; removed registrations become inactive, re-added ones are reactivated). Both SECURITY INVOKER, one activity row each with field names only. The dry run caught a `text[] || 'literal'` bug before apply.
   - PAN is effectively fixed once a client has a GSTIN (the trigger compares all GSTINs, active or not, and registrations can't be deleted). Clear message; the workaround is archive + re-add. [Likely] rare in practice — flag if the pilot hits it.
   - `/clients/[id]` built now with the header + client card (AC-18's first half) because Edit and Archive need a home; step 9 adds the tabs and the Settings/collection plan. Edit is its own route `/clients/[id]/edit` (same `client-form.tsx` as Add).
+  - CI run 36307379741 (4a9f75a): DB green; 19/20 e2e — the new edit test's `getByRole("link", { name: "Edit" })` also matched the brand link (fixture office "e2e office client-edit-ui" contains "edit"); selector made exact, app unchanged.
   - Society/co-op PAN letter warnings (AC-9 warn-only) need a second click ("Save anyway"); hard errors block.
 
 ## Session log
@@ -164,3 +165,10 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Blocked / failing: none.
 - Next step: step 8 — add / edit / archive / unarchive client (+ registrations, groups at create, code); brings the "Add client" button.
 - Decisions made (cross-cutting → flag for architecture.md at merge): list/search via SECURITY INVOKER SQL functions called from server actions (POST) — the pattern for any PII-bearing search; service role cannot write `client` rows (private CHECK helpers are `authenticated`-only).
+
+### 2026-09-27 (afternoon, step 8)
+- Done: step 8 — Add client / Edit (shared form), client page header + card, archive with optional reason / unarchive; `create_client` / `update_client` (atomic) + `archive_reason` on dev. **Proof: CI run 36307833084 (c2f447f) — Unit 97 · RLS 76 / 0 / 1 skipped (AC-17 nightly) · E2E 20.**
+- In progress: —
+- Blocked / failing: none.
+- Next step: step 9 — Client › Settings: tabs, groups & types, enable/disable/pause/remove/restore, "+ Add type" (AC-18 … AC-21).
+- Decisions made (cross-cutting → flag for architecture.md at merge): multi-table writes go through one SECURITY INVOKER SQL function per user action (atomic + one activity row); free-text notes (archive reason) live on the entity, never in activity; dev migrations reviewed together at the PR (Raja, 2026-09-27).
