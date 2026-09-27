@@ -83,7 +83,7 @@ test("AC-10, AC-11: staff edit but can't change incharge or archive; a manager a
   await sp.getByLabel("Email").fill("owner@example.test");
   await sp.getByRole("button", { name: "Save changes" }).click();
   await expect(sp).toHaveURL(new RegExp(`/clients/${editId}$`));
-  await expect(sp.getByText("owner@example.test")).toBeVisible();
+  await expect(sp.getByText("owner@example.test", { exact: true })).toBeVisible();
   await staffCtx.close();
 
   const mgrCtx = await browser.newContext();
