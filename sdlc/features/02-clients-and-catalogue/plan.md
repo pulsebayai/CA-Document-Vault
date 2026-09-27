@@ -51,7 +51,7 @@ Applied to **dev only** (project ysddbwskljzhbjjohool) via `apply_migration` aft
 - [x] 6. Catalogue screen + actions + Settings sub-nav + nav change — proof: e2e admin edits a type; staff sees read-only; AC-4 DB test (master edit leaves client copies unchanged) (1)
 - [x] 7. Clients list: search (name/code/PAN/GSTIN/prev ref), filters, archived toggle, 50/page; **no query text in URL** (state in form + POST/server action) — proof: e2e AC-7 asserts `page.url()` never contains search text; step-1 test green; 1,000-client list < 1 s server time (DB timing test) (1)
 - [x] 8. Add / edit / archive / unarchive client (+ registrations, groups at create, code) — proof: e2e add client; DB AC-10/11 green; activity rows (1)
-- [ ] 9. Client › Settings: header, card, tabs, groups & types, enable/disable/pause/remove/restore, "+ Add type" — proof: DB AC-19/20/21 (no duplicates on re-enable, firm records never copied); e2e enable group (1.5)
+- [x] 9. Client › Settings: header, card, tabs, groups & types, enable/disable/pause/remove/restore, "+ Add type" — proof: DB AC-19/20/21 (no duplicates on re-enable, firm records never copied); e2e enable group (1.5)
 - [ ] 10. CSV import: template, browser preview, server re-validation, chunked `import_clients`, result + error-row download — proof: unit CSV tests (header, limits, in-file + DB duplicates, name warnings); e2e happy path + error file round-trip; AC-17 1,000 rows < 60 s nightly (`RUN_SLOW=1`) (1.5)
 - [ ] 11. Accessibility (axe on 5 new screens) + empty/loading/error states + screenshots vs mockups 03/05/11 — proof: 0 serious/critical; screenshots in PR (0.5)
 - [ ] 12. AC-22 timed manual check with a staff member (≤ 2 min) — proof: time recorded in PR [you: 10 min]
@@ -122,6 +122,12 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
   - `/clients/[id]` built now with the header + client card (AC-18's first half) because Edit and Archive need a home; step 9 adds the tabs and the Settings/collection plan. Edit is its own route `/clients/[id]/edit` (same `client-form.tsx` as Add).
   - CI run 36307379741 (4a9f75a): DB green; 19/20 e2e — the new edit test's `getByRole("link", { name: "Edit" })` also matched the brand link (fixture office "e2e office client-edit-ui" contains "edit"); selector made exact, app unchanged.
   - Society/co-op PAN letter warnings (AC-9 warn-only) need a second click ("Save anyway"); hard errors block.
+- Step 9 (2026-09-27):
+  - Code was written by a session that ended without a log (14:46–14:54 IST); reviewed against spec AC-18…21 and the migration's triggers/functions before committing. No new migration — step 2–3 functions (`enable_client_group`, `disable_client_group`, `add_client_doc_type`) and plan triggers cover it.
+  - Added in review: read-only "Client reminders" card (spec UX line; text as specced, "Reminders arrive with feature 06" — internal wording, fine while 02 is dev-only); server refuses the reminders toggle on a removed/paused type or removed group (UI already did).
+  - Refactor within scope: `validateSchedule` shared by catalogue and client plan (one rule set); `Modal` / `FieldError` / `Offset` moved from catalogue-view to `src/components/dialog.tsx` (catalogue e2e still green).
+  - Single-row plan edits (pause/resume, assign, remove/restore, reminders, type dialog) update then log activity from the server action — same pattern as catalogue edits (not atomic; activity is best-effort). Multi-row changes use the atomic SQL functions.
+  - The new e2e test needed 3 fixes before its first green run, none weakening an assertion (test had never passed, precedent c2f447f): exact name "Pause GST" (substring hit "Pause GST notice / order received"); activity asserts scoped to the test's client (serial-mode retry re-creates the client, `reset_test_office` keeps activity); fixture staff are named "Test <label>". App code unchanged by these.
 
 ## Session log
 ### 2026-09-26
@@ -173,3 +179,10 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Next step: step 9 — Client › Settings: tabs, groups & types, enable/disable/pause/remove/restore, "+ Add type" (AC-18 … AC-21).
 - Decisions made (cross-cutting → flag for architecture.md at merge): multi-table writes go through one SECURITY INVOKER SQL function per user action (atomic + one activity row); free-text notes (archive reason) live on the entity, never in activity; dev migrations reviewed together at the PR (Raja, 2026-09-27).
 - Wrap-up (Raja, 2026-09-27 14:43 IST): Raja checks the **whole feature** on the Vercel preview after step 13, then merges PR #4 himself (no partial merge). Step 9 starts in a new session.
+
+### 2026-09-27 (evening, step 9)
+- Done: step 9 — Client › Settings: tabs (Settings only), collection plan per group (enable/disable with restore, remove/restore types, schedule/start period/reminders dialog, pause/resume + assign for Admin/Manager, "+ Add type to <group>"), client card + read-only reminders card. **Proof: CI run 36317948748 (e03e370) — Lint/typecheck/unit (104)/build green · RLS 76 / 0 / 1 skipped (AC-17 nightly) · E2E 22 / 0, no flaky.**
+- In progress: —
+- Blocked / failing: none.
+- Next step: step 10 — CSV import (template, browser preview, server re-validation, chunked `import_clients`, result + error-row download; AC-13…17). `papaparse` not yet installed.
+- Decisions made (cross-cutting → flag for architecture.md at merge): shared `src/components/dialog.tsx` (native `<dialog>` modal) for all forms-in-dialogs; single-row edits log activity from the action (best-effort), multi-row via atomic SQL functions.
