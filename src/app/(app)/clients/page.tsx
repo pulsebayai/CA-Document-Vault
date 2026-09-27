@@ -1,6 +1,15 @@
-import { ClientsView } from "./clients-view";
+import { requireStaff } from "@/lib/auth/staff";
+import { listStaffOptions, searchClientsAs } from "@/lib/clients/queries";
+import { parseClientSearch } from "@/lib/validation/client-search";
+import { ClientsBrowser } from "./clients-browser";
 
-/** Mockup 03-clients.jpg. Data loading arrives in feature 02 step 7. */
-export default function ClientsPage() {
-  return <ClientsView clients={[]} total={0} />;
+/**
+ * Mockup 03-clients.jpg (spec AC-7). First page is rendered on the server with no filters; searching
+ * happens through a server action, so nothing typed ever reaches the URL. "Has overdue" arrives with 04,
+ * Import CSV / Add client with steps 10 / 8 (no dead links), Export with 08.
+ */
+export default async function ClientsPage() {
+  await requireStaff();
+  const [initial, staff] = await Promise.all([searchClientsAs(parseClientSearch({})), listStaffOptions()]);
+  return <ClientsBrowser initial={initial} staff={staff} />;
 }

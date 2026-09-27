@@ -107,6 +107,12 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
   - Frequency can't be more often than the type's period (month → any; quarter → quarterly/yearly; year → yearly; none → as needed). UI/validator rule only — the DB does not enforce it. [Likely] fine for 04, which generates per frequency.
   - Group reorder = ↑/↓ buttons (swap `sort`); group/type "delete" = deactivate. Internal codes are generated (slug + random suffix), never shown.
 
+- Step 7 (2026-09-27):
+  - **New migration `20260927080310_search_clients`** (not in the plan's list): `public.search_clients(query, type, incharge, include_archived, limit, offset)`, SECURITY INVOKER (RLS decides visibility → AC-12 holds), returns list rows + enabled/paused group names + a window total. Chosen over PostgREST `.or(ilike…)` filters so user text is never spliced into a filter string, LIKE wildcards are escaped, and the GSTIN match (child table) is one query. PAN/GSTIN match uses identifier characters only (spaces/case ignored). Dry-run as `authenticated`, applied to dev; advisors: no new findings. DB tests `tests/rls/clients-list.test.ts` were written with the function but could only run in CI after it was applied (shared dev DB), so there is no separate red CI run.
+  - Search state never enters the URL: it lives in component state and goes to the `searchClients` server action (POST). Inputs have no `name`, so a pre-hydration submit adds nothing to the URL. e2e records every request/navigation URL and asserts none contains the search text or filter values.
+  - Header count = active clients visible to the user; "Showing a–b of N" = matches. Import CSV / Add client buttons are not shown until steps 10 / 8 (no dead links); "Open" = the client name links to `/clients/[id]` (built in step 9; PR is draft until then).
+  - 1,000-client timing test runs on every PR (not nightly): setup is one service-role insert and `reset_test_office` purges it next run, so dev does not grow. The measured time is the full round trip from the US runner (stricter than "server time").
+
 ## Session log
 ### 2026-09-26
 - Done: intent approved; spec + seed catalogue approved (rev 2: catalogue = documents from the client; firm records separate, `doc_type.source`); 5 architecture changes approved; no groups pre-ticked; challans stay client documents. Plan drafted.
