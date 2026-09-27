@@ -119,7 +119,7 @@ test("AC-20: a manager pauses and resumes the group with a remark, reassigns it,
   await gst.getByRole("button", { name: "Resume GST", exact: true }).click();
   await expect(gst.getByText(/Paused since/)).toHaveCount(0);
 
-  await gst.getByLabel("Assigned to").selectOption({ label: "cplan-manager" });
+  await gst.getByLabel("Assigned to").selectOption({ label: "Test cplan-manager" });
   await expect.poll(async () => {
     const { data } = await adminClient().from("client_group").select("assigned_staff_id").eq("client_id", clientId).single();
     return data?.assigned_staff_id;
