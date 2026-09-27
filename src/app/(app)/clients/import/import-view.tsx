@@ -211,7 +211,7 @@ function PreviewPanel({ step, problemsOnly, setProblemsOnly, onImport, onErrors,
           </label>
         </div>
       </Card>
-      <Card className="overflow-x-auto">
+      <Card className="relative overflow-x-auto">
         <table className="w-full text-left text-[13.5px]">
           <caption className="sr-only">Rows in the file, with any problems</caption>
           <thead className="border-b border-line text-ink-3">

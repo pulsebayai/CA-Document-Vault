@@ -101,7 +101,7 @@ function GroupCard({ clientId, group, periods, staff, assigneeName, nameOf, canE
           </div>
         </div>
         <ResultLine result={result} />
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full text-left text-[14px]">
             <caption className="sr-only">{group.name} document types</caption>
             <thead className="text-[13px] text-ink-3">

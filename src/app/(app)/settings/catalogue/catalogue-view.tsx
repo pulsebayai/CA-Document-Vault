@@ -88,7 +88,7 @@ function GroupCard({ group, canEdit, first, last }: { group: CatalogueGroup; can
         </div>
         <InlineError error={error} />
         {group.active && (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto">
             <table className="w-full min-w-[640px] text-left">
               <caption className="sr-only">{group.name} document types</caption>
               <thead className="text-[13px] text-ink-3">
@@ -161,7 +161,7 @@ function FirmRecords({ records, groups, canEdit }: { records: Catalogue["firmRec
           <h3 id="firm-records" className="font-semibold">Firm records</h3>
           <p className="mt-0.5 text-[13px] text-ink-2">Returns, acknowledgements and other records the firm produces. Filed and searched like any document; never asked from clients, so they have no schedule or reminders.</p>
         </div>
-        <div className="overflow-x-auto">
+        <div className="relative overflow-x-auto">
           <table className="w-full min-w-[560px] text-left">
             <caption className="sr-only">Firm records</caption>
             <thead className="text-[13px] text-ink-3">
