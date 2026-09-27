@@ -46,7 +46,7 @@ test("AC-7: search by name, PAN and previous reference, filter by type, show arc
   await signIn(page, staff.email, baseURL);
   await expect(page.getByText("3 clients", { exact: true })).toBeVisible();
   await expect(list(page).getByRole("listitem")).toHaveCount(3);
-  await expect(list(page).getByRole("listitem", { name: "Kaveri Textiles" })).toContainText("Partnership · ZZZFZ5101Z · Incharge Test clients-staff");
+  await expect(list(page).getByRole("listitem", { name: "Kaveri Textiles" })).toContainText("Partnership firm · ZZZFZ5101Z · Incharge Test clients-staff");
 
   const search = page.getByRole("searchbox", { name: "Search clients" });
   for (const term of ["kaveri", "fz510", "k-old"]) {
