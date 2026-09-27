@@ -172,3 +172,4 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Blocked / failing: none.
 - Next step: step 9 — Client › Settings: tabs, groups & types, enable/disable/pause/remove/restore, "+ Add type" (AC-18 … AC-21).
 - Decisions made (cross-cutting → flag for architecture.md at merge): multi-table writes go through one SECURITY INVOKER SQL function per user action (atomic + one activity row); free-text notes (archive reason) live on the entity, never in activity; dev migrations reviewed together at the PR (Raja, 2026-09-27).
+- Wrap-up (Raja, 2026-09-27 14:43 IST): Raja checks the **whole feature** on the Vercel preview after step 13, then merges PR #4 himself (no partial merge). Step 9 starts in a new session.
