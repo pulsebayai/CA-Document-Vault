@@ -52,7 +52,7 @@ Applied to **dev only** (project ysddbwskljzhbjjohool) via `apply_migration` aft
 - [x] 7. Clients list: search (name/code/PAN/GSTIN/prev ref), filters, archived toggle, 50/page; **no query text in URL** (state in form + POST/server action) — proof: e2e AC-7 asserts `page.url()` never contains search text; step-1 test green; 1,000-client list < 1 s server time (DB timing test) (1)
 - [x] 8. Add / edit / archive / unarchive client (+ registrations, groups at create, code) — proof: e2e add client; DB AC-10/11 green; activity rows (1)
 - [x] 9. Client › Settings: header, card, tabs, groups & types, enable/disable/pause/remove/restore, "+ Add type" — proof: DB AC-19/20/21 (no duplicates on re-enable, firm records never copied); e2e enable group (1.5)
-- [ ] 10. CSV import: template, browser preview, server re-validation, chunked `import_clients`, result + error-row download — proof: unit CSV tests (header, limits, in-file + DB duplicates, name warnings); e2e happy path + error file round-trip; AC-17 1,000 rows < 60 s nightly (`RUN_SLOW=1`) (1.5)
+- [x] 10. CSV import: template, browser preview, server re-validation, chunked `import_clients`, result + error-row download — proof: unit CSV tests (header, limits, in-file + DB duplicates, name warnings); e2e happy path + error file round-trip; AC-17 1,000 rows < 60 s nightly (`RUN_SLOW=1`) (1.5)
 - [ ] 11. Accessibility (axe on 5 new screens) + empty/loading/error states + screenshots vs mockups 03/05/11 — proof: 0 serious/critical; screenshots in PR (0.5)
 - [ ] 12. AC-22 timed manual check with a staff member (≤ 2 min) — proof: time recorded in PR [you: 10 min]
 - [ ] 13. `verifier` full suite → `sdlc-reviewer` → fix Important → PR with AC → test → result table — proof: CI green, evidence shows all three suites [PR review: 1–2 h]
@@ -194,3 +194,11 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Blocked / failing: none.
 - Next step: step 10 — CSV import (template, browser preview, server re-validation, chunked `import_clients`, result + error-row download; AC-13…17). `papaparse` not yet installed.
 - Decisions made (cross-cutting → flag for architecture.md at merge): shared `src/components/dialog.tsx` (native `<dialog>` modal) for all forms-in-dialogs; single-row edits log activity from the action (best-effort), multi-row via atomic SQL functions.
+
+### 2026-09-27 (evening, step 10)
+- Done: step 10 — Clients › Import CSV: template download, browser parse (Papa Parse 5.7) + server preview (counts, per-row problems, "only rows with problems"), import in ≤ 200-row chunks via `import_clients` with server re-validation, result with code range + "Download error rows"; error file re-uploads as-is. "Import CSV" button on the clients list. No new migration. **Proof: CI run 36319719071 (7fa6436) green — lint/typecheck/unit (127)/build · RLS suite green (DB tests unchanged; AC-17 skipped, nightly) · E2E 24 / 0.**
+- First CI run (36319153205, ff87501): the new e2e test's `getByRole("alert")` also matched Next's route announcer — switched to the existing `appAlert` helper; app unchanged (test had never passed).
+- In progress: —
+- Blocked / failing: none. AC-17 (1,000-row import < 60 s) not yet proven: needs a `RUN_SLOW=1` run (nightly on main after merge, or a manual regression run on this branch).
+- Next step: step 11 — axe on the 5 new screens + empty/loading/error states + screenshots vs mockups 03/05/11.
+- Decisions made (cross-cutting → flag for architecture.md at merge): long-running bulk actions are driven from the browser in bounded chunks (each server action ≤ 200 rows, re-validated server-side); `experimental.serverActions.bodySizeLimit` = 3 MB; CSV exports neutralise formula-looking cells.
