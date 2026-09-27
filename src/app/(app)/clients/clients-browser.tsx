@@ -95,6 +95,11 @@ export function ClientsBrowser({ initial, staff, canAdd }: { initial: ClientSear
   return (
     <ClientsView clients={data.rows} total={data.total} matched={data.matched} filtered={filtered}
       firstIndex={(filters.page - 1) * PAGE_SIZE} toolbar={toolbar} pager={pager} busy={pending}
-      actions={canAdd ? <Link href="/clients/new" className="inline-flex items-center rounded-[9px] bg-accent px-3.5 py-2 font-medium text-white hover:bg-[#264d8f]">Add client</Link> : undefined} />
+      actions={canAdd ? (
+        <span className="flex gap-2">
+          <Link href="/clients/import" className="inline-flex items-center rounded-[9px] border border-line-2 bg-panel px-3.5 py-2 font-medium hover:bg-canvas">Import CSV</Link>
+          <Link href="/clients/new" className="inline-flex items-center rounded-[9px] bg-accent px-3.5 py-2 font-medium text-white hover:bg-[#264d8f]">Add client</Link>
+        </span>
+      ) : undefined} />
   );
 }

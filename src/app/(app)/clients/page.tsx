@@ -6,7 +6,7 @@ import { ClientsBrowser } from "./clients-browser";
 /**
  * Mockup 03-clients.jpg (spec AC-7). First page is rendered on the server with no filters; searching
  * happens through a server action, so nothing typed ever reaches the URL. "Has overdue" arrives with 04,
- * Import CSV with step 10 (no dead links), Export with 08.
+ * Export with 08.
  */
 export default async function ClientsPage() {
   const me = await requireStaff();
