@@ -45,8 +45,8 @@ Applied to **dev only** (project ysddbwskljzhbjjohool) via `apply_migration` aft
 - [x] 0. Wait for evidence-fix PR merge → rebase on main → full suite green — proof: CI run with Unit + RLS + E2E rows [5 min]
 - [x] 1. **Retarget the one skeleton test** (decision D1 below) — `clients-page.test.tsx` renders the new `ClientsView` with 0 clients; same assertions (heading, "0 clients") + empty-state text — proof: fails on current code (component missing), passes after step 7 [approve D1]
 - [x] 2. RLS/DB tests first (red): tenant isolation on all 10 tables; staff/limited catalogue writes denied (AC-6); incharge/archive Admin/Manager only (AC-10/11); DELETE rejected; limited sees only assigned (AC-12); PAN partial-unique; firm-source check (AC-1); code sequence no gaps/reuse; activity has no PII values (AC-23) — proof: `npm run test:db` fails for the right reasons (1 session)
-- [ ] 3. Migration 1 written, reviewed, applied to dev; Supabase security + performance advisors clean — proof: step-2 tests green except seed/plan/import ones (1 session) [review SQL: 30 min]
-- [ ] 4. Migration 2 (seed + FY/periods) + `add_financial_year` — proof: DB tests AC-1, AC-5 (2 × 17 periods, duplicate FY rejected) (0.5)
+- [x] 3. Migration 1 written, reviewed, applied to dev; Supabase security + performance advisors clean — proof: step-2 tests green except seed/plan/import ones (1 session) [review SQL: 30 min]
+- [x] 4. Migration 2 (seed + FY/periods) + `add_financial_year` — proof: DB tests AC-1, AC-5 (2 × 17 periods, duplicate FY rejected) (0.5)
 - [x] 5. Shared validators + GST states — proof: unit tests for every AC-9 rule incl. warn-only letters (G/L/J, society/co-op) (0.5)
 - [ ] 6. Catalogue screen + actions + Settings sub-nav + nav change — proof: e2e admin edits a type; staff sees read-only; AC-4 DB test (master edit leaves client copies unchanged) (1)
 - [ ] 7. Clients list: search (name/code/PAN/GSTIN/prev ref), filters, archived toggle, 50/page; **no query text in URL** (state in form + POST/server action) — proof: e2e AC-7 asserts `page.url()` never contains search text; step-1 test green; 1,000-client list < 1 s server time (DB timing test) (1)
@@ -95,6 +95,8 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
   - **S3** Re-enabling a group restores each type's pre-disable state (removed stays removed, paused stays paused); needs a `state_before_disable` column.
   - `client.code` has no INSERT/UPDATE grant — never client-supplied; counter increments inside the insert transaction, so a failed insert leaves no gap.
 
+- Steps 3–4 (2026-09-27): both migrations written together, dry-run on dev inside a rolled-back block, reviewed and approved by Raja, applied to dev as `20260927070322_clients_catalogue` + `20260927070427_seed_catalogue`. `reset_test_office` lives in migration 2 (it needs the seed). Security advisor: no new findings; performance: only "unused index" INFO (empty tables). Interpretations accepted at review: archived clients can't enable groups; FY always starts in April (`office.fy_start_month` ignored). **Proof still pending: CI run of the step-2 DB tests against the new schema.**
+
 ## Session log
 ### 2026-09-26
 - Done: intent approved; spec + seed catalogue approved (rev 2: catalogue = documents from the client; firm records separate, `doc_type.source`); 5 architecture changes approved; no groups pre-ticked; challans stay client documents. Plan drafted.
@@ -115,3 +117,10 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Done: step 5 — `src/lib/validation/{identifiers,gst-states,client}.ts` + 2 unit test files (red → green); unit 65/65, lint 0, typecheck 0.
 - Next step: step 2 (RLS/DB tests, red) → step 3 (migration 1 to dev) → step 4 (seed). Steps 0, 1, 5 done.
 - Raja to push: `git push origin feat/02-clients-and-catalogue` (fast-forward, no force needed).
+
+### 2026-09-27
+- Done: step 2 (DB/RLS tests, 3 files + helpers; S1–S3 approved); steps 3–4 (migrations applied to dev, advisors clean). Unit 67/67, lint 0, typecheck 0.
+- In progress: proof of steps 2–4 = CI run of `npm run test:db` on this branch.
+- Blocked / failing: DB tests can only run in CI (sandbox can't reach Supabase) — Raja to push.
+- Next step: fix anything the CI DB run shows (code, never the tests unless a test is provably wrong — flag it), then step 6 (catalogue screen).
+- Decisions made (cross-cutting → flag for architecture.md at merge): DB-level ACTIVITY_PII guard on `activity` (S1); assignment = Admin/Manager (S2); service-role-only helpers live in `public` with EXECUTE revoked (PostgREST can't reach `private`); `app.plan_bulk` / `app.purge_office` transaction flags honoured by triggers.
