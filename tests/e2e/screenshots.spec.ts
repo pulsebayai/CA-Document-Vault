@@ -69,6 +69,9 @@ test("screens vs mockups 03 / 05 / 11 + import + add client, desktop and phone w
   // Mockup 11 — Client › Settings
   await page.goto(`/clients/${clientId}`);
   await expect(page.getByRole("heading", { name: "Sankar Software Pvt Ltd" })).toBeVisible();
+  // AC-18 header: type, PAN, GSTIN count, incharge, email, mobile (mockup 11).
+  await expect(page.getByRole("heading", { name: "Sankar Software Pvt Ltd" }).locator("xpath=following-sibling::p[1]"))
+    .toHaveText(`Private Ltd · PAN ${testPan("C", 8001)} · 2 GSTINs · Incharge Test shots-staff · accounts@sankar.example.test · 9840012345`);
   await shoot(page, "11-client-settings");
 
   // Mockup 05 — Settings › Document catalogue
@@ -88,13 +91,15 @@ test("screens vs mockups 03 / 05 / 11 + import + add client, desktop and phone w
   await shoot(page, "import-preview");
 
   // Phone width (release checklist: mobile width check)
+  // No sideways page scroll on a phone (wide plan tables scroll inside their card).
+  const pageWidth = () => page.evaluate(() => document.documentElement.scrollWidth);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/clients");
   await expect(page.getByRole("list", { name: "Clients" })).toBeVisible();
+  expect(await pageWidth()).toBeLessThanOrEqual(390);
   await shoot(page, "mobile-03-clients");
   await page.goto(`/clients/${clientId}`);
   await expect(page.getByRole("heading", { name: "Sankar Software Pvt Ltd" })).toBeVisible();
+  expect(await pageWidth()).toBeLessThanOrEqual(390);
   await shoot(page, "mobile-11-client-settings");
-  // Phone layout is not in 02's scope: record the page width for the release checklist instead of asserting it.
-  test.info().annotations.push({ type: "mobile-scroll-width", description: String(await page.evaluate(() => document.documentElement.scrollWidth)) });
 });

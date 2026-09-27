@@ -33,8 +33,9 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-[22px] font-semibold leading-tight">{c.name}</h1>
-          <p className="mt-1 text-ink-2">
-            {[CLIENT_TYPE_LABEL[c.clientType], c.pan, gstins.length ? `${gstins.length} GSTIN${gstins.length > 1 ? "s" : ""}` : null, `Incharge ${c.inchargeName}`].filter(Boolean).join(" · ")}
+          <p className="mt-1 break-words text-ink-2">
+            {[CLIENT_TYPE_LABEL[c.clientType], c.pan && `PAN ${c.pan}`, gstins.length ? `${gstins.length} GSTIN${gstins.length > 1 ? "s" : ""}` : null,
+              `Incharge ${c.inchargeName}`, c.email, c.mobile].filter(Boolean).join(" · ")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -59,7 +60,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
         </ul>
       </nav>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div>
           <h2 className="sr-only">Collection plan</h2>
           <PlanView clientId={c.id} plan={plan} inchargeId={c.inchargeId} canEdit={canEdit} canManage={canManage}
