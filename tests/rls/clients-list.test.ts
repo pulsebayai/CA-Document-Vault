@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
+import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { createCatalogueOffice, groupId, mustInsertClient } from "../support/catalogue";
 import { testGstin, testPan } from "../support/test-data";
 
@@ -122,7 +122,8 @@ describe("list performance with 1,000 clients (spec NFR)", () => {
       office_id: perfOffice, name: `Perf client ${String(i).padStart(4, "0")}`, client_type: "individual",
       incharge_id: perfStaff.id, pan: testPan("P", i), previous_reference: `P-${i}`,
     }));
-    const { error } = await adminClient().from("client").insert(rows); // setup only, as the service role
+    // Inserted as the signed-in staff member (the real path; the service role cannot run the PAN check helper).
+    const { error } = await c.from("client").insert(rows);
     if (error) throw error;
   }, 120_000);
 

@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import "../support/setup-env";
-import { adminClient, createStaff, retireStaff } from "../support/db";
+import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { createCatalogueOffice } from "../support/catalogue";
 import { testPan } from "../support/test-data";
 import { signIn } from "./helpers";
@@ -12,21 +12,28 @@ import { signIn } from "./helpers";
 let officeId: string;
 let staff: { id: string; email: string };
 let limited: { id: string; email: string };
+let manager: { id: string; email: string };
 
 test.beforeAll(async () => {
   officeId = await createCatalogueOffice("clients-list-ui");
   staff = await createStaff(officeId, "clients-staff", "staff");
   limited = await createStaff(officeId, "clients-limited", "limited");
+  manager = await createStaff(officeId, "clients-manager", "manager");
+  // Setup through the same RLS path the app uses (staff add, manager archives).
+  const asManager = await signedInClient(manager.email);
   const rows = [
     { name: "Kaveri Textiles", client_type: "partnership", pan: testPan("F", 5101), previous_reference: "K-OLD-9", incharge_id: staff.id },
     { name: "Mylapore Stores", client_type: "proprietorship", pan: testPan("P", 5102), incharge_id: staff.id },
     { name: "Limited Co", client_type: "individual", incharge_id: limited.id },
-    { name: "Archived Agency", client_type: "individual", incharge_id: staff.id, archived_at: new Date().toISOString() },
+    { name: "Archived Agency", client_type: "individual", incharge_id: staff.id },
   ].map((r) => ({ office_id: officeId, ...r }));
-  const { error } = await adminClient().from("client").insert(rows); // setup as the service role
+  const { data, error } = await asManager.from("client").insert(rows).select("id, name");
   if (error) throw error;
+  const archived = data!.find((r) => r.name === "Archived Agency")!;
+  const { error: ae } = await asManager.from("client").update({ archived_at: new Date().toISOString(), archived_by: manager.id }).eq("id", archived.id);
+  if (ae) throw ae;
 });
-test.afterAll(async () => { await retireStaff([staff?.id, limited?.id].filter(Boolean) as string[]); });
+test.afterAll(async () => { await retireStaff([staff?.id, limited?.id, manager?.id].filter(Boolean) as string[]); });
 
 const list = (page: Page) => page.getByRole("list", { name: "Clients" });
 const shown = async (page: Page) => (await list(page).getByRole("listitem").all()).length;
