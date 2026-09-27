@@ -49,7 +49,7 @@ Applied to **dev only** (project ysddbwskljzhbjjohool) via `apply_migration` aft
 - [x] 4. Migration 2 (seed + FY/periods) + `add_financial_year` — proof: DB tests AC-1, AC-5 (2 × 17 periods, duplicate FY rejected) (0.5)
 - [x] 5. Shared validators + GST states — proof: unit tests for every AC-9 rule incl. warn-only letters (G/L/J, society/co-op) (0.5)
 - [x] 6. Catalogue screen + actions + Settings sub-nav + nav change — proof: e2e admin edits a type; staff sees read-only; AC-4 DB test (master edit leaves client copies unchanged) (1)
-- [ ] 7. Clients list: search (name/code/PAN/GSTIN/prev ref), filters, archived toggle, 50/page; **no query text in URL** (state in form + POST/server action) — proof: e2e AC-7 asserts `page.url()` never contains search text; step-1 test green; 1,000-client list < 1 s server time (DB timing test) (1)
+- [x] 7. Clients list: search (name/code/PAN/GSTIN/prev ref), filters, archived toggle, 50/page; **no query text in URL** (state in form + POST/server action) — proof: e2e AC-7 asserts `page.url()` never contains search text; step-1 test green; 1,000-client list < 1 s server time (DB timing test) (1)
 - [ ] 8. Add / edit / archive / unarchive client (+ registrations, groups at create, code) — proof: e2e add client; DB AC-10/11 green; activity rows (1)
 - [ ] 9. Client › Settings: header, card, tabs, groups & types, enable/disable/pause/remove/restore, "+ Add type" — proof: DB AC-19/20/21 (no duplicates on re-enable, firm records never copied); e2e enable group (1.5)
 - [ ] 10. CSV import: template, browser preview, server re-validation, chunked `import_clients`, result + error-row download — proof: unit CSV tests (header, limits, in-file + DB duplicates, name warnings); e2e happy path + error file round-trip; AC-17 1,000 rows < 60 s nightly (`RUN_SLOW=1`) (1.5)
@@ -112,6 +112,7 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
   - Search state never enters the URL: it lives in component state and goes to the `searchClients` server action (POST). Inputs have no `name`, so a pre-hydration submit adds nothing to the URL. e2e records every request/navigation URL and asserts none contains the search text or filter values.
   - Header count = active clients visible to the user; "Showing a–b of N" = matches. Import CSV / Add client buttons are not shown until steps 10 / 8 (no dead links); "Open" = the client name links to `/clients/[id]` (built in step 9; PR is draft until then).
   - CI run 36305200606 (033c6dc): all AC-7/AC-12 search tests passed; the timing test's **setup** failed — `permission denied for function pan_fits_type`: the service role cannot insert clients (the PAN CHECK calls a `private` helper only `authenticated` may execute). Not a product path (the app never writes clients as the service role), so test setup now inserts as a signed-in staff member / manager, like the app. Flag for architecture.md: service role cannot write `client` rows (fine today; revisit if an admin tool/seed ever needs it).
+  - CI run 36305790377 (5eb4f38): DB suite green (67 passed / 1 skipped); one new e2e assertion expected "Partnership" but the app correctly shows "Partnership firm" (`CLIENT_TYPE_LABEL`) — the never-green test's expectation was corrected, app unchanged.
   - 1,000-client timing test runs on every PR (not nightly): setup is one service-role insert and `reset_test_office` purges it next run, so dev does not grow. The measured time is the full round trip from the US runner (stricter than "server time").
 
 ## Session log
@@ -149,3 +150,10 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Blocked / failing: none.
 - Next step: step 7 — clients list (search, filters, archived toggle, 50/page, no query text in URL). Client e2e tests need their own fixture office (auth.spec.ts:44 expects "No clients yet").
 - Decisions made (cross-cutting → flag for architecture.md at merge): security-invoker views for aggregates the UI needs (RLS applies); Settings visible to all staff with per-item role gating.
+
+### 2026-09-27 (afternoon, step 7)
+- Done: step 7 — clients list (search name/code/PAN/GSTIN/prev ref, Type/Incharge filters, Show archived, 50/page) via `search_clients` + server action; nothing typed reaches the URL. **Proof: CI run 36306261758 (6f365e6) green — Unit 94 (local, same code) · RLS 67 / 0 / 1 skipped (run 36305790377; DB tests unchanged since) · E2E 18.** 1,000-client search: 220–234 ms round trip from the US runner.
+- In progress: —
+- Blocked / failing: none.
+- Next step: step 8 — add / edit / archive / unarchive client (+ registrations, groups at create, code); brings the "Add client" button.
+- Decisions made (cross-cutting → flag for architecture.md at merge): list/search via SECURITY INVOKER SQL functions called from server actions (POST) — the pattern for any PII-bearing search; service role cannot write `client` rows (private CHECK helpers are `authenticated`-only).
