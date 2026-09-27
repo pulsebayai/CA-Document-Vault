@@ -44,7 +44,7 @@ Applied to **dev only** (project ysddbwskljzhbjjohool) via `apply_migration` aft
 ## Steps (estimates = build sessions with Claude; your review time in brackets)
 - [x] 0. Wait for evidence-fix PR merge → rebase on main → full suite green — proof: CI run with Unit + RLS + E2E rows [5 min]
 - [x] 1. **Retarget the one skeleton test** (decision D1 below) — `clients-page.test.tsx` renders the new `ClientsView` with 0 clients; same assertions (heading, "0 clients") + empty-state text — proof: fails on current code (component missing), passes after step 7 [approve D1]
-- [ ] 2. RLS/DB tests first (red): tenant isolation on all 10 tables; staff/limited catalogue writes denied (AC-6); incharge/archive Admin/Manager only (AC-10/11); DELETE rejected; limited sees only assigned (AC-12); PAN partial-unique; firm-source check (AC-1); code sequence no gaps/reuse; activity has no PII values (AC-23) — proof: `npm run test:db` fails for the right reasons (1 session)
+- [x] 2. RLS/DB tests first (red): tenant isolation on all 10 tables; staff/limited catalogue writes denied (AC-6); incharge/archive Admin/Manager only (AC-10/11); DELETE rejected; limited sees only assigned (AC-12); PAN partial-unique; firm-source check (AC-1); code sequence no gaps/reuse; activity has no PII values (AC-23) — proof: `npm run test:db` fails for the right reasons (1 session)
 - [ ] 3. Migration 1 written, reviewed, applied to dev; Supabase security + performance advisors clean — proof: step-2 tests green except seed/plan/import ones (1 session) [review SQL: 30 min]
 - [ ] 4. Migration 2 (seed + FY/periods) + `add_financial_year` — proof: DB tests AC-1, AC-5 (2 × 17 periods, duplicate FY rejected) (0.5)
 - [x] 5. Shared validators + GST states — proof: unit tests for every AC-9 rule incl. warn-only letters (G/L/J, society/co-op) (0.5)
@@ -83,6 +83,17 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - PAN letter rules: AOP/BOI accept A or B (BOI PANs use B); G/L/J always warn-only.
 - Step 0: base proof = Regression #3 on main 581c64d (Unit 15, RLS 10, E2E 14, one table); 02 rebased onto it 2026-09-26.
 - Step 1: minimal `ClientsView` added now (not in step 7) so the retargeted test goes red → green in one step; page renders it with 0 clients until step 7. Empty-state hint text changed from "Clients are added in the next release" to "Add a client or import a CSV to get started." (no test asserted the old text).
+
+- Step 2 (2026-09-27) — tests fix these interface choices for step 3 (**pending Raja's OK: S1–S3**):
+  - Counts corrected: seed = **47** client documents (plan said 46) + 9 firm records; new tables = **9** (plan said 10).
+  - Service-role test helper is `public.reset_test_office(office_id)` (not `private.purge_test_office_data`): PostgREST can't call functions in `private`, so it lives in `public` with EXECUTE revoked from anon/authenticated. It purges client data, restores catalogue + FYs to the seed and resets the code counter; refuses unless `office.is_test`. Existing "e2e office %" rows are flagged `is_test` in migration 1.
+  - `public.add_financial_year()` (not `private.`) so the Admin screen can call it; security invoker, RLS = Admin only.
+  - New `public.add_client_doc_type(client, doc_type)` for "+ Add type" (copies master defaults; refuses firm records / inactive types).
+  - SQL functions (enable/disable group, import, add FY) write their `activity` rows in the same transaction.
+  - **S1** DB-level `ACTIVITY_PII` guard trigger on `activity` (rejects PII keys or PAN/GSTIN/email/mobile-shaped values anywhere in `data`) — additive trigger on a 01 table; stronger than the TS-only guard in the plan.
+  - **S2** Assigning staff (group or type) is Admin/Manager only, like incharge — assignment decides what Limited users can see. Spec AC-20 is ambiguous here.
+  - **S3** Re-enabling a group restores each type's pre-disable state (removed stays removed, paused stays paused); needs a `state_before_disable` column.
+  - `client.code` has no INSERT/UPDATE grant — never client-supplied; counter increments inside the insert transaction, so a failed insert leaves no gap.
 
 ## Session log
 ### 2026-09-26
