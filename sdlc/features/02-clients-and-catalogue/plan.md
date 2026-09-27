@@ -137,6 +137,12 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
   - Error file = error rows only (plus rows not imported because a chunk call failed), **not** duplicates — skipped rows need no fix. Formula-looking cells (`= + - @`) get a `'` prefix in the file and it is stripped on re-upload (so `+91…` mobiles round-trip).
   - AC-17 (1,000 rows < 60 s) runs in `regression.yml` with `RUN_SLOW=1`; nightly runs from `main`, so the first nightly proof comes after merge — **accepted by Raja 2026-09-27** as the AC-17 proof.
 
+- Step 11 (2026-09-27):
+  - Axe was already asserted on all 5 new screens (steps 6–10); gaps were in the states. `/clients/[id]`, `/new`, `/edit` and `/import` inherited the clients-list skeleton and "Clients could not be loaded." — each now has its own loading (and error where it loads data). Shared `src/components/states.tsx` (not in "Files that change"); the two existing skeletons put `aria-label` on a plain div (prohibited by ARIA 1.2, not announced) → now `role="status"` + sr-only text. Unit test `tests/unit/screen-states.test.tsx` (10) incl. axe-core in jsdom.
+  - `tests/e2e/screenshots.spec.ts` (new, not in plan): seeded office with 3 realistic synthetic clients; screenshots of 03 / 05 / 11 + Add client + Import preview at 1280 px and 03 / 11 at 390 px into `test-results/screenshots/` (CI `test-evidence` artifact); axe on each.
+  - **Phone width is not asserted** (records `scrollWidth` as a test annotation): the app header (01) has no responsive layout; making it responsive is out of 02's scope → candidate item for the release checklist / a later feature.
+  - Comparison vs mockups needs the screenshots: the cloud workspace can't download CI artifacts (blob storage blocked) and the Vercel preview needs a Vercel login.
+
 ## Session log
 ### 2026-09-26
 - Done: intent approved; spec + seed catalogue approved (rev 2: catalogue = documents from the client; firm records separate, `doc_type.source`); 5 architecture changes approved; no groups pre-ticked; challans stay client documents. Plan drafted.
