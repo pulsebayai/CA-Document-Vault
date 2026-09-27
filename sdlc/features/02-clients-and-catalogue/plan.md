@@ -48,7 +48,7 @@ Applied to **dev only** (project ysddbwskljzhbjjohool) via `apply_migration` aft
 - [x] 3. Migration 1 written, reviewed, applied to dev; Supabase security + performance advisors clean — proof: step-2 tests green except seed/plan/import ones (1 session) [review SQL: 30 min]
 - [x] 4. Migration 2 (seed + FY/periods) + `add_financial_year` — proof: DB tests AC-1, AC-5 (2 × 17 periods, duplicate FY rejected) (0.5)
 - [x] 5. Shared validators + GST states — proof: unit tests for every AC-9 rule incl. warn-only letters (G/L/J, society/co-op) (0.5)
-- [ ] 6. Catalogue screen + actions + Settings sub-nav + nav change — proof: e2e admin edits a type; staff sees read-only; AC-4 DB test (master edit leaves client copies unchanged) (1)
+- [x] 6. Catalogue screen + actions + Settings sub-nav + nav change — proof: e2e admin edits a type; staff sees read-only; AC-4 DB test (master edit leaves client copies unchanged) (1)
 - [ ] 7. Clients list: search (name/code/PAN/GSTIN/prev ref), filters, archived toggle, 50/page; **no query text in URL** (state in form + POST/server action) — proof: e2e AC-7 asserts `page.url()` never contains search text; step-1 test green; 1,000-client list < 1 s server time (DB timing test) (1)
 - [ ] 8. Add / edit / archive / unarchive client (+ registrations, groups at create, code) — proof: e2e add client; DB AC-10/11 green; activity rows (1)
 - [ ] 9. Client › Settings: header, card, tabs, groups & types, enable/disable/pause/remove/restore, "+ Add type" — proof: DB AC-19/20/21 (no duplicates on re-enable, firm records never copied); e2e enable group (1.5)
@@ -134,3 +134,11 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Blocked / failing: none. CI run 36302710875 green (Unit 67 · RLS 54/0/1 · E2E 14) after the tenant-first trigger fix. Draft PR #4 is open (Raja opened it early; stays draft until step 13).
 - Next step: step 6 — catalogue screen + actions + Settings sub-nav (read node_modules/next/dist/docs first, per AGENTS.md).
 - Decisions made (cross-cutting → flag for architecture.md at merge): DB-level ACTIVITY_PII guard on `activity` (S1); assignment = Admin/Manager (S2); service-role-only helpers live in `public` with EXECUTE revoked (PostgREST can't reach `private`); `app.plan_bulk` / `app.purge_office` transaction flags honoured by triggers.
+
+### 2026-09-27 (afternoon)
+- Done: step 6 — Settings › Document catalogue (groups, types, firm records, FYs), Settings sub-nav, Settings for all staff; `doc_type_usage` view (dev). D3 approved. **Proof: CI run 36303853212 (45c7dec) — Unit 86 · RLS 58 / 0 / 1 skipped (AC-17 nightly) · E2E 16.**
+- Workflow change: repo attached to the cloud workspace with push access — Claude pushes the feature branch directly (never main); Raja's Mac checkout is synced by git bundle.
+- In progress: —
+- Blocked / failing: none.
+- Next step: step 7 — clients list (search, filters, archived toggle, 50/page, no query text in URL). Client e2e tests need their own fixture office (auth.spec.ts:44 expects "No clients yet").
+- Decisions made (cross-cutting → flag for architecture.md at merge): security-invoker views for aggregates the UI needs (RLS applies); Settings visible to all staff with per-item role gating.
