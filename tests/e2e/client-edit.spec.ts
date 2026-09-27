@@ -78,7 +78,7 @@ test("AC-10, AC-11: staff edit but can't change incharge or archive; a manager a
   await sp.goto(`/clients/${editId}`);
   await expect(sp.getByRole("heading", { name: "Edit Target" })).toBeVisible();
   await expect(sp.getByRole("button", { name: "Archive" })).toHaveCount(0);
-  await sp.getByRole("link", { name: "Edit" }).click();
+  await sp.getByRole("link", { name: "Edit", exact: true }).click();
   await expect(sp.getByLabel("Incharge")).toBeDisabled();
   await sp.getByLabel("Email").fill("owner@example.test");
   await sp.getByRole("button", { name: "Save changes" }).click();
@@ -96,9 +96,9 @@ test("AC-10, AC-11: staff edit but can't change incharge or archive; a manager a
   await dialog.getByRole("button", { name: "Archive client" }).click();
   await expect(mp.getByRole("status")).toContainText("This client is archived");
   await expect(mp.getByRole("status")).toContainText("Moved to another firm");
-  await expect(mp.getByRole("link", { name: "Edit" })).toHaveCount(0);
+  await expect(mp.getByRole("link", { name: "Edit", exact: true })).toHaveCount(0);
   await mp.getByRole("button", { name: "Unarchive" }).click();
-  await expect(mp.getByRole("link", { name: "Edit" })).toBeVisible();
+  await expect(mp.getByRole("link", { name: "Edit", exact: true })).toBeVisible();
   await expect(mp.getByText("This client is archived")).toHaveCount(0);
   await mgrCtx.close();
 
