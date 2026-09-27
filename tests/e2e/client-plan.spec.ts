@@ -87,7 +87,7 @@ test("AC-18, AC-19, AC-21: staff enables GST, edits the plan, disables and re-en
   expect(rows.every((r) => r.state === "active")).toBe(true);
 
   // AC-23: activity has actions, IDs and field names only.
-  const { data: log } = await adminClient().from("activity").select("action, data").eq("office_id", officeId)
+  const { data: log } = await adminClient().from("activity").select("action, data").eq("office_id", officeId).eq("data->>client_id", clientId) // this attempt's client only (serial retries re-create it)
     .in("action", ["client_group.enabled", "client_group.disabled", "client_doc_type.removed", "client_doc_type.restored", "client_doc_type.updated"])
     .order("id");
   expect(log?.map((l) => l.action)).toEqual([
@@ -110,13 +110,13 @@ test("AC-20: a manager pauses and resumes the group with a remark, reassigns it,
   await page.goto(`/clients/${clientId}`);
   const gst = gstSection(page);
 
-  await gst.getByRole("button", { name: "Pause GST" }).click();
+  await gst.getByRole("button", { name: "Pause GST", exact: true }).click();
   const pause = page.getByRole("dialog", { name: "Pause GST" });
   await pause.getByLabel("Remark").fill("Client abroad until March");
   await pause.getByRole("button", { name: "Pause" }).click();
   await expect(gst.getByText(/Paused since/)).toBeVisible();
   await expect(gst.getByText("Client abroad until March")).toBeVisible();
-  await gst.getByRole("button", { name: "Resume GST" }).click();
+  await gst.getByRole("button", { name: "Resume GST", exact: true }).click();
   await expect(gst.getByText(/Paused since/)).toHaveCount(0);
 
   await gst.getByLabel("Assigned to").selectOption({ label: "cplan-manager" });
@@ -133,7 +133,7 @@ test("AC-20: a manager pauses and resumes the group with a remark, reassigns it,
   await expect(gst.getByRole("row", { name: /GST annual turnover summary/ })).toContainText("Yearly");
   expect(await seriousAxe(page)).toEqual([]);
 
-  const { data: log } = await adminClient().from("activity").select("action, data").eq("office_id", officeId)
+  const { data: log } = await adminClient().from("activity").select("action, data").eq("office_id", officeId).eq("data->>client_id", clientId) // this attempt's client only (serial retries re-create it)
     .in("action", ["client_group.paused", "client_group.resumed", "client_group.assigned", "client_doc_type.added"]).order("id");
   expect(log?.map((l) => l.action)).toEqual(["client_group.paused", "client_group.resumed", "client_group.assigned", "client_doc_type.added"]);
   expect(JSON.stringify(log)).not.toContain("Client abroad"); // remarks stay on the row, never in activity
