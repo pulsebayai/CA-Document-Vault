@@ -129,6 +129,14 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
   - Single-row plan edits (pause/resume, assign, remove/restore, reminders, type dialog) update then log activity from the server action — same pattern as catalogue edits (not atomic; activity is best-effort). Multi-row changes use the atomic SQL functions.
   - The new e2e test needed 3 fixes before its first green run, none weakening an assertion (test had never passed, precedent c2f447f): exact name "Pause GST" (substring hit "Pause GST notice / order received"); activity asserts scoped to the test's client (serial-mode retry re-creates the client, `reset_test_office` keeps activity); fixture staff are named "Test <label>". App code unchanged by these.
 
+- Step 10 (2026-09-27):
+  - **Import is driven from the browser in chunks:** preview = one `previewImport` call with all rows (validation only); import = one `importClientsChunk` server action per ≤ 200 valid rows, in file order. The server re-validates every chunk against the DB *as it is now*, so a PAN repeated across chunks is caught as a duplicate (earlier chunks are committed). Keeps each request small, shows progress, and avoids one long serverless call for 2,000 rows.
+  - If `import_clients` refuses a chunk (e.g. a clash created after the preview), that chunk is retried **row by row**, so good rows still import and the bad row gets a reason in the error file. Normal path is still one transaction per chunk.
+  - Not in "Files that change": `src/lib/clients/import.ts` (DB context loader, paged GETs so no PAN/name enters a request URL); `next.config.ts` → `experimental.serverActions.bodySizeLimit: "3mb"` (a 1 MB file's rows as JSON can exceed the 1 MB default).
+  - Rules the spec didn't spell out: a GSTIN/TAN already on another client, or used by an earlier row, is an **error** (the DB would otherwise reject the whole chunk); `client_type` accepts the stored value or the label, any case; blank `groups` = the office's "Enabled for new clients" groups; `incharge_email` is required (active staff); cells > 500 chars are rejected; header columns may be in any order/case, and a trailing `error` column is ignored so the error file re-uploads as-is; rows are numbered as in a spreadsheet (header = row 1).
+  - Error file = error rows only (plus rows not imported because a chunk call failed), **not** duplicates — skipped rows need no fix. Formula-looking cells (`= + - @`) get a `'` prefix in the file and it is stripped on re-upload (so `+91…` mobiles round-trip).
+  - AC-17 (1,000 rows < 60 s) runs in `regression.yml` with `RUN_SLOW=1`; nightly runs from `main`, so the first nightly proof comes after merge.
+
 ## Session log
 ### 2026-09-26
 - Done: intent approved; spec + seed catalogue approved (rev 2: catalogue = documents from the client; firm records separate, `doc_type.source`); 5 architecture changes approved; no groups pre-ticked; challans stay client documents. Plan drafted.

@@ -5,7 +5,7 @@ import "../support/setup-env";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import { createCatalogueOffice } from "../support/catalogue";
 import { testGstin, testPan } from "../support/test-data";
-import { signIn } from "./helpers";
+import { appAlert, signIn } from "./helpers";
 
 // Feature 02 step 10 — Clients › Import CSV (spec AC-13 … AC-16). Own is_test office, reset to the seed at
 // the start of every run, so codes restart at C0001 and the existing-PAN duplicate is always C0001.
@@ -66,7 +66,7 @@ test("AC-13…16: template, preview with errors and duplicates, import, error fi
 
   // AC-14: bad header → plain message, nothing else happens
   await upload(page, "name,type\nA,individual\n");
-  await expect(page.getByRole("alert")).toContainText("header row doesn't match");
+  await expect(appAlert(page)).toContainText("header row doesn't match");
 
   // AC-14/15: preview — nothing written yet
   const before = (await adminClient().from("client").select("id", { count: "exact", head: true }).eq("office_id", officeId)).count;
