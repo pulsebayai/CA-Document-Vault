@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { searchClients } from "@/lib/clients/actions";
 import type { ClientSearchResult, StaffOption } from "@/lib/clients/queries";
@@ -17,7 +18,7 @@ const control = "h-9 rounded-full border border-line-2 bg-panel px-3 text-[13.5p
  * Clients list with search/filters (mockup 03, spec AC-7). State lives only in this component and is sent
  * to a server action (POST). Inputs have no `name`, so even a pre-hydration submit puts nothing in the URL.
  */
-export function ClientsBrowser({ initial, staff }: { initial: ClientSearchResult; staff: StaffOption[] }) {
+export function ClientsBrowser({ initial, staff, canAdd }: { initial: ClientSearchResult; staff: StaffOption[]; canAdd: boolean }) {
   const [filters, setFilters] = useState<Filters>(EMPTY);
   const [data, setData] = useState<ClientSearchResult>(initial);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +94,7 @@ export function ClientsBrowser({ initial, staff }: { initial: ClientSearchResult
 
   return (
     <ClientsView clients={data.rows} total={data.total} matched={data.matched} filtered={filtered}
-      firstIndex={(filters.page - 1) * PAGE_SIZE} toolbar={toolbar} pager={pager} busy={pending} />
+      firstIndex={(filters.page - 1) * PAGE_SIZE} toolbar={toolbar} pager={pager} busy={pending}
+      actions={canAdd ? <Link href="/clients/new" className="inline-flex items-center rounded-[9px] bg-accent px-3.5 py-2 font-medium text-white hover:bg-[#264d8f]">Add client</Link> : undefined} />
   );
 }

@@ -115,6 +115,13 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
   - CI run 36305790377 (5eb4f38): DB suite green (67 passed / 1 skipped); one new e2e assertion expected "Partnership" but the app correctly shows "Partnership firm" (`CLIENT_TYPE_LABEL`) — the never-green test's expectation was corrected, app unchanged.
   - 1,000-client timing test runs on every PR (not nightly): setup is one service-role insert and `reset_test_office` purges it next run, so dev does not grow. The measured time is the full round trip from the US runner (stricter than "server time").
 
+- Step 8 (2026-09-27):
+  - Raja's decisions (2026-09-27): **dev migrations are dry-run, applied and reviewed together at the PR** (not one by one); **archive reason is stored on the client** (`client.archive_reason`, Admin/Manager only, cleared on unarchive, never in activity).
+  - **New migration `20260927084340_client_create_update_archive`**: `archive_reason` + guard in `client_before_write`; `public.create_client(jsonb)` (client + registrations + groups in one transaction — a clashing GSTIN leaves no half-created client and uses no code); `public.update_client(uuid, jsonb)` (details + registration set in one transaction; removed registrations become inactive, re-added ones are reactivated). Both SECURITY INVOKER, one activity row each with field names only. The dry run caught a `text[] || 'literal'` bug before apply.
+  - PAN is effectively fixed once a client has a GSTIN (the trigger compares all GSTINs, active or not, and registrations can't be deleted). Clear message; the workaround is archive + re-add. [Likely] rare in practice — flag if the pilot hits it.
+  - `/clients/[id]` built now with the header + client card (AC-18's first half) because Edit and Archive need a home; step 9 adds the tabs and the Settings/collection plan. Edit is its own route `/clients/[id]/edit` (same `client-form.tsx` as Add).
+  - Society/co-op PAN letter warnings (AC-9 warn-only) need a second click ("Save anyway"); hard errors block.
+
 ## Session log
 ### 2026-09-26
 - Done: intent approved; spec + seed catalogue approved (rev 2: catalogue = documents from the client; firm records separate, `doc_type.source`); 5 architecture changes approved; no groups pre-ticked; challans stay client documents. Plan drafted.

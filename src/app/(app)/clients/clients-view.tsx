@@ -30,14 +30,16 @@ type Props = {
   toolbar?: ReactNode;
   pager?: ReactNode;
   busy?: boolean;
+  /** Header buttons (Add client for Staff+). */
+  actions?: ReactNode;
 };
 
 /** Presentational Clients list: data comes in as props, no fetching (keeps it unit-testable). */
-export function ClientsView({ clients, total, matched = total, filtered = false, firstIndex = 0, toolbar, pager, busy = false }: Props) {
+export function ClientsView({ clients, total, matched = total, filtered = false, firstIndex = 0, toolbar, pager, busy = false, actions }: Props) {
   const showRange = filtered || matched > clients.length;
   return (
     <>
-      <PageHeader title="Clients" subtitle={`${total} ${total === 1 ? "client" : "clients"}`} />
+      <PageHeader title="Clients" subtitle={`${total} ${total === 1 ? "client" : "clients"}`} actions={actions} />
       {toolbar}
       {clients.length === 0 && !filtered ? (
         <Card className="px-6 py-12 text-center">
