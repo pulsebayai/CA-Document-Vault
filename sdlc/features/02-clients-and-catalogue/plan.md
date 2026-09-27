@@ -97,6 +97,8 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 
 - Steps 3–4 (2026-09-27): both migrations written together, dry-run on dev inside a rolled-back block, reviewed and approved by Raja, applied to dev as `20260927070322_clients_catalogue` + `20260927070427_seed_catalogue`. `reset_test_office` lives in migration 2 (it needs the seed). Security advisor: no new findings; performance: only "unused index" INFO (empty tables). Interpretations accepted at review: archived clients can't enable groups; FY always starts in April (`office.fy_start_month` ignored). **Proof still pending: CI run of the step-2 DB tests against the new schema.**
 
+- CI run 36302068412 (b3c052e): DB suite 53 passed · 1 failed · 1 skipped (AC-17 nightly). Failure = `clients-catalogue › tenant isolation › cannot write into another office`: rejected by `INCHARGE`, not the tenant boundary — the SECURITY DEFINER client trigger locked/incremented the *other* office's code counter before RLS denied the row. Code fix (test unchanged): migration `20260927071425_client_trigger_tenant_first` checks office first (`OFFICE_DENIED`); verified on dev by impersonation (counter untouched). E2E did not run in that job (stops at first failing step), hence "Evidence incomplete".
+
 ## Session log
 ### 2026-09-26
 - Done: intent approved; spec + seed catalogue approved (rev 2: catalogue = documents from the client; firm records separate, `doc_type.source`); 5 architecture changes approved; no groups pre-ticked; challans stay client documents. Plan drafted.
