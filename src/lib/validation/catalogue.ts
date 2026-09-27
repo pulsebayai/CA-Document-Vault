@@ -55,6 +55,45 @@ export function parseAliases(v: unknown): { aliases: string[]; error: string | n
   return { aliases, error: null };
 }
 
+type Offsets4 = [number | null, number | null, number | null, number | null];
+export type ScheduleInput = {
+  frequency?: unknown; askAfterMonths?: unknown; askDay?: unknown; overdueAfterMonths?: unknown; overdueDay?: unknown; reminders?: unknown;
+};
+
+/**
+ * How often + when to ask (catalogue master types and client plan types share this rule, spec AC-2 / AC-20):
+ * frequency no more often than the period; offsets complete and in range exactly when scheduled; overdue on or
+ * after ask; "as needed" clears offsets and reminders. Same rules as the DB checks.
+ */
+export function validateSchedule(input: ScheduleInput, periodKind: PeriodKind) {
+  const errors: FieldIssue[] = [];
+  let frequency: Frequency = "as_needed";
+  let reminders = false;
+  let offsets: Offsets4 = [null, null, null, null];
+  const f = str(input.frequency) as Frequency;
+  if (!allowedFrequencies(periodKind).includes(f)) {
+    errors.push({ field: "frequency", message: "Choose how often this is collected (it can't be more often than its period)." });
+  } else frequency = f;
+
+  if (frequency !== "as_needed") {
+    reminders = checked(input.reminders);
+    const askAfterMonths = intIn(input.askAfterMonths, 0, 12);
+    const askDay = intIn(input.askDay, 1, 31);
+    const overdueAfterMonths = intIn(input.overdueAfterMonths, 0, 12);
+    const overdueDay = intIn(input.overdueDay, 1, 31);
+    if (askAfterMonths === null) errors.push({ field: "askAfterMonths", message: "Months after period end: 0 to 12." });
+    if (askDay === null) errors.push({ field: "askDay", message: "Day: 1 to 31." });
+    if (overdueAfterMonths === null) errors.push({ field: "overdueAfterMonths", message: "Months after period end: 0 to 12." });
+    if (overdueDay === null) errors.push({ field: "overdueDay", message: "Day: 1 to 31." });
+    if (askAfterMonths !== null && askDay !== null && overdueAfterMonths !== null && overdueDay !== null
+      && (overdueAfterMonths < askAfterMonths || (overdueAfterMonths === askAfterMonths && overdueDay < askDay))) {
+      errors.push({ field: "overdueDay", message: "Overdue must be on or after the ask date." });
+    }
+    offsets = [askAfterMonths, askDay, overdueAfterMonths, overdueDay];
+  }
+  return { frequency, reminders, offsets, errors };
+}
+
 export function validateDocType(input: DocTypeInput, ctx: { source: DocSource; periodKind: PeriodKind }) {
   const errors: FieldIssue[] = [];
   const name = str(input.name);
@@ -70,30 +109,11 @@ export function validateDocType(input: DocTypeInput, ctx: { source: DocSource; p
   const active = checked(input.active);
   let frequency: Frequency = "as_needed";
   let reminders = false;
-  let offsets: [number | null, number | null, number | null, number | null] = [null, null, null, null];
-
+  let offsets: Offsets4 = [null, null, null, null];
   if (ctx.source === "client") {
-    const f = str(input.frequency) as Frequency;
-    if (!allowedFrequencies(ctx.periodKind).includes(f)) {
-      errors.push({ field: "frequency", message: "Choose how often this is collected (it can't be more often than its period)." });
-    } else frequency = f;
-
-    if (frequency !== "as_needed") {
-      reminders = checked(input.reminders);
-      const askAfterMonths = intIn(input.askAfterMonths, 0, 12);
-      const askDay = intIn(input.askDay, 1, 31);
-      const overdueAfterMonths = intIn(input.overdueAfterMonths, 0, 12);
-      const overdueDay = intIn(input.overdueDay, 1, 31);
-      if (askAfterMonths === null) errors.push({ field: "askAfterMonths", message: "Months after period end: 0 to 12." });
-      if (askDay === null) errors.push({ field: "askDay", message: "Day: 1 to 31." });
-      if (overdueAfterMonths === null) errors.push({ field: "overdueAfterMonths", message: "Months after period end: 0 to 12." });
-      if (overdueDay === null) errors.push({ field: "overdueDay", message: "Day: 1 to 31." });
-      if (askAfterMonths !== null && askDay !== null && overdueAfterMonths !== null && overdueDay !== null
-        && (overdueAfterMonths < askAfterMonths || (overdueAfterMonths === askAfterMonths && overdueDay < askDay))) {
-        errors.push({ field: "overdueDay", message: "Overdue must be on or after the ask date." });
-      }
-      offsets = [askAfterMonths, askDay, overdueAfterMonths, overdueDay];
-    }
+    const s = validateSchedule(input, ctx.periodKind);
+    errors.push(...s.errors);
+    ({ frequency, reminders, offsets } = s);
   }
 
   if (errors.length) return { data: null, errors };
