@@ -93,13 +93,17 @@ test("screens vs mockups 03 / 05 / 11 + import + add client, desktop and phone w
   // Phone width (release checklist: mobile width check)
   // No sideways page scroll on a phone (wide plan tables scroll inside their card).
   const pageWidth = () => page.evaluate(() => document.documentElement.scrollWidth);
+  // On failure, name the elements that stick out past the viewport (innermost first).
+  const wide = () => page.evaluate(() => [...document.querySelectorAll("body *")]
+    .filter((e) => e.getBoundingClientRect().right > window.innerWidth + 0.5)
+    .slice(-6).map((e) => `${e.tagName.toLowerCase()}.${String(e.className).slice(0, 60)} → ${Math.round(e.getBoundingClientRect().right)}`));
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/clients");
   await expect(page.getByRole("list", { name: "Clients" })).toBeVisible();
-  expect(await pageWidth()).toBeLessThanOrEqual(390);
+  expect(await pageWidth(), (await wide()).join("\n")).toBeLessThanOrEqual(390);
   await shoot(page, "mobile-03-clients");
   await page.goto(`/clients/${clientId}`);
   await expect(page.getByRole("heading", { name: "Sankar Software Pvt Ltd" })).toBeVisible();
-  expect(await pageWidth()).toBeLessThanOrEqual(390);
+  expect(await pageWidth(), (await wide()).join("\n")).toBeLessThanOrEqual(390);
   await shoot(page, "mobile-11-client-settings");
 });
