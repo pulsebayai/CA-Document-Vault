@@ -68,12 +68,12 @@ Rollback: dev only → revert PR + compensating migration (drop new tables/bucke
 AC-1…17 → test file → result table in the PR; CI green (Unit + RLS + E2E evidence); screenshots vs mockups 02/10/12; AC-5 times recorded (Staff user); architecture.md updated with the 4 approved changes.
 
 ## Deviations from plan
-- **Step 1 (2026-09-28) — SQL contract fixed by the tests** (`tests/rls/{documents,proposed-types,document-storage}.test.ts`), for review at the step-2 SQL gate:
+- **Step 1 (2026-09-28) — SQL contract fixed by the tests** (`tests/rls/{documents,proposed-types,document-storage}.test.ts`), approved by Raja 2026-09-28 15:56 IST:
   - **D1 The database reads the file's size and MIME type from Storage** (`storage.objects`, via a definer helper), not from the caller, and rejects a missing object (`OBJECT_MISSING`). Reason: `create_document` / `add_document_version` are callable directly through the API with a user's session, so server-side verification alone could be bypassed. The server still checks before calling (better error messages).
   - **D2 The document ID is the folder UUID in the storage path** (`office/<office>/doc/<document_id>/<version_id>.<ext>`). A version's object must sit under its own document's folder, and the path must hold this office's ID and an allowed extension (`PATH`).
   - **D3 One `update_document(id, jsonb)`** covers classify and edit (only the keys present change). The activity action is `document.classified` when client/type change and `document.updated` otherwise (`fields` = names only). `archive_document(id, reason)` / `unarchive_document(id)` are separate. An archived document can't be edited or given a version (`ARCHIVED`).
   - **D4 Fixed-date DOC-ID tests:** `create_document` accepts `test_added_at` **only in `is_test` offices** (`TEST_ONLY` elsewhere) — same fence as `reset_test_office`.
-  - **D5 Limited users can't create proposed types** (it changes a collection plan — 02 rule); they save to the Inbox and a Staff+ user classifies. Needs Raja's OK.
+  - **D5 Limited users can't create proposed types** (it changes a collection plan — 02 rule); Staff, Manager and Admin can. Limited users save to the Inbox and a Staff+ user classifies.
   - **D6 Proposed-type names are unique per (group, client)**, not per group: two clients may propose the same name independently (05 merges them); a name equal to an approved type in the group is refused (`DUPLICATE_TYPE`). Replaces 02's unique index `doc_type_name_key` with two partial ones.
   - Canonical MIME list (bucket allow-list): the server maps each extension to one type (e.g. Windows' `application/x-zip-compressed` → `application/zip`).
 
