@@ -78,11 +78,11 @@ afterAll(async () => {
 
 // ── DOC-IDs (AC-4, AC-6) ─────────────────────────────────────────────────────
 describe("DOC-IDs (AC-6)", () => {
-  it("the first document of the FY in a freshly reset office is DOC-YY-00001, stored with its FY code", async () => {
+  it("the first document of the FY in a freshly reset office is DOC-FY<yy-yy>-00001, stored with its FY code", async () => {
     const d = await mustCreateDocument(as.staff, {});
-    expect(d.doc_code).toBe(`DOC-${yy}-00001`);
+    expect(d.doc_code).toBe(`DOC-FY${yy}-00001`);
     const row = await documentRow(d.id);
-    expect(row.fy_code).toMatch(new RegExp(`^20${yy}-\\d{2}$`));
+    expect(row.fy_code).toMatch(new RegExp(`^20${yy}$`));
   });
 
   it("is consecutive per office and never shared with another office", async () => {
@@ -90,7 +90,7 @@ describe("DOC-IDs (AC-6)", () => {
     const b = parseDocCode((await mustCreateDocument(as.limited, {})).doc_code);
     expect(b.n).toBe(a.n + 1);
     const other = await mustCreateDocument(as.outsider, {});
-    expect(other.doc_code).toBe(`DOC-${yy}-00001`); // the other office has its own counter
+    expect(other.doc_code).toBe(`DOC-FY${yy}-00001`); // the other office has its own counter
   });
 
   it("stays consecutive and unique under concurrent saves", async () => {
@@ -117,9 +117,9 @@ describe("DOC-IDs (AC-6)", () => {
     const march31 = await mustCreateDocument(as.staff, { test_added_at: "2030-03-31T18:29:59Z" }); // 23:59:59 IST, FY 2029-30
     const april1 = await mustCreateDocument(as.staff, { test_added_at: "2030-03-31T18:30:00Z" }); // 00:00 IST 1 Apr, FY 2030-31
     const april2 = await mustCreateDocument(as.staff, { test_added_at: "2030-04-02T05:00:00Z" });
-    expect(march31.doc_code).toBe("DOC-29-00001");
-    expect(april1.doc_code).toBe("DOC-30-00001");
-    expect(april2.doc_code).toBe("DOC-30-00002");
+    expect(march31.doc_code).toBe("DOC-FY29-30-00001");
+    expect(april1.doc_code).toBe("DOC-FY30-31-00001");
+    expect(april2.doc_code).toBe("DOC-FY30-31-00002");
     expect((await documentRow(april1.id)).fy_code).toBe("2030-31");
   });
 
@@ -127,7 +127,7 @@ describe("DOC-IDs (AC-6)", () => {
     const { error } = await adminClient().from("doc_counter").insert({ office_id: officeId, fy_code: "2031-32", last: 99999 });
     expect(error).toBeNull();
     const d = await mustCreateDocument(as.staff, { test_added_at: "2031-06-01T05:00:00Z" });
-    expect(d.doc_code).toBe("DOC-31-100000");
+    expect(d.doc_code).toBe("DOC-FY31-32-100000");
   });
 
   it("the fixed-date hook works only in test offices", async () => {
@@ -141,20 +141,20 @@ describe("DOC-IDs (AC-6)", () => {
 
   it("DOC-ID, FY and office can never be changed", async () => {
     const d = await mustCreateDocument(as.staff, {});
-    const r1 = await as.admin.from("document").update({ doc_code: "DOC-26-99999" }).eq("id", d.id);
+    const r1 = await as.admin.from("document").update({ doc_code: "DOC-FY26-27-99999" }).eq("id", d.id);
     expect(r1.error?.message ?? "").toMatch(DENIED);
     const r2 = await as.admin.from("document").update({ fy_code: "2020-21" }).eq("id", d.id);
     expect(r2.error?.message ?? "").toMatch(DENIED);
-    const r3 = await adminClient().from("document").update({ doc_code: "DOC-26-99999" }).eq("id", d.id);
+    const r3 = await adminClient().from("document").update({ doc_code: "DOC-FY26-27-99999" }).eq("id", d.id);
     expect(r3.error?.message ?? "").toMatch(/IMMUTABLE/); // even the service role
     expect((await documentRow(d.id)).doc_code).toBe(d.doc_code);
   });
 
   it("a direct insert cannot choose its own DOC-ID", async () => {
     const { data, error } = await as.staff.from("document")
-      .insert({ office_id: officeId, doc_code: "DOC-26-00042", received_as: "hard_copy", channel: "courier", received_on: "2026-08-01" })
+      .insert({ office_id: officeId, doc_code: "DOC-FY26-27-00042", received_as: "hard_copy", channel: "courier", received_on: "2026-08-01" })
       .select("doc_code").single();
-    if (!error) expect(data!.doc_code).not.toBe("DOC-26-00042");
+    if (!error) expect(data!.doc_code).not.toBe("DOC-FY26-27-00042");
     else expect(error.message).toMatch(DENIED);
   });
 });

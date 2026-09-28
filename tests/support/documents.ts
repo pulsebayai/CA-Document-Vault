@@ -137,16 +137,17 @@ export async function activityFor(officeId: string, entityId: string) {
   return data as Array<{ action: string; actor_id: string; data: Record<string, unknown> }>;
 }
 
-/** "DOC-26-00001" → { yy: "26", n: 1 } */
+/** "DOC-FY26-27-00001" → { fy: "26-27", n: 1 } */
 export function parseDocCode(code: string) {
-  const m = /^DOC-(\d{2})-(\d{5,})$/.exec(code);
+  const m = /^DOC-FY(\d{2}-\d{2})-(\d{5,})$/.exec(code);
   if (!m) throw new Error(`not a DOC-ID: ${code}`);
-  return { yy: m[1], n: Number(m[2]) };
+  return { fy: m[1], n: Number(m[2]) };
 }
 
-/** YY of the Indian FY containing `now` (the FY of the date a document is added). */
+/** "26-27": the Indian FY containing `now` (the FY of the date a document is added), as written in a DOC-ID. */
 export function currentFyYY(now = new Date()) {
   const ist = new Date(now.getTime() + 330 * 60_000);
   const y = ist.getUTCFullYear() - (ist.getUTCMonth() < 3 ? 1 : 0);
-  return String(y % 100).padStart(2, "0");
+  const two = (n: number) => String(n % 100).padStart(2, "0");
+  return `${two(y)}-${two(y + 1)}`;
 }

@@ -1,5 +1,5 @@
 # Spec: Document intake
-Intent: ./intent.md · Status: approved (rev 2, Raja 2026-09-28) · Date: 2026-09-28
+Intent: ./intent.md · Status: approved (rev 2, Raja 2026-09-28; rev 2.1 DOC-ID format, Raja 2026-09-28 16:17) · Date: 2026-09-28
 Screens: references/mockup/12-add-document.jpg, 02-inbox.jpg, 10-client-documents.jpg (received documents only; expected/overdue = 04, review/dispatch = 07)
 
 ## Key definitions
@@ -7,14 +7,14 @@ Screens: references/mockup/12-add-document.jpg, 02-inbox.jpg, 10-client-document
 - **Classified** = has a client **and** a document type. Period and GSTIN/TAN are optional. Unclassified documents are the **Inbox**.
 - **Version** = a file attached to a document. A revised file is a new version of the same document (same DOC-ID); earlier versions are kept and downloadable.
 - **Proposed type** = a document type a staff member creates while filing, for one client, **after** the vault has shown the closest existing types and the staff member chose none of them. It joins **that client's collection plan** immediately (frequency "as needed", no reminders) and becomes an **approval item** for Admin/Manager, who own the decision (approve, rename/edit, map to an existing type, reject) in 05.
-- **DOC-ID** = `DOC-YY-NNNNN`: YY = start year of the financial year in which the document was **added** (IST), NNNNN = per-office counter for that FY, zero-padded to 5 (grows past 99,999 without breaking), never reused or edited.
+- **DOC-ID** = `DOC-FY26-27-NNNNN`: FY26-27 = the financial year in which the document was **added** (IST), NNNNN = per-office counter for that FY, zero-padded to 5 (grows past 99,999 without breaking), never reused or edited.
 
 ## User stories & acceptance criteria
 **Add a document (mockup 12; header "+ Add document", client page "Add document", Inbox "Add document")**
 - AC-1 Staff+ and Limited can add a document: choose **received as** (Soft copy / Hard copy / Original), optionally one file (drag-drop or browse), client, type, period, remark, **channel** (WhatsApp · Email · Hand delivery · Courier · Portal download · Other), **received on** (date, default today IST, not in the future). A soft copy needs a file; hard copy/original may have none.
 - AC-2 File rules: ≤ **25 MB**; allowed PDF, JPG/JPEG, PNG, HEIC, XLSX, XLS, CSV, DOCX, ZIP (by extension **and** declared type); empty files rejected. Errors are inline, in plain words, and announced to screen readers. The file goes from the browser **straight to private storage** (not through the app server).
 - AC-3 **Context pre-fill:** from a client page the client is set; the type list shows **the client's active plan types first** (group shown under the field), then "Other types" (every approved active type), then "+ New type"; picking a type sets its group and period kind; the period defaults to **the period that just ended** for the type's frequency (monthly → last month, quarterly → last FY quarter, yearly → last FY; "as needed" → Not needed), editable (Not needed / Month / Quarter / Financial year). If the type is per-registration (GST → GSTIN, TDS → TAN) and the client has exactly one active registration of that kind it is set; if several, staff choose.
-- AC-4 **Save to vault** requires client and type; **Save to inbox** saves with whatever is filled ("Not sure who this belongs to? Leave it in inbox"). Both assign the next DOC-ID and show it in a confirmation ("DOC-26-00126 saved").
+- AC-4 **Save to vault** requires client and type; **Save to inbox** saves with whatever is filled ("Not sure who this belongs to? Leave it in inbox"). Both assign the next DOC-ID and show it in a confirmation ("DOC-FY26-27-00126 saved").
 - AC-5 Filing a document with a known client and type takes **≤ 3 clicks after choosing the file** and **≤ 30 s** median for a Staff user (timed manual check, recorded in the PR).
 - AC-6 **DOC-IDs** are consecutive per office per FY in the order documents are committed, restart at 00001 on 1 April (IST), and are never reused, even for archived documents; no gaps from failed saves.
 
@@ -106,7 +106,7 @@ Dev only; additive migrations; `doc_type.proposed_for_client_id` nullable (exist
 
 ## Proposed architecture changes
 1. **Upload path:** browser → private Supabase Storage via a **server-issued signed upload URL**; the server verifies the stored object before creating the document; no Storage policies for app roles (all access via server-issued signed URLs). Reason: 25 MB files can't pass through Vercel functions (≈ 4.5 MB request limit); keeps authorisation in one place (RLS on `document`).
-2. **DOC-ID per office per FY** (`doc_counter`), `DOC-YY-NNNNN`, YY = FY of the date added (Raja 2026-09-28).
+2. **DOC-ID per office per FY** (`doc_counter`), `DOC-FY26-27-NNNNN`, FY of the date added (Raja 2026-09-28; full-FY format, no date/time in the ID — Raja 2026-09-28 16:17).
 3. **Proposed types join the client's plan immediately** (as architecture already says) — clarified: if the group isn't enabled for the client, a client group row is created holding only the proposed type (no other types copied). Approval/mapping stays with Admin/Manager in 05 (Raja 2026-09-28).
 4. `document.received_as` = soft copy · hard copy · **original** (original = hard copy the firm must return; 07 uses it for dispatch); `doc_channel` list per Raja.
 
@@ -115,7 +115,7 @@ Dev only; additive migrations; `doc_type.proposed_for_client_id` nullable (exist
 - **Declared type ≠ real content** (renamed .exe → .pdf): allow-list + bucket MIME check only — no content sniffing or malware scan in v1 (accepted risk, intent).
 - **Storage in tests** writes real objects to dev → tiny files, removed at the start of each run for test offices only.
 - **Scope at the 2-week edge** even after the split — the plan will show session estimates. Raja 2026-09-28: keep the "Proposed by staff" panel; View/Download for the current version only (older versions not downloadable in 03).
-- **DOC-ID "FY of the date added"** vs "FY of received on": a document received 31 March but added 2 April gets DOC-27-… — acceptable (IDs are intake IDs), stated in the UI help.
+- **DOC-ID "FY of the date added"** vs "FY of received on": a document received on 31 March 2026 but added on 2 April 2026 gets DOC-FY26-27-… (not FY25-26) — acceptable (IDs are intake IDs), stated in the UI help.
 
 ## Out of scope
 Documents/Search screen and header search (03b) · expected docs, "due" hints, Remind, linking to expected docs (04/06) · proposal review queue (05) · review/dispatch statuses (07) · bulk download, activity viewer (08) · bulk multi-file intake · OCR, content sniffing, malware scanning · client access/upload links.

@@ -37,7 +37,7 @@ begin
 end $$;
 
 -- ── Tables ───────────────────────────────────────────────────────────────
--- DOC-ID counter per office per FY of the date added (AC-6). Written only by the document trigger.
+-- DOC-ID counter per office per FY of the date added (AC-6). DOC-ID = DOC-FY26-27-00001. Written only by the document trigger.
 create table public.doc_counter (
   office_id uuid not null references public.office (id),
   fy_code   text not null check (fy_code ~ '^[0-9]{4}-[0-9]{2}$'),
@@ -70,7 +70,7 @@ create table public.document (
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now(),
   unique (office_id, doc_code),
-  constraint document_doc_code_format check (doc_code ~ '^DOC-[0-9]{2}-[0-9]{5,}$')
+  constraint document_doc_code_format check (doc_code ~ '^DOC-FY[0-9]{2}-[0-9]{2}-[0-9]{5,}$')
 );
 
 create table public.document_version (
@@ -172,7 +172,7 @@ begin
       on conflict (office_id, fy_code) do update set last = c.last + 1
       returning c.last into v_n;
     new.fy_code := v_fy;
-    new.doc_code := 'DOC-' || substr(v_fy, 3, 2) || '-' || case when v_n > 99999 then v_n::text else lpad(v_n::text, 5, '0') end;
+    new.doc_code := 'DOC-FY' || substr(v_fy, 3) || '-' || case when v_n > 99999 then v_n::text else lpad(v_n::text, 5, '0') end;
     new.created_by := private.current_staff_id();
     new.created_at := now();
     new.received_by := coalesce(new.received_by, private.current_staff_id());

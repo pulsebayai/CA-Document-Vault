@@ -28,7 +28,7 @@ Every document the firm receives — a file or a hard copy — is recorded in th
 ## Constraints
 - **Storage in India** (Supabase ap-south-1), private bucket, short-lived signed URLs after an RLS-checked lookup; no public links; nothing cached by Vercel.
 - **Max 25 MB per file** (Raja 2026-09-28). Allow-list: PDF, JPG/JPEG, PNG, **HEIC**, XLSX, **XLS**, **CSV**, DOCX, ZIP (Raja 2026-09-28 added XLS, CSV, HEIC — browsers can't preview HEIC, so it is download-only; no conversion in 03). File names sanitised; storage keys never contain client names, PAN or GSTIN.
-- **DOC-ID = `DOC-YY-NNNNN`, numbered per office by financial year** (YY = FY start year, restarts 1 April; Raja 2026-09-28). Never reused, never edited.
+- **DOC-ID = `DOC-FY26-27-NNNNN`, numbered per office by financial year** (FY of the date added, restarts 1 April; Raja 2026-09-28; format with the full FY per Raja 2026-09-28 16:17). Never reused, never edited.
 - **One file per document** (mockup 12); hard copies may have no file. A **revised file replaces the file of the same document as a new version** — same DOC-ID, earlier versions kept (Raja 2026-09-28).
 - **Channels:** WhatsApp · Email · Hand delivery · Courier · Portal download · Other (Raja 2026-09-28).
 - **Only the firm's staff use the vault** (no client access in this scope). Inbox (documents without a client) is visible to Admin, Manager and Staff; a **Limited** staff member sees only documents of the clients assigned to them plus the Inbox items they added themselves (Raja 2026-09-28, option a). Archiving documents: **Admin/Manager only** (Raja 2026-09-28).

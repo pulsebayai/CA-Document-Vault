@@ -27,7 +27,7 @@ Base: `feat/03-document-intake-and-search` from main `ede18ee` (02 merged). PR #
 
 ## Migrations (schema lock: 03)
 1. `<ts>_documents.sql` — everything above in one additive migration. SQL functions (SECURITY INVOKER unless noted — RLS applies):
-   - `private.next_doc_code(office, fy_code)` — **definer**, row lock on `doc_counter`, returns `DOC-YY-NNNNN`.
+   - `private.next_doc_code(office, fy_code)` — **definer**, row lock on `doc_counter`, returns `DOC-FY26-27-NNNNN` (implemented inside the document insert trigger).
    - `public.create_document(jsonb)` — document (+ version when a file is given) + activity, atomic; soft copy requires a file; sets `classified_at` when client + type are present.
    - `public.add_document_version(uuid, jsonb)` — next version number, becomes current, activity.
    - `public.classify_document(uuid, jsonb)` / updates — `classified_at` set once; one activity row.
@@ -75,6 +75,7 @@ AC-1…17 → test file → result table in the PR; CI green (Unit + RLS + E2E e
   - **D4 Fixed-date DOC-ID tests:** `create_document` accepts `test_added_at` **only in `is_test` offices** (`TEST_ONLY` elsewhere) — same fence as `reset_test_office`.
   - **D5 Limited users can't create proposed types** (it changes a collection plan — 02 rule); Staff, Manager and Admin can. Limited users save to the Inbox and a Staff+ user classifies.
   - **D6 Proposed-type names are unique per (group, client)**, not per group: two clients may propose the same name independently (05 merges them); a name equal to an approved type in the group is refused (`DUPLICATE_TYPE`). Replaces 02's unique index `doc_type_name_key` with two partial ones.
+  - **D7 DOC-ID format `DOC-FY26-27-00001`** (was `DOC-26-00001`; Raja 2026-09-28 16:17, before the migration was applied): the FY is written in full so a document added in Feb 2027 doesn't read as "2026". Same numbering rule; no date/time in the ID. Spec rev 2.1, intent, tests and migration changed together; roadmap row text updated at merge (main only).
   - Canonical MIME list (bucket allow-list): the server maps each extension to one type (e.g. Windows' `application/x-zip-compressed` → `application/zip`).
 
 ## Session log
