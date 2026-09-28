@@ -26,7 +26,7 @@ Base: `feat/03-document-intake-and-search` from main `ede18ee` (02 merged). PR #
 | sdlc/product/architecture.md | mod | 4 approved changes + cross-cutting decisions (in the PR, like 02 D5) |
 
 ## Migrations (schema lock: 03)
-1. `20260928105415_documents.sql` (+ `20260928105446_doc_type_insert_policy.sql`, advisor fix: one doc_type INSERT policy) — everything above in one additive migration. SQL functions (SECURITY INVOKER unless noted — RLS applies):
+1. `20260928105415_documents.sql` (+ `20260928105446_doc_type_insert_policy.sql` and `20260928105505_doc_type_insert_policy_initplan.sql`, advisor fixes: one doc_type INSERT policy, current_setting evaluated once) — everything above in one additive migration. SQL functions (SECURITY INVOKER unless noted — RLS applies):
    - `private.next_doc_code(office, fy_code)` — **definer**, row lock on `doc_counter`, returns `DOC-FY26-27-NNNNN` (implemented inside the document insert trigger).
    - `public.create_document(jsonb)` — document (+ version when a file is given) + activity, atomic; soft copy requires a file; sets `classified_at` when client + type are present.
    - `public.add_document_version(uuid, jsonb)` — next version number, becomes current, activity.
