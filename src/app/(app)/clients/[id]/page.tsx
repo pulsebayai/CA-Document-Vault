@@ -15,8 +15,11 @@ import { PlanView } from "./plan-view";
  * In 02 only Settings exists; Documents / Expected / Activity arrive with 03 / 04 / 08 (no dead tabs).
  * RLS returns nothing for a client a Limited user can't see → Not Found (AC-12).
  */
-export default async function ClientPage({ params }: PageProps<"/clients/[id]">) {
+export default async function ClientPage({ params, searchParams }: PageProps<"/clients/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
+  // After Add document (spec AC-4): "DOC-FY26-27-00126 saved". Only a well-formed DOC-ID is ever echoed.
+  const saved = typeof sp.saved === "string" && /^DOC-FY\d{2}-\d{2}-\d{5,}$/.test(sp.saved) ? sp.saved : null;
   const me = await requireStaff();
   if (!z.uuid().safeParse(id).success) notFound();
   const c = await getClient(id);
@@ -39,10 +42,15 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {!c.archived && (
+            <Link href={`/documents/new?client=${c.id}&from=/clients/${c.id}`} className="inline-flex items-center rounded-[9px] bg-accent px-3.5 py-2 font-medium text-white hover:bg-[#264d8f]">Add document</Link>
+          )}
           {canEdit && <Link href={`/clients/${c.id}/edit`} className="inline-flex items-center rounded-[9px] border border-line-2 bg-panel px-3.5 py-2 font-medium hover:bg-canvas">Edit</Link>}
           {canManageCatalogue(me.role) && <ArchiveControls id={c.id} name={c.name} archived={c.archived} />}
         </div>
       </div>
+
+      {saved && <p role="status" className="rounded-lg bg-ok-soft px-4 py-3 text-[13.5px] text-ok"><strong className="font-semibold">{saved}</strong> saved.</p>}
 
       {c.archived && (
         <p role="status" className="rounded-lg bg-warn-soft px-4 py-3 text-[13.5px] text-warn">

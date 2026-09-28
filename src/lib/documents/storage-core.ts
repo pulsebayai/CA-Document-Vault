@@ -15,7 +15,9 @@ export function objectPathFor(officeId: string, documentId: string, ext: string,
   return `office/${officeId}/doc/${documentId}/${versionId}.${ext}`;
 }
 
-export type UploadTicket = { documentId: string; path: string; token: string; contentType: string; fileName: string };
+/** `signedUrl` takes a raw PUT of the file with Content-Type = contentType (the browser does this with XHR for
+ *  progress; a FormData upload would store the browser's declared type instead of ours). */
+export type UploadTicket = { documentId: string; path: string; token: string; signedUrl: string; contentType: string; fileName: string };
 
 /** Signed upload URL for one new object (no overwrite). The browser uploads straight to Storage with it. */
 export async function createUploadTicket(
@@ -24,7 +26,7 @@ export async function createUploadTicket(
   const path = objectPathFor(officeId, documentId, file.ext);
   const { data, error } = await admin.storage.from(BUCKET).createSignedUploadUrl(path);
   if (error || !data) throw new Error("UPLOAD_TICKET_FAILED");
-  return { documentId, path: data.path, token: data.token, contentType: file.mime, fileName: file.fileName };
+  return { documentId, path: data.path, token: data.token, signedUrl: data.signedUrl, contentType: file.mime, fileName: file.fileName };
 }
 
 /**

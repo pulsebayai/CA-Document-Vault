@@ -109,6 +109,19 @@ describe("signed upload and file links (AC-2, AC-11, AC-13)", () => {
     expect(again.error).not.toBeNull();
   });
 
+  it("the browser's raw PUT to the signed URL stores our canonical type, whatever the browser would declare", async () => {
+    const zip = { ext: "zip" as const, mime: "application/zip", size: 22, fileName: "bundle.zip" };
+    const t = await createUploadTicket(adminClient(), officeId, randomUUID(), zip);
+    const res = await fetch(t.signedUrl, {
+      method: "PUT", body: Buffer.alloc(22, 1), headers: { "content-type": t.contentType, "x-upsert": "false", "cache-control": "max-age=3600" },
+    });
+    expect(res.ok).toBe(true);
+    expect(await verifyStoredObject(adminClient(), t.path, { size: 22, mime: "application/zip" })).toBeNull();
+    const html = await createUploadTicket(adminClient(), officeId, randomUUID(), zip);
+    const bad = await fetch(html.signedUrl, { method: "PUT", body: Buffer.from("<html>"), headers: { "content-type": "text/html" } });
+    expect(bad.ok).toBe(false); // the bucket allow-list still applies to signed uploads
+  });
+
   it("verifies the stored object's size and type before saving", async () => {
     expect(await verifyStoredObject(adminClient(), ticket.path, { size: file.size, mime: file.mime })).toBeNull();
     expect(await verifyStoredObject(adminClient(), ticket.path, { size: file.size + 1, mime: file.mime })).toMatch(/doesn't match/);

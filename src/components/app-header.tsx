@@ -22,7 +22,11 @@ export function AppHeader({ me }: { me: CurrentStaff }) {
       <nav aria-label="Main" className="flex items-center gap-1">
         {nav.map((n) => <NavLink key={n.href} href={n.href}>{n.label}</NavLink>)}
       </nav>
-      <details className="relative ml-auto">
+      {/* Mockup header "+ Add document"; on phones just "+" (same accessible name) so the header fits 390 px. */}
+      <Link href="/documents/new" aria-label="Add document" className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-[9px] bg-accent px-3 py-2 font-medium text-white hover:bg-[#264d8f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:px-3.5">
+        <span aria-hidden>+</span><span aria-hidden className="hidden sm:inline">Add document</span>
+      </Link>
+      <details className="relative">
         <summary aria-label={`Account menu for ${me.fullName}`} className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent [&::-webkit-details-marker]:hidden">
           {initials(me.fullName)}
         </summary>
