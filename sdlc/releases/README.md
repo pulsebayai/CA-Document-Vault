@@ -1,6 +1,12 @@
 # Releases & regression evidence
 One record per release (`R1.md`, `R2.md` …) + an `Rn/evidence/` folder. Policy: `sdlc/product/architecture.md` → *Release & regression policy*.
 
+## Before the first regression run against a deployed URL (once)
+Vercel Deployment Protection sends unauthenticated browsers to `vercel.com/login`, so e2e can't sign in (run 36439895456).
+In Vercel › project › Settings › Deployment Protection, create **Protection Bypass for Automation**; save the value as the
+GitHub Actions secret `VERCEL_AUTOMATION_BYPASS_SECRET`. `tests/e2e/preview-access.ts` sends it once per browser context,
+to the tested URL's own origin only, and uses the cookie Vercel returns. Not used for `target = prod` (smoke only).
+
 ## How a release record is produced
 1. Confirm `main` CI is green (note the run URL and SHA).
 2. Deploy `main` to **staging**; run GitHub Actions → **Regression** → *Run workflow* with `target = staging` (URL of staging).

@@ -14,6 +14,13 @@ const eslintConfig = defineConfig([
       "no-restricted-syntax": ["error", { selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name='SUPABASE_SECRET_KEY']", message: "SUPABASE_SECRET_KEY may only be read in src/lib/supabase/admin.ts." }],
     },
   },
+  {
+    // e2e specs use tests/e2e/fixtures.ts, which gives every browser context access to a protected Vercel preview.
+    files: ["tests/e2e/**/*.spec.ts"],
+    rules: {
+      "no-restricted-imports": ["error", { paths: [{ name: "@playwright/test", message: "Import test/expect from ./fixtures (Vercel preview access for regression runs)." }] }],
+    },
+  },
   globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", "playwright-report/**", "test-results/**"]),
 ]);
 

@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import "../support/setup-env";
 import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { groupId } from "../support/catalogue";
