@@ -66,10 +66,15 @@ test("AC-10: Documents tab groups by group → type → period with FY and group
   const downloadP = page.waitForEvent("download");
   await it.getByRole("button", { name: `Download ${form16.doc_code}` }).click();
   expect((await downloadP).suggestedFilename()).toBe("Form16 FY25-26.pdf");
+  // View: a new tab (opened inside the click) requests a fresh signed link without "download".
+  // Headless Chromium has no PDF viewer, so the tab itself can't be asserted as loaded — the request can.
   const popupP = page.waitForEvent("popup");
+  const viewReq = page.context().waitForEvent("request", (r) => /\/storage\/v1\/object\/sign\/documents\//.test(r.url()));
   await it.getByRole("button", { name: `View ${form16.doc_code}` }).click();
-  const popup = await popupP; // opens as about:blank inside the click, then goes to the fresh signed link
-  await popup.waitForURL(/\/storage\/v1\/object\/sign\/documents\//);
+  const popup = await popupP;
+  const req = await viewReq;
+  expect(req.frame().page()).toBe(popup);
+  expect(new URL(req.url()).searchParams.has("download")).toBe(false);
   await popup.close();
 
   // Group filter + empty state.
