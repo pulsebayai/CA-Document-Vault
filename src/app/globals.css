@@ -13,7 +13,7 @@
   --accent-soft: #eaf0fa;
   --ok: #22754f;
   --ok-soft: #e4f2ea;
-  --warn: #b0611a;
+  --warn: #9c5717; /* darkened from mockup #B0611A: 4.06:1 on --warn-soft → 4.89:1 (WCAG AA), feature 03 */
   --warn-soft: #fbefe2;
   --bad: #b23a3a;
   --bad-soft: #fbe9e9;

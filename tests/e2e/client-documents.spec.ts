@@ -68,9 +68,8 @@ test("AC-10: Documents tab groups by group → type → period with FY and group
   expect((await downloadP).suggestedFilename()).toBe("Form16 FY25-26.pdf");
   const popupP = page.waitForEvent("popup");
   await it.getByRole("button", { name: `View ${form16.doc_code}` }).click();
-  const popup = await popupP;
-  await popup.waitForLoadState();
-  expect(popup.url()).toMatch(/\/storage\/v1\/object\/sign\/documents\//);
+  const popup = await popupP; // opens as about:blank inside the click, then goes to the fresh signed link
+  await popup.waitForURL(/\/storage\/v1\/object\/sign\/documents\//);
   await popup.close();
 
   // Group filter + empty state.
