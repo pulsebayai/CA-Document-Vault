@@ -46,6 +46,9 @@ jobs:
       - name: RLS (database security)
         if: env.TARGET != 'prod'
         run: npm run test:db:ci
+        env:
+          # Slow tests (02 AC-17: 1,000-row CSV import < 60 s) run here, not on every PR.
+          RUN_SLOW: "1"
       - name: E2E (full) against deployed URL
         if: env.TARGET != 'prod'
         run: npm run test:e2e

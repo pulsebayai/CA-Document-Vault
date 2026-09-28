@@ -19,3 +19,13 @@ export function initials(fullName: string): string {
 export function normaliseEmail(email: string): string {
   return email.trim().toLowerCase();
 }
+
+/** Spec 02 AC-2/AC-3/AC-6: Admin and Manager change the catalogue; everyone else reads it. */
+export function canManageCatalogue(role: Role): boolean {
+  return role === "admin" || role === "manager";
+}
+
+/** Spec 02 AC-5: only Admin adds a financial year (the DB function checks the same). */
+export function canAddFinancialYear(role: Role): boolean {
+  return role === "admin";
+}

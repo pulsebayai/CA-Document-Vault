@@ -47,3 +47,19 @@ export function BrandMark() {
     </span>
   );
 }
+
+/**
+ * Toggle (mockup 05 "Enabled for new clients", reminders). A real switch for assistive tech:
+ * role="switch" + aria-checked, and it always needs an accessible label.
+ */
+export function Switch({ checked, label, onChange, disabled, id }: {
+  checked: boolean; label: string; onChange?: (next: boolean) => void; disabled?: boolean; id?: string;
+}) {
+  return (
+    <button type="button" role="switch" id={id} aria-checked={checked} aria-label={label} disabled={disabled}
+      onClick={() => onChange?.(!checked)}
+      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60 ${checked ? "bg-accent" : "bg-line-2"}`}>
+      <span aria-hidden className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+    </button>
+  );
+}

@@ -16,9 +16,13 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => { await retireStaff([staff?.id, admin?.id].filter(Boolean) as string[]); });
 
-test("AC-10: non-admins do not see Settings; the URL shows Not Found and no staff data", async ({ page, baseURL }) => {
+// Retargeted in 02 (decision D3, approved by Raja 2026-09-27): Settings is now visible to all staff for the
+// read-only catalogue (02 AC-6), so the check moves from the Settings link to the Users and roles link.
+test("AC-10: non-admins do not see Users and roles; the URL shows Not Found and no staff data", async ({ page, baseURL }) => {
   await signIn(page, staff.email, baseURL);
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Settings" })).toHaveCount(0);
+  await page.goto("/settings/catalogue");
+  await expect(page.getByRole("navigation", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Settings" }).getByRole("link", { name: "Users and roles" })).toHaveCount(0);
   await page.goto("/settings/users");
   // Streaming responses keep HTTP 200; what matters is that nothing admin-only renders.
   await expect(page.getByText(/could not be found/i)).toBeVisible();
