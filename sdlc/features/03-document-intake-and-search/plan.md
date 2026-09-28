@@ -37,7 +37,7 @@ Base: `feat/03-document-intake-and-search` from main `ede18ee` (02 merged). PR #
    Dry-run on dev inside a rolled-back block (impersonating admin/staff/limited), apply, advisors; saved under the version `list_migrations` shows. Staging/prod at R1.
 
 ## Steps (estimates = build sessions with Claude; your time in brackets)
-- [ ] 0. Baseline: branch green in CI on 02's merged main — proof: CI run on the branch (docs-only commits so far) [—]
+- [x] 0. Baseline: branch green in CI on 02's merged main — proof: CI run on the branch (docs-only commits so far) [—]
 - [ ] 1. RLS/DB tests first (red): visibility matrix (4 roles × assigned/not × classified/inbox × own/others'); DOC-ID sequence per FY + restart 1 April (fixed dates) + no gaps + never reused; soft copy needs a file; version append-only, new version becomes current; archive Admin/Manager; DELETE rejected; `classified_at` once; registration/period rules; proposed type → plan row (+ client-only group row); suggestions fuzzy + aliases; activity without file names/remarks/PII; storage bucket private (anon + signed-in user can't read/list) — proof: `test:db` fails for the right reasons (1)
 - [ ] 2. Migration written, dry-run, reviewed, applied to dev; advisors clean — proof: step-1 tests green in CI (1) [review SQL: 30–45 min]
 - [ ] 3. Shared rules: file validator + sanitiser, period default (month/quarter/year, April and quarter boundaries), DOC-ID/FY helpers — proof: unit tests red → green (0.5)
@@ -77,3 +77,10 @@ AC-1…17 → test file → result table in the PR; CI green (Unit + RLS + E2E e
 - Blocked / failing: none. AC-17 of 02 (first nightly on main) still to check.
 - Next step: plan approval → step 0/1.
 - Decisions made (cross-cutting → architecture.md in this PR): signed-URL upload path; DOC-ID per FY of the date added; proposed types join the client plan (client-only group row when needed); received as incl. original; channel list; file allow-list incl. XLS/CSV/HEIC; no malware scan (accepted risk).
+
+### 2026-09-28 (plan approved, step 0)
+- Done: plan approved (Raja 14:53 IST). Draft PR #7 opened so CI runs on the branch. **Step 0 proof: CI run 36403195038 (ca490c4) green — unit/lint/typecheck/build · RLS · E2E 25 / 0.**
+- In progress: —
+- Blocked / failing: none. PR #6 (roadmap: 03 started, split, locks → 03) still open — Raja to merge.
+- Next step: step 1 — RLS/DB tests first (red) for documents, DOC-IDs, storage, proposed types. Check 02's AC-17 nightly first.
+- Decisions made: none new.
