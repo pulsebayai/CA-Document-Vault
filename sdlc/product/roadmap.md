@@ -1,5 +1,5 @@
 # Roadmap: CA Document Vault
-Updated: 2026-09-28 (03 started; 03 split into 03 intake + 03b search) · Architecture lock: none · Schema lock: 03
+Updated: 2026-09-28 (03 started; 03 split into 03 intake + 03b search) · Architecture lock: 03 (spec changes 1–4, approved 2026-09-28) · Schema lock: 03
 
 | # | Feature slug | One-line intent | Product metric | Depends on | Touches (entities / screens / shared code) | Arch change? | Batch | Status |
 |---|---|---|---|---|---|---|---|---|
