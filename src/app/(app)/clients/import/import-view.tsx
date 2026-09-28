@@ -90,8 +90,9 @@ export function ImportView() {
       }
       if (!res.ok) {
         // Stop here: later rows are reported as not imported, so the error file can be uploaded again.
-        chunks.slice(i).flat().forEach((raw) => failed.push({ raw, reason: `Not imported: ${res.ok ? "" : res.error}` }));
-        setError(`${res.error} ${n(created.length)} clients were imported before this; the rest are in the error file.`);
+        // The failed call may still have committed on the server (e.g. the response was lost), so say "may".
+        chunks.slice(i).flat().forEach((raw) => failed.push({ raw, reason: `May not have been imported: ${res.ok ? "" : res.error} Check the client list before uploading this row again.` }));
+        setError(`${res.error} ${n(created.length)} clients were confirmed imported. The remaining rows are in the error file — some may have been imported just before the connection dropped, so check the client list before re-uploading (rows with a PAN are skipped as duplicates; rows without a PAN would be added twice).`);
         break;
       }
       created.push(...res.created);

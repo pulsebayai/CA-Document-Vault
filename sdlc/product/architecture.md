@@ -1,5 +1,5 @@
 # Architecture: CA Document Vault
-Status: approved · Updated: 2026-09-25 (after 01)
+Status: approved · Updated: 2026-09-28 (02: clients and catalogue, via PR #4)
 
 ## Stack
 - **Next.js (App Router) + TypeScript** — one codebase for UI and server actions/API routes.
@@ -16,6 +16,10 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - `client` (code, name, type, PAN, email, mobile, incharge → staff_user, archived) · `client_registration` (GSTIN/TAN…, state; 1..n) · `client_contact` (reference only)
 - `doc_group` (GST, TDS/TCS, Income Tax, Banking, ROC/MCA, Payroll, Audit, Accounting, Registrations, Other; sort, active)
 - `doc_type` (→ doc_group, code, name, default frequency, period_kind month|quarter|year|none, status approved|proposed, proposed_by)
+  - **Schedule = offsets from period end** (`ask_after_months, ask_day, overdue_after_months, overdue_day`): one rule for monthly, quarterly and yearly collection (02).
+  - `source client|firm`: the catalogue is what the firm needs *from the client*; **firm records** (returns filed, acknowledgements) are `firm` — no schedule, never copied into a plan (02).
+  - `aliases text[]` (old/new form names, e.g. Form 16 ↔ Form 130) · `registration_kind gstin|tan|null`: collected per registration (04 generates one expected doc per active GSTIN/TAN) (02).
+- `client.code` is vault-generated (`C0001…`, per-office counter, never reused); `previous_reference` holds the firm's old code. PAN unique among non-archived clients; once a GSTIN with that PAN exists the PAN is fixed (archive + re-add) (02).
 - `financial_year` (code 2026-27, start, end)
 - `period` (kind month|quarter|year, code, start, end, → financial_year) — generated, never typed
 
@@ -35,7 +39,8 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 **Operational**
 - `office` (one row: Kushal Associates, branch Pondicherry; name, FY start, DOC-ID prefix/counter, retention, file-size limit, reminder timings)
 - `staff_user` (role admin|manager|staff|limited, active)
-- `client_group` (client × group: assigned staff, active/paused + remark)
+- `client_group` (client × group: assigned staff, active/paused + remark) · `client_group` / `client_doc_type` use a 3-state `plan_state`: active · paused (temporary stop, Admin/Manager) · removed (doesn't apply, Staff+; history kept; re-enable restores each row's previous state) (02)
+- `office.is_test` marks automated-test offices; `reset_test_office` (service role only) purges them — the one exception to "no hard delete", refused for any other office (02)
 - `dispatch` · `follow_up` (email|whatsapp|phone, sent_by, sent_at, delivery status) — **unit of chasing load** · `activity` (append-only audit)
 - **Type governance (pilot):** staff create a new type inline while filing (similarity suggestions via pg_trgm first; never blocks upload) → `doc_type` status=proposed, usable on that client → `doc_type_proposal` (entered value, suggestions shown, user, client, status pending|approved|mapped|rejected, admin comment). Admin review queue: approve · edit & approve · map to existing (re-points all documents, client_doc_types and expected_docs; original value kept in `activity`) · reject. Proposer gets an in-app notification (`notification` table), never a blocking popup.
 
@@ -43,6 +48,9 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **Staff only.** Admin creates/invites each staff user; no self sign-up. Sign-in by **email one-time code** (Supabase Auth OTP). Deactivating a user revokes access immediately.
 - Roles enforced in **Postgres RLS**, not only in UI. Matrix (from mockup): Admin/Manager/Staff see all clients; Limited sees only assigned clients/groups. Manage users → Admin only. Catalogue approvals, incharge changes, pausing → Admin/Manager.
 - "Delete" in the mockup = **archive** (reversible, logged). No hard delete from the app.
+- **Assignment decides what Limited users see**, so assigning staff (group or type), changing the incharge, pausing/resuming and switching off a paused group are Admin/Manager only (DB triggers). A group follows the incharge: when the incharge changes, groups still assigned to the old incharge move to the new one (logged) (02).
+- Settings is visible to all staff; each item is role-gated (catalogue writes Admin/Manager, users Admin) (02).
+- The service role cannot write `client` rows (CHECK helpers are `authenticated`-only); tests and tools create clients as a signed-in user (02).
 - Storage bucket private; files served via short-lived signed URLs after an RLS-checked lookup.
 
 ## Cross-cutting rules
@@ -53,6 +61,14 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **UI:** the mockup is the UI source of truth — see `references/ui-reference.md` (tokens, components, agreed deviations, screenshots). Each feature spec cites its screens.
 - **Accessibility:** WCAG 2.1 AA (wins over pixel fidelity).
 - **Errors:** plain user messages; server errors logged with request ID, no PII.
+- **Data-access patterns (02):**
+  - Multi-row/multi-table writes = **one SECURITY INVOKER SQL function per user action** (atomic, RLS applies, writes one `activity` row). Single-row edits log activity from the server action (best-effort).
+  - UI aggregates and PII searches = security-invoker views/functions (e.g. `search_clients`), called from server actions (POST) so search text never reaches a URL.
+  - SECURITY DEFINER only for counters/guards; every definer trigger checks the tenant (office) first; `search_path = ''` everywhere. Service-role-only helpers live in `public` with EXECUTE revoked (PostgREST can't reach `private`).
+  - Transaction flags (`app.plan_bulk`, `app.purge_office`) let the owning functions bypass per-row triggers; nothing else sets them.
+- **Activity:** field names and IDs only; free text (e.g. archive reason) lives on the entity. A DB trigger (`ACTIVITY_PII`) rejects PAN/GSTIN/email/mobile keys or values in `activity.data` (02).
+- **Bulk work** (CSV import): the browser drives bounded chunks (≤ 200 rows per server action); the server re-validates every chunk against the DB as it is now. Server-action body limit 3 MB. CSV files we generate neutralise formula-looking cells (02).
+- **Screens:** every screen has its own loading (`role="status"`) and error (alert + retry) state (`src/components/states.tsx`); dialogs use the shared native-`<dialog>` Modal; horizontal-scroll wrappers are `position: relative` (sr-only content escapes otherwise); key screens are asserted ≤ 390 px wide in e2e (02).
 
 ## External integrations
 - **AWS SES (Mumbai):** client reminder emails triggered by staff "Remind". Content: which documents are pending for which period; **no attachments, no links into the app, no PAN/GSTIN in the body**. Rate-limited per client; every send logged in `follow_up` + `activity`.
@@ -97,3 +113,9 @@ Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature b
 | 2026-09-25 | Release & regression policy: full suite per PR, nightly on dev, staging gate + manual checklist per release, prod smoke-only, evidence committed per release | Owner requirement: every release regression-tested with stored evidence | — |
 | 2026-09-25 | Archive instead of delete | Audit trail and record-retention obligations | — |
 | 2026-09-25 | Configurable catalogue + timings; fixed status workflow | Configurability where firms differ, without a workflow builder | — |
+| 2026-09-26 | Catalogue = documents the firm needs *from the client*; firm records separate (`doc_type.source`); schedules as offsets from period end; `aliases`; `registration_kind`; 3-state plan; vault-generated client code + `previous_reference` | One schedule rule for all frequencies; Income-tax Act 2025 form renumbering; per-GSTIN/TAN collection in 04 (spec 02, approved) | 02 |
+| 2026-09-26 | `office.is_test` + service-role-only reset for test offices | Clients can't be deleted, but nightly tests would otherwise grow dev by ~1,000 clients/night (D2) | 02 |
+| 2026-09-27 | DB-level `ACTIVITY_PII` guard; assignment is Admin/Manager only; re-enable restores previous states | Defence in depth for DPDP; assignment controls Limited visibility (S1–S3) | 02 |
+| 2026-09-27 | One SECURITY INVOKER function per multi-row action; searches via server actions + security-invoker functions | Atomic writes with one audit row; RLS always applies; no PII in URLs | 02 |
+| 2026-09-27 | CSV import: browser-driven ≤ 200-row chunks, server re-validates; body limit 3 MB | Small requests, progress, no long serverless calls; never trust the preview | 02 |
+| 2026-09-28 | Incharge change moves groups that followed the old incharge; switching off a paused group is Admin/Manager only; plan periods must be the office's own | Pre-PR review of 02: Limited ex-incharge kept access; Staff could bypass a pause | 02 |

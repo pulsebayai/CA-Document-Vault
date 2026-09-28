@@ -94,8 +94,10 @@ function GroupCard({ clientId, group, periods, staff, assigneeName, nameOf, canE
             {canManage && (paused
               ? <Button size="sm" variant="secondary" aria-label={`Resume ${group.name}`} disabled={pending} onClick={() => run(() => resumePlanItem("group", group.id))}>Resume</Button>
               : <PauseDialog kind="group" id={group.id} name={group.name} />)}
-            <span className="flex items-center gap-2 text-[13.5px] text-ink-2">Collected
-              <Switch checked label={`Collect ${group.name} for this client`} disabled={!canEdit || pending}
+            <span className="flex items-center gap-2 text-[13.5px] text-ink-2"
+              title={paused && !canManage ? "Paused by an Admin or Manager — only they can switch it off" : undefined}>Collected
+              {/* A paused group can only be switched off by Admin/Manager: off → on would otherwise resume it (AC-20). */}
+              <Switch checked label={`Collect ${group.name} for this client`} disabled={!canEdit || pending || (paused && !canManage)}
                 onChange={() => run(() => disableGroup(clientId, group.docGroupId))} />
             </span>
           </div>

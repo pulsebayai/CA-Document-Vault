@@ -28,7 +28,7 @@ export function clientErrorMessage(message: string | undefined): { field?: strin
   const m = message ?? "";
   if (/client_pan_active_key/.test(m)) return { field: "pan", message: "Another active client already has this PAN." };
   if (/client_registration_office_id_number_key/.test(m)) return { field: "registrations", message: "One of these GSTINs/TANs is already on another client." };
-  if (/GSTIN_PAN/.test(m)) return { field: "pan", message: "The PAN can't change while this client has a GSTIN with the old PAN on record." };
+  if (/GSTIN_PAN/.test(m)) return { field: "pan", message: "A GSTIN on this client doesn't contain its PAN. If you changed the PAN, note it can't change once a GSTIN with the old PAN is on record." };
   if (/client_pan_fits_type/.test(m)) return { field: "pan", message: "The PAN's 4th letter doesn't match this client type." };
   if (/INCHARGE/.test(m)) return { field: "inchargeId", message: "Choose an active staff member as incharge." };
   if (/ARCHIVED/.test(m)) return { message: "This client is archived. Unarchive it before editing." };

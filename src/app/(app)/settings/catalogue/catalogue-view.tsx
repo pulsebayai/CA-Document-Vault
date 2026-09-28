@@ -22,7 +22,7 @@ export function CatalogueView({ catalogue, canEdit, canAddFy }: Props) {
         <h2 className="text-lg font-semibold">Document catalogue</h2>
         <p className="mt-0.5 max-w-[70ch] text-[13.5px] text-ink-2">
           The documents the firm needs from clients, with when to ask for them. Schedules count from the end of each period.{" "}
-          <strong className="font-medium text-ink">Existing clients keep their own schedule</strong> — changes here apply when a group is next enabled for a client.
+          <strong className="font-medium text-ink">Existing clients keep their own schedule</strong> — changes here are copied only when a client first gets this type (enabling the group, or “+ Add type”).
         </p>
         {!canEdit && <p role="note" className="mt-2 text-[13.5px] text-ink-2">You can view the catalogue. An Admin or Manager can change it.</p>}
       </div>

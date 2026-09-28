@@ -1,6 +1,5 @@
 import Papa from "papaparse";
 import { CLIENT_TYPES, CLIENT_TYPE_LABEL, validateClient } from "@/lib/validation/client";
-import { normaliseIdentifier } from "@/lib/validation/identifiers";
 
 // Feature 02 — CSV import (spec AC-13 … AC-16). Pure functions: the browser uses them for the preview,
 // and the server runs the same validation again before every insert (never trust the preview).
@@ -212,9 +211,6 @@ export function validateImportRows(rows: RawRow[], ctx: ImportContext): Validati
     counts: { total: rows.length, importable: ready.length, errors: count("error"), duplicates: count("duplicate"), warnings: count("warning") },
   };
 }
-
-/** Normalised PAN of a raw row, for server-side lookups (only well-formed PANs matter). */
-export const rowPan = (r: RawRow) => normaliseIdentifier(r.cells.pan);
 
 export function chunkRows<T>(rows: T[], size = CHUNK_SIZE): T[][] {
   const out: T[][] = [];
