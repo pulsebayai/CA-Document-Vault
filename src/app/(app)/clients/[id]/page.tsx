@@ -6,6 +6,9 @@ import { canManageCatalogue } from "@/lib/auth/roles";
 import { getClient } from "@/lib/clients/queries";
 import { CLIENT_TYPE_LABEL } from "@/lib/validation/client";
 import { getClientPlan } from "@/lib/plan/queries";
+import { countClientDocuments, listClientDocuments } from "@/lib/documents/queries";
+import { fyCodeOf, istDate } from "@/lib/documents/period";
+import { DocumentsView } from "./documents-view";
 import { Card } from "@/components/ui";
 import { ArchiveControls } from "./archive-controls";
 import { PlanView } from "./plan-view";
@@ -15,13 +18,22 @@ import { PlanView } from "./plan-view";
  * In 02 only Settings exists; Documents / Expected / Activity arrive with 03 / 04 / 08 (no dead tabs).
  * RLS returns nothing for a client a Limited user can't see → Not Found (AC-12).
  */
-export default async function ClientPage({ params }: PageProps<"/clients/[id]">) {
+export default async function ClientPage({ params, searchParams }: PageProps<"/clients/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
+  // After Add document (spec AC-4): "DOC-FY26-27-00126 saved". Only a well-formed DOC-ID is ever echoed.
+  const saved = typeof sp.saved === "string" && /^DOC-FY\d{2}-\d{2}-\d{5,}$/.test(sp.saved) ? sp.saved : null;
   const me = await requireStaff();
   if (!z.uuid().safeParse(id).success) notFound();
   const c = await getClient(id);
   if (!c) notFound();
-  const plan = await getClientPlan(c.id);
+  // AC-10: Documents is a second tab; Settings stays the default until 04 (spec "Existing code affected").
+  const tab = sp.tab === "documents" ? "documents" : "settings";
+  const [plan, docCount, documents] = await Promise.all([
+    tab === "settings" ? getClientPlan(c.id) : null,
+    countClientDocuments(c.id),
+    tab === "documents" ? listClientDocuments(c.id) : [],
+  ]);
   const gstins = c.registrations.filter((r) => r.kind === "gstin");
   const tans = c.registrations.filter((r) => r.kind === "tan");
   const canEdit = me.role !== "limited" && !c.archived;
@@ -39,10 +51,15 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {!c.archived && (
+            <Link href={`/documents/new?client=${c.id}&from=/clients/${c.id}`} className="inline-flex items-center rounded-[9px] bg-accent px-3.5 py-2 font-medium text-white hover:bg-[#264d8f]">Add document</Link>
+          )}
           {canEdit && <Link href={`/clients/${c.id}/edit`} className="inline-flex items-center rounded-[9px] border border-line-2 bg-panel px-3.5 py-2 font-medium hover:bg-canvas">Edit</Link>}
           {canManageCatalogue(me.role) && <ArchiveControls id={c.id} name={c.name} archived={c.archived} />}
         </div>
       </div>
+
+      {saved && <p role="status" className="rounded-lg bg-ok-soft px-4 py-3 text-[13.5px] text-ok"><strong className="font-semibold">{saved}</strong> saved.</p>}
 
       {c.archived && (
         <p role="status" className="rounded-lg bg-warn-soft px-4 py-3 text-[13.5px] text-warn">
@@ -53,17 +70,27 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
 
       <nav aria-label="Client sections" className="border-b border-line">
         <ul className="flex gap-1">
-          <li>
-            <Link href={`/clients/${c.id}`} aria-current="page"
-              className="-mb-px inline-block border-b-2 border-ink px-3 py-2 text-[14px] font-medium">Settings</Link>
-          </li>
+          {([["documents", `Documents`, `/clients/${c.id}?tab=documents`], ["settings", "Settings", `/clients/${c.id}`]] as const).map(([key, label, href]) => (
+            <li key={key}>
+              <Link href={href} aria-current={tab === key ? "page" : undefined}
+                className={`-mb-px inline-block border-b-2 px-3 py-2 text-[14px] ${tab === key ? "border-ink font-medium" : "border-transparent text-ink-2 hover:text-ink"}`}>
+                {label}{key === "documents" && <span className="ml-1 text-ink-3">{docCount}</span>}
+              </Link>
+            </li>
+          ))}
         </ul>
       </nav>
 
+      {tab === "documents" ? (
+        <div>
+          <h2 className="sr-only">Documents</h2>
+          <DocumentsView clientId={c.id} documents={documents} currentFy={fyCodeOf(istDate())} />
+        </div>
+      ) : (
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div>
           <h2 className="sr-only">Collection plan</h2>
-          <PlanView clientId={c.id} plan={plan} inchargeId={c.inchargeId} canEdit={canEdit} canManage={canManage}
+          <PlanView clientId={c.id} plan={plan!} inchargeId={c.inchargeId} canEdit={canEdit} canManage={canManage}
             note={me.role === "limited" ? "You can view this plan. Staff and above can change it." : undefined} />
         </div>
         <div className="space-y-5">
@@ -88,6 +115,7 @@ export default async function ClientPage({ params }: PageProps<"/clients/[id]">)
         </Card>
         </div>
       </div>
+      )}
     </div>
   );
 }

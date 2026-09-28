@@ -9,6 +9,8 @@ import type { PeriodRef } from "@/lib/validation/plan";
 export type PlanState = "active" | "paused" | "removed";
 export type PlanType = {
   id: string; docTypeId: string; name: string; periodKind: PeriodKind; frequency: Frequency;
+  /** Spec 03 AC-15: a staff-proposed type for this client, waiting for approval (05). */
+  proposed?: boolean;
   askAfterMonths: number | null; askDay: number | null; overdueAfterMonths: number | null; overdueDay: number | null;
   reminders: boolean; assignedStaffId: string | null; startPeriodId: string | null;
   state: PlanState; remark: string | null; pausedAt: string | null;
@@ -38,7 +40,7 @@ type TypeRow = {
   ask_after_months: number | null; ask_day: number | null; overdue_after_months: number | null; overdue_day: number | null;
   reminders: boolean; assigned_staff_id: string | null; start_period_id: string | null; state: PlanState;
   remark: string | null; paused_at: string | null;
-  doc_type: { name: string; period_kind: PeriodKind; created_at: string } | null;
+  doc_type: { name: string; period_kind: PeriodKind; created_at: string; status: "approved" | "proposed" } | null;
 };
 
 export async function getClientPlan(clientId: string): Promise<ClientPlan> {
@@ -48,7 +50,7 @@ export async function getClientPlan(clientId: string): Promise<ClientPlan> {
       .eq("client_id", clientId),
     supabase.from("client_doc_type")
       .select(`id, doc_type_id, client_group_id, frequency, ask_after_months, ask_day, overdue_after_months, overdue_day,
-        reminders, assigned_staff_id, start_period_id, state, remark, paused_at, doc_type(name, period_kind, created_at)`)
+        reminders, assigned_staff_id, start_period_id, state, remark, paused_at, doc_type(name, period_kind, created_at, status)`)
       .eq("client_id", clientId),
     supabase.from("doc_group").select("id, name").eq("active", true).order("sort").order("name"),
     supabase.from("doc_type").select("id, doc_group_id, name").eq("source", "client").eq("active", true).eq("status", "approved")
@@ -76,7 +78,7 @@ export async function getClientPlan(clientId: string): Promise<ClientPlan> {
       types: typeRows.filter((t) => t.client_group_id === g.id && t.doc_type)
         .sort((a, b) => a.doc_type!.created_at.localeCompare(b.doc_type!.created_at) || a.doc_type!.name.localeCompare(b.doc_type!.name))
         .map((t) => ({
-          id: t.id, docTypeId: t.doc_type_id, name: t.doc_type!.name, periodKind: t.doc_type!.period_kind, frequency: t.frequency,
+          id: t.id, docTypeId: t.doc_type_id, name: t.doc_type!.name, proposed: t.doc_type!.status === "proposed", periodKind: t.doc_type!.period_kind, frequency: t.frequency,
           askAfterMonths: t.ask_after_months, askDay: t.ask_day, overdueAfterMonths: t.overdue_after_months, overdueDay: t.overdue_day,
           reminders: t.reminders, assignedStaffId: t.assigned_staff_id, startPeriodId: t.start_period_id,
           state: t.state, remark: t.remark, pausedAt: t.paused_at,

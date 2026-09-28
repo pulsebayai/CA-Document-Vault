@@ -4,17 +4,19 @@ import { useActionState, useEffect, useId, useState, useTransition } from "react
 import {
   addFinancialYear, moveGroup, saveDocGroup, saveDocType, setGroupEnabledForNew, setTypeReminders, type CatalogueResult,
 } from "@/lib/catalogue/actions";
-import type { Catalogue, CatalogueGroup, CatalogueType, FinancialYearRow } from "@/lib/catalogue/queries";
+import Link from "next/link";
+import type { Catalogue, CatalogueGroup, CatalogueType, FinancialYearRow, ProposedType } from "@/lib/catalogue/queries";
 import {
   allowedFrequencies, FREQUENCY_LABEL, PERIOD_KINDS, PERIOD_LABEL, scheduleSummary, type DocSource, type Frequency, type PeriodKind,
 } from "@/lib/validation/catalogue";
 import { Badge, Button, Card, Switch } from "@/components/ui";
 import { FieldError, inputCls, Modal, Offset } from "@/components/dialog";
 
-type Props = { catalogue: Catalogue; canEdit: boolean; canAddFy: boolean };
+/** `proposed`: Admin/Manager only (spec 03 AC-16); omitted for everyone else. */
+type Props = { catalogue: Catalogue; canEdit: boolean; canAddFy: boolean; proposed?: ProposedType[] };
 
-/** Settings › Document catalogue (mockup 05, minus "Proposed by staff" — feature 05). Spec 02 AC-1…AC-6. */
-export function CatalogueView({ catalogue, canEdit, canAddFy }: Props) {
+/** Settings › Document catalogue (mockup 05). Spec 02 AC-1…AC-6; read-only "Proposed by staff" panel from 03 (AC-16). */
+export function CatalogueView({ catalogue, canEdit, canAddFy, proposed }: Props) {
   const activeGroups = catalogue.groups.filter((g) => g.active);
   return (
     <div className="space-y-5">
@@ -26,6 +28,8 @@ export function CatalogueView({ catalogue, canEdit, canAddFy }: Props) {
         </p>
         {!canEdit && <p role="note" className="mt-2 text-[13.5px] text-ink-2">You can view the catalogue. An Admin or Manager can change it.</p>}
       </div>
+
+      {proposed && <ProposedPanel items={proposed} />}
 
       {catalogue.groups.length === 0 && (
         <Card className="px-6 py-10 text-center"><p className="font-medium">No document groups yet</p></Card>
@@ -384,5 +388,38 @@ function TypeForm({ source, type, groups, close }: { source: DocSource; type?: C
       {type && source === "client" && <p className="text-[13px] text-ink-3">Existing clients keep their own schedule.</p>}
       <FormFooter state={state} pending={pending} close={close} />
     </form>
+  );
+}
+
+// ── Proposed by staff (spec 03 AC-16, mockup 05) — read-only until 05 ─────────
+const proposedDate = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
+
+function ProposedPanel({ items }: { items: ProposedType[] }) {
+  return (
+    <Card>
+      <section aria-labelledby="proposed-by-staff">
+        <div className="border-b border-line px-5 py-3">
+          <h3 id="proposed-by-staff" className="font-semibold">Proposed by staff <span className="ml-1 text-ink-3">{items.length}</span></h3>
+          <p className="mt-0.5 text-[13px] text-ink-2">New types staff created while filing, for one client each. Decide in the review queue — coming with feature 05 (approve, edit, map to an existing type or reject).</p>
+        </div>
+        {items.length === 0 ? (
+          <p className="px-5 py-4 text-[13.5px] text-ink-3">Nothing waiting.</p>
+        ) : (
+          <ul aria-label="Proposed types" className="divide-y divide-line">
+            {items.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3">
+                <span className="font-medium">{p.name}</span>
+                <Badge tone="accent">Proposed</Badge>
+                <span className="text-[13.5px] text-ink-2">
+                  {p.groupName} · by {p.proposedBy} · {proposedDate.format(new Date(p.proposedAt))} · for{" "}
+                  {p.clientName ? <Link href={`/clients/${p.clientId}`} className="text-accent hover:underline">{p.clientName}</Link> : "a client"}
+                  {" "}· {p.documents} document{p.documents === 1 ? "" : "s"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </Card>
   );
 }
