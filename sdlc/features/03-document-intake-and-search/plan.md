@@ -47,7 +47,7 @@ Base: `feat/03-document-intake-and-search` from main `ede18ee` (02 merged). PR #
 - [x] 7. Client › Documents tab + document page (current file View/Download, versions, edit, new version, archive) — proof: e2e new version keeps DOC-ID and becomes current; manager archives; Limited Not Found on another client's document (1.5)
 - [x] 8. Catalogue "Proposed by staff" panel + "Proposed" badge in Client › Settings — proof: e2e staff proposes a type → admin sees it in the panel with proposer/client/document count (0.5)
 - [x] 9. States + a11y + screenshots vs mockups 02/10/12 + ≤ 390 px — proof: axe 0 serious/critical on 4 new screens; screenshots in the evidence artifact (0.5)
-- [ ] 10. AC-5 timed manual check with a **Staff-role** user (≤ 3 clicks after choosing the file, ≤ 30 s median over 3 documents) — proof: times recorded in the PR [you or a staff member: 10 min]
+- [x] 10. (provisional — Admin, 1 document; Staff re-time on the R1 staging checklist) AC-5 timed manual check with a **Staff-role** user (≤ 3 clicks after choosing the file, ≤ 30 s median over 3 documents) — proof: times recorded in the PR [you or a staff member: 10 min]
 - [ ] 11. (all done except PR ready — waits for step 10 + hardening-SQL review) architecture.md update · `verifier` → `sdlc-reviewer` → fix Important → PR with AC → test → result table — proof: CI green, evidence with all suites [PR review: 1–2 h]
 **Total ≈ 9.5 build sessions** (02 took ~10 for similar surface: ~2 working days elapsed at 02's pace). Your review ≈ 3–4 h. First cut if it slips: the per-registration pick (default to "none" and edit later) and the document-page activity summary.
 
@@ -129,3 +129,8 @@ AC-1…17 → test file → result table in the PR; CI green (Unit + RLS + E2E e
 - Residual risk logged: Supabase signed downloads don't send our `no-store` → check on staging before pilot.
 - Next step: Raja → step 10 + SQL review → mark PR ready → merge (Raja) → on main: roadmap (03 shipped, DOC-ID text, release locks), ui-reference deviations (`--warn`, phone header).
 - Decisions made: none new beyond the review fixes (recorded under Deviations).
+
+### 2026-09-28 (step 10)
+- Done: **AC-5 timed check on the Vercel preview by Raja (Admin role — the office has no Staff user yet): 1 document, 15 s** from choosing the file to "saved" (target ≤ 30 s median). Stored as expected: DOC-FY26-27-00001, soft copy, Sales invoices / sales register, period Aug 2026 (the default — the month that just ended), PDF version 1, filed at once, 1 activity row; GSTIN blank because the client has no registration (auto-pick needs exactly one). Clicks after choosing the file were not counted by hand; the flow needs 3 (type ×2, Save) and `add-document.spec.ts` asserts it.
+- Decision: accepted as **provisional** (Admin, n = 1). The Add document path is identical for Admin and Staff. **R1 staging checklist: re-time with a Staff-role user, 3 documents, median** (same treatment as 02 AC-22) — roadmap update at merge.
+- Next: Raja reviews `20260928134130_documents_hardening.sql` and runs `regression.yml` on this branch (base_url = preview) → PR ready.
