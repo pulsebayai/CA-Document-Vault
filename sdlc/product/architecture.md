@@ -1,5 +1,5 @@
 # Architecture: CA Document Vault
-Status: approved · Updated: 2026-09-28 (02: clients and catalogue, via PR #4)
+Status: approved · Updated: 2026-09-28 (03: document intake, via PR #7)
 
 ## Stack
 - **Next.js (App Router) + TypeScript** — one codebase for UI and server actions/API routes.
@@ -24,14 +24,16 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - `period` (kind month|quarter|year, code, start, end, → financial_year) — generated, never typed
 
 **Document (the fact row)**
-- `document` (DOC-ID, client_id, doc_type_id, period_id NULL-able for undated docs e.g. registration certificate, registration_id NULL-able, expected_doc_id NULL-able, file path/name/type/size, received_as soft|hard|original, channel, received_by/on, status, remark, archived) → `document_version`
+- `document` (DOC-ID, client_id, doc_type_id, period_id NULL-able for undated docs e.g. registration certificate, registration_id NULL-able, expected_doc_id NULL-able (04), received_as soft copy|hard copy|original, channel WhatsApp|Email|Hand delivery|Courier|Portal download|Other, received_by/on, status, remark, classified_at, archived) → `document_version` (append-only: storage path, sanitised file name, type, size, uploader; the newest is current, same DOC-ID) (03)
+  - **DOC-ID = `DOC-FY26-27-00001`**: per-office counter (`doc_counter`) per FY of the date the document is **added** (IST), restarts 1 April, no gaps, never reused or edited (03).
+  - **Classified** = client + type; otherwise the document is in the **Inbox**. `classified_at` is set once (metric 4) (03).
 - **Derived, not stored:** doc_group (from doc_type) and FY (from period). Prevents "type in GST, group = Banking" inconsistencies and makes admin re-mapping of types safe.
 - Search = filters on any combination of dimensions + facets (status, received_as, channel, received_by) + text on file name/remark (Postgres full-text + pg_trgm). Composite indexes on (client, period), (doc_type, period).
 
 **Expectation layer (= "collection requirement" in reference doc)**
 - **Master templates → client instances.** Master = `doc_group` + its `doc_type`s with default schedule (frequency, ask day, overdue day, reminders on/off). When a group is enabled for a client, its types are **copied** into `client_doc_type` rows (client × doc_type: frequency, schedule, reminders, assigned staff, active/paused, start period). The copy keeps `doc_type_id`, so the dimension stays shared for search, but the schedule is the client's own.
   - Later master edits do **not** silently change existing clients; admin can explicitly "apply to existing clients" (logged).
-  - Staff can add a type to one client only (proposed type) — it becomes a `client_doc_type` immediately.
+  - Staff+ (not Limited) can add a type to one client only (proposed type, after the closest existing types are suggested) — it becomes a `client_doc_type` immediately (as needed, no reminders); if the group isn't enabled for that client, a client group row is created holding only that type. Proposed names are unique per group per client (05 merges) (03).
   - `client_doc_type` rows *are* the client's collection plan; `expected_doc` rows are generated from them.
 - `expected_doc` (client × doc_type × period [× registration]; ask/overdue dates; status pending|received|waived) — **unit of metric 1**. 1 expected_doc : n documents (e.g. many invoice PDFs for one month).
 - **To-do / Today = derived view:** expected_doc with no linked document, filtered by assigned staff and dates. Not stored.
@@ -51,12 +53,13 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **Assignment decides what Limited users see**, so assigning staff (group or type), changing the incharge, pausing/resuming and switching off a paused group are Admin/Manager only (DB triggers). A group follows the incharge: when the incharge changes, groups still assigned to the old incharge move to the new one (logged) (02).
 - Settings is visible to all staff; each item is role-gated (catalogue writes Admin/Manager, users Admin) (02).
 - The service role cannot write `client` rows (CHECK helpers are `authenticated`-only); tests and tools create clients as a signed-in user (02).
-- Storage bucket private; files served via short-lived signed URLs after an RLS-checked lookup.
+- **Documents (03):** visible if the user can see the client (`can_see_client`), or unclassified and (Staff+ or added it). Limited users add/edit only for clients they can see or into the Inbox. Archive/unarchive Admin/Manager (reason required); archived documents are read-only.
+- **Files (03):** bucket `documents` private (25 MB, MIME allow-list), **no `storage.objects` policies for app roles**. Upload: server issues a signed upload URL for `office/<office>/doc/<document>/<version>.<ext>` (IDs only) → the browser PUTs the raw file with our canonical Content-Type → the DB registers it, **reading size and type from `storage.objects` itself** (the RPCs are callable directly). View/download: a ≤ 60 s signed URL issued server-side after an RLS lookup; only `src/lib/documents/storage.ts` signs (service role, ESLint allow-list).
 
 ## Cross-cutting rules
 - **Privacy:** PAN, mobile, email are personal data (DPDP Act). No PII in URLs, logs or analytics.
 - **No hard delete;** every mutation writes `activity`.
-- **Uploads:** allow-list PDF, JPG, PNG, XLSX, DOCX, ZIP; size limit from settings; filenames sanitised.
+- **Uploads:** allow-list PDF, JPG/JPEG, PNG, HEIC (download-only), XLSX, XLS, CSV, DOCX, ZIP by extension (declared type checked when present); ≤ 25 MB; each extension stored as one canonical MIME type (`src/lib/validation/document.ts` = `private.mime_for_extension` = bucket allow-list); file names sanitised (no separators/control chars/leading dots, ≤ 180). No malware scan or content sniffing in v1 (accepted risk) (03).
 - **Dates:** stored UTC, shown IST; periods follow Indian FY.
 - **UI:** the mockup is the UI source of truth — see `references/ui-reference.md` (tokens, components, agreed deviations, screenshots). Each feature spec cites its screens.
 - **Accessibility:** WCAG 2.1 AA (wins over pixel fidelity).
@@ -65,7 +68,7 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
   - Multi-row/multi-table writes = **one SECURITY INVOKER SQL function per user action** (atomic, RLS applies, writes one `activity` row). Single-row edits log activity from the server action (best-effort).
   - UI aggregates and PII searches = security-invoker views/functions (e.g. `search_clients`), called from server actions (POST) so search text never reaches a URL.
   - SECURITY DEFINER only for counters/guards; every definer trigger checks the tenant (office) first; `search_path = ''` everywhere. Service-role-only helpers live in `public` with EXECUTE revoked (PostgREST can't reach `private`).
-  - Transaction flags (`app.plan_bulk`, `app.purge_office`) let the owning functions bypass per-row triggers; nothing else sets them.
+  - Transaction flags (`app.plan_bulk`, `app.purge_office`, 03: `app.doc_version`, `app.propose_type`, `app.doc_clock`) let the owning functions bypass per-row checks; nothing else sets them. `app.doc_clock` (fixed-date DOC-ID tests) is honoured only in `is_test` offices.
 - **Activity:** field names and IDs only; free text (e.g. archive reason) lives on the entity. A DB trigger (`ACTIVITY_PII`) rejects PAN/GSTIN/email/mobile keys or values in `activity.data` (02).
 - **Bulk work** (CSV import): the browser drives bounded chunks (≤ 200 rows per server action); the server re-validates every chunk against the DB as it is now. Server-action body limit 3 MB. CSV files we generate neutralise formula-looking cells (02).
 - **Screens:** every screen has its own loading (`role="status"`) and error (alert + retry) state (`src/components/states.tsx`); dialogs use the shared native-`<dialog>` Modal; horizontal-scroll wrappers are `position: relative` (sr-only content escapes otherwise); key screens are asserted ≤ 390 px wide in e2e (02).
@@ -119,3 +122,9 @@ Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature b
 | 2026-09-27 | One SECURITY INVOKER function per multi-row action; searches via server actions + security-invoker functions | Atomic writes with one audit row; RLS always applies; no PII in URLs | 02 |
 | 2026-09-27 | CSV import: browser-driven ≤ 200-row chunks, server re-validates; body limit 3 MB | Small requests, progress, no long serverless calls; never trust the preview | 02 |
 | 2026-09-28 | Incharge change moves groups that followed the old incharge; switching off a paused group is Admin/Manager only; plan periods must be the office's own | Pre-PR review of 02: Limited ex-incharge kept access; Staff could bypass a pause | 02 |
+| 2026-09-28 | Browser uploads straight to private Storage via a server-issued signed URL (raw PUT, canonical type); the DB reads size/type from `storage.objects`; no Storage policies for app roles; ≤ 60 s signed view/download links after an RLS lookup | 25 MB files can't pass through Vercel functions; one authorisation point (RLS on `document`); RPCs are callable directly, so the DB must not trust caller-supplied file facts | 03 |
+| 2026-09-28 | DOC-ID `DOC-FY26-27-NNNNN`, per office per FY of the date added, restart 1 April; no date/time in the ID | Readable by CA staff (FY, not a bare year); intake IDs (Raja) | 03 |
+| 2026-09-28 | Proposed types: Staff+ create after suggestions; join the client's plan at once (client-only group row if needed); names unique per group per client; approval in 05 | ~60% of types expected to be added in use; filing never blocked; Limited can't change plans | 03 |
+| 2026-09-28 | Received as = soft copy · hard copy · original; channels WhatsApp · Email · Hand delivery · Courier · Portal download · Other | Original = must be returned (07 dispatch) | 03 |
+| 2026-09-28 | UI token `--warn` darkened #B0611A → #9C5717 | 4.06:1 on `--warn-soft` failed WCAG AA (axe, Hard copy badge) | 03 |
+
