@@ -38,7 +38,7 @@ Base: `feat/03-document-intake-and-search` from main `ede18ee` (02 merged). PR #
 
 ## Steps (estimates = build sessions with Claude; your time in brackets)
 - [x] 0. Baseline: branch green in CI on 02's merged main — proof: CI run on the branch (docs-only commits so far) [—]
-- [ ] 1. RLS/DB tests first (red): visibility matrix (4 roles × assigned/not × classified/inbox × own/others'); DOC-ID sequence per FY + restart 1 April (fixed dates) + no gaps + never reused; soft copy needs a file; version append-only, new version becomes current; archive Admin/Manager; DELETE rejected; `classified_at` once; registration/period rules; proposed type → plan row (+ client-only group row); suggestions fuzzy + aliases; activity without file names/remarks/PII; storage bucket private (anon + signed-in user can't read/list) — proof: `test:db` fails for the right reasons (1)
+- [x] 1. RLS/DB tests first (red): visibility matrix (4 roles × assigned/not × classified/inbox × own/others'); DOC-ID sequence per FY + restart 1 April (fixed dates) + no gaps + never reused; soft copy needs a file; version append-only, new version becomes current; archive Admin/Manager; DELETE rejected; `classified_at` once; registration/period rules; proposed type → plan row (+ client-only group row); suggestions fuzzy + aliases; activity without file names/remarks/PII; storage bucket private (anon + signed-in user can't read/list) — proof: `test:db` fails for the right reasons (1)
 - [ ] 2. Migration written, dry-run, reviewed, applied to dev; advisors clean — proof: step-1 tests green in CI (1) [review SQL: 30–45 min]
 - [ ] 3. Shared rules: file validator + sanitiser, period default (month/quarter/year, April and quarter boundaries), DOC-ID/FY helpers — proof: unit tests red → green (0.5)
 - [ ] 4. Storage plumbing: `startUpload` (signed upload URL), object verification, `getFileLink` (≤ 60 s signed URL, download name), test cleanup helper — proof: DB/storage test uploads a synthetic PDF via signed URL, registers it, downloads via signed link, link expires; unauthorised lookup gets no link (1)
@@ -68,7 +68,14 @@ Rollback: dev only → revert PR + compensating migration (drop new tables/bucke
 AC-1…17 → test file → result table in the PR; CI green (Unit + RLS + E2E evidence); screenshots vs mockups 02/10/12; AC-5 times recorded (Staff user); architecture.md updated with the 4 approved changes.
 
 ## Deviations from plan
-(filled in during build)
+- **Step 1 (2026-09-28) — SQL contract fixed by the tests** (`tests/rls/{documents,proposed-types,document-storage}.test.ts`), for review at the step-2 SQL gate:
+  - **D1 The database reads the file's size and MIME type from Storage** (`storage.objects`, via a definer helper), not from the caller, and rejects a missing object (`OBJECT_MISSING`). Reason: `create_document` / `add_document_version` are callable directly through the API with a user's session, so server-side verification alone could be bypassed. The server still checks before calling (better error messages).
+  - **D2 The document ID is the folder UUID in the storage path** (`office/<office>/doc/<document_id>/<version_id>.<ext>`). A version's object must sit under its own document's folder, and the path must hold this office's ID and an allowed extension (`PATH`).
+  - **D3 One `update_document(id, jsonb)`** covers classify and edit (only the keys present change). The activity action is `document.classified` when client/type change and `document.updated` otherwise (`fields` = names only). `archive_document(id, reason)` / `unarchive_document(id)` are separate. An archived document can't be edited or given a version (`ARCHIVED`).
+  - **D4 Fixed-date DOC-ID tests:** `create_document` accepts `test_added_at` **only in `is_test` offices** (`TEST_ONLY` elsewhere) — same fence as `reset_test_office`.
+  - **D5 Limited users can't create proposed types** (it changes a collection plan — 02 rule); they save to the Inbox and a Staff+ user classifies. Needs Raja's OK.
+  - **D6 Proposed-type names are unique per (group, client)**, not per group: two clients may propose the same name independently (05 merges them); a name equal to an approved type in the group is refused (`DUPLICATE_TYPE`). Replaces 02's unique index `doc_type_name_key` with two partial ones.
+  - Canonical MIME list (bucket allow-list): the server maps each extension to one type (e.g. Windows' `application/x-zip-compressed` → `application/zip`).
 
 ## Session log
 ### 2026-09-28
@@ -84,3 +91,10 @@ AC-1…17 → test file → result table in the PR; CI green (Unit + RLS + E2E e
 - Blocked / failing: none. PR #6 (roadmap: 03 started, split, locks → 03) still open — Raja to merge.
 - Next step: step 1 — RLS/DB tests first (red) for documents, DOC-IDs, storage, proposed types. Check 02's AC-17 nightly first.
 - Decisions made: none new.
+
+### 2026-09-28 (step 1)
+- Done: merged main (roadmap PR #6, docs only) into the branch. **Step 1: 3 new DB test files + `tests/support/documents.ts`** (storage purge before `reset_test_office`, tiny synthetic files). **Proof: CI run 36406058034 (331de9c) — RLS: 51 failed / 86 passed / 15 skipped; every failure is a missing `create_document` / `doc_counter` / `document` / `suggest_doc_types` / `create_proposed_type` or "Bucket not found"; all 8 existing 02 suites green.** Two new tests already pass (staff can't insert catalogue types directly; `reset_test_office` service-role only) — kept as locks.
+- In progress: —
+- Blocked / failing: 02 AC-17 still unproven — both nightlies so far ran on 581c64d (before the 02 merge); first nightly with it ≈ 04:10 IST 29 Sep. Check first next session.
+- Next step: Raja confirms D5 (and D1–D6 in general) → step 2 migration (dry-run on dev → Raja reviews SQL → apply).
+- Decisions made (cross-cutting → architecture.md in this PR): D1 (DB verifies stored objects), D4 (test-only clock fenced by is_test).
