@@ -87,8 +87,9 @@ test("AC-8: Assign opens the form with what is known; client + type files it and
   expect(data!.client_id).not.toBeNull();
 });
 
-test("AC-4: a document saved to the inbox from the header lands in the Inbox with its DOC-ID", async ({ page, baseURL }) => {
+test("AC-4: a document added from the Inbox (header button) comes back to the Inbox with its DOC-ID", async ({ page, baseURL }) => {
   await signIn(page, staff.email, baseURL);
+  await page.goto("/inbox");
   await page.getByRole("banner").getByRole("link", { name: "Add document" }).click();
   await page.getByText("Hard copy", { exact: true }).click();
   await page.getByRole("button", { name: "Save to inbox" }).click();

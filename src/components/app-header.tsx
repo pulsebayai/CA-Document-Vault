@@ -3,7 +3,7 @@ import { signOut } from "@/lib/auth/actions";
 import { initials, ROLE_LABEL } from "@/lib/auth/roles";
 import type { CurrentStaff } from "@/lib/auth/staff";
 import { BrandMark } from "./ui";
-import { NavLink } from "./nav-link";
+import { AddDocumentLink, NavLink } from "./nav-link";
 
 /** Mockup header (references/mockup/01-today.jpg). Only shipped screens appear in the nav. */
 export function AppHeader({ me, inboxCount }: { me: CurrentStaff; inboxCount: number }) {
@@ -25,17 +25,15 @@ export function AppHeader({ me, inboxCount }: { me: CurrentStaff; inboxCount: nu
       </Link>
       <nav aria-label="Main" className="flex min-w-0 items-center gap-1 overflow-x-auto">
         {nav.map((n) => (
-          <NavLink key={n.href} href={n.href}>
+          // AC-7: count badge (Staff+: all Inbox items; Limited: their own — RLS). Named "Inbox, 3 waiting".
+          <NavLink key={n.href} href={n.href} label={"count" in n && n.count ? `${n.label}, ${n.count} waiting` : undefined}>
             {n.label}
-            {/* AC-7: count badge (Staff+: all Inbox items; Limited: their own — RLS). */}
-            {"count" in n && n.count ? <span className="ml-1.5 inline-grid min-w-5 place-items-center rounded-full bg-bad px-1.5 text-xs font-semibold text-white"><span className="sr-only">, </span>{n.count}<span className="sr-only"> waiting</span></span> : null}
+            {"count" in n && n.count ? <span aria-hidden className="ml-1.5 inline-grid min-w-5 place-items-center rounded-full bg-bad px-1.5 text-xs font-semibold text-white">{n.count}</span> : null}
           </NavLink>
         ))}
       </nav>
       {/* Mockup header "+ Add document"; on phones just "+" (same accessible name) so the header fits 390 px. */}
-      <Link href="/documents/new" aria-label="Add document" className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-[9px] bg-accent px-3 py-2 font-medium text-white hover:bg-[#264d8f] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent sm:px-3.5">
-        <span aria-hidden>+</span><span aria-hidden className="hidden sm:inline">Add document</span>
-      </Link>
+      <AddDocumentLink />
       <details className="relative shrink-0">
         <summary aria-label={`Account menu for ${me.fullName}`} className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent [&::-webkit-details-marker]:hidden">
           {initials(me.fullName)}

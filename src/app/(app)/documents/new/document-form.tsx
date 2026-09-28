@@ -12,6 +12,7 @@ import {
   ACCEPT_ATTRIBUTE, CHANNELS, RECEIVED_AS, validateFile, type Channel, type ReceivedAs, type ValidFile,
 } from "@/lib/validation/document";
 import { Button, Card } from "@/components/ui";
+import { putFile } from "@/lib/documents/upload-client";
 
 // Add document (mockup 12, spec AC-1 … AC-5, AC-15). The file uploads straight to private Storage as soon as it
 // is chosen (signed URL from the server), so "Save" is usually instant. ≤ 3 clicks after choosing the file when
@@ -41,21 +42,6 @@ const NEW_TYPE = "__new__";
 
 const control = "w-full rounded-[9px] border border-line-2 bg-panel px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft aria-[invalid=true]:border-bad";
 const kb = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
-
-/** Raw PUT with progress (a FormData upload would store the browser's declared type, not ours). */
-function putFile(url: string, file: File, contentType: string, onProgress: (p: number) => void): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", url);
-    xhr.setRequestHeader("content-type", contentType);
-    xhr.setRequestHeader("x-upsert", "false");
-    xhr.setRequestHeader("cache-control", "max-age=3600");
-    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100)); };
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(String(xhr.status))));
-    xhr.onerror = () => reject(new Error("network"));
-    xhr.send(file);
-  });
-}
 
 export function DocumentForm({ initialClient, initialTypes, periods, groups, today, canPropose, returnTo, existing }: Props) {
   const router = useRouter();
@@ -238,9 +224,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     });
     setSaving(null);
     if (!r.ok) { setError(r.error); setFieldErrors(r.fieldErrors); return; }
-    // A new document saved to the Inbox from the header goes to the Inbox; otherwise back where the user came from.
-    const dest = !existing && target === "inbox" && returnTo === "/clients" ? "/inbox" : returnTo;
-    router.push(`${dest}?saved=${encodeURIComponent(r.docCode)}`);
+    router.push(`${returnTo}?saved=${encodeURIComponent(r.docCode)}`); // AC-4: back where the user came from
   }
 
   const busy = saving !== null;
