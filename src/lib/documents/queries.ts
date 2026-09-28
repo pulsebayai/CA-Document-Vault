@@ -93,3 +93,67 @@ export async function clientOption(id: string): Promise<ClientOption | null> {
   const { data } = await supabase.from("client").select("id, name, code, archived_at").eq("id", id).maybeSingle();
   return data && !data.archived_at ? { id: data.id, name: data.name, code: data.code } : null;
 }
+
+// ── Inbox (AC-7 … AC-9) ──────────────────────────────────────────────────────
+export type InboxItem = {
+  id: string; docCode: string; fileName: string | null; receivedAs: "soft_copy" | "hard_copy" | "original";
+  channel: string; remark: string | null; addedBy: string; createdAt: string;
+  clientName: string | null; typeName: string | null;
+};
+
+type InboxRow = {
+  id: string; doc_code: string; received_as: InboxItem["receivedAs"]; channel: string; remark: string | null; created_at: string;
+  creator: { full_name: string } | null; current: { file_name: string } | null;
+  client: { name: string } | null; doc_type: { name: string } | null;
+};
+
+/** Unclassified, not archived, newest first. RLS: Staff+ see all; Limited only what they added (AC-9). */
+export async function listInbox(limit = 200): Promise<InboxItem[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("document")
+    .select(`id, doc_code, received_as, channel, remark, created_at,
+      creator:created_by (full_name), current:current_version_id (file_name), client:client_id (name), doc_type:doc_type_id (name)`)
+    .is("classified_at", null).is("archived_at", null)
+    .order("created_at", { ascending: false }).limit(limit);
+  if (error) {
+    console.error("documents.inbox_failed", { code: error.code });
+    throw new Error("Could not load the Inbox.");
+  }
+  return ((data ?? []) as unknown as InboxRow[]).map((r) => ({
+    id: r.id, docCode: r.doc_code, fileName: r.current?.file_name ?? null, receivedAs: r.received_as, channel: r.channel,
+    remark: r.remark, addedBy: r.creator?.full_name ?? "—", createdAt: r.created_at,
+    clientName: r.client?.name ?? null, typeName: r.doc_type?.name ?? null,
+  }));
+}
+
+/** Nav badge (AC-7): what this user's Inbox holds. */
+export async function inboxCount(): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase.from("document").select("id", { count: "exact", head: true })
+    .is("classified_at", null).is("archived_at", null);
+  return count ?? 0;
+}
+
+// ── One document, for Assign / edit (AC-8, AC-11) ───────────────────────────
+export type DocumentForForm = {
+  id: string; docCode: string; client: ClientOption | null; docTypeId: string | null; periodId: string | null;
+  registrationId: string | null; receivedAs: "soft_copy" | "hard_copy" | "original"; channel: string; receivedOn: string;
+  remark: string | null; fileName: string | null; versionCount: number; classified: boolean; archived: boolean;
+};
+
+export async function getDocumentForForm(id: string): Promise<DocumentForForm | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("document")
+    .select(`id, doc_code, doc_type_id, period_id, registration_id, received_as, channel, received_on, remark, version_count,
+      classified_at, archived_at, client:client_id (id, name, code), current:current_version_id (file_name)`)
+    .eq("id", id).maybeSingle();
+  if (!data) return null;
+  const client = data.client as unknown as ClientOption | null;
+  return {
+    id: data.id, docCode: data.doc_code, client: client ? { id: client.id, name: client.name, code: client.code } : null,
+    docTypeId: data.doc_type_id, periodId: data.period_id, registrationId: data.registration_id,
+    receivedAs: data.received_as, channel: data.channel, receivedOn: data.received_on, remark: data.remark,
+    fileName: (data.current as unknown as { file_name: string } | null)?.file_name ?? null,
+    versionCount: data.version_count, classified: !!data.classified_at, archived: !!data.archived_at,
+  };
+}

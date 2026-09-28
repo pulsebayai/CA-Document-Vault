@@ -179,3 +179,32 @@ export async function proposeType(clientId: string, group: { id: string; name: s
     periodKind: "none", frequency: "as_needed", registrationKind: null, proposed: true,
   } };
 }
+
+// ── Assign / edit (AC-8, AC-11): same fields, update_document; classified_at is set the first time ──
+export type UpdateDocumentInput = DocumentMetaInput & { id: string; target: "vault" | "inbox" };
+
+export async function updateDocumentAction(input: UpdateDocumentInput): Promise<SaveDocumentResult> {
+  await requireStaff();
+  if (!uuid.safeParse(input?.id).success) return { ok: false, error: "Document not found.", fieldErrors: {} };
+  const supabase = await createClient();
+  const { data: doc } = await supabase.from("document").select("id, doc_code, version_count, client_id").eq("id", input.id).maybeSingle();
+  if (!doc) return { ok: false, error: "Document not found.", fieldErrors: {} };
+  const target = input.target === "vault" ? "vault" : "inbox";
+  const v = validateDocumentMeta(input, { target, hasFile: doc.version_count > 0, today: istDate() });
+  if (!v.data) {
+    return { ok: false, error: "Check the highlighted fields.", fieldErrors: Object.fromEntries(v.errors.map((e) => [e.field, e.message])) };
+  }
+  const d = v.data;
+  const { error } = await supabase.rpc("update_document", { p_id: doc.id, p: {
+    client_id: d.clientId, doc_type_id: d.docTypeId, period_id: d.periodId, registration_id: d.registrationId,
+    received_as: d.receivedAs, channel: d.channel, received_on: d.receivedOn, remark: d.remark,
+  } });
+  if (error) {
+    console.error("documents.update_failed", { code: error.code });
+    return { ok: false, ...dbError(error.message) };
+  }
+  revalidatePath("/inbox");
+  revalidatePath(`/documents/${doc.id}`);
+  for (const c of new Set([doc.client_id, d.clientId].filter(Boolean))) revalidatePath(`/clients/${c}`);
+  return { ok: true, id: doc.id, docCode: doc.doc_code };
+}
