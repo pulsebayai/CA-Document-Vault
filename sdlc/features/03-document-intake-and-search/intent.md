@@ -1,5 +1,5 @@
 # Intent: Document intake
-Author: Raja (drafted with Claude) · Status: draft · Date: 2026-09-28
+Author: Raja (drafted with Claude) · Status: draft (rev 2) · Date: 2026-09-28
 Roadmap item: 03-document-intake-and-search (search split out to 03b on 2026-09-28) · Release: R1 · Moves product metrics: 4 (inbox age), 3 (catalogue convergence); enables 1 (on-time completeness, via 04)
 
 ## Problem
@@ -27,9 +27,12 @@ Every document the firm receives — a file or a hard copy — is recorded in th
 
 ## Constraints
 - **Storage in India** (Supabase ap-south-1), private bucket, short-lived signed URLs after an RLS-checked lookup; no public links; nothing cached by Vercel.
-- **Max 25 MB per file** (Raja 2026-09-28); allow-list PDF, JPG, PNG, XLSX, DOCX, ZIP (architecture); file names sanitised; storage keys never contain client names, PAN or GSTIN.
+- **Max 25 MB per file** (Raja 2026-09-28). Allow-list: PDF, JPG/JPEG, PNG, **HEIC**, XLSX, **XLS**, **CSV**, DOCX, ZIP (Raja 2026-09-28 added XLS, CSV, HEIC — browsers can't preview HEIC, so it is download-only; no conversion in 03). File names sanitised; storage keys never contain client names, PAN or GSTIN.
 - **DOC-ID = `DOC-YY-NNNNN`, numbered per office by financial year** (YY = FY start year, restarts 1 April; Raja 2026-09-28). Never reused, never edited.
-- **One file per document** (mockup 12); hard copies may have no file.
+- **One file per document** (mockup 12); hard copies may have no file. A **revised file replaces the file of the same document as a new version** — same DOC-ID, earlier versions kept (Raja 2026-09-28).
+- **Channels:** WhatsApp · Email · Hand delivery · Courier · Portal download · Other (Raja 2026-09-28).
+- **Only the firm's staff use the vault** (no client access in this scope). Inbox (documents without a client) is visible to Admin, Manager and Staff; a **Limited** staff member sees only documents of the clients assigned to them plus their own Inbox uploads *(to confirm)*. Archiving documents: **Admin/Manager only** (Raja 2026-09-28).
+- **No malware scanning in v1** (Raja 2026-09-28: later) — accepted risk: staff open downloaded files on their own PCs; the allow-list and size limit reduce but don't remove it. Recorded for a roadmap item before wider rollout.
 - No hard delete (archive); every change writes `activity` with IDs/field names only.
 - Schema lock held by 03; no architecture change expected beyond storage conventions.
 - Volume unknown (Raja): design for one-at-a-time intake; measure volume in the pilot before building bulk intake.
@@ -44,10 +47,8 @@ Every document the firm receives — a file or a hard copy — is recorded in th
 - Remind (email / WhatsApp) → 06 · review → dispatch workflow and "Mark dispatched" → **07** · bulk zip download, activity viewer → **08**.
 - Client upload links, OCR / auto-classification, WhatsApp/email integration, bulk multi-file intake.
 
-## Open questions (to settle before the spec)
-1. **File types:** add XLS, CSV, HEIC (iPhone photos) and JPEG/PNG variants beyond the architecture allow-list?
-2. **Corrected files:** when a client sends a revised file for the same document, is it a **new version** of that document (old kept, one DOC-ID) or a new document?
-3. **Channels:** WhatsApp · Email · Hand delivery · Courier · Portal download · Other — the right list?
-4. **Inbox visibility:** Inbox items have no client yet — visible to Staff and above only (Limited users see only their own unclassified uploads)?
-5. **Archiving documents:** Admin/Manager only (like clients)?
-6. **Malware scanning:** none in v1 (files are only opened by staff on their own machines) — accept the risk, or scan on upload?
+## Decisions (Raja 2026-09-28)
+File types + XLS, CSV, HEIC · revised file = new version · channel list as above · staff-only access, Inbox for Staff and above · archive Admin/Manager · malware scanning later (accepted risk).
+
+## Open questions
+1. **Limited staff and the Inbox** (to confirm): a Limited staff member sees only their assigned clients' documents **plus the Inbox items they added themselves** — or no Inbox at all?
