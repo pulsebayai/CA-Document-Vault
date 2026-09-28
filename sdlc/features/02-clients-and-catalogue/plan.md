@@ -55,7 +55,7 @@ Applied to **dev only** (project ysddbwskljzhbjjohool) via `apply_migration` aft
 - [x] 10. CSV import: template, browser preview, server re-validation, chunked `import_clients`, result + error-row download — proof: unit CSV tests (header, limits, in-file + DB duplicates, name warnings); e2e happy path + error file round-trip; AC-17 1,000 rows < 60 s nightly (`RUN_SLOW=1`) (1.5)
 - [x] 11. Accessibility (axe on 5 new screens) + empty/loading/error states + screenshots vs mockups 03/05/11 — proof: 0 serious/critical; screenshots in PR (0.5)
 - [x] 12. AC-22 timed manual check with a staff member (≤ 2 min) — proof: time recorded in PR [you: 10 min]
-- [ ] 13. `verifier` full suite → `sdlc-reviewer` → fix Important → PR with AC → test → result table — proof: CI green, evidence shows all three suites [PR review: 1–2 h]
+- [x] 13. `verifier` full suite → `sdlc-reviewer` → fix Important → PR with AC → test → result table — proof: CI green, evidence shows all three suites [PR review: 1–2 h]
 **Total ≈ 10 build sessions ≈ 4–5 working days elapsed; your review ≈ 4–5 h.** Calibration: 01 (13 steps) went intent → shipped in ~1 day, but 02 has ~4× the surface (10 tables, 5 screens, import). [Likely] No scope deferral needed; if step 10 slips past 1.5 sessions, error-row download is the first cut.
 
 ## Risks
@@ -235,3 +235,10 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Blocked / failing: none.
 - Next step: step 13 — `verifier` full suite → `sdlc-reviewer` → fix Important → PR #4 out of draft with AC → test → result table (AC-17 "pending — first nightly after merge"; AC-22 1:15 Admin), screenshots from run 36324232291, dev migrations listed for Raja's review.
 - Decisions made (cross-cutting → flag at merge): R1 staging manual checklist gets "AC-22 timed by a Staff-role user".
+
+### 2026-09-28 (step 13)
+- Done: step 13 — `verifier` clean; `sdlc-reviewer`: 2 Important security fixes (paused group, incharge change) + period guard, test-first (red 36380953479 → green), migration `20260928051915_plan_guards` on dev; Nits fixed; architecture.md updated (D5, option a). **Proof: CI run 36381537395 (12a3b24) — lint/typecheck/unit 137/build · RLS green · E2E 25 / 0.** PR #4 title + description (AC → test → result, migrations, decisions, screenshots) updated; PR was already open (not a draft).
+- In progress: —
+- Blocked / failing: none. AC-17 pending first nightly after merge.
+- Next step: **Raja** checks the whole feature on the preview and reviews PR #4 (incl. the 7 dev migrations), then merges. After merge, on main: roadmap 02 → shipped, release schema + architecture locks, check the first nightly (AC-17), add "AC-22 by a Staff user" to the R1 checklist, CI debt (Node 20 actions, pin ubuntu-24.04 before 19 Oct).
+- Decisions made: D5 (architecture.md in PR #4). All 02 cross-cutting flags now applied in architecture.md.
