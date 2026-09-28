@@ -6,6 +6,9 @@ import { canManageCatalogue } from "@/lib/auth/roles";
 import { getClient } from "@/lib/clients/queries";
 import { CLIENT_TYPE_LABEL } from "@/lib/validation/client";
 import { getClientPlan } from "@/lib/plan/queries";
+import { countClientDocuments, listClientDocuments } from "@/lib/documents/queries";
+import { fyCodeOf, istDate } from "@/lib/documents/period";
+import { DocumentsView } from "./documents-view";
 import { Card } from "@/components/ui";
 import { ArchiveControls } from "./archive-controls";
 import { PlanView } from "./plan-view";
@@ -24,7 +27,13 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   if (!z.uuid().safeParse(id).success) notFound();
   const c = await getClient(id);
   if (!c) notFound();
-  const plan = await getClientPlan(c.id);
+  // AC-10: Documents is a second tab; Settings stays the default until 04 (spec "Existing code affected").
+  const tab = sp.tab === "documents" ? "documents" : "settings";
+  const [plan, docCount, documents] = await Promise.all([
+    tab === "settings" ? getClientPlan(c.id) : null,
+    countClientDocuments(c.id),
+    tab === "documents" ? listClientDocuments(c.id) : [],
+  ]);
   const gstins = c.registrations.filter((r) => r.kind === "gstin");
   const tans = c.registrations.filter((r) => r.kind === "tan");
   const canEdit = me.role !== "limited" && !c.archived;
@@ -61,17 +70,27 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
 
       <nav aria-label="Client sections" className="border-b border-line">
         <ul className="flex gap-1">
-          <li>
-            <Link href={`/clients/${c.id}`} aria-current="page"
-              className="-mb-px inline-block border-b-2 border-ink px-3 py-2 text-[14px] font-medium">Settings</Link>
-          </li>
+          {([["documents", `Documents`, `/clients/${c.id}?tab=documents`], ["settings", "Settings", `/clients/${c.id}`]] as const).map(([key, label, href]) => (
+            <li key={key}>
+              <Link href={href} aria-current={tab === key ? "page" : undefined}
+                className={`-mb-px inline-block border-b-2 px-3 py-2 text-[14px] ${tab === key ? "border-ink font-medium" : "border-transparent text-ink-2 hover:text-ink"}`}>
+                {label}{key === "documents" && <span className="ml-1 text-ink-3">{docCount}</span>}
+              </Link>
+            </li>
+          ))}
         </ul>
       </nav>
 
+      {tab === "documents" ? (
+        <div>
+          <h2 className="sr-only">Documents</h2>
+          <DocumentsView clientId={c.id} documents={documents} currentFy={fyCodeOf(istDate())} />
+        </div>
+      ) : (
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div>
           <h2 className="sr-only">Collection plan</h2>
-          <PlanView clientId={c.id} plan={plan} inchargeId={c.inchargeId} canEdit={canEdit} canManage={canManage}
+          <PlanView clientId={c.id} plan={plan!} inchargeId={c.inchargeId} canEdit={canEdit} canManage={canManage}
             note={me.role === "limited" ? "You can view this plan. Staff and above can change it." : undefined} />
         </div>
         <div className="space-y-5">
@@ -96,6 +115,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
         </Card>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -157,3 +157,103 @@ export async function getDocumentForForm(id: string): Promise<DocumentForForm | 
     versionCount: data.version_count, classified: !!data.classified_at, archived: !!data.archived_at,
   };
 }
+
+// ── Client › Documents (AC-10) ───────────────────────────────────────────────
+export type ClientDocument = {
+  id: string; docCode: string; typeName: string; groupId: string; groupName: string; groupSort: number;
+  periodLabel: string | null; periodStart: string | null; fyCode: string; receivedOn: string; receivedBy: string;
+  receivedAs: "soft_copy" | "hard_copy" | "original"; versionCount: number;
+  current: { id: string; mimeType: string } | null; proposed: boolean;
+};
+
+type ClientDocRow = {
+  id: string; doc_code: string; received_on: string; received_as: ClientDocument["receivedAs"]; version_count: number;
+  receiver: { full_name: string } | null;
+  doc_type: { name: string; status: string; doc_group: { id: string; name: string; sort: number } | null } | null;
+  period: { label: string; start_date: string; financial_year: { code: string } | null } | null;
+  current: { id: string; mime_type: string } | null;
+};
+
+/**
+ * Received, classified, not archived documents of one client. FY = the period's FY; undated documents
+ * (no period) count in the FY of their received-on date. RLS: Limited users only reach clients they can see.
+ */
+export async function listClientDocuments(clientId: string): Promise<ClientDocument[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("document")
+    .select(`id, doc_code, received_on, received_as, version_count,
+      receiver:received_by (full_name),
+      doc_type:doc_type_id (name, status, doc_group:doc_group_id (id, name, sort)),
+      period:period_id (label, start_date, financial_year:financial_year_id (code)),
+      current:current_version_id (id, mime_type)`)
+    .eq("client_id", clientId).not("classified_at", "is", null).is("archived_at", null)
+    .order("received_on", { ascending: false }).limit(2000);
+  if (error) {
+    console.error("documents.client_list_failed", { code: error.code });
+    throw new Error("Could not load documents.");
+  }
+  return ((data ?? []) as unknown as ClientDocRow[]).filter((r) => r.doc_type?.doc_group).map((r) => ({
+    id: r.id, docCode: r.doc_code, typeName: r.doc_type!.name, groupId: r.doc_type!.doc_group!.id,
+    groupName: r.doc_type!.doc_group!.name, groupSort: r.doc_type!.doc_group!.sort,
+    periodLabel: r.period?.label ?? null, periodStart: r.period?.start_date ?? null,
+    fyCode: r.period?.financial_year?.code ?? fyOfDate(r.received_on),
+    receivedOn: r.received_on, receivedBy: r.receiver?.full_name ?? "—", receivedAs: r.received_as,
+    versionCount: r.version_count, current: r.current ? { id: r.current.id, mimeType: r.current.mime_type } : null,
+    proposed: r.doc_type!.status === "proposed",
+  }));
+}
+
+export async function countClientDocuments(clientId: string): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase.from("document").select("id", { count: "exact", head: true })
+    .eq("client_id", clientId).not("classified_at", "is", null).is("archived_at", null);
+  return count ?? 0;
+}
+
+function fyOfDate(d: string): string {
+  const [y, m] = d.split("-").map(Number);
+  const s = m >= 4 ? y : y - 1;
+  return `${s}-${String((s + 1) % 100).padStart(2, "0")}`;
+}
+
+// ── Document page (AC-11) ────────────────────────────────────────────────────
+export type DocumentDetail = DocumentForForm & {
+  typeName: string | null; groupName: string | null; periodLabel: string | null; registrationNumber: string | null;
+  receivedBy: string; addedBy: string; createdAt: string; archivedAt: string | null; archiveReason: string | null;
+  currentVersionId: string | null;
+  versions: { id: string; versionNo: number; fileName: string; mimeType: string; sizeBytes: number; uploadedAt: string; uploadedBy: string }[];
+  activity: { action: string; actor: string; at: string }[];
+};
+
+export async function getDocumentDetail(id: string): Promise<DocumentDetail | null> {
+  const base = await getDocumentForForm(id);
+  if (!base) return null;
+  const supabase = await createClient();
+  const [doc, versions, activity] = await Promise.all([
+    supabase.from("document").select(`created_at, archived_at, archive_reason, current_version_id,
+        receiver:received_by (full_name), creator:created_by (full_name),
+        doc_type:doc_type_id (name, doc_group:doc_group_id (name)), period:period_id (label), registration:registration_id (number)`)
+      .eq("id", id).single(),
+    supabase.from("document_version").select("id, version_no, file_name, mime_type, size_bytes, uploaded_at, uploader:uploaded_by (full_name)")
+      .eq("document_id", id).order("version_no", { ascending: false }),
+    supabase.from("activity").select("action, created_at, actor:actor_id (full_name)")
+      .eq("entity_type", "document").eq("entity_id", id).order("created_at", { ascending: false }).limit(50),
+  ]);
+  if (doc.error || versions.error) throw new Error("Could not load the document.");
+  const d = doc.data as unknown as {
+    created_at: string; archived_at: string | null; archive_reason: string | null; current_version_id: string | null;
+    receiver: { full_name: string } | null; creator: { full_name: string } | null;
+    doc_type: { name: string; doc_group: { name: string } | null } | null; period: { label: string } | null;
+    registration: { number: string } | null;
+  };
+  return {
+    ...base,
+    typeName: d.doc_type?.name ?? null, groupName: d.doc_type?.doc_group?.name ?? null, periodLabel: d.period?.label ?? null,
+    registrationNumber: d.registration?.number ?? null, receivedBy: d.receiver?.full_name ?? "—", addedBy: d.creator?.full_name ?? "—",
+    createdAt: d.created_at, archivedAt: d.archived_at, archiveReason: d.archive_reason, currentVersionId: d.current_version_id,
+    versions: ((versions.data ?? []) as unknown as Array<{ id: string; version_no: number; file_name: string; mime_type: string; size_bytes: number; uploaded_at: string; uploader: { full_name: string } | null }>)
+      .map((v) => ({ id: v.id, versionNo: v.version_no, fileName: v.file_name, mimeType: v.mime_type, sizeBytes: v.size_bytes, uploadedAt: v.uploaded_at, uploadedBy: v.uploader?.full_name ?? "—" })),
+    activity: ((activity.data ?? []) as unknown as Array<{ action: string; created_at: string; actor: { full_name: string } | null }>)
+      .map((a) => ({ action: a.action, actor: a.actor?.full_name ?? "—", at: a.created_at })),
+  };
+}

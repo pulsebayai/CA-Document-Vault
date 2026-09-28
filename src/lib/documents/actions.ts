@@ -208,3 +208,58 @@ export async function updateDocumentAction(input: UpdateDocumentInput): Promise<
   for (const c of new Set([doc.client_id, d.clientId].filter(Boolean))) revalidatePath(`/clients/${c}`);
   return { ok: true, id: doc.id, docCode: doc.doc_code };
 }
+
+// ── Document page (AC-11): new version, archive / unarchive ──────────────────
+export type SimpleResult = { ok: true } | { ok: false; error: string };
+
+export async function addVersionAction(documentId: string, file: UploadedFile): Promise<SimpleResult> {
+  const me = await requireStaff();
+  if (!uuid.safeParse(documentId).success) return { ok: false, error: "Document not found." };
+  const ext = extensionOf(String(file?.path ?? "")) as AllowedExtension;
+  const mime = MIME_BY_EXTENSION[ext];
+  if (!mime || file.mime !== mime || !String(file.path).startsWith(`office/${me.officeId}/doc/${documentId}/`)) {
+    return { ok: false, error: "The upload didn't finish. Please add the file again." };
+  }
+  const problem = await verifyUpload(file.path, { size: Number(file.size), mime });
+  if (problem) return { ok: false, error: problem };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("add_document_version", { p_document_id: documentId, p_file: {
+    storage_path: file.path, file_name: sanitiseFileName(String(file.fileName ?? ""), ext),
+  } });
+  if (error) {
+    console.error("documents.version_failed", { code: error.code });
+    return { ok: false, error: dbError(error.message).error };
+  }
+  revalidatePath(`/documents/${documentId}`);
+  return { ok: true };
+}
+
+export async function archiveDocumentAction(id: string, reason: string): Promise<SimpleResult> {
+  await requireStaff();
+  if (!uuid.safeParse(id).success) return { ok: false, error: "Document not found." };
+  const r = String(reason ?? "").trim();
+  if (!r) return { ok: false, error: "Give a reason for archiving." };
+  if (r.length > 300) return { ok: false, error: "Reason is too long (300 characters max)." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("archive_document", { p_id: id, p_reason: r });
+  if (error) {
+    if (/ROLE_REQUIRED/.test(error.message)) return { ok: false, error: "Only an Admin or Manager can archive documents." };
+    return { ok: false, error: "Couldn't archive the document. Please try again." };
+  }
+  revalidatePath(`/documents/${id}`);
+  revalidatePath("/inbox");
+  return { ok: true };
+}
+
+export async function unarchiveDocumentAction(id: string): Promise<SimpleResult> {
+  await requireStaff();
+  if (!uuid.safeParse(id).success) return { ok: false, error: "Document not found." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("unarchive_document", { p_id: id });
+  if (error) {
+    if (/ROLE_REQUIRED/.test(error.message)) return { ok: false, error: "Only an Admin or Manager can unarchive documents." };
+    return { ok: false, error: "Couldn't unarchive the document. Please try again." };
+  }
+  revalidatePath(`/documents/${id}`);
+  return { ok: true };
+}
