@@ -1,5 +1,5 @@
 # Spec: Document intake
-Intent: ./intent.md · Status: draft (rev 2 — Raja's answers 2026-09-28) · Date: 2026-09-28
+Intent: ./intent.md · Status: approved (rev 2, Raja 2026-09-28) · Date: 2026-09-28
 Screens: references/mockup/12-add-document.jpg, 02-inbox.jpg, 10-client-documents.jpg (received documents only; expected/overdue = 04, review/dispatch = 07)
 
 ## Key definitions
