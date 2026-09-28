@@ -54,7 +54,7 @@ Applied to **dev only** (project ysddbwskljzhbjjohool) via `apply_migration` aft
 - [x] 9. Client › Settings: header, card, tabs, groups & types, enable/disable/pause/remove/restore, "+ Add type" — proof: DB AC-19/20/21 (no duplicates on re-enable, firm records never copied); e2e enable group (1.5)
 - [x] 10. CSV import: template, browser preview, server re-validation, chunked `import_clients`, result + error-row download — proof: unit CSV tests (header, limits, in-file + DB duplicates, name warnings); e2e happy path + error file round-trip; AC-17 1,000 rows < 60 s nightly (`RUN_SLOW=1`) (1.5)
 - [x] 11. Accessibility (axe on 5 new screens) + empty/loading/error states + screenshots vs mockups 03/05/11 — proof: 0 serious/critical; screenshots in PR (0.5)
-- [ ] 12. AC-22 timed manual check with a staff member (≤ 2 min) — proof: time recorded in PR [you: 10 min]
+- [x] 12. AC-22 timed manual check with a staff member (≤ 2 min) — proof: time recorded in PR [you: 10 min]
 - [ ] 13. `verifier` full suite → `sdlc-reviewer` → fix Important → PR with AC → test → result table — proof: CI green, evidence shows all three suites [PR review: 1–2 h]
 **Total ≈ 10 build sessions ≈ 4–5 working days elapsed; your review ≈ 4–5 h.** Calibration: 01 (13 steps) went intent → shipped in ~1 day, but 02 has ~4× the surface (10 tables, 5 screens, import). [Likely] No scope deferral needed; if step 10 slips past 1.5 sessions, error-row download is the first cut.
 
@@ -146,6 +146,8 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
   - **D4 (approved by Raja 2026-09-27 19:07 IST):** `tests/e2e/client-edit.spec.ts:86` `getByText("owner@example.test")` → `{ exact: true }`. The email now correctly appears in the header *and* the client card, so the substring match hit two elements (strict mode). Same behaviour guarded (the saved email is shown); not weaker.
   - Earlier note superseded: comparison vs mockups needed the screenshots: the cloud workspace can't download CI artifacts (blob storage blocked) and the Vercel preview needs a Vercel login.
 
+- Step 12 (2026-09-28): AC-22 timed on the Vercel preview (dev DB, office "Kushal Associates", synthetic client "AC22 Test Traders" = C0001): enable GST, Income Tax, TDS/TCS; remove E-way bills, GST notice / order received, Advance tax challans, Income-tax notice / order received; Purchase invoices → Quarterly. **1:15 by stopwatch (target ≤ 2:00), no hesitation.** DB check (read-only): 3 groups active; 18 types = 14 active + 4 removed (the 4 named); Purchase invoices quarterly; activity rows 10:30:50 (first enable) → 10:31:59 (frequency saved) = 69 s. **Deviation: done by Raja (Admin), not a Staff member** — Raja: re-check with a staff member later → carried to the R1 staging manual checklist. The client stays in the dev office (no delete; archive if it gets in the way).
+
 ## Session log
 ### 2026-09-26
 - Done: intent approved; spec + seed catalogue approved (rev 2: catalogue = documents from the client; firm records separate, `doc_type.source`); 5 architecture changes approved; no groups pre-ticked; challans stay client documents. Plan drafted.
@@ -219,3 +221,10 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Blocked / failing: none. AC-17 proof = first nightly after merge (Raja).
 - Next step: step 12 — AC-22 timed manual check with a staff member (enable 3 groups, remove 4 types, change 1 frequency ≤ 2 min), time recorded for the PR. Needs Raja + preview access.
 - Decisions made (cross-cutting → flag for architecture.md at merge): shared `states.tsx` (LoadingState/ErrorState) for every screen; horizontal-scroll wrappers must be `position: relative` (sr-only content escapes otherwise); phone width ≤ 390 px asserted in e2e for key screens.
+
+### 2026-09-28
+- Done: step 12 — AC-22 1:15 (≤ 2:00) by Raja (Admin) on the preview; result verified in the dev DB. Staff-role re-check carried to the R1 staging checklist.
+- In progress: —
+- Blocked / failing: none.
+- Next step: step 13 — `verifier` full suite → `sdlc-reviewer` → fix Important → PR #4 out of draft with AC → test → result table (AC-17 "pending — first nightly after merge"; AC-22 1:15 Admin), screenshots from run 36324232291, dev migrations listed for Raja's review.
+- Decisions made (cross-cutting → flag at merge): R1 staging manual checklist gets "AC-22 timed by a Staff-role user".
