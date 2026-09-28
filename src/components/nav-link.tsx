@@ -10,7 +10,7 @@ export function NavLink({ href, children }: { href: string; children: ReactNode 
   const active = path === section || path.startsWith(`${section}/`);
   return (
     <Link href={href} aria-current={active ? "page" : undefined}
-      className={`rounded-lg px-3 py-1.5 ${active ? "bg-ink font-medium text-white" : "text-ink-2 hover:bg-canvas hover:text-ink"}`}>
+      className={`shrink-0 whitespace-nowrap rounded-lg px-3 py-1.5 ${active ? "bg-ink font-medium text-white" : "text-ink-2 hover:bg-canvas hover:text-ink"}`}>
       {children}
     </Link>
   );

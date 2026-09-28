@@ -4,10 +4,10 @@ import { useRouter } from "next/navigation";
 import { useId, useMemo, useRef, useState } from "react";
 import { searchClients } from "@/lib/clients/actions";
 import {
-  loadClientTypes, proposeType, saveDocument, startUpload, suggestTypes, type Suggestion,
+  loadClientTypes, proposeType, saveDocument, startUpload, suggestTypes, updateDocumentAction, type Suggestion,
 } from "@/lib/documents/actions";
 import { allowedPeriodKinds, defaultPeriod } from "@/lib/documents/period";
-import type { ClientOption, ClientTypes, PeriodOption, TypeOption } from "@/lib/documents/queries";
+import type { ClientOption, ClientTypes, DocumentForForm, PeriodOption, TypeOption } from "@/lib/documents/queries";
 import {
   ACCEPT_ATTRIBUTE, CHANNELS, RECEIVED_AS, validateFile, type Channel, type ReceivedAs, type ValidFile,
 } from "@/lib/validation/document";
@@ -25,6 +25,8 @@ type Props = {
   today: string;
   canPropose: boolean;
   returnTo: string;
+  /** Assign (Inbox) / edit: the same form for an existing document — no file here (new versions: document page). */
+  existing?: DocumentForForm;
 };
 
 type Upload =
@@ -55,7 +57,7 @@ function putFile(url: string, file: File, contentType: string, onProgress: (p: n
   });
 }
 
-export function DocumentForm({ initialClient, initialTypes, periods, groups, today, canPropose, returnTo }: Props) {
+export function DocumentForm({ initialClient, initialTypes, periods, groups, today, canPropose, returnTo, existing }: Props) {
   const router = useRouter();
   const uid = useId();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -67,16 +69,17 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
   const [dragging, setDragging] = useState(false);
 
   // Fields
-  const [receivedAs, setReceivedAs] = useState<ReceivedAs>("soft_copy");
-  const [client, setClient] = useState<ClientOption | null>(initialClient);
+  const existingPeriod = existing?.periodId ? periods.find((p) => p.id === existing.periodId) : undefined;
+  const [receivedAs, setReceivedAs] = useState<ReceivedAs>(existing?.receivedAs ?? "soft_copy");
+  const [client, setClient] = useState<ClientOption | null>(existing ? existing.client : initialClient);
   const [types, setTypes] = useState<ClientTypes>(initialTypes);
-  const [docTypeId, setDocTypeId] = useState("");
-  const [periodChoice, setPeriodChoice] = useState<PeriodChoice>("none");
-  const [periodId, setPeriodId] = useState("");
-  const [registrationId, setRegistrationId] = useState("");
-  const [channel, setChannel] = useState<Channel>("whatsapp");
-  const [receivedOn, setReceivedOn] = useState(today);
-  const [remark, setRemark] = useState("");
+  const [docTypeId, setDocTypeId] = useState(existing?.docTypeId ?? "");
+  const [periodChoice, setPeriodChoice] = useState<PeriodChoice>(existingPeriod?.kind ?? "none");
+  const [periodId, setPeriodId] = useState(existingPeriod?.id ?? "");
+  const [registrationId, setRegistrationId] = useState(existing?.registrationId ?? "");
+  const [channel, setChannel] = useState<Channel>((existing?.channel as Channel) ?? "whatsapp");
+  const [receivedOn, setReceivedOn] = useState(existing?.receivedOn ?? today);
+  const [remark, setRemark] = useState(existing?.remark ?? "");
 
   // Client search
   const [clientQuery, setClientQuery] = useState("");
@@ -223,16 +226,21 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     setError("");
     if (upload.status === "uploading") { setError("Wait for the upload to finish."); return; }
     setSaving(target);
-    const r = await saveDocument({
+    const fields = {
       target, receivedAs, channel, receivedOn, remark,
       clientId: client?.id ?? "", docTypeId: docTypeId === NEW_TYPE ? "" : docTypeId,
       periodId: periodChoice === "none" ? "" : periodId, registrationId,
+    };
+    const r = existing ? await updateDocumentAction({ id: existing.id, ...fields }) : await saveDocument({
+      ...fields,
       file: file && upload.status === "done"
         ? { path: upload.path, size: file.valid.size, mime: file.valid.mime, fileName: file.valid.fileName } : null,
     });
     setSaving(null);
     if (!r.ok) { setError(r.error); setFieldErrors(r.fieldErrors); return; }
-    router.push(`${returnTo}?saved=${encodeURIComponent(r.docCode)}`);
+    // A new document saved to the Inbox from the header goes to the Inbox; otherwise back where the user came from.
+    const dest = !existing && target === "inbox" && returnTo === "/clients" ? "/inbox" : returnTo;
+    router.push(`${dest}?saved=${encodeURIComponent(r.docCode)}`);
   }
 
   const busy = saving !== null;
@@ -242,6 +250,13 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     <form noValidate onSubmit={(e) => { e.preventDefault(); void save("vault"); }} className="space-y-4">
       {error && <p role="alert" className="rounded-lg bg-bad-soft px-4 py-3 text-[13.5px] text-bad">{error}</p>}
 
+      {existing ? (
+        <Card className="px-5 py-4 text-[13.5px]">
+          <span className="font-medium">{existing.docCode}</span>
+          <span className="text-ink-2"> · {existing.fileName ?? "No file (hard copy or original)"}</span>
+          {existing.versionCount > 1 && <span className="text-ink-3"> · {existing.versionCount} versions</span>}
+        </Card>
+      ) : (<>
       {/* Drop zone = a real, labelled file input (a11y); dropping a file does the same as browsing. */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -278,6 +293,8 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
           )}
         </div>
       )}
+
+      </>)}
 
       <Card className="divide-y divide-line">
         {/* Received as */}
@@ -342,9 +359,10 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
 
           {docTypeId === NEW_TYPE && (
             <div className="mt-3 space-y-3 rounded-lg border border-line bg-canvas p-3">
-              <label className="block text-[13.5px] font-medium">New type name
-                <input value={newName} onChange={(e) => onNewName(e.target.value)} maxLength={120} autoComplete="off" className={`mt-1 ${control}`} />
-              </label>
+              <div>
+                <label htmlFor={`${uid}-newname`} className="block text-[13.5px] font-medium">New type name</label>
+                <input id={`${uid}-newname`} value={newName} onChange={(e) => onNewName(e.target.value)} maxLength={120} autoComplete="off" className={`mt-1 ${control}`} />
+              </div>
               {suggestions.length > 0 && (
                 <div>
                   <p className="text-[13px] text-ink-2">Did you mean…</p>
@@ -361,12 +379,13 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
               )}
               {newName.trim().length >= 2 && (
                 <div className="flex flex-wrap items-end gap-2">
-                  <label className="block text-[13.5px] font-medium">Group
-                    <select value={newGroupId} onChange={(e) => setNewGroupId(e.target.value)} className={`mt-1 ${control} w-48`}>
+                  <div>
+                    <label htmlFor={`${uid}-newgroup`} className="block text-[13.5px] font-medium">Group</label>
+                    <select id={`${uid}-newgroup`} value={newGroupId} onChange={(e) => setNewGroupId(e.target.value)} className={`mt-1 ${control} w-48`}>
                       <option value="">Choose…</option>
                       {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
                     </select>
-                  </label>
+                  </div>
                   <Button type="button" variant="secondary" onClick={() => void createNewType()}>+ New type “{newName.trim()}” for this client</Button>
                 </div>
               )}
@@ -409,14 +428,16 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
         {/* Channel + received on */}
         <Row label="Received" as="fieldset">
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block text-[13px] text-ink-2">Channel
+            <div>
+              <label htmlFor={`${uid}-channel`} className="block text-[13px] text-ink-2">Channel</label>
               <select id={`${uid}-channel`} value={channel} onChange={(e) => setChannel(e.target.value as Channel)} className={`mt-1 ${control}`} {...described("channel")}>
                 {CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
-            </label>
-            <label className="block text-[13px] text-ink-2">Received on
-              <input type="date" value={receivedOn} max={today} onChange={(e) => setReceivedOn(e.target.value)} className={`mt-1 ${control}`} {...described("receivedOn")} />
-            </label>
+            </div>
+            <div>
+              <label htmlFor={`${uid}-received-on`} className="block text-[13px] text-ink-2">Received on</label>
+              <input id={`${uid}-received-on`} type="date" value={receivedOn} max={today} onChange={(e) => setReceivedOn(e.target.value)} className={`mt-1 ${control}`} {...described("receivedOn")} />
+            </div>
           </div>
           {errText("channel")}{errText("receivedOn")}
         </Row>
@@ -430,10 +451,12 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
       </Card>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" disabled={busy || uploading}>{saving === "vault" ? "Saving…" : "Save to vault"}</Button>
-        <Button type="button" variant="secondary" disabled={busy || uploading} onClick={() => void save("inbox")}>
-          {saving === "inbox" ? "Saving…" : "Save to inbox"}
-        </Button>
+        <Button type="submit" disabled={busy || uploading}>{saving === "vault" ? "Saving…" : existing?.classified ? "Save changes" : "Save to vault"}</Button>
+        {!existing?.classified && (
+          <Button type="button" variant="secondary" disabled={busy || uploading} onClick={() => void save("inbox")}>
+            {saving === "inbox" ? "Saving…" : existing ? "Keep in inbox" : "Save to inbox"}
+          </Button>
+        )}
       </div>
     </form>
   );
