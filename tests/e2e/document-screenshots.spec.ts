@@ -18,6 +18,9 @@ let docId: string;
 const SHOTS = "test-results/screenshots";
 
 test.beforeAll(async () => {
+  // Fixture set-up from a US runner to the Mumbai DB (office reset, storage purge, users, client, documents)
+  // can pass 30 s on a busy run (run 36455393633); the test's own checks keep their limits.
+  test.setTimeout(90_000);
   officeId = await createDocumentOffice("doc-screenshots-ui");
   admin = await createStaff(officeId, "dshots-admin", "admin");
   const staff = await createStaff(officeId, "dshots-staff", "staff");

@@ -89,7 +89,8 @@ test("AC-1 … AC-5: from a client page, a soft copy is filed in ≤ 3 clicks af
 test("AC-1, AC-4: a hard copy with no file goes to the Inbox from the header button", async ({ page, baseURL }) => {
   await signIn(page, staff.email, baseURL);
   await page.getByRole("banner").getByRole("link", { name: "Add document" }).click();
-  await page.getByText("Hard copy", { exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Add document" })).toBeVisible();
+  await page.getByRole("radio", { name: "Hard copy" }).check();
   await page.getByLabel("Channel").selectOption("courier");
   await page.getByRole("button", { name: "Save to inbox" }).click();
   await page.waitForURL(/\/clients\?saved=/);
@@ -116,7 +117,7 @@ test("AC-1, AC-2, AC-4: errors are inline, in plain words, and nothing is saved"
 test("AC-15: a new type is offered only after the closest existing ones, and joins the client's plan", async ({ page, baseURL }) => {
   await signIn(page, staff.email, baseURL);
   await page.goto(`/documents/new?client=${clientId}`);
-  await page.getByText("Hard copy", { exact: true }).click();
+  await page.getByRole("radio", { name: "Hard copy" }).check();
   await page.getByLabel("Document type").selectOption({ label: "+ New type for this client…" });
 
   const name = page.getByLabel("New type name");
