@@ -99,3 +99,10 @@ AC-1…17 → test file → result table in the PR; CI green (Unit + RLS + E2E e
 - Blocked / failing: 02 AC-17 still unproven — both nightlies so far ran on 581c64d (before the 02 merge); first nightly with it ≈ 04:10 IST 29 Sep. Check first next session.
 - Next step: Raja confirms D5 (and D1–D6 in general) → step 2 migration (dry-run on dev → Raja reviews SQL → apply).
 - Decisions made (cross-cutting → architecture.md in this PR): D1 (DB verifies stored objects), D4 (test-only clock fenced by is_test).
+
+### 2026-09-28 (step 2)
+- Done: D1–D6 approved (Raja 15:56; D5 = Staff/Manager/Admin propose, Limited don't). **D7: DOC-ID format → `DOC-FY26-27-00001`** (Raja 16:14–16:17; spec rev 2.1; no date/time in the ID). Migration dry-run on dev (rolled back) → SQL approved (Raja 16:22) → applied: `20260928105415_documents`, then advisor fixes `20260928105446_doc_type_insert_policy`, `20260928105505_doc_type_insert_policy_initplan` (one INSERT policy on doc_type; 0 WARN left — only "unused index" INFO on new tables and the intended no-policy INFO on `doc_counter`). **Proof: CI run 36412554540 (41aa696) green — Unit 137/0 · RLS 151/0/1 skipped (RUN_SLOW import) · E2E 25/0.** All 51 step-1 failures now pass; 02 suites unchanged.
+- In progress: —
+- Blocked / failing: 02 AC-17 still waits for tonight's nightly (≈ 04:10 IST 29 Sep).
+- Next step: step 3 — shared rules (file validator + sanitiser + extension→MIME map mirroring `private.mime_for_extension`, period default, DOC-ID/FY helpers), unit tests first.
+- Notes for later steps: step 8 must filter `status = 'proposed'` out of the catalogue type lists (`src/lib/catalogue/queries.ts`); roadmap row text still says `DOC-YY-NNNNN` → fix at merge (main). Decisions for architecture.md (in this PR): D1 (DB verifies stored objects), D4 (test-only clock fenced by is_test), D7 (DOC-ID format).
