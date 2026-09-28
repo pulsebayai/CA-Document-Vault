@@ -131,7 +131,11 @@ describe("signed upload and file links (AC-2, AC-11, AC-13)", () => {
     const res = await fetch(url);
     expect(res.ok).toBe(true);
     expect(Buffer.from(await res.arrayBuffer()).equals(TINY.pdf.bytes)).toBe(true);
-    expect(res.headers.get("content-disposition") ?? "").toContain("GSTR-1 Aug 2026.pdf");
+    // RFC 6266: the name arrives percent-encoded in filename*=UTF-8''… — decode and require the exact stored name.
+    const disposition = res.headers.get("content-disposition") ?? "";
+    expect(disposition).toMatch(/^attachment;/);
+    const encoded = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1] ?? "";
+    expect(decodeURIComponent(encoded)).toBe("GSTR-1 Aug 2026.pdf");
 
     const view = await fetch(await createFileLink(adminClient(), found!.storagePath, found!.fileName, "view"));
     expect(view.ok).toBe(true);
