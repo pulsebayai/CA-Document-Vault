@@ -26,7 +26,7 @@ Base: `feat/03-document-intake-and-search` from main `ede18ee` (02 merged). PR #
 | sdlc/product/architecture.md | mod | 4 approved changes + cross-cutting decisions (in the PR, like 02 D5) |
 
 ## Migrations (schema lock: 03)
-1. `<ts>_documents.sql` — everything above in one additive migration. SQL functions (SECURITY INVOKER unless noted — RLS applies):
+1. `20260928105415_documents.sql` (+ `20260928105446_doc_type_insert_policy.sql`, advisor fix: one doc_type INSERT policy) — everything above in one additive migration. SQL functions (SECURITY INVOKER unless noted — RLS applies):
    - `private.next_doc_code(office, fy_code)` — **definer**, row lock on `doc_counter`, returns `DOC-FY26-27-NNNNN` (implemented inside the document insert trigger).
    - `public.create_document(jsonb)` — document (+ version when a file is given) + activity, atomic; soft copy requires a file; sets `classified_at` when client + type are present.
    - `public.add_document_version(uuid, jsonb)` — next version number, becomes current, activity.
@@ -39,7 +39,7 @@ Base: `feat/03-document-intake-and-search` from main `ede18ee` (02 merged). PR #
 ## Steps (estimates = build sessions with Claude; your time in brackets)
 - [x] 0. Baseline: branch green in CI on 02's merged main — proof: CI run on the branch (docs-only commits so far) [—]
 - [x] 1. RLS/DB tests first (red): visibility matrix (4 roles × assigned/not × classified/inbox × own/others'); DOC-ID sequence per FY + restart 1 April (fixed dates) + no gaps + never reused; soft copy needs a file; version append-only, new version becomes current; archive Admin/Manager; DELETE rejected; `classified_at` once; registration/period rules; proposed type → plan row (+ client-only group row); suggestions fuzzy + aliases; activity without file names/remarks/PII; storage bucket private (anon + signed-in user can't read/list) — proof: `test:db` fails for the right reasons (1)
-- [ ] 2. Migration written, dry-run, reviewed, applied to dev; advisors clean — proof: step-1 tests green in CI (1) [review SQL: 30–45 min]
+- [x] 2. Migration written, dry-run, reviewed, applied to dev; advisors clean — proof: step-1 tests green in CI (1) [review SQL: 30–45 min]
 - [ ] 3. Shared rules: file validator + sanitiser, period default (month/quarter/year, April and quarter boundaries), DOC-ID/FY helpers — proof: unit tests red → green (0.5)
 - [ ] 4. Storage plumbing: `startUpload` (signed upload URL), object verification, `getFileLink` (≤ 60 s signed URL, download name), test cleanup helper — proof: DB/storage test uploads a synthetic PDF via signed URL, registers it, downloads via signed link, link expires; unauthorised lookup gets no link (1)
 - [ ] 5. Add document screen + header "+ Add document": received as, drop zone/progress, client, type with plan-first list + suggestions + "+ New type", period default, registration, channel, received on, remark, Save to vault / Save to inbox — proof: e2e add from client page (soft copy) + hard copy without file + new proposed type; ≤ 3 clicks path asserted (1.5)
