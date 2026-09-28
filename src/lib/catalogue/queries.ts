@@ -86,3 +86,33 @@ export async function loadCatalogue(): Promise<Catalogue> {
     years: (years.data ?? []).map((y) => ({ id: y.id as string, code: y.code as string, startDate: y.start_date as string, endDate: y.end_date as string })),
   };
 }
+
+// ── Feature 03 AC-16: "Proposed by staff" panel (read-only; approve / edit / map / reject arrive with 05) ──
+export type ProposedType = {
+  id: string; name: string; groupName: string; proposedBy: string; proposedAt: string;
+  clientId: string; clientName: string | null; documents: number;
+};
+
+export async function loadProposedTypes(): Promise<ProposedType[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("doc_type")
+    .select("id, name, created_at, proposed_for_client_id, doc_group:doc_group_id (name), proposer:proposed_by (full_name), client:proposed_for_client_id (id, name)")
+    .eq("status", "proposed").order("created_at", { ascending: false });
+  if (error) {
+    console.error("catalogue.proposed_failed", { code: error.code });
+    throw new Error("Could not load proposed types.");
+  }
+  const rows = (data ?? []) as unknown as Array<{
+    id: string; name: string; created_at: string; proposed_for_client_id: string; doc_group: { name: string } | null;
+    proposer: { full_name: string } | null; client: { id: string; name: string } | null;
+  }>;
+  const counts = new Map<string, number>();
+  if (rows.length) {
+    const { data: docs } = await supabase.from("document").select("doc_type_id").in("doc_type_id", rows.map((r) => r.id)).is("archived_at", null);
+    for (const d of docs ?? []) counts.set(d.doc_type_id as string, (counts.get(d.doc_type_id as string) ?? 0) + 1);
+  }
+  return rows.map((r) => ({
+    id: r.id, name: r.name, groupName: r.doc_group?.name ?? "", proposedBy: r.proposer?.full_name ?? "—", proposedAt: r.created_at,
+    clientId: r.proposed_for_client_id, clientName: r.client?.name ?? null, documents: counts.get(r.id) ?? 0,
+  }));
+}

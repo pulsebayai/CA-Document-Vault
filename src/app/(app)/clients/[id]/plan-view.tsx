@@ -149,6 +149,7 @@ function TypeRow({ type: t, periods, staff, groupAssignee, assigneeName, canEdit
     <tr className={`border-t border-line align-top ${removed || paused ? "text-ink-3" : ""}`}>
       <td className="px-5 py-2.5">
         <span className={removed || paused ? "" : "font-medium"}>{t.name}</span>
+        {t.proposed && <span className="ml-2"><Badge tone="accent">Proposed</Badge></span>}
         {assigneeName && <span className="block text-[12.5px] text-ink-3">Assigned to {assigneeName}</span>}
         {paused && <span className="block text-[12.5px]">Paused{t.pausedAt ? ` ${monthYear(t.pausedAt)}` : ""}{t.remark ? ` · ${t.remark}` : ""}</span>}
         {removed && <span className="block text-[12.5px]">Not collected for this client</span>}
