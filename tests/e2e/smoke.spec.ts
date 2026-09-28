@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 test("app is up and signed-out visitors see the sign-in page", async ({ page }) => {
   await page.goto("/");

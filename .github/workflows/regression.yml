@@ -26,7 +26,8 @@ concurrency: { group: dev-database, cancel-in-progress: false }
 jobs:
   regression:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Full suite ≈ 26 min (RLS incl. RUN_SLOW ≈ 7, e2e ≈ 17); 30 left no headroom (run 36439895456).
+    timeout-minutes: 45
     env:
       TARGET: ${{ inputs.target || 'dev' }}
       E2E_BASE_URL: ${{ inputs.base_url || 'https://ca-document-vault.vercel.app' }}
@@ -34,6 +35,9 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ (inputs.target == 'staging' && vars.STAGING_SUPABASE_URL) || vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ (inputs.target == 'staging' && vars.STAGING_SUPABASE_PUBLISHABLE_KEY) || vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SECRET_KEY: ${{ (inputs.target == 'staging' && secrets.STAGING_SUPABASE_SECRET_KEY) || (inputs.target != 'prod' && secrets.DEV_SUPABASE_SECRET_KEY) || '' }}
+      # Vercel › Deployment Protection › Protection Bypass for Automation. Lets e2e reach protected previews
+      # (tests/e2e/preview-access.ts); sent only to E2E_BASE_URL's origin. Never needed for prod smoke.
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ inputs.target != 'prod' && secrets.VERCEL_AUTOMATION_BYPASS_SECRET || '' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

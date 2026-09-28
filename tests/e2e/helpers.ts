@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 import { adminClient } from "../support/db";
+import { allowPreview } from "./preview-access";
 
 /** The app's own alert (excludes Next.js's hidden route announcer, which also has role="alert"). */
 export function appAlert(page: Page): Locator {
@@ -15,6 +16,7 @@ export async function signIn(page: Page, email: string, baseURL: string | undefi
     type: "magiclink", email, options: { redirectTo: `${baseURL ?? "http://localhost:3000"}/auth/callback` },
   });
   if (error) throw new Error(`generateLink failed: ${error.message}`);
+  await allowPreview(page.context(), baseURL); // contexts a test creates itself (browser.newContext)
   await page.goto(data.properties.action_link);
   await Promise.race([
     page.waitForURL(/\/clients$/, { timeout: 30_000 }),
