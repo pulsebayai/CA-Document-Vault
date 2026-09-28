@@ -62,6 +62,7 @@ Base: `feat/03-document-intake-and-search` from main `ede18ee` (02 merged). PR #
 | Storage writes from CI to dev | tiny synthetic files; test offices' objects removed via Storage API at run start |
 | Large-file e2e flakiness | e2e uses small files; the 25 MB limit is tested with a size check (bucket rejects > 25 MB) at DB/storage level, not a real 25 MB upload |
 | Proposed type creating a partial group | explicit, tested rule (group row holds only the proposed type); Client › Settings shows it; "+ Add type" adds the rest |
+| Downloaded files cached by the browser on shared office PCs | uploads stored `Cache-Control: private, no-store`; **Supabase signed downloads don't echo it** (no Cache-Control header, CI 36430717826), so browsers may cache heuristically → before pilot: check the prod/staging response headers; if still absent, serve downloads through a short server route that sets `no-store`, or accept and brief staff (log off shared PCs) |
 Rollback: dev only → revert PR + compensating migration (drop new tables/bucket — no real data).
 
 ## Proof of done
