@@ -48,7 +48,7 @@ Base: `feat/03-document-intake-and-search` from main `ede18ee` (02 merged). PR #
 - [x] 8. Catalogue "Proposed by staff" panel + "Proposed" badge in Client › Settings — proof: e2e staff proposes a type → admin sees it in the panel with proposer/client/document count (0.5)
 - [x] 9. States + a11y + screenshots vs mockups 02/10/12 + ≤ 390 px — proof: axe 0 serious/critical on 4 new screens; screenshots in the evidence artifact (0.5)
 - [ ] 10. AC-5 timed manual check with a **Staff-role** user (≤ 3 clicks after choosing the file, ≤ 30 s median over 3 documents) — proof: times recorded in the PR [you or a staff member: 10 min]
-- [ ] 11. architecture.md update · `verifier` → `sdlc-reviewer` → fix Important → PR with AC → test → result table — proof: CI green, evidence with all suites [PR review: 1–2 h]
+- [ ] 11. (all done except PR ready — waits for step 10 + hardening-SQL review) architecture.md update · `verifier` → `sdlc-reviewer` → fix Important → PR with AC → test → result table — proof: CI green, evidence with all suites [PR review: 1–2 h]
 **Total ≈ 9.5 build sessions** (02 took ~10 for similar surface: ~2 working days elapsed at 02's pace). Your review ≈ 3–4 h. First cut if it slips: the per-registration pick (default to "none" and edit later) and the document-page activity summary.
 
 ## Risks
@@ -121,3 +121,11 @@ AC-1…17 → test file → result table in the PR; CI green (Unit + RLS + E2E e
 - Blocked / needs Raja: **step 10 — AC-5 timed check by a Staff-role user** (≤ 3 clicks after choosing the file, median ≤ 30 s over 3 documents) on the Vercel preview. **03 volume test (RUN_SLOW) has not run yet** — first nightly after merge, or a manual `regression.yml` run on this branch.
 - Next step: step 11, then Raja: step 10 + PR review.
 - Decisions made (→ architecture.md in this PR): D1, D2, D4, D7, D8, raw-PUT upload, `--warn` token (→ ui-reference at merge).
+
+### 2026-09-28 (step 11, evening)
+- Done: architecture.md updated (lock 03). `sdlc-reviewer`: 6 Important + 13 Nits → all Important and most Nits fixed (migration `20260928134130_documents_hardening` applied to dev, smoke-checked in a rolled-back block; app fixes). PR #7 description written (AC → test → result table), still **draft**. **Proof: CI run 36432646755 (8a487dd) green — Unit 165 · RLS 164/0/3 skipped · E2E 43/0.**
+- In progress: step 11 closes when Raja has reviewed the hardening SQL and step 10 is recorded.
+- Blocked / needs Raja: **step 10** (AC-5 timed check with a Staff-role user on the Vercel preview); **review `20260928134130_documents_hardening.sql`**; optional manual `regression.yml` (RUN_SLOW) on this branch for the volume test.
+- Residual risk logged: Supabase signed downloads don't send our `no-store` → check on staging before pilot.
+- Next step: Raja → step 10 + SQL review → mark PR ready → merge (Raja) → on main: roadmap (03 shipped, DOC-ID text, release locks), ui-reference deviations (`--warn`, phone header).
+- Decisions made: none new beyond the review fixes (recorded under Deviations).
