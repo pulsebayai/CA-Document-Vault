@@ -76,6 +76,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
   const [newName, setNewName] = useState("");
   const [newGroupId, setNewGroupId] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [suggestedFor, setSuggestedFor] = useState("");
   const [newTypeError, setNewTypeError] = useState("");
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -185,7 +186,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     setNewTypeError("");
     if (suggestTimer.current) clearTimeout(suggestTimer.current);
     if (v.trim().length < 2) { setSuggestions([]); return; }
-    suggestTimer.current = setTimeout(async () => setSuggestions(await suggestTypes(client?.id ?? null, v)), 250);
+    suggestTimer.current = setTimeout(async () => { setSuggestions(await suggestTypes(client?.id ?? null, v)); setSuggestedFor(v); }, 250);
   }
 
   function pickSuggestion(s: Suggestion) {
@@ -246,7 +247,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onDrop={(e) => { e.preventDefault(); setDragging(false); void chooseFile(e.dataTransfer.files?.[0]); }}
-        className={`rounded-xl border border-dashed bg-panel px-6 py-7 text-center shadow-card ${dragging ? "border-accent bg-accent-soft" : "border-line-2"}`}>
+        className={`rounded-xl border border-dashed bg-panel px-6 py-7 text-center shadow-card focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent ${dragging ? "border-accent bg-accent-soft" : "border-line-2"}`}>
         <label htmlFor={`${uid}-file`} className="cursor-pointer font-medium">
           Drop a file here or <span className="text-accent underline">browse</span>
         </label>
@@ -268,7 +269,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
           {uploading && (
             <div className="max-w-sm">
               <progress max={100} value={upload.progress} aria-label="Upload progress" className="h-1.5 w-full" />
-              <p role="status" className="text-[13px] text-ink-2">Uploading… {upload.progress}%</p>
+              <p className="text-[13px] text-ink-2">Uploading… {upload.progress}%<span role="status" className="sr-only">Uploading</span></p>
             </div>
           )}
           {upload.status === "done" && <p role="status" className="text-[13px] text-ok">Uploaded</p>}
@@ -361,7 +362,8 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
                   </ul>
                 </div>
               )}
-              {newName.trim().length >= 2 && (
+              {/* AC-15: offered only once the closest existing types for this name have been shown. */}
+              {newName.trim().length >= 2 && suggestedFor === newName && (
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
                     <label htmlFor={`${uid}-newgroup`} className="block text-[13.5px] font-medium">Group</label>

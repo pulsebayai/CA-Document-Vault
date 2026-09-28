@@ -109,12 +109,12 @@ type InboxRow = {
 };
 
 /** Unclassified, not archived, newest first. RLS: Staff+ see all; Limited only what they added (AC-9). */
-export async function listInbox(limit = 200): Promise<InboxItem[]> {
+/** `onlyAddedBy`: a Limited user's Inbox is what they added (AC-7/9); RLS alone also shows unclassified items of their clients. */
+export async function listInbox(onlyAddedBy: string | null, limit = 200): Promise<InboxItem[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("document")
-    .select(INBOX_SELECT)
-    .is("classified_at", null).is("archived_at", null)
-    .order("created_at", { ascending: false }).limit(limit);
+  let q = supabase.from("document").select(INBOX_SELECT).is("classified_at", null).is("archived_at", null);
+  if (onlyAddedBy) q = q.eq("created_by", onlyAddedBy);
+  const { data, error } = await q.order("created_at", { ascending: false }).limit(limit);
   if (error) {
     console.error("documents.inbox_failed", { code: error.code });
     throw new Error("Could not load the Inbox.");
@@ -127,10 +127,11 @@ export async function listInbox(limit = 200): Promise<InboxItem[]> {
 }
 
 /** Nav badge (AC-7): what this user's Inbox holds. */
-export async function inboxCount(): Promise<number> {
+export async function inboxCount(onlyAddedBy: string | null): Promise<number> {
   const supabase = await createClient();
-  const { count } = await supabase.from("document").select("id", { count: "exact", head: true })
-    .is("classified_at", null).is("archived_at", null);
+  let q = supabase.from("document").select("id", { count: "exact", head: true }).is("classified_at", null).is("archived_at", null);
+  if (onlyAddedBy) q = q.eq("created_by", onlyAddedBy);
+  const { count } = await q;
   return count ?? 0;
 }
 

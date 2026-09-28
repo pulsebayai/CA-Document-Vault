@@ -77,6 +77,11 @@ describe("sanitiseFileName (AC-2, DB check document_version_file_name)", () => {
     expect(sanitiseFileName("  lots   of   space .pdf ")).toBe("lots of space .pdf");
   });
 
+  it("removes bidirectional/format control characters (right-to-left override spoofing)", () => {
+    expect(sanitiseFileName("invoice\u202Efdp.exe.pdf")).toBe("invoicefdp.exe.pdf");
+    expect(sanitiseFileName("a\u200Bb\u2066c.pdf")).toBe("abc.pdf");
+  });
+
   it("caps at 180 characters and keeps the extension", () => {
     const out = sanitiseFileName("x".repeat(300) + ".xlsx");
     expect(out.length).toBe(180);

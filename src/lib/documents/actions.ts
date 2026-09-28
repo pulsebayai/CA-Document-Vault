@@ -16,6 +16,10 @@ import { issueUploadTicket, signFileLink, verifyUpload } from "./storage";
 
 // Spec 03 — upload, save, types and file links (plan steps 4–5).
 const uuid = z.uuid();
+const UUID_RE = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+/** office/<office>/doc/<document>/<version>.<ext> of this office (and document, when given) — checked before any service-role call. */
+const ownPath = (path: unknown, officeId: string, documentId = UUID_RE) =>
+  typeof path === "string" && new RegExp(`^office/${officeId}/doc/${documentId}/${UUID_RE}\\.[a-z]+$`).test(path);
 
 export type StartUploadResult = ({ ok: true } & UploadTicket) | { ok: false; error: string };
 
@@ -75,6 +79,8 @@ export type SaveDocumentResult =
 /** DB rule codes → plain messages (never the DB text: it can echo values). */
 const DB_MESSAGES: Array<[RegExp, string, string?]> = [
   [/SOFT_COPY_NEEDS_FILE/, "Add the file — a soft copy needs one.", "file"],
+  [/DECLASSIFY/, "A filed document keeps a client and a type. Change them instead of clearing them.", "clientId"],
+  [/CLIENT_ARCHIVED/, "This client is archived. Choose another client.", "clientId"],
   [/PERIOD_KIND/, "This period doesn't suit the document type. Choose another period.", "periodId"],
   [/PERIOD_OFFICE/, "Choose the period again.", "periodId"],
   [/REGISTRATION_MISMATCH/, "Choose one of this client's active registrations for this type.", "registrationId"],
@@ -107,7 +113,7 @@ export async function saveDocument(input: SaveDocumentInput): Promise<SaveDocume
   if (file) {
     const ext = extensionOf(String(file.path ?? "")) as AllowedExtension;
     const mime = MIME_BY_EXTENSION[ext];
-    const ours = typeof file.path === "string" && file.path.startsWith(`office/${me.officeId}/doc/`);
+    const ours = ownPath(file.path, me.officeId);
     if (!ours || !mime || file.mime !== mime) return { ok: false, error: "The upload didn't finish. Please add the file again.", fieldErrors: { file: "Add the file again." } };
     const problem = await verifyUpload(file.path, { size: Number(file.size), mime });
     if (problem) return { ok: false, error: problem, fieldErrors: { file: problem } };
@@ -217,7 +223,7 @@ export async function addVersionAction(documentId: string, file: UploadedFile): 
   if (!uuid.safeParse(documentId).success) return { ok: false, error: "Document not found." };
   const ext = extensionOf(String(file?.path ?? "")) as AllowedExtension;
   const mime = MIME_BY_EXTENSION[ext];
-  if (!mime || file.mime !== mime || !String(file.path).startsWith(`office/${me.officeId}/doc/${documentId}/`)) {
+  if (!mime || file.mime !== mime || !ownPath(file.path, me.officeId, documentId)) {
     return { ok: false, error: "The upload didn't finish. Please add the file again." };
   }
   const problem = await verifyUpload(file.path, { size: Number(file.size), mime });

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AppLayout({ children }: LayoutProps<"/">) {
   const me = await requireStaff();
-  const count = await inboxCount();
+  const count = await inboxCount(me.role === "limited" ? me.id : null);
   return (
     <>
       <AppHeader me={me} inboxCount={count} />

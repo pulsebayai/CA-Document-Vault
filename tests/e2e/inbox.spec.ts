@@ -10,7 +10,7 @@ import { signIn } from "./helpers";
 let officeId: string;
 let staff: { id: string; email: string };
 let limited: { id: string; email: string };
-const docs = {} as Record<"courier" | "scan" | "limitedOwn", { id: string; doc_code: string }>;
+const docs = {} as Record<"courier" | "scan" | "onLimitedsClient" | "limitedOwn", { id: string; doc_code: string }>;
 
 test.beforeAll(async () => {
   officeId = await createDocumentOffice("inbox-ui");
@@ -23,6 +23,11 @@ test.beforeAll(async () => {
   docs.courier = await mustCreateDocument(asStaff, { received_as: "hard_copy", channel: "courier", remark: "from Blue Dart, sender unclear" });
   const obj = await uploadObject(officeId, "pdf");
   docs.scan = await mustCreateDocument(asStaff, { received_as: "soft_copy", channel: "whatsapp", file: { storage_path: obj.path, file_name: "Scan_0912.pdf" } });
+  // Review fix: a Staff member's unclassified item on the Limited user's own client (visible to them by RLS, AC-12)
+  // must not appear in the Limited user's Inbox — their Inbox is what they added (AC-9).
+  const { data: lc, error: e2 } = await asStaff.rpc("create_client", { p: { name: "Limited's Client", client_type: "individual", incharge_id: limited.id } });
+  if (e2) throw e2;
+  docs.onLimitedsClient = await mustCreateDocument(asStaff, { received_as: "hard_copy", channel: "email", client_id: lc.id });
   docs.limitedOwn = await mustCreateDocument(asLimited, { received_as: "original", channel: "hand_delivery" });
 });
 test.afterAll(async () => { await retireStaff([staff?.id, limited?.id].filter(Boolean) as string[]); });
@@ -37,10 +42,10 @@ const items = (page: Page) => page.getByRole("list", { name: "Inbox" }).getByRol
 
 test("AC-7, AC-9: staff see every unclassified document, newest first, with what's missing and how long it waited", async ({ page, baseURL }) => {
   await signIn(page, staff.email, baseURL);
-  await expect(inboxLink(page)).toHaveAccessibleName(/Inbox, 3 waiting/);
+  await expect(inboxLink(page)).toHaveAccessibleName(/Inbox, 4 waiting/);
   await inboxLink(page).click();
   await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
-  await expect(items(page)).toHaveCount(3);
+  await expect(items(page)).toHaveCount(4);
   await expect(items(page).first()).toContainText(docs.limitedOwn.doc_code); // newest first
   const courier = items(page).filter({ hasText: docs.courier.doc_code });
   await expect(courier).toContainText("Hard copy · from Courier · remark: “from Blue Dart, sender unclear”");
@@ -57,6 +62,7 @@ test("AC-9: a Limited user sees only the Inbox items they added", async ({ page,
   await page.goto("/inbox");
   await expect(items(page)).toHaveCount(1);
   await expect(items(page).first()).toContainText(docs.limitedOwn.doc_code);
+  await expect(page.getByText(docs.onLimitedsClient.doc_code)).toHaveCount(0);
   // Someone else's Inbox item: Not Found, not an error page with data.
   await page.goto(`/documents/${docs.courier.id}/assign`);
   await expect(page.getByText(/not found|could not be found/i).first()).toBeVisible();
@@ -79,9 +85,9 @@ test("AC-8: Assign opens the form with what is known; client + type files it and
 
   await page.waitForURL(/\/inbox\?saved=/);
   await expect(page.getByRole("status").filter({ hasText: "saved" })).toContainText(docs.courier.doc_code);
-  await expect(items(page)).toHaveCount(2);
+  await expect(items(page)).toHaveCount(3);
   await expect(page.getByRole("link", { name: `Assign ${docs.courier.doc_code}` })).toHaveCount(0);
-  await expect(inboxLink(page)).toHaveAccessibleName(/Inbox, 2 waiting/);
+  await expect(inboxLink(page)).toHaveAccessibleName(/Inbox, 3 waiting/);
   const { data } = await adminClient().from("document").select("classified_at, client_id, doc_type_id").eq("id", docs.courier.id).single();
   expect(data!.classified_at).not.toBeNull();
   expect(data!.client_id).not.toBeNull();

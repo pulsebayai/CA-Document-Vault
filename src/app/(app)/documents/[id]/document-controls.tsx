@@ -36,11 +36,13 @@ export function NewVersion({ documentId }: { documentId: string }) {
 
   return (
     <div>
-      <label htmlFor={`${uid}-v`} className="inline-flex h-[30px] cursor-pointer items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent">
+      <div className="inline-flex rounded-[7px] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
+      <label htmlFor={`${uid}-v`} className="inline-flex h-[30px] cursor-pointer items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas">
         Upload new version
       </label>
       <input ref={input} id={`${uid}-v`} type="file" accept={ACCEPT_ATTRIBUTE} className="sr-only" onChange={(e) => void choose(e.target.files?.[0])} />
-      {state.status === "uploading" && <p role="status" className="mt-1 text-[13px] text-ink-2">Uploading… {state.progress}%</p>}
+      </div>
+      {state.status === "uploading" && <p className="mt-1 text-[13px] text-ink-2">Uploading… {state.progress}%<span role="status" className="sr-only">Uploading</span></p>}
       {state.status === "done" && <p role="status" className="mt-1 text-[13px] text-ok">New version saved.</p>}
       {state.status === "error" && <p role="alert" className="mt-1 text-[13px] text-bad">{state.error}</p>}
     </div>

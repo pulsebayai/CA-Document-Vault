@@ -66,12 +66,13 @@ export function validateFile(f: FileFacts): { data: ValidFile | null; error: str
 const MAX_NAME = 180;
 
 /**
- * Stored/download name (AC-2, DB check document_version_file_name): path separators and control characters
+ * Stored/download name (AC-2, DB checks document_version_file_name/_format): path separators, control and
+ * format (bidi) characters
  * removed (tabs/newlines become spaces), spaces tidied, no leading dots, ≤ 180 characters keeping the extension.
  */
 export function sanitiseFileName(name: string, fallbackExt = ""): string {
   const clean = (s: string) =>
-    s.normalize("NFC").replace(/[\t\n\r\v\f]/g, " ").replace(/[/\\\p{Cc}]/gu, "").replace(/\s+/g, " ");
+    s.normalize("NFC").replace(/[\t\n\r\v\f]/g, " ").replace(/[/\\\p{Cc}\p{Cf}]/gu, "").replace(/\s+/g, " ");
   const all = clean(name ?? "");
   const i = all.lastIndexOf(".");
   let ext = i >= 0 ? all.slice(i + 1).trim() : "";

@@ -43,6 +43,8 @@ export async function createDocumentOffice(label: string): Promise<string> {
 
 /** Removes every object under office/<id>/ (test offices only — callers pass fixture offices). */
 export async function purgeTestStorage(officeId: string) {
+  const { data: office } = await adminClient().from("office").select("is_test").eq("id", officeId).single();
+  if (!office?.is_test) throw new Error("purgeTestStorage: refusing an office that is not flagged is_test");
   const store = adminClient().storage.from(BUCKET);
   const root = `office/${officeId}/doc`;
   const { data: folders, error } = await store.list(root, { limit: 1000 });

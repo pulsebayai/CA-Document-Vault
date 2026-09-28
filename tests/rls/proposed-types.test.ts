@@ -174,6 +174,14 @@ describe("create a proposed type (AC-15)", () => {
     expect(r.error).not.toBeNull(); // catalogue inserts stay Admin/Manager (02 policy)
   });
 
+  it("even Admin/Manager can't insert a proposed type directly (proposer and plan row come from create_proposed_type)", async () => {
+    const r = await as.admin.from("doc_type").insert({
+      office_id: officeId, doc_group_id: banking, code: "x_forged_proposal", name: "Forged proposal", period_kind: "none",
+      default_frequency: "as_needed", source: "client", reminders: false, status: "proposed", proposed_by: u.staff.id, proposed_for_client_id: clientY,
+    });
+    expect(r.error?.message ?? "").toMatch(/row-level security|violates/);
+  });
+
   it("status proposed ⇔ proposed_for_client_id is set", async () => {
     const r = await as.admin.from("doc_type").insert({
       office_id: officeId, doc_group_id: banking, code: "x_half_proposed", name: "Half proposed", period_kind: "none",

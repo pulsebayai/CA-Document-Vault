@@ -478,6 +478,55 @@ describe("visibility matrix (AC-9, AC-12)", () => {
   });
 });
 
+// ── Pre-PR review hardening (sdlc-reviewer, 2026-09-28) ──────────────────────
+describe("review hardening: tenant first, functions only, no un-filing", () => {
+  it("a direct write into another office is refused at the tenant boundary, before any counter or lock", async () => {
+    const r1 = await as.staff.from("document").insert({ office_id: otherOfficeId, received_as: "hard_copy", channel: "courier", received_on: "2026-08-01" });
+    expect(r1.error?.message ?? "").toMatch(/OFFICE_DENIED/);
+    const theirs = await mustCreateDocument(as.outsider, {});
+    const obj = await uploadObject(otherOfficeId, "pdf", theirs.id);
+    const r2 = await as.staff.from("document_version").insert({ office_id: otherOfficeId, document_id: theirs.id, storage_path: obj.path, file_name: "x.pdf" });
+    expect(r2.error?.message ?? "").toMatch(/OFFICE_DENIED/);
+  });
+
+  it("documents and versions change only through the vault's functions (so every change writes activity)", async () => {
+    const ins = await as.staff.from("document").insert({ office_id: officeId, received_as: "hard_copy", channel: "courier", received_on: "2026-08-01" });
+    expect(ins.error?.message ?? "").toMatch(/permission denied/);
+    const d = await mustCreateDocument(as.staff, {});
+    const upd = await as.staff.from("document").update({ remark: "sneaky" }).eq("id", d.id);
+    expect(upd.error?.message ?? "").toMatch(/permission denied/);
+    const arch = await as.admin.from("document").update({ archived_at: new Date().toISOString() }).eq("id", d.id);
+    expect(arch.error?.message ?? "").toMatch(/permission denied|REASON/);
+    const obj = await uploadObject(officeId, "pdf", d.id);
+    const ver = await as.staff.from("document_version").insert({ office_id: officeId, document_id: d.id, storage_path: obj.path, file_name: "x.pdf" });
+    expect(ver.error?.message ?? "").toMatch(/permission denied/);
+    expect((await documentRow(d.id)).remark).toBeNull();
+  });
+
+  it("a filed document can't be moved back to the Inbox (it would drop out of every list)", async () => {
+    const d = await mustCreateDocument(as.staff, { client_id: clientB, doc_type_id: t.form16 });
+    const r1 = await as.staff.rpc("update_document", { p_id: d.id, p: { client_id: null } });
+    expect(r1.error?.message ?? "").toMatch(/DECLASSIFY/);
+    const r2 = await as.staff.rpc("update_document", { p_id: d.id, p: { doc_type_id: null } });
+    expect(r2.error?.message ?? "").toMatch(/DECLASSIFY/);
+    expect((await documentRow(d.id)).client_id).toBe(clientB);
+  });
+
+  it("documents can't be filed to an archived client", async () => {
+    const c = await mustInsertClient(as.staff, officeId, { name: "Docs archived client", client_type: "individual", incharge_id: u.staff.id });
+    const { error: ae } = await as.manager.from("client").update({ archived_at: new Date().toISOString() }).eq("id", c.id);
+    expect(ae).toBeNull();
+    const r = await createDocument(as.staff, { client_id: c.id, doc_type_id: t.form16 });
+    expect(r.error?.message ?? "").toMatch(/CLIENT_ARCHIVED/);
+  });
+
+  it("file names with bidirectional control characters are refused (display spoofing)", async () => {
+    const obj = await uploadObject(officeId, "pdf");
+    const { error } = await createDocument(as.staff, { received_as: "soft_copy", file: { storage_path: obj.path, file_name: "invoice\u202Efdp.exe.pdf" } });
+    expect(error?.message ?? "").toMatch(/FILE_NAME|violates/);
+  });
+});
+
 // ── Activity (AC-17) ─────────────────────────────────────────────────────────
 describe("activity (AC-17)", () => {
   it("add, classify, edit, new version, archive and unarchive each write one row — IDs and field names only", async () => {

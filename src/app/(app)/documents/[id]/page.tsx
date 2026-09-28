@@ -22,8 +22,10 @@ const when = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", 
 const date = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 const size = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
-export default async function DocumentPage({ params }: PageProps<"/documents/[id]">) {
+export default async function DocumentPage({ params, searchParams }: PageProps<"/documents/[id]">) {
   const { id } = await params;
+  const sp = await searchParams;
+  const saved = typeof sp.saved === "string" && /^DOC-FY\d{2}-\d{2}-\d{5,}$/.test(sp.saved) ? sp.saved : null;
   const me = await requireStaff();
   if (!z.uuid().safeParse(id).success) notFound();
   const d = await getDocumentDetail(id);
@@ -52,6 +54,8 @@ export default async function DocumentPage({ params }: PageProps<"/documents/[id
           {canManageCatalogue(me.role) && <ArchiveDocument id={d.id} docCode={d.docCode} archived={archived} />}
         </div>
       </div>
+
+      {saved && <p role="status" className="rounded-lg bg-ok-soft px-4 py-3 text-[13.5px] text-ok"><strong className="font-semibold">{saved}</strong> saved.</p>}
 
       {archived && (
         <p role="status" className="rounded-lg bg-warn-soft px-4 py-3 text-[13.5px] text-warn">

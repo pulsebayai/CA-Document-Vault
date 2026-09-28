@@ -6,6 +6,7 @@ import { ALLOWED_MIME, BUCKET, MAX_BYTES, TINY, createDocumentOffice, objectPath
 import {
   MAX_LINK_SECONDS, createFileLink, createUploadTicket, lookupVersion, objectPathFor, verifyStoredObject,
 } from "@/lib/documents/storage-core";
+import { UPLOAD_HEADERS } from "@/lib/documents/upload-client";
 
 // Feature 03 — files are never public (spec AC-13, AC-14; plan step 1). The signed-URL round trip
 // (issue → upload → register → view/download → expiry) is tested at the end, against src/lib/documents/storage-core.ts.
@@ -112,11 +113,13 @@ describe("signed upload and file links (AC-2, AC-11, AC-13)", () => {
   it("the browser's raw PUT to the signed URL stores our canonical type, whatever the browser would declare", async () => {
     const zip = { ext: "zip" as const, mime: "application/zip", size: 22, fileName: "bundle.zip" };
     const t = await createUploadTicket(adminClient(), officeId, randomUUID(), zip);
-    const res = await fetch(t.signedUrl, {
-      method: "PUT", body: Buffer.alloc(22, 1), headers: { "content-type": t.contentType, "x-upsert": "false", "cache-control": "max-age=3600" },
-    });
+    const res = await fetch(t.signedUrl, { method: "PUT", body: Buffer.alloc(22, 1), headers: { "content-type": t.contentType, ...UPLOAD_HEADERS } });
     expect(res.ok).toBe(true);
     expect(await verifyStoredObject(adminClient(), t.path, { size: 22, mime: "application/zip" })).toBeNull();
+    // Architecture: no document bytes cached — the file is served back with Cache-Control: private, no-store.
+    const dl = await fetch(await createFileLink(adminClient(), t.path, "bundle.zip", "download"));
+    expect(dl.ok).toBe(true);
+    expect(dl.headers.get("cache-control") ?? "").toMatch(/no-store/);
     const html = await createUploadTicket(adminClient(), officeId, randomUUID(), zip);
     const bad = await fetch(html.signedUrl, { method: "PUT", body: Buffer.from("<html>"), headers: { "content-type": "text/html" } });
     expect(bad.ok).toBe(false); // the bucket allow-list still applies to signed uploads

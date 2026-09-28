@@ -35,7 +35,7 @@ export function InboxView({ items, now, saved }: { items: InboxItem[]; now: Date
               const title = d.fileName ?? (d.receivedAs === "original" ? "Original" : "Hard copy");
               const missing = [!d.clientName && "No client", !d.typeName && "No type"].filter(Boolean).join(" · ");
               return (
-                <li key={d.id} aria-label={`${d.docCode} ${title}`} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
+                <li key={d.id} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
                   <div className="min-w-0 flex-1">
                     <p className="break-words font-medium">{d.clientName ? `${d.clientName} · ` : ""}{title}</p>
                     <p className="mt-0.5 break-words text-[13.5px] text-ink-2">
