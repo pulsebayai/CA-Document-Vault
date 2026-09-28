@@ -242,3 +242,8 @@ AC-1…23 → test file → result table in the PR; CI green with Unit + RLS + E
 - Blocked / failing: none. AC-17 pending first nightly after merge.
 - Next step: **Raja** checks the whole feature on the preview and reviews PR #4 (incl. the 7 dev migrations), then merges. After merge, on main: roadmap 02 → shipped, release schema + architecture locks, check the first nightly (AC-17), add "AC-22 by a Staff user" to the R1 checklist, CI debt (Node 20 actions, pin ubuntu-24.04 before 19 Oct).
 - Decisions made: D5 (architecture.md in PR #4). All 02 cross-cutting flags now applied in architecture.md.
+
+### 2026-09-28 (merge)
+- Done: PR #4 merged by Raja → main `ede18ee`. Roadmap: 02 shipped, schema + architecture locks released, Batch A done; R1 checklist additions recorded in roadmap.md. architecture.md was already updated in the PR (D5).
+- Open: AC-17 proof = first nightly `regression.yml` on main (RUN_SLOW) — check next session; failure → top priority.
+- Next: CI debt chore (actions off Node 20, pin `ubuntu-24.04` before 19 Oct 2026) · then 03 document-intake-and-search (intent → spec → plan), taking the schema lock.
