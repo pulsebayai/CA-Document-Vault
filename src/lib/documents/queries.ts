@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Frequency, PeriodKind } from "@/lib/validation/catalogue";
+import { CLIENT_DOCUMENTS_SELECT, INBOX_SELECT } from "./selects";
 
 // Spec 03 — data for Add document / Assign (AC-3, AC-15). Read as the signed-in user: RLS decides.
 
@@ -111,8 +112,7 @@ type InboxRow = {
 export async function listInbox(limit = 200): Promise<InboxItem[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("document")
-    .select(`id, doc_code, received_as, channel, remark, created_at,
-      creator:created_by (full_name), current:current_version_id (file_name), client:client_id (name), doc_type:doc_type_id (name)`)
+    .select(INBOX_SELECT)
     .is("classified_at", null).is("archived_at", null)
     .order("created_at", { ascending: false }).limit(limit);
   if (error) {
@@ -181,11 +181,7 @@ type ClientDocRow = {
 export async function listClientDocuments(clientId: string): Promise<ClientDocument[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("document")
-    .select(`id, doc_code, received_on, received_as, version_count,
-      receiver:received_by (full_name),
-      doc_type:doc_type_id (name, status, doc_group:doc_group_id (id, name, sort)),
-      period:period_id (label, start_date, financial_year:financial_year_id (code)),
-      current:current_version_id (id, mime_type)`)
+    .select(CLIENT_DOCUMENTS_SELECT)
     .eq("client_id", clientId).not("classified_at", "is", null).is("archived_at", null)
     .order("received_on", { ascending: false }).limit(2000);
   if (error) {
