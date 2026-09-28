@@ -1,12 +1,12 @@
 # Spec: Document intake
-Intent: ./intent.md · Status: draft · Date: 2026-09-28
+Intent: ./intent.md · Status: draft (rev 2 — Raja's answers 2026-09-28) · Date: 2026-09-28
 Screens: references/mockup/12-add-document.jpg, 02-inbox.jpg, 10-client-documents.jpg (received documents only; expected/overdue = 04, review/dispatch = 07)
 
 ## Key definitions
 - **Document** = one thing the firm received: a file, or a hard copy (possibly with no file). It has a **DOC-ID**, who received it, when, how (channel), how it arrived (**received as** soft copy · hard copy · original), and a remark.
 - **Classified** = has a client **and** a document type. Period and GSTIN/TAN are optional. Unclassified documents are the **Inbox**.
 - **Version** = a file attached to a document. A revised file is a new version of the same document (same DOC-ID); earlier versions are kept and downloadable.
-- **Proposed type** = a document type a staff member creates while filing, for one client. Usable immediately for that client only; approval/mapping is 05.
+- **Proposed type** = a document type a staff member creates while filing, for one client, **after** the vault has shown the closest existing types and the staff member chose none of them. It joins **that client's collection plan** immediately (frequency "as needed", no reminders) and becomes an **approval item** for Admin/Manager, who own the decision (approve, rename/edit, map to an existing type, reject) in 05.
 - **DOC-ID** = `DOC-YY-NNNNN`: YY = start year of the financial year in which the document was **added** (IST), NNNNN = per-office counter for that FY, zero-padded to 5 (grows past 99,999 without breaking), never reused or edited.
 
 ## User stories & acceptance criteria
@@ -25,7 +25,7 @@ Screens: references/mockup/12-add-document.jpg, 02-inbox.jpg, 10-client-document
 
 **Client › Documents (mockup 10, received documents only)**
 - AC-10 The client page gains a **Documents** tab (count) next to Settings: documents grouped by **group → type → period**, newest period first; each row: type · period, "Received <date> by <name>", DOC-ID, badges **Hard copy** / **Original**, version count if > 1, **View** (PDF/images, opens in a new tab) and **Download**. Filters: FY (default current) and group. Empty state: "No documents received for FY 2026-27 yet" + Add document.
-- AC-11 **Document page** `/documents/[id]`: all fields, versions (newest first, each downloadable), activity summary (who added/classified/replaced, when). Staff+ (and Limited, for documents they can see) can edit classification, received as, channel, received on, remark, and **upload a new version** (same rules as AC-2). **Archive/unarchive** with a reason: Admin/Manager only; archived documents leave lists but keep their DOC-ID and files.
+- AC-11 **Document page** `/documents/[id]`: all fields, the **current file** with **View** (PDF/images) and **Download**, the version history (version number, date, who; earlier files kept in storage, not downloadable from the UI in 03 — Raja 2026-09-28), activity summary (who added/classified/replaced, when). Staff+ (and Limited, for documents they can see) can edit classification, received as, channel, received on, remark, and **upload a new version** (same rules as AC-2; the new file becomes current, same DOC-ID). **Archive/unarchive** with a reason: Admin/Manager only; archived documents leave lists but keep their DOC-ID and files.
 
 **Access & storage**
 - AC-12 RLS: a document is visible if the user can see its client (02's `can_see_client`), or it is unclassified and (the user is Staff+ **or** added it). Limited users get Not Found for other documents, and 0 rows from the API.
@@ -33,8 +33,8 @@ Screens: references/mockup/12-add-document.jpg, 02-inbox.jpg, 10-client-document
 - AC-14 No hard delete of documents, versions or files (DB rejects DELETE; storage objects are not removed by the app).
 
 **Proposed types (inline "+ New type")**
-- AC-15 Typing in the type field shows matching approved types first (name and aliases, fuzzy, e.g. "form 16" finds "Form 16 from employer" and "Form 130"); if none fits, **"+ New type '…' for this client"** asks for the group and creates a type with `status = proposed`, `proposed_by`, `proposed_for_client`, frequency "as needed", no reminders. It is offered only when filing for that client; it is shown with a "Proposed" badge; creating it never blocks saving the document.
-- AC-16 The catalogue screen (02) lists proposed types read-only in a "Proposed by staff" panel with who/when/which client (actions in 05).
+- AC-15 Typing a type name shows the **closest existing approved types first** (name and aliases, fuzzy — e.g. "form 16" finds "Form 16 from employer" and "Form 130") with a prompt to use one ("Did you mean …?"). Only if none fits does **"+ New type '…' for this client"** appear: it asks for the group and creates a type with `status = proposed`, `proposed_by`, `proposed_for_client_id`, frequency "as needed", no reminders — and **adds it to that client's collection plan** (`client_doc_type`). If the group isn't enabled for the client yet, a group row is created for the client **holding only this type** (other types of the group are not copied; staff can add them with "+ Add type"). The proposed type is offered only when filing for that client, shows a "Proposed" badge, and creating it never blocks saving the document.
+- AC-16 **"Proposed by staff" panel** on Settings › Document catalogue (mockup 05): every pending proposed type with its name, group, who proposed it, when, for which client, and how many documents use it — the **approval item** for Admin/Manager. In 03 it is read-only (with a "decide in the review queue — coming with feature 05" note); approve / edit / map / reject arrive with 05. Admin/Manager can already add types to the catalogue themselves (02) for future client plans.
 
 **Audit**
 - AC-17 Every add, classify/re-classify, new version, edit, archive/unarchive and proposed-type creation writes one `activity` row with IDs and field names only — **no file names, remarks, PAN/GSTIN/email/mobile** (enforced by 02's ACTIVITY_PII guard for identifiers; file names and remarks are simply never written).
@@ -42,7 +42,7 @@ Screens: references/mockup/12-add-document.jpg, 02-inbox.jpg, 10-client-document
 ## Functional requirements
 - Upload flow: (1) server action `startUpload(meta)` validates the user, type/size/extension and returns a **signed upload URL** for `office/<office_id>/doc/<uuid>/<version_uuid>.<ext>` (created with the service role in server-only code); (2) the browser uploads the file to Storage directly; (3) server action `saveDocument` / `addVersion` **verifies the object exists** with the declared size and type, then calls a SECURITY INVOKER SQL function (`create_document`, `add_document_version`) that assigns the DOC-ID and writes document + version + activity atomically. A failed step (3) leaves an orphan object and no document (cleanup = later maintenance job, see Risks).
 - Bucket `documents`: private, `file_size_limit` 25 MB, `allowed_mime_types` = the allow-list (defence in depth). No `storage.objects` policies for `anon`/`authenticated` — all access through server-issued signed URLs.
-- Types offered: client plan types (active) → other approved active types → the client's own proposed types. Filing under a type that isn't in the client's plan does **not** change the plan.
+- Types offered: client plan types (active, incl. the client's proposed types) → other approved active types. Filing under an approved type that isn't in the client's plan does **not** change the plan; creating a proposed type does (AC-15).
 - Period: must belong to the office; kind must be allowed for the type's period kind (month-type: month or quarter or year; quarter-type: quarter or year; year-type: year); "Not needed" = null.
 - Registration: must be an active registration of the document's client and of the type's `registration_kind`.
 - File names: stored sanitised (control characters, path separators and leading dots removed; max 180 chars); shown in the UI and used for downloads; never logged or put in activity.
@@ -66,8 +66,9 @@ New enums: `received_as` (soft_copy, hard_copy, original), `doc_channel` (whatsa
 
 ## Existing code affected
 - Header: "+ Add document" button and "Inbox" nav item with count (01 header, 02 nav rule "no dead links").
+- Client › Settings (02): proposed types appear in the plan with a "Proposed" badge; a group row created for a proposed type shows only that type.
 - Client page (02): tabs gain **Documents** (default tab when the client has documents? — no: Settings stays default until 04; Documents is a second tab) and an "Add document" button.
-- Catalogue screen (02): read-only "Proposed by staff" panel.
+- Catalogue screen (02): read-only "Proposed by staff" panel (mockup 05, actions in 05).
 - `reset_test_office` and test helpers (02).
 
 ## Backward compatibility & data migration
@@ -76,7 +77,7 @@ Dev only; additive migrations; `doc_type.proposed_for_client_id` nullable (exist
 ## API / interfaces
 - Routes: `/documents/new` (optional `?client=<id>` — a UUID, not PII), `/inbox`, `/documents/[id]`, client page `?tab=documents` (UUIDs only in URLs).
 - Server actions: `startUpload`, `saveDocument`, `classifyDocument`, `updateDocument`, `addVersion`, `archiveDocument`, `unarchiveDocument`, `getFileLink` (signed view/download URL), `suggestTypes`, `createProposedType`.
-- SQL functions (SECURITY INVOKER unless noted): `create_document(jsonb)`, `add_document_version(uuid, jsonb)`, `classify_document(uuid, jsonb)`, `suggest_doc_types(client, query)` (trigram on name + aliases), `private.next_doc_code(office, fy)` (definer).
+- SQL functions (SECURITY INVOKER unless noted): `create_document(jsonb)`, `add_document_version(uuid, jsonb)`, `classify_document(uuid, jsonb)`, `suggest_doc_types(client, query)` (trigram on name + aliases), `create_proposed_type(client, group, name)` (type + plan row [+ client-only group row], one activity row), `private.next_doc_code(office, fy)` (definer).
 
 ## UX flows & screens
 - **Add document** (mockup 12): centred ~815 px column; drop zone ("Drop a file here or browse · one file per document · optional for hard copies") → file chip with size and remove; card rows Received as · Client ("Not sure who this belongs to? Leave it in inbox") · Document type (group hint; "Only types active for this client are listed first") · Period (segmented Not needed / Month / Quarter / Financial year + selects; FY hint) · Channel · Received on · Remark; footer **Save to vault** (primary) · **Save to inbox**; upload progress bar; on success → back to where the user came from with a toast showing the DOC-ID.
@@ -93,11 +94,11 @@ Dev only; additive migrations; `doc_type.proposed_for_client_id` nullable (exist
 | 4, 6 | DOC-ID sequence per FY, restart on 1 April (function called with a fixed date), no gaps on failure, never reused | RLS/DB |
 | 5 | timed manual check (Staff user) | manual (PR) |
 | 7–9 | Inbox list, assign, `classified_at` first time only; Limited sees own Inbox items only | RLS/DB + e2e |
-| 10, 11 | client documents grouping/filters; document page; new version keeps DOC-ID; archive roles | e2e + RLS/DB |
+| 10, 11 | client documents grouping/filters; document page; new version keeps DOC-ID and becomes current; archive roles | e2e + RLS/DB |
 | 12 | visibility matrix (Admin/Manager/Staff/Limited × assigned/unassigned × classified/unclassified × own/others') | RLS/DB |
 | 13 | bucket private (anon/authenticated can't read or list objects); signed URL works then expires; path has no names | RLS/DB (storage API) + e2e download |
 | 14 | DELETE rejected on document/version | RLS/DB |
-| 15, 16 | suggestions (fuzzy + aliases); proposed type only offered for its client; catalogue panel read-only | RLS/DB + e2e |
+| 15, 16 | suggestions (fuzzy + aliases); proposed type joins the client plan (and a client-only group row when needed); offered only for its client; catalogue panel lists it read-only | RLS/DB + e2e |
 | 17 | activity rows; no file names/remarks/PII in `data` | RLS/DB |
 | NFR | axe on Add document, Inbox, Client › Documents, Document page; ≤ 390 px; screenshots vs mockups 02/10/12 | e2e |
 - All new tests join the regression suite. **Smoke-safe for prod:** none added (all write data or need sign-in).
@@ -106,15 +107,18 @@ Dev only; additive migrations; `doc_type.proposed_for_client_id` nullable (exist
 ## Proposed architecture changes
 1. **Upload path:** browser → private Supabase Storage via a **server-issued signed upload URL**; the server verifies the stored object before creating the document; no Storage policies for app roles (all access via server-issued signed URLs). Reason: 25 MB files can't pass through Vercel functions (≈ 4.5 MB request limit); keeps authorisation in one place (RLS on `document`).
 2. **DOC-ID per office per FY** (`doc_counter`), `DOC-YY-NNNNN`, YY = FY of the date added (Raja 2026-09-28).
-3. **Proposed types in 03 don't join the client's collection plan** (no `client_doc_type` row) — they are only offered when filing for that client. Architecture currently says a staff-added type "becomes a client_doc_type immediately"; with frequency "as needed" such a row would generate nothing in 04, and whether it joins plans is better decided at approval in 05. *(Decision for Raja.)*
+3. **Proposed types join the client's plan immediately** (as architecture already says) — clarified: if the group isn't enabled for the client, a client group row is created holding only the proposed type (no other types copied). Approval/mapping stays with Admin/Manager in 05 (Raja 2026-09-28).
 4. `document.received_as` = soft copy · hard copy · **original** (original = hard copy the firm must return; 07 uses it for dispatch); `doc_channel` list per Raja.
 
 ## Risks & areas of concern
 - **Orphan files** (upload succeeds, save fails or the tab closes): harmless (private, unreferenced) but cost storage → record count in a nightly check later; cleanup job before the pilot's second month. [Likely] rare.
 - **Declared type ≠ real content** (renamed .exe → .pdf): allow-list + bucket MIME check only — no content sniffing or malware scan in v1 (accepted risk, intent).
 - **Storage in tests** writes real objects to dev → tiny files, removed at the start of each run for test offices only.
-- **Scope at the 2-week edge** even after the split — the plan will show session estimates; first cut if needed: the catalogue "Proposed by staff" panel (AC-16) and View (keep Download).
+- **Scope at the 2-week edge** even after the split — the plan will show session estimates. Raja 2026-09-28: keep the "Proposed by staff" panel; View/Download for the current version only (older versions not downloadable in 03).
 - **DOC-ID "FY of the date added"** vs "FY of received on": a document received 31 March but added 2 April gets DOC-27-… — acceptable (IDs are intake IDs), stated in the UI help.
 
 ## Out of scope
 Documents/Search screen and header search (03b) · expected docs, "due" hints, Remind, linking to expected docs (04/06) · proposal review queue (05) · review/dispatch statuses (07) · bulk download, activity viewer (08) · bulk multi-file intake · OCR, content sniffing, malware scanning · client access/upload links.
+
+## Decisions (Raja 2026-09-28)
+Proposed type: suggest existing first; if none fits, create it **and add it to the client's plan**; Admin/Manager own approval (05) and can add catalogue types themselves · DOC-ID FY = date added · "Original" as a third received-as value · architecture changes 1, 2, 4 approved (3 revised as above) · keep "Proposed by staff" panel · View/Download for the current version only.
