@@ -49,7 +49,7 @@ Screens: references/mockup/12-add-document.jpg, 02-inbox.jpg, 10-client-document
 - HEIC: stored and downloadable; "View" is not offered (browsers can't render it).
 
 ## Non-functional requirements
-- **Security/privacy:** RLS default-deny on new tables; `office_id` on each; service-role key only in server-only modules (signing, object verification, test cleanup); signed URLs ≤ 60 s; no PII in URLs, logs, analytics or activity; CSP unchanged except `connect-src` for the Storage upload host.
+- **Security/privacy:** RLS default-deny on new tables; `office_id` on each; service-role key only in server-only modules (signing, object verification, test cleanup); signed URLs ≤ 60 s; no PII in URLs, logs, analytics or activity; CSP unchanged (Storage is on the Supabase origin already allowed in `connect-src`).
 - **Performance:** Client › Documents with 500 documents renders first view < 1 s server time; Inbox with 200 items < 1 s; a 25 MB upload works on a 10 Mbps connection (progress shown).
 - **Accessibility:** WCAG 2.1 AA; the drop zone is also a real file input with a label; upload progress announced; errors linked via `aria-describedby`; screens ≤ 390 px wide on phones (asserted for Add document and Inbox).
 
