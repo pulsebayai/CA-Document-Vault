@@ -1,5 +1,5 @@
 # Plan: Document intake
-Spec: ./spec.md · Status: draft · Date: 2026-09-28
+Spec: ./spec.md · Status: approved (Raja 2026-09-28) · Date: 2026-09-28
 Holds: **schema lock** + **architecture lock** (spec's 4 approved changes; applied to architecture.md in this feature's PR, as in 02 D5).
 Base: `feat/03-document-intake-and-search` from main `ede18ee` (02 merged). PR #6 (roadmap, docs only) merges independently.
 
