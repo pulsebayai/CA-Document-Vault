@@ -52,14 +52,20 @@ export async function purgeTestStorage(officeId: string) {
     if (/not found/i.test(error.message)) return; // bucket not created yet (before the 03 migration)
     throw error;
   }
-  for (const f of folders ?? []) {
-    const { data: files, error: e2 } = await store.list(`${root}/${f.name}`, { limit: 1000 });
-    if (e2) throw e2;
-    const paths = (files ?? []).map((x) => `${root}/${f.name}/${x.name}`);
-    if (paths.length) {
-      const { error: e3 } = await store.remove(paths);
-      if (e3) throw e3;
-    }
+  // Folders are listed in parallel and objects removed in bulk: a sequential list + remove per folder cost
+  // ~40 round trips US→Mumbai for ~20 folders and pushed beforeAll past its 60 s limit (CI 36606177619).
+  const names = (folders ?? []).map((f) => f.name);
+  const paths: string[] = [];
+  for (let i = 0; i < names.length; i += 10) {
+    const lists = await Promise.all(names.slice(i, i + 10).map((n) => store.list(`${root}/${n}`, { limit: 1000 })));
+    lists.forEach((r, k) => {
+      if (r.error) throw r.error;
+      for (const x of r.data ?? []) paths.push(`${root}/${names[i + k]}/${x.name}`);
+    });
+  }
+  for (let i = 0; i < paths.length; i += 100) {
+    const { error: e3 } = await store.remove(paths.slice(i, i + 100));
+    if (e3) throw e3;
   }
 }
 
