@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { searchClients } from "@/lib/clients/actions";
 import {
   loadClientTypes, proposeType, saveDocument, startUpload, suggestTypes, updateDocumentAction, type Suggestion,
@@ -41,6 +41,7 @@ const PERIOD_LABEL: Record<PeriodChoice, string> = { none: "Not needed", month: 
 const NEW_TYPE = "__new__";
 
 const control = "w-full rounded-[9px] border border-line-2 bg-panel px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft aria-[invalid=true]:border-bad";
+const noSubscribe = () => () => {};
 const kb = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 export function DocumentForm({ initialClient, initialTypes, periods, groups, today, canPropose, returnTo, existing }: Props) {
@@ -122,6 +123,19 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
       if (run === uploadRun.current) setUpload({ status: "error", error: "The upload failed. Check your connection and add the file again." });
     }
   }
+
+  // A file chosen before React attached its handlers (the page is visible ~1 s earlier on a deployed site, longer
+  // on a slow phone) fired `change` with no listener. Pick it up once, on hydration — nothing is lost.
+  // Until then the Save buttons stay disabled: a native submit before hydration would send the form as a GET
+  // (field values, e.g. the remark, in the URL) and "Save to inbox" would do nothing.
+  const pickedEarly = useRef(false);
+  const ready = useSyncExternalStore(noSubscribe, () => true, () => false); // false in server HTML and during hydration
+  useEffect(() => {
+    if (pickedEarly.current) return;
+    pickedEarly.current = true;
+    const early = fileInput.current?.files?.[0];
+    if (early) void chooseFile(early);
+  }, []); // once, at hydration
 
   function removeFile() {
     uploadRun.current++;
@@ -318,7 +332,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
           {errText("clientId")}
           <p id={`${uid}-client-hint`} className="mt-1 text-[13px] text-ink-3">
             Not sure who this belongs to?{" "}
-            <button type="button" onClick={() => void save("inbox")} disabled={busy || uploading} className="text-accent hover:underline disabled:opacity-50">Leave it in inbox</button>
+            <button type="button" onClick={() => void save("inbox")} disabled={!ready || busy || uploading} className="text-accent hover:underline disabled:opacity-50">Leave it in inbox</button>
           </p>
         </Row>
 
@@ -437,9 +451,9 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
       </Card>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" disabled={busy || uploading}>{saving === "vault" ? "Saving…" : existing?.classified ? "Save changes" : "Save to vault"}</Button>
+        <Button type="submit" disabled={!ready || busy || uploading}>{saving === "vault" ? "Saving…" : existing?.classified ? "Save changes" : "Save to vault"}</Button>
         {!existing?.classified && (
-          <Button type="button" variant="secondary" disabled={busy || uploading} onClick={() => void save("inbox")}>
+          <Button type="button" variant="secondary" disabled={!ready || busy || uploading} onClick={() => void save("inbox")}>
             {saving === "inbox" ? "Saving…" : existing ? "Keep in inbox" : "Save to inbox"}
           </Button>
         )}
