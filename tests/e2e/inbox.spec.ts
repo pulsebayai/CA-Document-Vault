@@ -99,7 +99,9 @@ test("AC-4: a document added from the Inbox (header button) comes back to the In
   await page.getByRole("banner").getByRole("link", { name: "Add document" }).click();
   // Wait for the form: on a deployed preview the page takes ~1 s, and "Hard copy" also labels Inbox rows (run 36455393633).
   await expect(page.getByRole("heading", { name: "Add document" })).toBeVisible();
-  await page.getByRole("radio", { name: "Hard copy" }).check();
+  await expect(page.getByRole("button", { name: "Save to inbox" })).toBeEnabled(); // form is interactive
+  await page.locator("label").filter({ has: page.getByRole("radio", { name: "Hard copy" }) }).click(); // the radio is sr-only
+  await expect(page.getByRole("radio", { name: "Hard copy" })).toBeChecked();
   await page.getByRole("button", { name: "Save to inbox" }).click();
   await page.waitForURL(/\/inbox\?saved=/);
   const saved = await page.getByRole("status").filter({ hasText: "saved" }).innerText();
