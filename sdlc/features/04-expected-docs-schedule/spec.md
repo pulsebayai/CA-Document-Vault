@@ -1,5 +1,5 @@
 # Spec: Expected documents & schedule
-Intent: ./intent.md · Status: draft · Date: 2026-09-29
+Intent: ./intent.md · Status: approved (Raja 2026-09-29) · Date: 2026-09-29
 Screens: references/mockup/10-client-documents.jpg (due/overdue rows, "Expected N" tab), 03-clients.jpg ("Has overdue", right-hand overdue text), 01-today.jpg (row wording only; the Today screen itself is 06). Remind / Mark reviewed / Mark dispatched stay hidden (06/07).
 
 ## Key definitions
@@ -32,7 +32,7 @@ Screens: references/mockup/10-client-documents.jpg (due/overdue rows, "Expected 
 - AC-12 **Plan-change effects:** pausing a row → its pending items show *On hold* and are excluded from Due/Overdue and metric 1; periods whose ask date falls while paused are never generated (resume continues from the earliest still-open period). Removing a row or a group, deactivating a registration, or moving a start period later → pending items before/for it are **waived automatically** with a system reason ("Removed from plan", "Registration inactive", "Before start period").
 
 **Screens**
-- AC-13 **Client › Expected tab** (count = Due + Overdue): items grouped by group → type, newest period first; each row: type · period [· registration label, only when the client has more than one of that kind — see open question 3], state text (Overdue · N days late / Due <date> / Due today / On hold / Received <date> · DOC-ID / Not needed · reason), assigned staff, and actions (Upload · Waive · Reopen · Undo). Filters: FY (default current), group, status (Open [default] · Received · Not needed · All). Empty state: "Nothing outstanding for FY 2026-27".
+- AC-13 **Client › Expected tab** (count = Due + Overdue): items grouped by group → type, newest period first; each row: type · period [· the full GSTIN/TAN, only when the client has more than one active registration of that kind (Raja 2026-09-29)], state text (Overdue · N days late / Due <date> / Due today / On hold / Received <date> · DOC-ID / Not needed · reason), assigned staff, and actions (Upload · Waive · Reopen · Undo). Filters: FY (default current), group, status (Open [default] · Received · Not needed · All). Empty state: "Nothing outstanding for FY 2026-27".
 - AC-14 **Client › Documents cards** (mockup 10): each group card lists its **Overdue and Due** items first (e.g. "Invoices · August 2026 / Not received · 13 days late", red "Overdue", **Upload**), then received documents as in 03. A card with nothing open and no documents shows "All caught up for FY 2026-27". **Documents** becomes the default client tab.
 - AC-15 **Clients list** (mockup 03): right-hand text "N overdue · N due today" (hidden when both 0); **Has overdue** filter chip. The filter value is never put in the URL (02 AC-7 rule).
 - AC-16 **Settings › Collection** (new item; Admin/Manager only): metric 1 for the last 30 days — on-time %, with counts (due in window, received on time, received late, still missing) and a per-group table; plus "Overdue now" total. A note states the definition. Staff/Limited don't see the item (server-side check, like Users).
@@ -51,7 +51,7 @@ Screens: references/mockup/10-client-documents.jpg (due/overdue rows, "Expected 
 
 ## Non-functional requirements
 - **Performance (volume test, RUN_SLOW):** 1,000 clients × 15 scheduled rows × 12 months (~180k items): the daily job < 60 s; Clients list with overdue counts < 1 s server time; Client › Expected and Documents < 1 s; Collection metric < 2 s; a document save adds < 50 ms.
-- **Security/privacy:** RLS default-deny; `office_id` on every row; tenant-first checks in definer triggers; `search_path = ''`; no PII in URLs/logs/activity; registration display per open question 3.
+- **Security/privacy:** RLS default-deny; `office_id` on every row; tenant-first checks in definer triggers; `search_path = ''`; no PII in URLs/logs/activity; GSTIN/TAN shown to staff on screen only (never in URLs, logs, activity or client-facing text).
 - **Accessibility:** WCAG 2.1 AA; state is text, not colour alone ("Overdue", "Due today"); waive dialog is the shared Modal with a labelled, required reason; ≤ 390 px for Expected tab and Clients list (asserted).
 - **Reliability:** a job failure is visible — the nightly regression includes a check that today's `expected.generated` activity row exists on dev; job failures are logged by pg_cron (`cron.job_run_details`).
 
@@ -102,7 +102,7 @@ Dev only (no staging/prod yet). Migration back-fills expected documents for all 
 - All new tests join the regression suite. **Smoke-safe for prod:** none added.
 - Generation tests use `run_expected_generation(p_as_of)` in `is_test` offices only; they never depend on the real date.
 
-## Proposed architecture changes (need the architecture lock → 04)
+## Proposed architecture changes (approved Raja 2026-09-29; architecture lock → 04)
 1. **pg_cron system job** writes data with no signed-in user (definer function, tenant-scoped per office, actor = system in activity). First non-user writer in the product.
 2. **Auto-create next FY** from 1 February (system), alongside Admin's manual button — so generation never stalls at the FY boundary.
 3. **Default start period = earliest still-open period** (changes 02's default; intent Q1).
@@ -120,7 +120,8 @@ Dev only (no staging/prod yet). Migration back-fills expected documents for all 
 ## Out of scope
 Today screen, Remind (email/WhatsApp), follow-up log, chasing-load metric (06) · type merge re-pointing expected docs (05) · review/dispatch (07) · Documents/Search (03b) · automatic reminders, staff nudges · "upcoming" items and a forward calendar · partial-receipt counts · a metric report screen, per-staff metric · mapping one quarterly document onto three monthly items · "apply master schedule to existing clients".
 
+## Decisions (Raja 2026-09-29)
+Architecture changes 1–5 approved (incl. no stored "upcoming" items; metric 1 on Settings › Collection) · next FY auto-created by the job from 1 February · Expected rows show the full GSTIN/TAN when the client has several.
+
 ## Open questions
-1. Architecture changes 1–5 — approve? (4 and 5 deviate from the intent's wording.)
-2. FY auto-creation from 1 Feb (change 2) — OK, or keep FY creation Admin-only and show a warning on Collection from 1 Feb instead?
-3. Registration display "GSTIN 33 (1 of 2)" instead of the full GSTIN on Expected rows — acceptable to staff, or show the full GSTIN (it's shown elsewhere to staff already; the rule is only about URLs/logs/client-facing text)?
+None — settled at the spec gate 2026-09-29.
