@@ -19,7 +19,7 @@ Subagents: `verifier` (after each step), `sdlc-reviewer` (before a PR). Hook: `.
 ## Test runs — keep the feedback loop short (Raja, 2026-09-29)
 - **A PR needs CI only** (full suite on CI's own build). Don't dispatch the deployed-URL Regression per PR; it runs nightly and at the release gate (architecture.md policy).
 - **Proving a fix on the deployed site:** dispatch Regression with `only` = the affected test files (e.g. `inbox add-document`); ~3–5 min, marked "Quick check — not release evidence".
-- **Queue:** CI's DB job and Regression share the dev database (`dev-database` group, one waiting slot — a new run cancels the waiting one). Dispatch only after the PR's DB job has started.
+- **Test lanes (2026-09-29):** CI's DB job and Regression each lease one of 3 lanes on the dev database (`scripts/test-lane.mjs`, table `test_lane`) and use that lane's own fixture offices/users (`e2e office <label> #<lane>`, `e2e-<label>-l<lane>@example.test`), so up to 3 runs overlap safely; a 4th waits (≤ 30 min). Local/Claude-session runs have no `TEST_LANE` and use the un-suffixed `local` set — so only one local run at a time. A newer push to a PR cancels that PR's older CI run.
 - **Running tests in a Claude cloud session:** `.env.local` (dev keys only) is copied from Raja's Mac via the desktop link; the egress allowlist includes the dev Supabase host. Node needs `NODE_USE_ENV_PROXY=1`; Playwright needs the proxy and `/opt/pw-browsers/chromium` (a local, untracked `playwright.local.config.ts`). Previews (`*.vercel.app`) are not reachable from the session.
 - e2e `signIn()` reuses a user's session after their first real sign-in; pass `{ fresh: true }` when the test is about signing in.
 

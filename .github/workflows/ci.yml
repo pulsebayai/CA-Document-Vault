@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same PR supersedes the older run (its test lane is released by the always() step).
+# Pushes to main are never cancelled.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   verify:
     name: Lint · typecheck · unit · build
@@ -38,13 +44,15 @@ jobs:
     name: RLS + e2e (dev Supabase)
     needs: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    # Shared dev database: never run two of these at once (plan.md risks).
-    concurrency: { group: dev-database, cancel-in-progress: false }
+    # 25 min of tests + up to 30 min waiting for a free test lane.
+    # Keep below the 90-min lane lease (scripts/test-lane.mjs LEASE_MINUTES) or a slow run could lose its lane.
+    timeout-minutes: 55
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SECRET_KEY: ${{ secrets.DEV_SUPABASE_SECRET_KEY }} # dev only — never prod
+      # Test lanes (chore test-isolation): up to 3 runs share dev, each with its own fixture offices/users.
+      TEST_LANE_HOLDER: ci-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,6 +62,8 @@ jobs:
         run: |
           code=$(curl -s -o /dev/null -w "%{http_code}" "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/health" -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
           if [ "$code" != "200" ]; then echo "::error::Dev Supabase project is paused or unreachable (HTTP $code). Resume it in the dashboard."; exit 1; fi
+      - name: Take a test lane
+        run: node scripts/test-lane.mjs acquire
       - run: npm run test:db:ci
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
@@ -64,3 +74,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: test-evidence, path: "test-results/\nplaywright-report/", retention-days: 90 }
+      - name: Release the test lane
+        if: always()
+        run: node scripts/test-lane.mjs release

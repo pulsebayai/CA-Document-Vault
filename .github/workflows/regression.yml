@@ -25,13 +25,13 @@ on:
 permissions:
   contents: read
 
-concurrency: { group: dev-database, cancel-in-progress: false }
-
 jobs:
   regression:
     runs-on: ubuntu-latest
     # Full suite ≈ 26 min (RLS incl. RUN_SLOW ≈ 7, e2e ≈ 17); 30 left no headroom (run 36439895456).
-    timeout-minutes: 45
+    # + up to 30 min waiting for a free test lane (chore test-isolation).
+    # Keep below the 90-min lane lease (scripts/test-lane.mjs LEASE_MINUTES) or a slow run could lose its lane.
+    timeout-minutes: 75
     env:
       TARGET: ${{ inputs.target || 'dev' }}
       E2E_BASE_URL: ${{ inputs.base_url || 'https://ca-document-vault.vercel.app' }}
@@ -43,6 +43,8 @@ jobs:
       # Vercel › Deployment Protection › Protection Bypass for Automation. Lets e2e reach protected previews
       # (tests/e2e/preview-access.ts); sent only to E2E_BASE_URL's origin. Never needed for prod smoke.
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ inputs.target != 'prod' && secrets.VERCEL_AUTOMATION_BYPASS_SECRET || '' }}
+      # Test lanes: up to 3 runs share a database, each with its own fixture offices/users (not needed for prod smoke).
+      TEST_LANE_HOLDER: regression-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Check the quick-check filter
         if: env.ONLY != ''
@@ -57,6 +59,9 @@ jobs:
       - name: Unit
         if: env.TARGET != 'prod'
         run: npm run test:ci
+      - name: Take a test lane
+        if: env.TARGET != 'prod'
+        run: node scripts/test-lane.mjs acquire # after Unit: unit tests expect the local (un-laned) fixture names
       - name: RLS (database security)
         if: env.TARGET != 'prod'
         # Quick check: $ONLY (validated above) is intentionally unquoted, one filter per word; a full run gets no extra flags.
@@ -83,3 +88,6 @@ jobs:
             test-results/
             playwright-report/
           retention-days: 90
+      - name: Release the test lane
+        if: always() && env.TARGET != 'prod'
+        run: node scripts/test-lane.mjs release

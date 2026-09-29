@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
-import { testEmail } from "./test-data";
+import { testEmail, testOfficeName } from "./test-data";
 
 type Role = "admin" | "manager" | "staff" | "limited";
 type Status = "invited" | "active" | "deactivated";
@@ -16,10 +16,11 @@ export function adminClient(): SupabaseClient {
 /** A fixed, isolated office per test file (created once, reused), so test users never mix with real dev users. */
 export async function createTestOffice(label: string): Promise<string> {
   const admin = adminClient();
-  const name = `e2e office ${label}`;
+  const name = testOfficeName(label);
   const { data: found } = await admin.from("office").select("id").eq("name", name).maybeSingle();
   if (found) return found.id as string;
-  const { data, error } = await admin.from("office").insert({ name, branch: "test" }).select("id").single();
+  // is_test: the lane copies were never covered by the one-off flagging in migration 20260927070322.
+  const { data, error } = await admin.from("office").insert({ name, branch: "test", is_test: true }).select("id").single();
   if (error) throw error;
   return data.id as string;
 }
