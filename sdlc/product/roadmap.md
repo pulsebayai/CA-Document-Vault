@@ -1,14 +1,14 @@
 # Roadmap: CA Document Vault
-Updated: 2026-09-29 (03 shipped; locks released) · Architecture lock: none · Schema lock: none (next: 04 at batch C)
+Updated: 2026-09-29 (Batch C re-planned: 04 ∥ 03b; 05 after 04) · Architecture lock: none · Schema lock: none (04 takes it when its plan is approved)
 
 | # | Feature slug | One-line intent | Product metric | Depends on | Touches (entities / screens / shared code) | Arch change? | Batch | Status |
 |---|---|---|---|---|---|---|---|---|
 | 01 | walking-skeleton | Admin-provisioned staff login (email OTP), office + roles, empty Clients screen, CI, deployed to Mumbai | 5 | — | auth, office, staff_user, layout, CI | yes | — | shipped (2026-09-25, PR #1) |
 | 02 | clients-and-catalogue | Masters (groups, types with default schedules, FY/period); add/edit/archive clients + CSV import; enabling a group copies its types into client instances with own schedule | enabler | 01 | client*, doc_group, doc_type, financial_year, period, client_doc_type; Clients, Add client, Client›Settings, Settings›Catalogue | schema | A | shipped (2026-09-28, PR #4) |
 | 03 | document-intake-and-search | File storage (private, signed URLs, 25 MB, allow-list), Add document with dimensions from context, DOC-IDs (DOC-FY26-27-NNNNN, per FY), Inbox, Client › Documents list, inline "new type" (proposed, client-only) | 1, 3, 4 | 02 | document, document_version, storage; Inbox, Add document, Client›Documents | schema | B | shipped (2026-09-28, PR #7; fixes #8–#9) |
-| 03b | document-search | Documents/Search screen: filter on every dimension + facets (status, received as, channel, received by) + text on file name/remark; header search box | 3 | 03 | Documents/Search, header search | no (indexes only) | — | planned |
+| 03b | document-search | Documents/Search screen: filter on every dimension + facets (status, received as, channel, received by) + text on file name/remark; header search box | 3 | 03 | Documents/Search, header search | no (indexes only; migration last, after 04 merges, only if the volume test needs it) | C | planned |
 | 04 | expected-docs-schedule | Generate expected docs from client instances; due/overdue; link files to expected docs; metric 1 measurable | 1 | 02, 03 | expected_doc, pg_cron; Client›Expected | schema | C | planned |
-| 05 | type-governance | Admin review queue for proposed types: approve / edit / map to existing (re-points documents) / reject; audit; in-app notifications | 3 | 03 | doc_type_proposal, notification; Settings›Catalogue, notification centre | schema | C | planned |
+| 05 | type-governance | Admin review queue for proposed types: approve / edit / map to existing (re-points documents) / reject; audit; in-app notifications | 3 | 03 | doc_type_proposal, notification; Settings›Catalogue, notification centre (re-points `expected_doc` → needs 04) | schema | D | planned |
 | 06 | today-and-reminders | Per-staff Today (overdue, due this week, to review, inbox); "Remind" emails client (SES); "WhatsApp" opens pre-filled chat; both logged | 1, 2 | 03, 04 | follow_up, email; Today, Client›Documents | yes (email provider) | D | planned |
 | 07 | review-and-dispatch | Received → reviewed → ready to dispatch → dispatched for originals; history | 1 | 03 | document status, dispatch; drawer | schema | — | planned |
 | 08 | bulk-activity-roles | Bulk zip download / bulk mark reviewed, Activity log screen, Users & roles screen with full RLS matrix | 5 | 03 | activity, RLS; Activity, Settings›Users | no | — | planned |
@@ -26,9 +26,10 @@ Every release passes the *Release & regression policy* (architecture.md); record
 - Create staging + prod (timed run of README procedure = AC-17 proof) · prod email via SES ap-south-1 on the firm's domain · Supabase session inactivity timeout (paid) · LCP measurement on prod URL · consider GitHub Pro for branch protection on `main` · never name a staging/prod office `e2e office …` (auto-flagged is_test, purgeable by the test reset).
 
 ## Batches
-Parallel planning checkpoint 2026-09-26 (preliminary — reconfirm from plans before C). Review capacity ~6 h/day → max 2 parallel.
-- **A:** 02 alone (schema foundation for everything). — **done 2026-09-28** (PR #4).
-- **B:** 03 alone (04 needs `document` to link files; 03 and 04 both need the schema lock). **Split 2026-09-28 (Raja):** search moved to 03b so 04 can start after 03; 03b fits later (e.g. alongside 05 or 06) — reconfirm at the next checkpoint.
-- **C:** 04 ∥ 05 — merge 04 first, then 05 rebases; schema lock handed over at 04's merge. Soft overlap: 05's "map to existing" re-points `expected_doc` → 05 adds a test for it after rebase.
-- **D:** 06 alone (needs 03 + 04; architecture change: email provider).
-- Alternative (rejected): original 02 → 03∥04 → 05∥06 — hidden 04→03 dependency.
+Parallel planning checkpoint 2026-09-26; **re-run 2026-09-29 (Raja)** — review capacity ~6 h/day (can extend) → max 2 parallel.
+- **A:** 02 alone — **done 2026-09-28** (PR #4).
+- **B:** 03 alone — **done 2026-09-28** (PR #7; fixes #8–#9). Search split out to 03b.
+- **Before C builds — chore `test-isolation` (~1 day, Raja 2026-09-29, CI option 2):** per-run test offices + fixture users (run-id suffix) and a nightly purge of old test data, so CI/Regression runs no longer share one queue slot (a waiting run was cancelled 4× on 28–29 Sep). Planning docs for C may proceed meanwhile.
+- **C (preliminary — confirm from both plans):** **04 ∥ 03b.** Merge 04 first; 03b rebases. Schema lock → 04. 03b's search indexes (if needed) are its last step, after 04 merges. Soft overlaps: `src/lib/documents/queries.ts`; 04 likely changes Add document + `create_document` (expected-doc link), 03b only reads documents.
+- **D (decide at next checkpoint):** 05 (needs 04's `expected_doc`; schema) and whether 06 can run beside it (06 needs schema for `follow_up` + the email-provider architecture change).
+- Rejected 2026-09-29: 04 ∥ 05 — 05 depends on 04's `expected_doc` and both need the schema lock (05 would idle most of 04's build). Earlier rejected: 02 → 03∥04 → 05∥06 (hidden 04→03 dependency).
