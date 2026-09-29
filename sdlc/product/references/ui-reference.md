@@ -35,3 +35,5 @@ Rule: build screens to match the mockup (layout, components, copy, tokens) **exc
 | Screens appear all at once | Nav items appear as their feature ships (no dead links) | 2026-09-25 |
 | Muted text --ink-3 #8A909D (3.3:1) | Darkened to ≥ 4.5:1 for text < 18px | 2026-09-25 |
 | Brand "Sharma & Co" | "Kushal Associates" · Pondicherry | 2026-09-25 |
+| Warning token --warn #B0611A (4.06:1 on --warn-soft) | Darkened to #9C5717 (WCAG AA) | 2026-09-28 (03) |
+| Header at phone width | ≤ 390 px: nav scrolls sideways, office name hidden below md, "Add document" shows as "+" (with accessible name) | 2026-09-28 (03) |
