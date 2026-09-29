@@ -1,5 +1,5 @@
 # Intent: Expected documents & schedule
-Author: Raja (drafted with Claude) · Status: draft · Date: 2026-09-29
+Author: Raja (drafted with Claude) · Status: approved (Raja 2026-09-29) · Date: 2026-09-29
 Roadmap item: 04-expected-docs-schedule · Release: R1 · Moves product metric: 1 (on-time completeness), made measurable here; enables 2 (chasing load, 06)
 
 ## Problem
@@ -33,7 +33,7 @@ For every client, the vault **knows what it expects** and shows what is still ou
 - **Waive (Q3):** Admin, Manager and Staff can waive, with a reason of 500 characters or less. Admin/Manager can undo a waive. Limited cannot waive. Waived items are excluded from metric 1.
 - **Metric 1 (Q4):** a DB view plus a small figure for Admin/Manager on Settings › Office (last 30 days, with counts and a per-group split). A full report and the Today dashboard are out of scope (06).
 - **Dates:** ask/overdue = period end + offset months, on the given day, clamped to the month end, in IST. They are **recomputed for open items** when the client's schedule changes. Received/waived items keep their dates.
-- **Plan changes (Claude default; confirm at gate):**
+- **Plan changes (Raja 2026-09-29, approved as drafted):**
   - Pausing a row stops new periods. Its open items are put on hold: hidden from due/overdue and excluded from metric 1. Resuming continues from the current open period and does not back-fill the paused months.
   - Removing a row waives its open items automatically ("removed from plan").
   - A new active GSTIN/TAN starts generating from its own current open period. A deactivated one waives its open items.
@@ -57,6 +57,8 @@ For every client, the vault **knows what it expects** and shows what is still ou
 - Automatic reminders, staff nudge emails, a metric report screen, and "apply master schedule change to existing clients".
 - Partial-receipt tracking (counts of expected files per period). Reopen covers it for now.
 
+## Decisions (Raja 2026-09-29)
+Q1 start = earliest still-open period · Q2 auto-received on first linked document (date = its *received on*) · Q3 waive Staff+ with reason, undo Admin/Manager · Q4 metric 1 figure for Admin/Manager · plan-change defaults as above · Limited may reopen a received item for clients they can see · due/overdue rows stay in the Documents cards (first cut if the plan is too large).
+
 ## Open questions
-1. Do the plan-change defaults above (pause = on hold with no back-fill, remove = auto-waive) match how the firm works?
-2. Should Limited staff be able to **reopen** a received item for their own clients? Draft: yes, because reopening only makes an item more visible.
+None — settled at the intent gate 2026-09-29.
