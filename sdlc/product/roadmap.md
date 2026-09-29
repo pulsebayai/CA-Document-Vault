@@ -26,6 +26,7 @@ Every release passes the *Release & regression policy* (architecture.md); record
 - **Volume test after all R1 features are built (Raja 2026-09-29):**
   - 10k documents with the approved test-only `seed_test_documents` (invoker; `is_test` offices only; loops `create_document`);
   - 03b AC-12 timings (suggestions < 300 ms, results + facets < 1 s, Limited < 1 s); add indexes only if a target fails.
+  - 04's volume step (~180k expected items: daily job < 60 s, measured first; screens < 1 s; save + < 50 ms).
 - Create staging + prod (timed run of README procedure = AC-17 proof) · prod email via SES ap-south-1 on the firm's domain · Supabase session inactivity timeout (paid) · LCP measurement on prod URL · consider GitHub Pro for branch protection on `main` · never name a staging/prod office `e2e office …` (auto-flagged is_test, purgeable by the test reset).
 
 ## Batches
@@ -38,6 +39,6 @@ Parallel planning checkpoint 2026-09-26; **re-run 2026-09-29 (Raja)** — review
   - **Code overlap: none.** 03b calls `search_clients` directly (04 extends it and keeps its existing parameters).
   - Merge 04 first; 03b rebases and re-runs the full suite.
   - Locks: schema + architecture → 04. 03b holds a **read-only migration exception**: it may add only its two new SECURITY INVOKER search functions, and no table, column, policy, trigger or existing-function change.
-  - 03b's 100k volume test → deferred (see Before pilot).
+  - Volume tests for 03b and 04 → deferred (see Before pilot).
 - **D (decide at next checkpoint):** 05 (needs 04's `expected_doc`; schema) and whether 06 can run beside it (06 needs schema for `follow_up` + the email-provider architecture change).
 - Rejected 2026-09-29: 04 ∥ 05 — 05 depends on 04's `expected_doc` and both need the schema lock (05 would idle most of 04's build). Earlier rejected: 02 → 03∥04 → 05∥06 (hidden 04→03 dependency).
