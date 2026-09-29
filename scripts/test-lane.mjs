@@ -6,8 +6,14 @@
 import { appendFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
 
-const WAIT_MINUTES = Number(process.env.TEST_LANE_WAIT_MINUTES ?? 30);
-const LEASE_MINUTES = Number(process.env.TEST_LANE_LEASE_MINUTES ?? 90);
+const minutes = (name, fallback) => {
+  const v = Number(process.env[name]);
+  return Number.isFinite(v) && v > 0 ? v : fallback;
+};
+const WAIT_MINUTES = minutes("TEST_LANE_WAIT_MINUTES", 30);
+// Must outlast the longest job (ci.yml 55 min, regression.yml 75 min incl. the wait) — else another run could
+// take the lane mid-test. Raise it together with any job timeout.
+const LEASE_MINUTES = minutes("TEST_LANE_LEASE_MINUTES", 90);
 const POLL_SECONDS = 20;
 
 const holder = process.env.TEST_LANE_HOLDER?.trim();
@@ -23,9 +29,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function acquire() {
   const deadline = Date.now() + WAIT_MINUTES * 60_000;
   for (let attempt = 1; ; attempt++) {
-    const { data, error } = await db.rpc("acquire_test_lane", { p_holder: holder, p_minutes: LEASE_MINUTES });
-    if (error) throw new Error(`acquire_test_lane failed: ${error.message}`);
-    if (data !== null) {
+    const { data, error } = await db.rpc("acquire_test_lane", { p_holder: holder, p_minutes: LEASE_MINUTES })
+      .then((r) => r, (e) => ({ data: null, error: e }));
+    if (error) console.log(`::warning::acquire_test_lane failed (${error.message}); retrying.`);
+    else if (data !== null) {
       console.log(`Test lane ${data} leased to ${holder} for ${LEASE_MINUTES} min.`);
       if (process.env.GITHUB_ENV) appendFileSync(process.env.GITHUB_ENV, `TEST_LANE=${data}\n`);
       if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Test lane: **${data}**\n\n`);
@@ -46,8 +53,10 @@ async function release() {
     console.log("No test lane held by this job; nothing to release.");
     return;
   }
-  const { data, error } = await db.rpc("release_test_lane", { p_lane: lane, p_holder: holder });
-  if (error) throw new Error(`release_test_lane failed: ${error.message}`);
+  const { data, error } = await db.rpc("release_test_lane", { p_lane: lane, p_holder: holder })
+    .then((r) => r, (e) => ({ data: null, error: e }));
+  // Never turn a green run red over the release: the lease expires on its own.
+  if (error) return console.log(`::warning::release_test_lane failed (${error.message}); lane ${lane} will expire with its lease.`);
   console.log(data ? `Test lane ${lane} released.` : `Test lane ${lane} was no longer held by ${holder} (lease expired?).`);
 }
 

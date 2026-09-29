@@ -19,7 +19,8 @@ export async function createTestOffice(label: string): Promise<string> {
   const name = testOfficeName(label);
   const { data: found } = await admin.from("office").select("id").eq("name", name).maybeSingle();
   if (found) return found.id as string;
-  const { data, error } = await admin.from("office").insert({ name, branch: "test" }).select("id").single();
+  // is_test: the lane copies were never covered by the one-off flagging in migration 20260927070322.
+  const { data, error } = await admin.from("office").insert({ name, branch: "test", is_test: true }).select("id").single();
   if (error) throw error;
   return data.id as string;
 }

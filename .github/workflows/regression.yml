@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     # Full suite ≈ 26 min (RLS incl. RUN_SLOW ≈ 7, e2e ≈ 17); 30 left no headroom (run 36439895456).
     # + up to 30 min waiting for a free test lane (chore test-isolation).
+    # Keep below the 90-min lane lease (scripts/test-lane.mjs LEASE_MINUTES) or a slow run could lose its lane.
     timeout-minutes: 75
     env:
       TARGET: ${{ inputs.target || 'dev' }}
