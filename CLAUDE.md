@@ -20,6 +20,7 @@ Subagents: `verifier` (after each step), `sdlc-reviewer` (before a PR). Hook: `.
 - **A PR needs CI only** (full suite on CI's own build). Don't dispatch the deployed-URL Regression per PR; it runs nightly and at the release gate (architecture.md policy).
 - **Proving a fix on the deployed site:** dispatch Regression with `only` = the affected test files (e.g. `inbox add-document`); ~3–5 min, marked "Quick check — not release evidence".
 - **Queue:** CI's DB job and Regression share the dev database (`dev-database` group, one waiting slot — a new run cancels the waiting one). Dispatch only after the PR's DB job has started.
+- **Running tests in a Claude cloud session:** `.env.local` (dev keys only) is copied from Raja's Mac via the desktop link; the egress allowlist includes the dev Supabase host. Node needs `NODE_USE_ENV_PROXY=1`; Playwright needs the proxy and `/opt/pw-browsers/chromium` (a local, untracked `playwright.local.config.ts`). Previews (`*.vercel.app`) are not reachable from the session.
 - e2e `signIn()` reuses a user's session after their first real sign-in; pass `{ fresh: true }` when the test is about signing in.
 
 ## Rules
