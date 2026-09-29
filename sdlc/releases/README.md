@@ -7,6 +7,11 @@ In Vercel › project › Settings › Deployment Protection, create **Protectio
 GitHub Actions secret `VERCEL_AUTOMATION_BYPASS_SECRET`. `tests/e2e/preview-access.ts` sends it once per browser context,
 to the tested URL's own origin only, and uses the cookie Vercel returns. Not used for `target = prod` (smoke only).
 
+## Quick checks
+Regression → *Run workflow* has an `only` box (space-separated words matched against test file paths). Use it to prove a fix
+on a deployed preview in minutes. A filtered run's summary says **"Quick check — partial run; not release evidence"**
+and must never be copied into `Rn/evidence/`; release records need a full run (`only` empty).
+
 ## How a release record is produced
 1. Confirm `main` CI is green (note the run URL and SHA).
 2. Deploy `main` to **staging**; run GitHub Actions → **Regression** → *Run workflow* with `target = staging` (URL of staging).

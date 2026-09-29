@@ -26,6 +26,13 @@ describe("regression evidence summary", () => {
     expect(markdown).toContain("| E2E / smoke | 14 | 0 | 0 |");
   });
 
+  it("marks a quick check (filtered run) as partial, never as release evidence", () => {
+    const dir = resultsDir({ "junit-unit.xml": junit(11), "junit-db.xml": junit(0), "e2e-results.json": e2e });
+    const quick = buildSummary({ dir, expect: ["unit", "db", "e2e"], env: { ONLY: "inbox add-document" } }).markdown;
+    expect(quick).toContain("Quick check — only: `inbox add-document`. Partial run; not release evidence.");
+    expect(buildSummary({ dir, expect: ["unit", "db", "e2e"] }).markdown).not.toContain("Quick check");
+  });
+
   it("flags an expected suite whose result file is missing", () => {
     const dir = resultsDir({ "e2e-results.json": e2e });
     const { markdown, missing } = buildSummary({ dir, expect: ["unit", "db", "e2e"] });

@@ -7,9 +7,9 @@ import type { BrowserContext } from "@playwright/test";
  * browser context keeps. The secret never goes to other hosts (Supabase, wa.me), never into a URL, and is a
  * no-op for local runs (CI's own production build) or when the secret is not set.
  *
- * Every request to that origin also carries `x-vercel-skip-toolbar: 1`: Vercel injects its feedback toolbar
- * (vercel.live) into previews, and our CSP rightly blocks its inline styles and frame, which the smoke test
- * reports as CSP errors (run 36455393633). Humans browsing previews keep the toolbar.
+ * The Vercel Toolbar is switched off for pre-production deployments in the Vercel project (Raja, 2026-09-29):
+ * it injected vercel.live styles/frames that our CSP rightly blocks, failing smoke on previews (runs 36455393633,
+ * 36512990020). An `x-vercel-skip-toolbar` request header did not prevent the injection, so it was removed.
  */
 const primed = new WeakSet<BrowserContext>();
 
@@ -18,8 +18,6 @@ export async function allowPreview(context: BrowserContext, baseURL: string | un
   if (!secret || !baseURL || primed.has(context)) return;
   const origin = new URL(baseURL);
   if (origin.protocol !== "https:") return; // local runs (http://localhost) are never protected
-  await context.route((url) => url.origin === origin.origin, (route) =>
-    route.continue({ headers: { ...route.request().headers(), "x-vercel-skip-toolbar": "1" } }));
   const res = await context.request.get(new URL("/login", origin).toString(), {
     headers: { "x-vercel-protection-bypass": secret, "x-vercel-set-bypass-cookie": "true" },
     maxRedirects: 0,

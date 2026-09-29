@@ -17,6 +17,10 @@ on:
       base_url:
         description: "Deployed URL (leave empty for dev: https://ca-document-vault.vercel.app)"
         required: false
+      only:
+        description: "Quick check: run only test files whose path contains these words (space-separated, e.g. 'inbox add-document'). Empty = full suite. A filtered run is NOT release evidence."
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -31,6 +35,7 @@ jobs:
     env:
       TARGET: ${{ inputs.target || 'dev' }}
       E2E_BASE_URL: ${{ inputs.base_url || 'https://ca-document-vault.vercel.app' }}
+      ONLY: ${{ inputs.only || '' }}
       # Dev values by default. Staging/prod secrets are added when those environments exist.
       NEXT_PUBLIC_SUPABASE_URL: ${{ (inputs.target == 'staging' && vars.STAGING_SUPABASE_URL) || vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ (inputs.target == 'staging' && vars.STAGING_SUPABASE_PUBLISHABLE_KEY) || vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
@@ -39,6 +44,11 @@ jobs:
       # (tests/e2e/preview-access.ts); sent only to E2E_BASE_URL's origin. Never needed for prod smoke.
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ inputs.target != 'prod' && secrets.VERCEL_AUTOMATION_BYPASS_SECRET || '' }}
     steps:
+      - name: Check the quick-check filter
+        if: env.ONLY != ''
+        run: |
+          if ! [[ "$ONLY" =~ ^[A-Za-z0-9._/\ -]+$ ]]; then echo "::error::'only' may contain letters, digits, spaces and . _ / - only"; exit 1; fi
+          echo "::warning::Quick check (only: $ONLY) — partial run, not release evidence."
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
@@ -49,13 +59,14 @@ jobs:
         run: npm run test:ci
       - name: RLS (database security)
         if: env.TARGET != 'prod'
-        run: npm run test:db:ci
+        # Quick check: $ONLY (validated above) is intentionally unquoted, one filter per word; a full run gets no extra flags.
+        run: npm run test:db:ci -- ${ONLY:+--passWithNoTests $ONLY}
         env:
           # Slow tests (02 AC-17: 1,000-row CSV import < 60 s) run here, not on every PR.
           RUN_SLOW: "1"
       - name: E2E (full) against deployed URL
         if: env.TARGET != 'prod'
-        run: npm run test:e2e
+        run: npm run test:e2e -- ${ONLY:+--pass-with-no-tests $ONLY}
       - name: Smoke only (prod — no data-writing tests)
         if: env.TARGET == 'prod'
         run: npm run test:smoke

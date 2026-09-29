@@ -47,6 +47,7 @@ export function buildSummary({ dir = "test-results", expect = [], env = {} } = {
     : "local";
   const markdown = [
     `## Regression evidence — ${env.TARGET ?? "ci"}`,
+    ...(env.ONLY ? [`**Quick check — only: \`${env.ONLY}\`. Partial run; not release evidence.**`] : []),
     `Commit: \`${env.GITHUB_SHA ?? "local"}\` · Target: ${env.E2E_BASE_URL ?? "localhost"} · Run: ${run} · Date (UTC): ${new Date().toISOString()}`,
     "",
     "| Suite | Passed | Failed | Skipped |",
