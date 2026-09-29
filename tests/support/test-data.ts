@@ -2,7 +2,7 @@
 // so the shared dev database does not fill up. Only flows that must create a brand-new person
 // (the invite test) use a unique, run-tagged address.
 //
-// Lanes (chore test-isolation, 2026-09-29): up to three CI/Regression runs share the dev database at once.
+// Lanes (chore test-isolation, 2026-09-29): up to two CI/Regression runs share the dev database at once.
 // Each leases a lane (scripts/test-lane.mjs → TEST_LANE=1..9) and gets its own copy of every fixture office
 // and user, so runs never reset each other's data. Without TEST_LANE (a developer's machine or a Claude
 // session) the lane is "local" and the names are exactly the pre-lane ones.

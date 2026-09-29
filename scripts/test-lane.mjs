@@ -1,4 +1,4 @@
-// Test lanes (chore test-isolation, 2026-09-29): lets up to three CI/Regression runs share the dev database.
+// Test lanes (chore test-isolation, 2026-09-29): lets up to two CI/Regression runs (rows in test_lane) share the dev database.
 //   node scripts/test-lane.mjs acquire   → leases a free lane (waits for one), exports TEST_LANE to later steps
 //   node scripts/test-lane.mjs release   → gives it back (run with `if: always()`; a crashed run's lease expires)
 // Needs NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SECRET_KEY (service role; the lane functions refuse everyone else)
