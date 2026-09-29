@@ -1,5 +1,5 @@
 # Spec: Document search
-Intent: ./intent.md · Status: draft · Date: 2026-09-29
+Intent: ./intent.md · Status: approved (Raja 2026-09-29 22:52) · Date: 2026-09-29
 Screens: mockup header (references/mockup/01-today.jpg: "Search clients, documents, DOC id…" with the "/" hint). The results page `/documents` is **not in the mockup**. It uses 03's list styling (Inbox rows, mockup 02) and the Clients filter chips (mockup 03); this is recorded as an agreed deviation in ui-reference.md.
 
 ## Key definitions
@@ -128,7 +128,7 @@ Additive only: two new functions, plus possibly indexes. No data changes. Dev fi
 - The volume test data is generated in its own lane-suffixed test office, reset each run, as 03's documents-perf does.
 
 ## Proposed architecture changes
-1. **Lock exception: 03b's migration is read-only (needs your decision at the Batch C confirmation).**
+1. **Lock exception: 03b's migration is read-only (approved, Raja 2026-09-29, option A).**
    - 03b needs two new SECURITY INVOKER functions. Its migration adds only these functions, and possibly indexes. It creates or alters no table, column, policy, trigger or existing function.
    - It could then be applied to dev while **04 holds the schema lock**, keeping 04's merge-first order.
    - Without the exception, 03b cannot run any DB or e2e test until 04 merges. Batch C would be mostly sequential.
@@ -145,5 +145,9 @@ Additive only: two new functions, plus possibly indexes. No data changes. Dev fi
 ## Out of scope
 Export and bulk download (08) · searching inside file contents (OCR) · saved searches · expected-document facets (04/06) · a "Documents" nav item · activity search (08) · spelling tolerance / fuzzy matching beyond partial matches.
 
+## Decisions (Raja 2026-09-29)
+- **Option A approved:** 03b may apply its own migration while 04 holds the schema lock. That migration may only add the two new SECURITY INVOKER search functions (and, if the volume test needs them, indexes on `document`/`document_version`). It creates or alters no table, column, policy, trigger or existing function.
+- Spec approved as drafted.
+
 ## Open questions
-1. **Proposed architecture change 1** (read-only migration exception): approve now, or decide at the Batch C confirmation right after the plan?
+None.
