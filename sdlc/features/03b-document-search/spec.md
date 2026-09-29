@@ -52,11 +52,12 @@ Screens: mockup header (references/mockup/01-today.jpg: "Search clients, documen
   - Search is read-only and writes no activity.
 
 **Performance (volume test, RUN_SLOW)**
-- AC-12 These targets apply with **100k documents** in one test office, from the Vercel region (bom1) to the Mumbai DB:
+- AC-12 These targets apply from the Vercel region (bom1) to the Mumbai DB:
   - Header suggestions: < 300 ms server time.
   - Results page (first page, with facets): < 1 s.
-  - A Limited user's search: < 1 s. That user sees about 5% of clients, so RLS filters most rows.
-  - Indexes are added only if these targets fail without them (roadmap rule).
+  - A Limited user's search: < 1 s.
+
+  **Amended 2026-09-29 (Raja): measured at 10k documents in the volume test that runs after all R1 features are built.** It is no longer part of 03b; see plan "Deviations". Indexes are added then, only if a target fails.
 - AC-13 **Find-time check (success metric 1):** a Staff-role user finds 5 described documents in ≤ 10 s median, starting from any page. This is a timed manual check recorded in the PR, and re-run on staging for R1.
 
 ## Functional requirements

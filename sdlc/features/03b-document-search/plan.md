@@ -1,5 +1,5 @@
 # Plan: Document search
-Spec: ./spec.md · Status: draft · Date: 2026-09-29
+Spec: ./spec.md · Status: approved (Raja 2026-09-29 23:01) · Date: 2026-09-29
 Holds: **no schema lock.** 03b applies its own additive migration under the read-only exception (spec decision, Raja 2026-09-29, option A). There is **no architecture lock**; the spec's agreed deviations go to ui-reference.md, which is feature-owned.
 Base: `feat/03b-document-search` from main `f0be2c1` (after #13/#14). **Merge order: 04 first, then 03b rebases and re-runs the full suite.**
 
@@ -54,12 +54,12 @@ Staging and prod get both at R1, in version order after or around 04's (both are
 - [ ] 4. Server actions (`suggest`, `searchDocuments`, `documentFacets`, `openDocId`), stale-response guard, error logging (code + request ID only). Proof: unit + RLS through the RPCs. (0.5)
 - [ ] 5. **Header search**: combobox, `/`, dropdown groups, DOC-ID jump, See all → session storage, mobile button. Proof: e2e + unit (keyboard, `/` rules). (1.5)
 - [ ] 6. **`/documents`**: filter chips + popovers with counts, result rows, sort, paging, Include archived, empty/loading/error states, text restored from session storage. Proof: e2e (URL round trip, Back/refresh; **a URL listener proves no search text in any URL**). (2)
-- [ ] 7. **Volume (RUN_SLOW)**: seed 100k (chunked, persistent per lane), time suggestions / first page + facets / Limited; add indexes (migration 2) only if a target fails. Proof: timings in the PR, green on a RUN_SLOW dispatch. (1)
+- [ ] ~~7. Volume~~ → **deferred** (Raja 2026-09-29): a 10k-document volume test, with the test-only seeding function, runs **after all R1 features are built** (roadmap "Before pilot"). Indexes wait until then.
 - [ ] 8. a11y (axe on the header dropdown and `/documents`), ≤ 390 px, screenshots, ui-reference.md deviations. Proof: e2e evidence. (0.5)
 - [ ] 9. AC-13: timed find check, Staff role, 5 lookups, recorded in the PR. [you or a staff member: 10 min]
 - [ ] 10. After 04 merges: rebase and run the full suite. Then `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. Proof: CI green, evidence for all suites. [PR review: 1 h]
 
-**Total ≈ 8.5 build sessions.** Your review ≈ 2–3 h. **First cut if it slips:** facet counts (plain filters without counts). Second cut: the mobile search sheet.
+**Total ≈ 7.5 build sessions** (volume step deferred). Your review ≈ 2–3 h. **First cut if it slips:** facet counts (plain filters without counts). Second cut: the mobile search sheet.
 
 ## Risks
 | Risk | Mitigation |
@@ -83,14 +83,19 @@ Staging and prod get both at R1, in version order after or around 04's (both are
 - All 02/03/04 tests unchanged and green after the rebase.
 
 ## Deviations from plan
-(none yet)
+- **Volume test deferred and reduced (Raja 2026-09-29 23:01).** Spec AC-12 is measured at **10k documents**, once all R1 features are built, not in 03b. The test-only `seed_test_documents` function is approved and ships with that volume test, not in 03b's migration. Consequences:
+  - 03b's migration holds only the two search functions;
+  - the indexes migration is deferred;
+  - `tests/rls/document-search-perf.test.ts` and `tests/support/search.ts` move to the volume-test item.
+
+  Risk accepted: a slow search at volume shows up later. It is fixable with additive indexes, which need no change to 03b's code.
 
 ## Session log
 ### 2026-09-29
 - Done: intent approved (3b7e1a2), spec approved (2218b4a, option A read-only migration exception), plan drafted.
-- In progress: plan gate + Batch C confirmation.
+- In progress: — (plan approved; Batch C launch approved 2026-09-29 23:01).
 - Blocked / failing: —
-- Next step: plan approval → roadmap PR (Batch C in progress, locks) → build step 0 in parallel with 04.
+- Next step: roadmap PR (Batch C in progress, locks) → build step 0 in parallel with 04.
 - Decisions made (cross-cutting → flag for architecture.md at merge):
   - read-only migration exception for search functions;
   - search text handed over via session storage;
