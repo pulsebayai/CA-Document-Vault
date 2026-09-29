@@ -1,5 +1,5 @@
 # Plan: Expected documents & schedule
-Spec: ./spec.md · Status: draft · Date: 2026-09-29
+Spec: ./spec.md · Status: approved (Raja 2026-09-29 20:29 IST) · Date: 2026-09-29
 Holds (from approval): **schema lock** + **architecture lock** (spec's 5 approved changes; applied to architecture.md in this feature's PR, as in 02/03).
 Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 onwards) starts only after the `test-isolation` chore merges** (Batch C decision, 2026-09-29); then rebase.
 
@@ -92,8 +92,8 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 
 ## Session log
 ### 2026-09-29
-- Done: intent approved (abfa7a8), spec approved (93f94de), plan drafted.
-- In progress: plan gate.
+- Done: intent approved (abfa7a8), spec approved (93f94de), plan approved.
+- In progress: — (plan approved 2026-09-29 20:29 IST; locks recorded in the roadmap at batch launch).
 - Blocked / failing: build blocked on the `test-isolation` chore (not started). Nightly: 30 Sep 01:30 IST run is the first with #9–#11; check next session.
 - Next step: plan approval → Batch C confirmation (Step 3, needs 03b's plan) → roadmap PR (locks) → test-isolation → build step 0.
 - Decisions made (cross-cutting → flag for architecture.md): the 5 approved spec changes (pg_cron system writer; FY auto-create from 1 Feb; default start = earliest still-open period; items exist from ask date; metric 1 on Settings › Collection); plan-effect logic in DB triggers; `app.expected_write` flag.
