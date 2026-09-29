@@ -43,7 +43,7 @@ jobs:
       # Vercel › Deployment Protection › Protection Bypass for Automation. Lets e2e reach protected previews
       # (tests/e2e/preview-access.ts); sent only to E2E_BASE_URL's origin. Never needed for prod smoke.
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ inputs.target != 'prod' && secrets.VERCEL_AUTOMATION_BYPASS_SECRET || '' }}
-      # Test lanes: up to 3 runs share a database, each with its own fixture offices/users (not needed for prod smoke).
+      # Test lanes: up to 2 runs share a database, each with its own fixture offices/users (not needed for prod smoke).
       TEST_LANE_HOLDER: regression-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Check the quick-check filter

@@ -51,7 +51,7 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SECRET_KEY: ${{ secrets.DEV_SUPABASE_SECRET_KEY }} # dev only — never prod
-      # Test lanes (chore test-isolation): up to 3 runs share dev, each with its own fixture offices/users.
+      # Test lanes (chore test-isolation): up to 2 runs share dev, each with its own fixture offices/users.
       TEST_LANE_HOLDER: ci-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v4
