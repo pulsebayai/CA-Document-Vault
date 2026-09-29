@@ -51,7 +51,7 @@ Screens: references/mockup/10-client-documents.jpg (due/overdue rows, "Expected 
 
 ## Non-functional requirements
 - **Performance (volume test, RUN_SLOW):** 1,000 clients × 15 scheduled rows × 12 months (~180k items): the daily job < 60 s; Clients list with overdue counts < 1 s server time; Client › Expected and Documents < 1 s; Collection metric < 2 s; a document save adds < 50 ms.
-- **Security/privacy:** RLS default-deny; `office_id` on every row; tenant-first checks in definer triggers; `search_path = ''`; no PII in URLs/logs/activity; registrations never shown in full on these screens.
+- **Security/privacy:** RLS default-deny; `office_id` on every row; tenant-first checks in definer triggers; `search_path = ''`; no PII in URLs/logs/activity; registration display per open question 3.
 - **Accessibility:** WCAG 2.1 AA; state is text, not colour alone ("Overdue", "Due today"); waive dialog is the shared Modal with a labelled, required reason; ≤ 390 px for Expected tab and Clients list (asserted).
 - **Reliability:** a job failure is visible — the nightly regression includes a check that today's `expected.generated` activity row exists on dev; job failures are logged by pg_cron (`cron.job_run_details`).
 
