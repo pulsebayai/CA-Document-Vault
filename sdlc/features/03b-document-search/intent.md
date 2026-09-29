@@ -1,5 +1,5 @@
 # Intent: Document search
-Author: Raja (drafted with Claude) · Status: draft · Date: 2026-09-29
+Author: Raja (drafted with Claude) · Status: approved (Raja 2026-09-29 21:54) · Date: 2026-09-29
 Roadmap item: 03b-document-search (split out of 03 on 2026-09-28) · Release: R1 · Moves product metric: 3 (catalogue convergence, indirectly: types become filters people rely on); supports principle "found in seconds" (vision)
 
 ## Problem
@@ -55,6 +55,13 @@ Staff can find any document they are allowed to see **in seconds**, from anywher
 - Expected-document facets ("pending/overdue"). These live in 04's screens, and 06 Today.
 - A "Documents" top-nav item. Activity search (08).
 
+## Decisions (Raja 2026-09-29)
+- Q1: the header box finds clients and documents; an exact DOC-ID jumps straight to the document.
+- Q2: `/documents` is a results page with no nav item.
+- Q3: archived documents are hidden, with an opt-in toggle.
+- Q4: no export.
+- The "Received by" facet lists everyone who appears on a visible document, with deactivated staff marked.
+- Results show 50 per page, newest received first, with a sort switch (date received / date added / DOC-ID).
+
 ## Open questions
-1. Should the facet "received by" list only active staff, or everyone who ever received a document? Draft: everyone who appears on a visible document, with deactivated staff marked.
-2. **Page size and sort.** Draft: 50 per page, newest received first, with a "Sort: date received / date added / DOC-ID" switch.
+None. All were settled at the intent gate on 2026-09-29.
