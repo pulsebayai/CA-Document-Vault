@@ -97,6 +97,8 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 - **D2 — step 0 merged main into the branch instead of rebasing** (2026-09-30): same result for CI, and no force-push of a published branch.
 - **D3 — contract details fixed by the step-1 tests** (for SQL review at step 2): error codes `ROLE_REQUIRED`, `NOT_TEST_OFFICE`, `REASON_REQUIRED`, `NOT_PENDING`, `NOT_RECEIVED`; activity actions `expected.generated` (entity office, data {created, linked}, actor null), `expected.waived` / `expected.waive_undone` / `expected.reopened` (actor = user, data {code …}), `expected.auto_waived` (one per item, actor null); system reasons "Removed from plan" · "Registration inactive" · "Before start period"; a document filed for a **waived** item is linked but the item stays waived until Undo (then received); `completed_by` = first document linked while pending, else the earliest remaining by received on; service-role-only `expected_job_info()` to read the pg_cron job.
 
+- **D4 — linking without a registration (Raja 2026-09-30, option b; spec amended).** A document with no GSTIN/TAN for a per-registration type links to the item of the client's only active registration of that kind; with ≥ 2 active it doesn't link. The document's own `registration_id` stays null. Test: `expected-docs.test.ts` › linking.
+
 ## Session log
 ### 2026-09-29
 - Done: intent approved (abfa7a8), spec approved (93f94de), plan approved.
@@ -110,4 +112,4 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 - In progress: CI 36699140557 on a929b19 is red as expected: lint/typecheck/unit/build green; the RLS step fails, so e2e did not run. The per-file breakdown isn't visible from the cloud session (artifact host blocked). Confirm that only the 3 new files fail, and only on the missing contract, with a local `test:db` run (stage `.env.local`) or the `test-evidence` artifact in Raja's Chrome.
 - Blocked / failing: —
 - Next step: confirm red-for-the-right-reasons (above) → step 2 — the migration (dry-run on dev, SQL review by Raja 45–60 min, apply, advisors, back-fill counts).
-- Decisions made (cross-cutting → flag for architecture.md): D1 (per-test-office clock, extends the `app.doc_clock` rule). Open question for Raja: documents filed **without** a GSTIN for a per-GSTIN type don't link (spec-literal) — see chat.
+- Decisions made (cross-cutting → flag for architecture.md): D1 (per-test-office clock, extends the `app.doc_clock` rule). Raja chose option b for GSTIN-less documents (D4, test added). **CI chore approved** (docs-only PRs/pushes skip the heavy jobs via a changes job; nightly unconditional; the last commit before merge always has a run) — do it **after 04 step 2**, as `chore/ci-docs-only` from main.

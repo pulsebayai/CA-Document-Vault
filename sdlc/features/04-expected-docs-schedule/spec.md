@@ -8,7 +8,7 @@ Screens: references/mockup/10-client-documents.jpg (due/overdue rows, "Expected 
 - **Ask date** = period end + `ask_after_months` months, on `ask_day` (clamped to that month's last day). **Overdue from** = the same with `overdue_after_months`/`overdue_day`. **Due by** = the day before *overdue from*. All dates are IST calendar dates. Example: Sales invoices, +1/1 and +1/5, period Sep 2026 → ask 1 Oct, due by 4 Oct, overdue from 5 Oct.
 - **Stored status:** `pending` · `received` · `waived`. **Shown state** (derived, never stored): *Due* (pending, today < overdue from) · *Overdue* (pending, today ≥ overdue from) · *On hold* (pending, plan row paused) · *Received* · *Not needed* (waived).
 - **Generated** = an expected document exists once its **ask date has arrived** (today IST ≥ ask date) and its period is on or after the row's **start period**. Nothing exists for future asks (no "upcoming" rows — see Proposed architecture changes 4).
-- **Linked document** = a classified, non-archived document with the same client + type + period (+ registration). **Received** = at least one linked document; **received on** = the *received on* date of the document that completed it.
+- **Linked document** = a classified, non-archived document with the same client + type + period (+ registration). A document with **no** registration for a per-registration type links to the item of the client's registration of that kind **only when the client has exactly one active one**; with two or more it does not link (Raja 2026-09-30, option b). **Received** = at least one linked document; **received on** = the *received on* date of the document that completed it.
 - **On time** (metric 1) = received on < overdue from. Denominator: expected documents whose *overdue from* date has passed, excluding waived, on-hold and archived-client items.
 - **Earliest still-open period** (intent Q1) = the earliest period of the row's frequency whose *overdue from* is after today, among the periods the office has.
 
@@ -121,7 +121,7 @@ Dev only (no staging/prod yet). Migration back-fills expected documents for all 
 Today screen, Remind (email/WhatsApp), follow-up log, chasing-load metric (06) · type merge re-pointing expected docs (05) · review/dispatch (07) · Documents/Search (03b) · automatic reminders, staff nudges · "upcoming" items and a forward calendar · partial-receipt counts · a metric report screen, per-staff metric · mapping one quarterly document onto three monthly items · "apply master schedule to existing clients".
 
 ## Decisions (Raja 2026-09-29)
-Architecture changes 1–5 approved (incl. no stored "upcoming" items; metric 1 on Settings › Collection) · next FY auto-created by the job from 1 February · Expected rows show the full GSTIN/TAN when the client has several.
+Architecture changes 1–5 approved (incl. no stored "upcoming" items; metric 1 on Settings › Collection) · next FY auto-created by the job from 1 February · Expected rows show the full GSTIN/TAN when the client has several. **2026-09-30:** a document without a GSTIN/TAN links when the client has exactly one active registration of that kind (option b).
 
 ## Open questions
 None — settled at the spec gate 2026-09-29.

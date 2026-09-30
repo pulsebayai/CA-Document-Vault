@@ -195,6 +195,36 @@ describe("linking documents (AC-6, AC-7)", () => {
     expect((await expectedItem(clientA, T.sales, "2026-06", reg.g2)).status).toBe("pending");
   });
 
+  it("a document with no GSTIN/TAN links when the client has exactly ONE active registration of that kind (Raja 2026-09-30, option b)", async () => {
+    // Client E: one active GSTIN (+ one inactive), one TAN. Enabled on the 1 Jul clock → June is asked today.
+    const panE = testPan("P", 4105);
+    const { data, error } = await as.staff.rpc("create_client", { p: {
+      name: "Expected E", client_type: "proprietorship", pan: panE, incharge_id: u.staff.id,
+      registrations: [{ kind: "gstin", number: testGstin(panE, "33", 1) }, { kind: "gstin", number: testGstin(panE, "29", 2) }, { kind: "tan", number: testTan(4105) }],
+    } });
+    expect(error).toBeNull();
+    const clientE = data.id as string;
+    const { data: regs } = await as.staff.from("client_registration").select("id, number").eq("client_id", clientE);
+    const off = regs!.find((r) => r.number === testGstin(panE, "29", 2))!.id;
+    await as.staff.from("client_registration").update({ active: false }).eq("id", off);
+    const onlyGstin = regs!.find((r) => r.number === testGstin(panE, "33", 1))!.id;
+    const tanE = regs!.find((r) => r.number === testTan(4105))!.id;
+    await enable(as.staff, clientE, officeId, "GST");
+    await enable(as.staff, clientE, officeId, "TDS/TCS");
+
+    const sales = await mustCreateDocument(as.staff, { client_id: clientE, doc_type_id: await typeId(officeId, T.sales), period_id: await periodId(officeId, "2026-06"), received_on: "2026-07-01" });
+    expect(await expectedItem(clientE, T.sales, "2026-06", onlyGstin)).toMatchObject({ status: "received", completed_by_document_id: sales.id });
+    const tds = await mustCreateDocument(as.staff, { client_id: clientE, doc_type_id: await typeId(officeId, T.salaryTds), period_id: await periodId(officeId, "2026-06"), received_on: "2026-07-01" });
+    expect(await expectedItem(clientE, T.salaryTds, "2026-06", tanE)).toMatchObject({ status: "received", completed_by_document_id: tds.id });
+    expect((await documentRow(sales.id)).registration_id).toBeNull(); // the document itself is not changed
+  });
+
+  it("with two or more active GSTINs, a document with no GSTIN does not link (no guessing)", async () => {
+    const d = await doc(as.staff, T.sales, "2026-06", { received_on: "2026-07-01" }); // client A: g1 + g2 active
+    expect((await documentRow(d.id)).expected_doc_id).toBeNull();
+    expect((await expectedItem(clientA, T.sales, "2026-06", reg.g2)).status).toBe("pending");
+  });
+
   it("classifying an Inbox document links it", async () => {
     const inbox = await mustCreateDocument(as.staff, { received_on: "2026-06-20" });
     const { error } = await as.staff.rpc("update_document", { p_id: inbox.id, p: {
