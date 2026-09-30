@@ -99,6 +99,10 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 
 - **D4 — linking without a registration (Raja 2026-09-30, option b; spec amended).** A document with no GSTIN/TAN for a per-registration type links to the item of the client's only active registration of that kind; with ≥ 2 active it doesn't link. The document's own `registration_id` stays null. Test: `expected-docs.test.ts` › linking.
 
+- **D5 — `search_clients` overdue counts move to step 7** (own small migration, same schema lock). Step 2 carries everything the step-1 tests need; the list query is only needed by the Clients screen, and keeping it apart keeps 03b's `search_clients` untouched until then.
+- **D6 — resume via `resumed_on`** (new nullable column on `client_doc_type` and `client_group`, set by a BEFORE trigger when a paused/removed row or group becomes active; not granted to users). Generation skips periods whose overdue date had passed on that day, which is AC-12's "resume continues from the earliest still-open period" without moving the stored start period (moving it would auto-waive items still owed from before the pause).
+- **Flag for review — one 02 test encodes the old start default:** `tests/rls/plan.test.ts:70` expects the new row to start at the *current* month. AC-3 (approved) changes the default to the earliest still-open period. They agree on days 6–31 of a month (Sales: overdue day 5), but on the 1st–5th the new rule gives the previous month, so that test would fail on those days. Updating that one assertion to AC-3 is a spec-driven change, not weakening a test; it needs Raja's OK (CLAUDE.md rule).
+
 ## Session log
 ### 2026-09-29
 - Done: intent approved (abfa7a8), spec approved (93f94de), plan approved.
@@ -113,3 +117,4 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 - Blocked / failing: —
 - Next step: step 2 — the migration (dry-run on dev, SQL review by Raja 45–60 min, apply, advisors, back-fill counts).
 - Decisions made (cross-cutting → flag for architecture.md): D1 (per-test-office clock, extends the `app.doc_clock` rule). Raja chose option b for GSTIN-less documents (D4, test added). **CI chore approved** (docs-only PRs/pushes skip the heavy jobs via a changes job; nightly unconditional; the last commit before merge always has a run) — do it **after 04 step 2**, as `chore/ci-docs-only` from main.
+- Step 2 (in progress): migration drafted (`supabase/migrations/20260930120000_expected_docs.sql`; renamed to the applied version at apply). Dry-run on dev in one transaction, rolled back by a deliberate error: all DDL, functions, triggers, cron schedule and back-fill ran. Back-fill on Kushal Associates = 0 items (1 client, 12 scheduled rows starting Sep 2026 / Q2 / FY 2026-27; first ask 1 Oct), 7 `expected.generated` rows (one per non-test office), job registered `45 18 * * *`. Rollback verified (no table, extension, column or activity rows left). **Waiting: Raja's SQL review.**
