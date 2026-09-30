@@ -41,8 +41,8 @@ Base: `feat/03b-document-search` from main `f0be2c1` (after #13/#14). **Merge or
 Staging and prod get both at R1, in version order after or around 04's (both are additive, with no dependency either way).
 
 ## Steps (estimates = build sessions with Claude; your time in brackets)
-- [ ] 0. Draft PR, CI green on the branch (docs only). Rebase later when 04 merges. (—)
-- [ ] 1. **RLS/DB tests first (red)**, proof: `test:db` fails for the right reasons (1). Cases:
+- [x] 0. Draft PR, CI green on the branch (docs only). Rebase later when 04 merges. (—)
+- [x] 1. **RLS/DB tests first (red)**, proof: `test:db` fails for the right reasons (1). Cases:
   - text AND/OR rules; escaping of `%`, `_`, `\`; DOC-ID prefix;
   - each filter; sort; paging + total;
   - archived toggle;
@@ -100,3 +100,15 @@ Staging and prod get both at R1, in version order after or around 04's (both are
   - read-only migration exception for search functions;
   - search text handed over via session storage;
   - test-only seeding function (pending approval).
+
+### 2026-09-30
+- Done:
+  - Step 0: merged main (769892b) into the branch (no force-push); draft PR #19; CI 36717094910 green (docs-only, tests skipped).
+  - Step 1: `tests/rls/document-search.test.ts` (48 tests: text rules, escaping, DOC-ID prefix, 5-word/50-char cut, current file name only, each filter, sort, paging, archived toggle, facets incl. own-filter exclusion and "(inactive)", visibility matrix incl. group- and type-level assignment, anon, no activity). Local run: 47 fail with "function not found" (right reason); the anon test passes vacuously until step 2.
+  - Before any test had passed, I fixed two defects in my own step-1 test: a token collision ("zqmv" contained "zqm"), and assignments not being restored after a failure (now try/finally).
+  - Step 2 in progress: migration `<ts>_document_search.sql` drafted. A rolled-back dry-run on dev (staff and Limited impersonated) found a NULL bug: a document with no file or remark matched every text. It's fixed with coalesce and re-verified.
+- In progress: step 2, waiting for the SQL gate (apply to dev → CI green).
+- Blocked / failing: nothing pushed since step 0, to avoid a known-red CI run.
+- Next step: SQL gate → apply to dev (rename the file to the applied version) → advisors → push → CI green → tick step 2.
+- Decisions made (cross-cutting → flag for architecture.md): none new.
+
