@@ -1,5 +1,5 @@
 # Architecture: CA Document Vault
-Status: approved · Updated: 2026-09-28 (03: document intake, via PR #7)
+Status: approved · Updated: 2026-09-29 (chore test-isolation: test lanes)
 
 ## Stack
 - **Next.js (App Router) + TypeScript** — one codebase for UI and server actions/API routes.
@@ -109,7 +109,7 @@ Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature b
 | 2026-09-25 | Master templates copied into per-client instances (`client_doc_type`); no silent propagation | Each client's schedule is tracked independently; owner requirement | 02 |
 | 2026-09-25 | Staff-proposed types + admin governance in pilot; similarity matching, no AI in v1 | CA expects ~60% of types to be added in use; AI deferred for cost/residency | 03, 05 |
 | 2026-09-25 | Separate Supabase projects per env (dev now; staging + prod before pilot), named `<env> - CA Document Vault`; real client data only in prod; older CA Doc Vault project off-limits | Owner decision; isolation of real client data from test data | 01 |
-| 2026-09-25 | No local Supabase; tests run against hosted dev with tagged data + serialised CI; staging mandatory before prod | Owner decision: avoid Docker; staging is the migration rehearsal | 01 |
+| 2026-09-25 | No local Supabase; tests run against hosted dev with tagged data + serialised CI (→ test lanes, 2026-09-29); staging mandatory before prod | Owner decision: avoid Docker; staging is the migration rehearsal | 01 |
 | 2026-09-25 | `office_id` on every business table | Cheap now; avoids migration if multi-office/branch comes | 01 |
 | 2026-09-25 | Auth: email link + code (accept 6–8 digits); per-env SMTP (dev Gmail App Password, prod SES); nonce-based CSP in proxy | Supabase default email limits; new projects use 8-digit OTP; defence against injected scripts | 01 |
 | 2026-09-25 | Tests run against hosted dev with reusable fixture users on reserved `.test` domain; app never emails `.test` | Protect the email quota; keep dev DB clean | 01 |
@@ -127,4 +127,5 @@ Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature b
 | 2026-09-28 | Proposed types: Staff+ create after suggestions; join the client's plan at once (client-only group row if needed); names unique per group per client; approval in 05 | ~60% of types expected to be added in use; filing never blocked; Limited can't change plans | 03 |
 | 2026-09-28 | Received as = soft copy · hard copy · original; channels WhatsApp · Email · Hand delivery · Courier · Portal download · Other | Original = must be returned (07 dispatch) | 03 |
 | 2026-09-28 | UI token `--warn` darkened #B0611A → #9C5717 | 4.06:1 on `--warn-soft` failed WCAG AA (axe, Hard copy badge) | 03 |
+| 2026-09-29 | **Test lanes** replace the serialised `dev-database` queue: CI/Regression lease 1 of 2 lanes (3 at first; cut to 2 the same day after an overlap timed out e2e — Raja) (`test_lane`, service role only) and use lane-suffixed fixture offices/users; local runs use the un-suffixed set. Chosen over per-run fixtures + nightly purge | A waiting run was cancelled 4× on 28–29 Sep; per-run fixtures would add ~750 auth users/day (≈ 20k MAU/month on dev) and need hard-delete exceptions for staff/activity; lanes cap fixtures at 2 × 75 users with no purge. `test_lane` is test infrastructure: no `office_id`, service role only (RLS on, no policies) — a deliberate exception to the per-office table rule | chore test-isolation |
 

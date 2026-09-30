@@ -1,11 +1,35 @@
 // Test users live in fixed "e2e office …" offices and are reused across runs (reset at the start),
 // so the shared dev database does not fill up. Only flows that must create a brand-new person
 // (the invite test) use a unique, run-tagged address.
+//
+// Lanes (chore test-isolation, 2026-09-29): up to two CI/Regression runs share the dev database at once.
+// Each leases a lane (scripts/test-lane.mjs → TEST_LANE=1..9) and gets its own copy of every fixture office
+// and user, so runs never reset each other's data. Without TEST_LANE (a developer's machine or a Claude
+// session) the lane is "local" and the names are exactly the pre-lane ones.
 export const RUN_TAG = `e2e-${process.env.GITHUB_RUN_ID ?? "local"}-${Date.now().toString(36)}`;
 
-/** Stable address for a reusable fixture user. */
+/** Fixture names for one lane. Pure, so the naming rule is unit-tested without touching the environment. */
+export function fixtureNames(lane: string) {
+  if (!/^(local|[1-9])$/.test(lane)) throw new Error(`TEST_LANE must be 1–9 or "local", got "${lane}"`);
+  const local = lane === "local";
+  return {
+    lane,
+    email: (label: string) => `e2e-${label}${local ? "" : `-l${lane}`}@example.test`.toLowerCase(),
+    office: (label: string) => `e2e office ${label}${local ? "" : ` #${lane}`}`,
+  };
+}
+
+const names = fixtureNames(process.env.TEST_LANE?.trim() || "local");
+export const TEST_LANE = names.lane;
+
+/** Stable address for a reusable fixture user (per lane). */
 export function testEmail(label: string): string {
-  return `e2e-${label}@example.test`.toLowerCase();
+  return names.email(label);
+}
+
+/** Name of a reusable fixture office (per lane). Names starting "e2e office " are test offices. */
+export function testOfficeName(label: string): string {
+  return names.office(label);
 }
 
 /** Unique address for tests that must create a new person each run. */

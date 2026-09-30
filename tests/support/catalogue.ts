@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient } from "./db";
+import { testOfficeName } from "./test-data";
 
-// Feature 02 fixtures. Each DB test file owns one "e2e office …" with office.is_test = true.
+// Feature 02 fixtures. Each DB test file owns one "e2e office …" (per lane) with office.is_test = true.
 // reset_test_office (service role only, refuses non-test offices) wipes its clients/plans and
 // re-seeds catalogue + FYs, so every run starts from the same state (plan decision D2).
 
@@ -9,7 +10,7 @@ import { adminClient } from "./db";
 export async function createCatalogueOffice(label: string, opts: { isTest?: boolean; reset?: boolean } = {}): Promise<string> {
   const { isTest = true, reset = true } = opts;
   const admin = adminClient();
-  const name = `e2e office ${label}`;
+  const name = testOfficeName(label);
   const { data: found, error: e0 } = await admin.from("office").select("id, is_test").eq("name", name).maybeSingle();
   if (e0) throw e0;
   let id = found?.id as string | undefined;
