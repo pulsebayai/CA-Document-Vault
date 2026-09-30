@@ -1,5 +1,5 @@
 # Roadmap: CA Document Vault
-Updated: 2026-09-29 (Batch C launched: 04 ∥ 03b) · Architecture lock: **04** · Schema lock: **04** (03b: read-only migration exception — two new SECURITY INVOKER search functions only)
+Updated: 2026-09-30 (07 + 08 moved into R1 at the client's request; batch E; 08 → 07 dependency) · earlier: 2026-09-29 (Batch C launched: 04 ∥ 03b) · Architecture lock: **04** · Schema lock: **04** (03b: read-only migration exception — two new SECURITY INVOKER search functions only)
 
 | # | Feature slug | One-line intent | Product metric | Depends on | Touches (entities / screens / shared code) | Arch change? | Batch | Status |
 |---|---|---|---|---|---|---|---|---|
@@ -10,17 +10,19 @@ Updated: 2026-09-29 (Batch C launched: 04 ∥ 03b) · Architecture lock: **04** 
 | 04 | expected-docs-schedule | Generate expected docs from client instances; due/overdue; link files to expected docs; metric 1 measurable | 1 | 02, 03 | expected_doc, pg_cron, `document.expected_doc_id`, triggers on plan/registration/document tables; Client›Expected + Documents cards, Clients "Has overdue", Settings›Collection; start-period default; FY auto-create | schema + arch (5 changes) | C | in-progress (docs approved 2026-09-29) |
 | 05 | type-governance | Admin review queue for proposed types: approve / edit / map to existing (re-points documents) / reject; audit; in-app notifications | 3 | 03 | doc_type_proposal, notification; Settings›Catalogue, notification centre (re-points `expected_doc` → needs 04) | schema | D | planned |
 | 06 | today-and-reminders | Per-staff Today (overdue, due this week, to review, inbox); "Remind" emails client (SES); "WhatsApp" opens pre-filled chat; both logged | 1, 2 | 03, 04 | follow_up, email; Today, Client›Documents | yes (email provider) | D | planned |
-| 07 | review-and-dispatch | Received → reviewed → ready to dispatch → dispatched for originals; history | 1 | 03 | document status, dispatch; drawer | schema | — | planned |
-| 08 | bulk-activity-roles | Bulk zip download / bulk mark reviewed, Activity log screen, Users & roles screen with full RLS matrix | 5 | 03 | activity, RLS; Activity, Settings›Users | no | — | planned |
+| 07 | review-and-dispatch | Received → reviewed → ready to dispatch → dispatched for originals; history | 1 | 03 | document status, dispatch; drawer | schema | E | planned |
+| 08 | bulk-activity-roles | Bulk zip download / bulk mark reviewed, Activity log screen, Users & roles screen with full RLS matrix | 5 | 03, 07 (bulk "mark reviewed" needs 07's reviewed status) | activity, RLS; Activity, Settings›Users | no | E | planned |
 
 Later: client portal / upload links · automatic scheduled client reminders · AI type suggestions · receipt & dispatch acknowledgement emails · staff nudge emails · retention & archive rules · pause/resume groups · storage quota view · WhatsApp Business intake · multi-office.
 
 ## Releases
 Every release passes the *Release & regression policy* (architecture.md); records + evidence in `sdlc/releases/`.
-- **R1 — Pilot (target: as early as possible):** 01–06 incl. 03b, then create staging + prod Supabase projects and prod Vercel env *before* any real client data, used by 2–3 staff on a 20–30 client subset for the monthly GST cycle, then all clients.
+- **R1 — Pilot, full v1 (target: as early as possible):** 01–08 incl. 03b. **Changed 2026-09-30:** the client wants all features together, so 07 and 08 moved in from R2; the pilot stage is kept. After the last merge, create staging + prod Supabase projects and prod Vercel env *before* any real client data, used by 2–3 staff on a 20–30 client subset for the monthly GST cycle, then all clients.
+  - Cost of the change: the pilot starts after batch E (07 → 08). Check the expected start date against the GST cycle it should cover — missing that cycle's early-month intake delays the pilot by a month, not days.
   - R1 staging checklist additions (from 02): AC-22 plan set-up timed by a **Staff-role** user (≤ 2 min; 02 was timed by an Admin at 1:15) · 02 AC-17 proof = first nightly `regression.yml` on main after the merge (RUN_SLOW) — RLS step passed in nightly 36502490351 (2026-09-29).
   - R1 staging checklist additions (from 03): AC-5 re-timed by a **Staff-role** user filing 3 documents (03 was timed by the Admin: 1 doc, 15 s) · downloads not cached by the browser (stored `Cache-Control: private, no-store`; Supabase's signed download doesn't echo it) · smoke on staging: **no CSP errors** (preview failures were the Vercel Toolbar; confirm staging/prod show no toolbar) · full `regression.yml` against staging (e2e reaches deployed URLs since #8).
-- **R2 — Full v1:** 07–08.
+  - R1 staging checklist addition (from 08, when it lands): check the full RLS matrix on staging with one user per role before any real client data is loaded.
+- **R2:** none planned — next candidates come from the Later list, prioritised from pilot feedback.
 
 ## Before pilot (carried from 01)
 - **Volume test after all R1 features are built (Raja 2026-09-29):**
@@ -41,4 +43,5 @@ Parallel planning checkpoint 2026-09-26; **re-run 2026-09-29 (Raja)** — review
   - Locks: schema + architecture → 04. 03b holds a **read-only migration exception**: it may add only its two new SECURITY INVOKER search functions, and no table, column, policy, trigger or existing-function change.
   - Volume tests for 03b and 04 → deferred (see Before pilot).
 - **D (decide at next checkpoint):** 05 (needs 04's `expected_doc`; schema) and whether 06 can run beside it (06 needs schema for `follow_up` + the email-provider architecture change).
+- **E (added 2026-09-30, reconfirm from plans):** 07 → 08. 07 holds the schema lock (document status, dispatch). 08 depends on 07 (bulk "mark reviewed"); it may be built in parallel but merges after 07 and rebases.
 - Rejected 2026-09-29: 04 ∥ 05 — 05 depends on 04's `expected_doc` and both need the schema lock (05 would idle most of 04's build). Earlier rejected: 02 → 03∥04 → 05∥06 (hidden 04→03 dependency).
