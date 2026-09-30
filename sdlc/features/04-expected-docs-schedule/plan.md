@@ -89,6 +89,7 @@ Rollback: dev only. Revert the PR, add a compensating migration (unschedule the 
 AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E evidence). RUN_SLOW volume run green. Screenshots vs mockups 03/10. Back-fill counts noted. architecture.md updated with the 5 approved changes. All 02/03 tests unchanged and green.
 
 ## Deviations from plan
+- **`expected-plan.test.ts:256` fixture date (Raja 2026-10-01 00:3x IST):** a document's received-on changed **2026-10-10 → 2026-10-01**. 03's `RECEIVED_ON_FUTURE` rejects future dates against the real IST date, so this one test would have stayed red until 10 Oct; the 30 Sep plan (option a, "clears at midnight") missed that date. The assertion is unchanged: a received item stays received when its row is removed. It's 04's own unmerged step-1 test. No other test or fixture in the repo uses a received date after today.
 - **Volume measurements deferred (Raja 2026-09-29 23:06).** The spec's NFR timings (180k items: job < 60 s, screens < 1 s, save + < 50 ms) run in the volume test once all R1 features are built (roadmap "Before pilot"). The nightly job-ran assertion stays in 04. `tests/rls/expected-perf.test.ts` keeps only that assertion; the volume cases go to the volume-test item.
 
   Risk: the daily job is the riskiest query at scale, so it is **measured first** in that test.
@@ -134,3 +135,16 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 - Decisions made (cross-cutting → flag for architecture.md): pg_cron job live on dev; migration version 20260930120658.
 - R1 (18:10): the test was written and is red for the right reason (the item stays waived after re-enabling Banking). The migration was drafted and dry-run on dev (rolled back; verified). **Waiting: Raja's SQL review of R1.** Option (a) chosen for the date issue: re-run after 00:00 IST, with no code change.
 - R1 applied (18:12) as `20260930124132_expected_docs_restore`. The stored statements match the file (md5), and the advisors show nothing new. `expected-plan` is 19/25: the R1 test is green, and the 6 failures left are the dated-1-Oct ones (option a). Next: after 00:15 IST on 1 Oct, check `cron.job_run_details` and Kushal's `expected.generated` row; run the full `test:db`; push without [skip ci]; CI green → tick step 2.
+
+### 2026-10-01 (00:15–00:45 IST)
+- **First cron run:** `expected-docs-daily` succeeded at 00:15:00 IST in 0.30 s. It wrote 8 `expected.generated` rows (one per non-test office, actor null).
+- **Kushal Associates: 0 items created, which is correct.** The handoff's "first real items expected" was wrong.
+  - Every monthly row starting Sep 2026 (asked from 1 Oct) is per-GSTIN/TAN, and the client has no active registration (AC-5: nothing expected).
+  - The rows without a registration aren't due yet (Form 16A Q2 from 1 Dec; the yearly items from Apr–May 2027).
+  - Proven with a rolled-back dry-run on dev: adding a GSTIN made the registration trigger create exactly the 3 GSTIN items due 1 Oct (Sales Sep and Credit/debit notes Sep, overdue from 5 Oct; Purchase Q2, overdue from 10 Oct).
+- `expected-plan.test.ts` after midnight: 5 of the 6 date failures cleared. The 6th had a received date of 2026-10-10, so the fixture date was fixed (see Deviations; Raja approved). The file is now 25/25.
+- Full local `test:db` (before the fix): 226 pass, 1 fail (that test), 4 skipped (RUN_SLOW). The fix was then verified on the whole file.
+- In progress: CI on this push (step 2 proof).
+- Next step: CI green → tick step 2 → step 3 (`schedule.ts` + derived state, unit tests red → green).
+- Decisions made (cross-cutting → flag for architecture.md): — (03b's search functions `20260930131025_document_search` are on dev too: additive and invoker, untouched by 04).
+

@@ -253,7 +253,7 @@ describe("plan-change effects (AC-12)", () => {
   });
 
   it("removing a row waives its pending items; received items stay received", async () => {
-    await file(clientP, QUARTERLY, "2026-27-Q2", "2026-10-10");
+    await file(clientP, QUARTERLY, "2026-27-Q2", "2026-10-01"); // was 2026-10-10: in the future until 10 Oct, rejected by 03's RECEIVED_ON_FUTURE (Raja 2026-10-01)
     await generateAsOf(as.admin, "2027-01-02"); // Q3 asked 1 Jan
     expect((await expectedItem(clientP, QUARTERLY, "2026-27-Q3")).status).toBe("pending");
     await setRow(as.staff, clientP, QUARTERLY, { state: "removed" });
