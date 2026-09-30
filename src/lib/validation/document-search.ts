@@ -10,6 +10,9 @@ export const PAGE_SIZE = 50;
 export const MAX_WORDS = 5;
 export const MAX_WORD_LENGTH = 50;
 export const MAX_PAGE = 1000;
+/** Header dropdown (AC-2): suggestions start at 2 characters; up to 5 clients and 5 documents. */
+export const MIN_SUGGEST_CHARS = 2;
+export const SUGGEST_LIMIT = 5;
 
 export const SORTS = [
   { value: "received", label: "Date received (newest)" },
