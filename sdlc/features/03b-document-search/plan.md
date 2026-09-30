@@ -56,7 +56,7 @@ Staging and prod get both at R1, in version order after or around 04's (both are
 - [x] 6. **`/documents`**: filter chips + popovers with counts, result rows, sort, paging, Include archived, empty/loading/error states, text restored from session storage. Proof: e2e (URL round trip, Back/refresh; **a URL listener proves no search text in any URL**). (2)
 - [ ] ~~7. Volume~~ → **deferred** (Raja 2026-09-29): a 10k-document volume test, with the test-only seeding function, runs **after all R1 features are built** (roadmap "Before pilot"). Indexes wait until then.
 - [x] 8. a11y (axe on the header dropdown and `/documents`), ≤ 390 px, screenshots, ui-reference.md deviations. Proof: e2e evidence. (0.5)
-- [ ] 9. AC-13: timed find check, Staff role, 5 lookups, recorded in the PR. [you or a staff member: 10 min]
+- [x] 9. AC-13: timed find check, Staff role, 5 lookups, recorded in the PR. [you or a staff member: 10 min]
 - [ ] 10. After 04 merges: rebase and run the full suite. Then `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. Proof: CI green, evidence for all suites. [PR review: 1 h]
 
 **Total ≈ 7.5 build sessions** (volume step deferred). Your review ≈ 2–3 h. **First cut if it slips:** facet counts (plain filters without counts). Second cut: the mobile search sheet.
@@ -133,8 +133,20 @@ Staging and prod get both at R1, in version order after or around 04's (both are
   - Step 8: new `tests/e2e/search-screenshots.spec.ts` (7 screenshots into `test-results/screenshots/`: header dropdown, results, filtered, empty, and at 390 px the results, filter panel and header search). Axe has no serious/critical issues at either width; no sideways scroll at 390 px. Three agreed deviations added to `ui-reference.md`.
     - **The review changed step 6's own tests:** a closed filter select showed only its value ("Email (1)"). Options are now prefixed with the filter name ("Channel: Email (1)"), so the expected labels changed in 1 unit and 1 e2e assertion (step 6's, unmerged). That's a deliberate UI change, not a weakened test.
     - Local: search e2e 9/9; unit 233/233.
-- In progress: CI for step 8.
+  - Step 8 **CI 36745681351 green**.
+  - Step 9, **AC-13 timed check: pass.**
+    - Raja, signed in as a **Staff-role** user (`e2e office find-check`: 10 clients, 76 documents, seeded by a local, git-excluded script) on the preview `…-git-feat-03b-document-search-…vercel.app`, 22:25 IST.
+    - | Lookup | s |
+      |---|---|
+      | 1. Balaji Motors' purchase register, Jul 2026 (client + type + period) | 3 |
+      | 2. The Blue Dart courier with no sender (remark) | 1 |
+      | 3. DOC-FY26-27-00062 (DOC-ID) | 2 |
+      | 4. Priya Medicals' HDFC statement, Aug (client + file) | 2 |
+      | 5. Kaveri Hotels' Form 16, FY 2026-27 (client + type) | 2 |
+    - **Median 2 s, max 3 s (target ≤ 10 s).** Caveat: self-timed and likely excludes reading and typing time; the timer was the owner, who knows the app. The R1 staging re-run by an actual staff member, timed from hearing the description, is the confirmation (already on the R1 checklist).
+    - Known limit, carried into the PR: document text matching doesn't include the client's name (per spec), so "client + type" lookups go through the client page or the Client filter.
+- In progress: —
 - Blocked / failing: —
-- Next step: step 9, the AC-13 timed check (Raja or a Staff-role user, 5 lookups, ≤ 10 s median), then step 10 after 04 merges (rebase, full suite, verifier → sdlc-reviewer → PR).
+- Next step: step 10 after 04 merges: rebase on main → full suite (04 changes `search_clients`; check its old parameters still work) → `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table.
 - Decisions made (cross-cutting → flag for architecture.md): none new.
 
