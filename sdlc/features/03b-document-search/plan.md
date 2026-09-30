@@ -52,7 +52,7 @@ Staging and prod get both at R1, in version order after or around 04's (both are
 - [x] 2. **Migration** written, dry-run, applied to dev, advisors clean. Proof: step-1 tests green in CI. (1) [review SQL: 30 min]
 - [x] 3. Validation + filter ↔ URL mapping. Proof: unit tests red → green. (0.5)
 - [x] 4. Server actions (`suggest`, `searchDocuments`, `documentFacets`, `openDocId`), stale-response guard, error logging (code + request ID only). Proof: unit + RLS through the RPCs. (0.5)
-- [ ] 5. **Header search**: combobox, `/`, dropdown groups, DOC-ID jump, See all → session storage, mobile button. Proof: e2e + unit (keyboard, `/` rules). (1.5)
+- [x] 5. **Header search**: combobox, `/`, dropdown groups, DOC-ID jump, See all → session storage, mobile button. Proof: e2e + unit (keyboard, `/` rules). (1.5)
 - [ ] 6. **`/documents`**: filter chips + popovers with counts, result rows, sort, paging, Include archived, empty/loading/error states, text restored from session storage. Proof: e2e (URL round trip, Back/refresh; **a URL listener proves no search text in any URL**). (2)
 - [ ] ~~7. Volume~~ → **deferred** (Raja 2026-09-29): a 10k-document volume test, with the test-only seeding function, runs **after all R1 features are built** (roadmap "Before pilot"). Indexes wait until then.
 - [ ] 8. a11y (axe on the header dropdown and `/documents`), ≤ 390 px, screenshots, ui-reference.md deviations. Proof: e2e evidence. (0.5)
@@ -111,8 +111,14 @@ Staging and prod get both at R1, in version order after or around 04's (both are
   - Step 2: SQL gate approved (Raja 18:39 IST): all 4 decisions — the migration as drafted, logic duplicated in both functions (no helper, per the exception), single-value filters, plan quality left to the volume test. Applied to dev as `20260930131025_document_search` (the file was renamed to match; applied statements md5-verified). Security advisors: nothing new. Local 48/48; **CI 36719993363 green** (about 18 min; `test:db` about 7 min).
   - Step 3: `src/lib/validation/document-search.ts`, with unit tests 19/19 (red first).
   - Step 4: `src/lib/search/{queries,actions}.ts`, with unit tests 10/10. The unit tests were written after the code; the logging test was mutation-checked (it fails when the text is logged).
-- In progress: CI for steps 3–4.
+  - Steps 3–4 **CI 36722198604 green**.
+  - Step 5: `src/components/header-search.tsx` (an ARIA 1.2 combobox: `/` shortcut, 250 ms debounce with a stale-answer guard, Clients/Documents groups, DOC-ID jump, "See all" hand-off through session storage, and a Search button + full-width field below 640 px), wired into `app-header.tsx`. Unit 16/16; `tests/e2e/search.spec.ts` 5/5 locally.
+    - Two component bugs caught by the new tests:
+      - a late suggestion answer wiped the "No document … you can open" message;
+      - the sr-only `role="status"` added a second status region to every page. The existing client-edit e2e uses `getByRole('status')`; it now uses `aria-live` without the role.
+    - Local full e2e: 42 passed. The other failures were 30 s timeouts (catalogue, client-plan, both screenshot specs). client-plan fails the same way on a baseline build without step 5, so it's this session's latency to dev, not the change; CI passed those specs in 36722198604.
+- In progress: CI for step 5.
 - Blocked / failing: —
-- Next step: step 5, the header search combobox (read the Next docs under `node_modules/next/dist/docs/` first, per AGENTS.md).
+- Next step: step 6, the `/documents` results page. It reads `SEARCH_TEXT_KEY` from session storage and listens for `cdv:documents-search-text`.
 - Decisions made (cross-cutting → flag for architecture.md): none new.
 

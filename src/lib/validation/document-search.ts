@@ -13,6 +13,12 @@ export const MAX_PAGE = 1000;
 /** Header dropdown (AC-2): suggestions start at 2 characters; up to 5 clients and 5 documents. */
 export const MIN_SUGGEST_CHARS = 2;
 export const SUGGEST_LIMIT = 5;
+export const SUGGEST_DEBOUNCE_MS = 250;
+/**
+ * AC-4: the header hands the search text to /documents in this tab's session storage — never the URL.
+ * Session storage is per tab and cleared when the tab closes; nothing is sent to the server.
+ */
+export const SEARCH_TEXT_KEY = "cdv:documents-search-text";
 
 export const SORTS = [
   { value: "received", label: "Date received (newest)" },
