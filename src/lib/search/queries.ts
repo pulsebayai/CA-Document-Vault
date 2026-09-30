@@ -90,3 +90,43 @@ export async function findDocIdAs(docCode: string): Promise<{ id: string; docCod
   if (error) fail("docid", error.code);
   return data ? { id: data.id as string, docCode: data.doc_code as string } : null;
 }
+
+// ── /documents filter options (step 6) ────────────────────────────────────────
+// Master data the filter popovers list. All reads run as the user (RLS). Kept in 03b's own module so 03b never
+// edits src/lib/documents/queries.ts (04 is working near it).
+
+export type FilterOptions = {
+  groups: { id: string; name: string }[];
+  types: { id: string; name: string; groupId: string }[];
+  fys: { id: string; code: string }[];
+  periods: { id: string; fyId: string; kind: "month" | "quarter" | "year"; code: string; label: string }[];
+  client: ClientHit | null;
+  registrations: { id: string; kind: "gstin" | "tan"; number: string }[];
+};
+
+export async function filterOptionsAs(clientId: string | null): Promise<FilterOptions> {
+  const supabase = await createClient();
+  const [groups, types, fys, periods, client, regs] = await Promise.all([
+    supabase.from("doc_group").select("id, name").eq("active", true).order("sort").order("name"),
+    supabase.from("doc_type").select("id, name, doc_group_id").eq("active", true).order("name"),
+    supabase.from("financial_year").select("id, code").order("code", { ascending: false }),
+    supabase.from("period").select("id, financial_year_id, kind, code, label, start_date").order("start_date", { ascending: false }),
+    clientId ? supabase.from("client").select("id, name, code").eq("id", clientId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+    clientId
+      ? supabase.from("client_registration").select("id, kind, number").eq("client_id", clientId).order("number")
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  const failed = [groups, types, fys, periods, client, regs].find((r) => r.error);
+  if (failed?.error) fail("options", failed.error.code);
+  return {
+    groups: (groups.data ?? []) as FilterOptions["groups"],
+    types: (types.data ?? []).map((t) => ({ id: t.id as string, name: t.name as string, groupId: t.doc_group_id as string })),
+    fys: (fys.data ?? []) as FilterOptions["fys"],
+    periods: (periods.data ?? []).map((p) => ({
+      id: p.id as string, fyId: p.financial_year_id as string, kind: p.kind as FilterOptions["periods"][number]["kind"],
+      code: p.code as string, label: p.label as string,
+    })),
+    client: client.data ? { id: client.data.id as string, name: client.data.name as string, code: client.data.code as string } : null,
+    registrations: (regs.data ?? []) as FilterOptions["registrations"],
+  };
+}

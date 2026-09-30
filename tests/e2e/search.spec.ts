@@ -5,7 +5,7 @@ import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { createDocumentOffice, createSoftCopy, mustCreateDocument, typeId } from "../support/documents";
 import { appAlert, signIn } from "./helpers";
 
-// Feature 03b step 5 — header search (mockup 01 header; spec AC-1…AC-4, AC-11).
+// Feature 03b steps 5–6 — header search (mockup 01 header; spec AC-1…AC-4, AC-11) and /documents (AC-5…AC-11).
 
 let staff: { id: string; email: string };
 let limited: { id: string; email: string };
@@ -24,6 +24,7 @@ test.beforeAll(async () => {
   // On a client the Limited user can't see (Staff is the incharge).
   classified = await createSoftCopy(asStaff, officeId, { client_id: clientId, doc_type_id: await typeId(officeId, "Form 16 from employer"), remark: "zeb annual salary" });
   await mustCreateDocument(asLimited, { remark: "zeb courier bag" });
+  await mustCreateDocument(asStaff, { remark: "zeb courier letter", channel: "courier", client_id: clientId });
 });
 test.afterAll(async () => { await retireStaff([staff?.id, limited?.id].filter(Boolean) as string[]); });
 test.describe.configure({ mode: "serial" });
@@ -100,4 +101,68 @@ test("AC-1: at 390 px the header fits and a Search button opens a full-width fie
   expect(await seriousAxe(page)).toEqual([]);
   await page.getByRole("button", { name: "Close search" }).click();
   await expect(box(page)).toBeHidden();
+});
+
+// ── /documents (step 6) ──────────────────────────────────────────────────────
+const results = (page: Page) => page.getByRole("list", { name: "Documents" }).getByRole("listitem");
+
+test("AC-5, AC-6, AC-7, AC-11: results for the header text; a filter with counts goes in the URL; Back and refresh keep the state; the text never enters a URL", async ({ page, baseURL }) => {
+  test.setTimeout(60_000); // one long flow: search, filter, reload, Back, sort, open
+  const urls: string[] = [];
+  page.on("request", (r) => urls.push(r.url()));
+  page.on("framenavigated", (f) => urls.push(f.url()));
+  await signIn(page, staff.email, baseURL);
+  await box(page).fill("zeb");
+  await box(page).press("Enter");
+  await page.waitForURL(/\/documents$/);
+  await expect(page.getByRole("heading", { name: "Documents" })).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: "Search documents" })).toHaveValue("zeb");
+  await expect(results(page)).toHaveCount(3); // Staff sees all three "zeb" documents
+  await expect(page.getByText("3 documents", { exact: true })).toBeVisible();
+  await expect(results(page).filter({ hasText: classified.doc_code })).toContainText("Form 16 from employer · Searchable Traders");
+
+  const channel = page.getByRole("combobox", { name: "Channel" });
+  await expect(channel.getByRole("option", { name: "Courier (1)" })).toBeAttached();
+  await channel.selectOption({ label: "Courier (1)" });
+  await page.waitForURL(/\/documents\?channel=courier$/);
+  await expect(results(page)).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Remove filter Channel: Courier" })).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("searchbox", { name: "Search documents" })).toHaveValue("zeb"); // restored from this tab's storage
+  await expect(results(page)).toHaveCount(1);
+  await page.goBack();
+  await page.waitForURL(/\/documents$/);
+  await expect(results(page)).toHaveCount(3);
+
+  await page.getByRole("combobox", { name: "Sort" }).selectOption("docid");
+  await page.waitForURL(/\/documents\?sort=docid$/);
+  await results(page).filter({ hasText: classified.doc_code }).getByRole("link").click();
+  await page.waitForURL(new RegExp(`/documents/${classified.id}$`));
+  expect(urls.filter((u) => /zeb/i.test(decodeURIComponent(u)))).toEqual([]);
+});
+
+test("AC-9, AC-10: no match offers to clear; a Limited user sees only what they can open", async ({ page, baseURL }) => {
+  await signIn(page, limited.email, baseURL);
+  await box(page).fill("zeb");
+  await box(page).press("Enter");
+  await page.waitForURL(/\/documents$/);
+  await expect(results(page)).toHaveCount(1); // only the Inbox item they added
+  await expect(results(page)).toContainText("Inbox");
+  await page.getByRole("searchbox", { name: "Search documents" }).fill("zeb nothing-like-this");
+  await expect(page.getByText("No documents match.")).toBeVisible();
+  await page.getByRole("button", { name: "Clear search text" }).click();
+  await expect(page.getByRole("searchbox", { name: "Search documents" })).toHaveValue("");
+});
+
+test("NFR: /documents has no serious axe issues and fits 390 px", async ({ page, baseURL }) => {
+  await signIn(page, staff.email, baseURL);
+  await page.goto(`${baseURL ?? ""}/documents?channel=courier`);
+  await expect(results(page)).not.toHaveCount(0);
+  expect(await seriousAxe(page)).toEqual([]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: /^Filters/ }).click();
+  await expect(page.getByRole("combobox", { name: "Channel" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(await seriousAxe(page)).toEqual([]);
 });

@@ -87,3 +87,17 @@ export async function openDocId(text: string): Promise<OpenDocIdResult> {
     return failure(e, "that document");
   }
 }
+
+export type FindClientsResult = { ok: true; clients: ClientHit[] } | Failure;
+
+/** Client filter picker on /documents (AC-6): up to 8 visible clients, with 02's matching. */
+export async function findClients(text: string): Promise<FindClientsResult> {
+  await requireStaff();
+  const t = normaliseSearchText(typeof text === "string" ? text : "");
+  if (!t) return { ok: true, clients: [] };
+  try {
+    return { ok: true, clients: await suggestClientsAs(t, 8) };
+  } catch (e) {
+    return failure(e, "clients");
+  }
+}

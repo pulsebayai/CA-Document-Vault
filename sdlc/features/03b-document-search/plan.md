@@ -53,7 +53,7 @@ Staging and prod get both at R1, in version order after or around 04's (both are
 - [x] 3. Validation + filter ↔ URL mapping. Proof: unit tests red → green. (0.5)
 - [x] 4. Server actions (`suggest`, `searchDocuments`, `documentFacets`, `openDocId`), stale-response guard, error logging (code + request ID only). Proof: unit + RLS through the RPCs. (0.5)
 - [x] 5. **Header search**: combobox, `/`, dropdown groups, DOC-ID jump, See all → session storage, mobile button. Proof: e2e + unit (keyboard, `/` rules). (1.5)
-- [ ] 6. **`/documents`**: filter chips + popovers with counts, result rows, sort, paging, Include archived, empty/loading/error states, text restored from session storage. Proof: e2e (URL round trip, Back/refresh; **a URL listener proves no search text in any URL**). (2)
+- [x] 6. **`/documents`**: filter chips + popovers with counts, result rows, sort, paging, Include archived, empty/loading/error states, text restored from session storage. Proof: e2e (URL round trip, Back/refresh; **a URL listener proves no search text in any URL**). (2)
 - [ ] ~~7. Volume~~ → **deferred** (Raja 2026-09-29): a 10k-document volume test, with the test-only seeding function, runs **after all R1 features are built** (roadmap "Before pilot"). Indexes wait until then.
 - [ ] 8. a11y (axe on the header dropdown and `/documents`), ≤ 390 px, screenshots, ui-reference.md deviations. Proof: e2e evidence. (0.5)
 - [ ] 9. AC-13: timed find check, Staff role, 5 lookups, recorded in the PR. [you or a staff member: 10 min]
@@ -83,6 +83,10 @@ Staging and prod get both at R1, in version order after or around 04's (both are
 - All 02/03/04 tests unchanged and green after the rebase.
 
 ## Deviations from plan
+- **Step 6 filter UI (2026-09-30):**
+  - Each filter is a native `<select>`, with facet counts in its option labels ("Courier (12)"), instead of a custom chip button + popover. It's the same information and fully keyboard/screen-reader accessible for free, with less code to get wrong.
+  - On phones a "Filters" button shows or hides the filter panel in place, instead of a full-screen sheet (the spec's second cut).
+  - The client filter is a type-to-find list (server action `findClients`, 02's matching), not a combobox.
 - **Step 4 test file (2026-09-30):** the server-action unit tests live in a new `tests/unit/search-actions.test.ts`, which isn't in "Files that change". It's test-only and doesn't overlap with 04.
 - **Volume test deferred and reduced (Raja 2026-09-29 23:01).** Spec AC-12 is measured at **10k documents**, once all R1 features are built, not in 03b. The test-only `seed_test_documents` function is approved and ships with that volume test, not in 03b's migration. Consequences:
   - 03b's migration holds only the two search functions;
@@ -117,8 +121,15 @@ Staging and prod get both at R1, in version order after or around 04's (both are
       - a late suggestion answer wiped the "No document … you can open" message;
       - the sr-only `role="status"` added a second status region to every page. The existing client-edit e2e uses `getByRole('status')`; it now uses `aria-live` without the role.
     - Local full e2e: 42 passed. The other failures were 30 s timeouts (catalogue, client-plan, both screenshot specs). client-plan fails the same way on a baseline build without step 5, so it's this session's latency to dev, not the change; CI passed those specs in 36722198604.
-- In progress: CI for step 5.
+  - Step 5 **CI 36725933502 green**.
+  - Step 6: `/documents` at `src/app/(app)/documents/(search)/`. The route group keeps its loading/error states off 03's `/documents/new` and `/documents/[id]`.
+    - The search text is read and written through session storage, as an external store (`useSyncExternalStore`, so hydration is safe).
+    - Filters live in the URL (`router.push`). Searches and facets are parallel server actions with a stale-answer guard.
+    - Chips each have a named ✕ plus "Clear all"; facet counts appear in the option labels. Sort, paging, and the empty/error/loading states are in.
+    - Phones get a "Filters" button that toggles the filter panel.
+    - Tests: unit `search-view` 12/12 (unit suite 233/233); e2e `search.spec` 8/8 locally (3 new). Screenshots checked by eye (desktop, header dropdown, 390 px).
+- In progress: CI for step 6.
 - Blocked / failing: —
-- Next step: step 6, the `/documents` results page. It reads `SEARCH_TEXT_KEY` from session storage and listens for `cdv:documents-search-text`.
+- Next step: step 8 (a11y/screenshots and the ui-reference.md deviations), then step 9 (AC-13 timed check, for Raja), then step 10 after 04 merges.
 - Decisions made (cross-cutting → flag for architecture.md): none new.
 
