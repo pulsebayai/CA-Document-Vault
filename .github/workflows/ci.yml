@@ -15,8 +15,28 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Chore ci-docs-only (Raja 2026-09-30): a PR or push that changes only sdlc/** or *.md skips the test jobs.
+  # Jobs are skipped (not the workflow), so a future required status check still resolves. Nightly Regression
+  # is unaffected. A code PR's diff includes its code, so docs commits pushed onto it still run everything.
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: diff
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/ci-changes.mjs
+
   verify:
     name: Lint · typecheck · unit · build
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -42,7 +62,8 @@ jobs:
 
   db-and-e2e:
     name: RLS + e2e (dev Supabase)
-    needs: verify
+    needs: [changes, verify]
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     # 25 min of tests + up to 30 min waiting for a free test lane.
     # Keep below the 90-min lane lease (scripts/test-lane.mjs LEASE_MINUTES) or a slow run could lose its lane.
