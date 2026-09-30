@@ -107,7 +107,7 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - When a row or group leaves `removed`, its system-waived `removed_from_plan` items whose overdue-from date is after today go back to pending. Linked documents then decide received.
   - Items already overdue stay waived, the same line as resume (AC-12).
   - Each restored item writes one `expected.waive_undone` row (actor null, code only).
-  - Follow-up migration `20260930130000_expected_docs_restore.sql` (a draft; renamed at apply). Test: `expected-plan.test.ts` › "(R1)".
+  - Follow-up migration applied to dev as `20260930124132_expected_docs_restore.sql` (Raja approved 18:11: reuse `expected.waive_undone`; line = overdue-from after today). Test: `expected-plan.test.ts` › "(R1)".
   - R2 (refuse undo-waive off-plan) was not taken.
 
 ## Session log
@@ -133,3 +133,4 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 - Next step: Raja chooses. (a) Re-run after 00:00 IST 1 Oct, with no code change, and check the 00:15 job run at the same time. (b) D7: 03's received-on check uses `private.office_today` (the test clock in is_test offices only), via a small follow-up migration under 04's schema lock.
 - Decisions made (cross-cutting → flag for architecture.md): pg_cron job live on dev; migration version 20260930120658.
 - R1 (18:10): the test was written and is red for the right reason (the item stays waived after re-enabling Banking). The migration was drafted and dry-run on dev (rolled back; verified). **Waiting: Raja's SQL review of R1.** Option (a) chosen for the date issue: re-run after 00:00 IST, with no code change.
+- R1 applied (18:12) as `20260930124132_expected_docs_restore`. The stored statements match the file (md5), and the advisors show nothing new. `expected-plan` is 19/25: the R1 test is green, and the 6 failures left are the dated-1-Oct ones (option a). Next: after 00:15 IST on 1 Oct, check `cron.job_run_details` and Kushal's `expected.generated` row; run the full `test:db`; push without [skip ci]; CI green → tick step 2.
