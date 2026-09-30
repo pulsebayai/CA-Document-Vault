@@ -286,6 +286,23 @@ describe("plan-change effects (AC-12)", () => {
     expect((await expectedItem(clientP, T.bank, "2026-08")).status).toBe("received");
   });
 
+  // R1 (Raja 2026-09-30, SQL review of step 2): switching a group (or row) back on restores its "Removed from plan"
+  // items that are not overdue yet; items already overdue stay waived (the same line as resume, AC-12).
+  it("switching a group back on restores its not-yet-overdue 'Removed from plan' items; overdue ones stay waived (R1)", async () => {
+    // Clock 1 Feb 2027: Banking Jan 2027 (asked 1 Feb) is still open; Dec 2026 is already overdue.
+    expect(await expectedItem(clientP, T.bank, "2027-01")).toMatchObject({ status: "waived", waived_code: "removed_from_plan" });
+    expect(await expectedItem(clientP, T.bank, "2026-12")).toMatchObject({ status: "waived", waived_code: "removed_from_plan" });
+    await enable(clientP, "Banking");
+    const jan = await expectedItem(clientP, T.bank, "2027-01");
+    expect(jan).toMatchObject({ status: "pending", waived_code: null, waived_reason: null, waived_by: null, waived_at: null });
+    expect(await expectedItem(clientP, T.bank, "2026-12")).toMatchObject({ status: "waived", waived_code: "removed_from_plan" });
+    const act = (await expectedActivity(officeId, jan.id)).map((a) => ({ action: a.action, actor_id: a.actor_id, data: a.data }));
+    expect(act.slice(-2)).toMatchObject([
+      { action: "expected.auto_waived", actor_id: null, data: { code: "removed_from_plan" } },
+      { action: "expected.waive_undone", actor_id: null, data: { code: "removed_from_plan" } },
+    ]);
+  });
+
   it("every automatic waiver writes one system activity row with its code and no free text (AC-18)", async () => {
     const auto = (await expectedFor(clientP)).filter((r) => r.status === "waived" && r.waived_code !== "manual");
     const rows = (await expectedActivity(officeId)).filter((a) => a.action === "expected.auto_waived");

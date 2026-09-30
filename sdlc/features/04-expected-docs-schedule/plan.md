@@ -103,6 +103,13 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 - **D6 — resume via `resumed_on` (approved by Raja 2026-09-30)** (new nullable column on `client_doc_type` and `client_group`, set by a BEFORE trigger when a paused/removed row or group becomes active; not granted to users). Generation skips periods whose overdue date had passed on that day, which is AC-12's "resume continues from the earliest still-open period" without moving the stored start period (moving it would auto-waive items still owed from before the pause).
 - **Flag for review — one 02 test encodes the old start default:** `tests/rls/plan.test.ts:70` expects the new row to start at the *current* month. AC-3 (approved) changes the default to the earliest still-open period. They agree on days 6–31 of a month (Sales: overdue day 5), but on the 1st–5th the new rule gives the previous month, so that test would fail on those days. Updating that one assertion to AC-3 is a spec-driven change, not weakening a test; it needs Raja's OK (CLAUDE.md rule). **Raja OK'd it 2026-09-30:** the assertion now computes the AC-3 start (the earliest office month whose overdue-from date, the 5th of the next month, is after today in IST).
 
+- **R1 — re-enabling restores not-yet-overdue "Removed from plan" items (Raja 2026-09-30, from the step-2 SQL review).**
+  - When a row or group leaves `removed`, its system-waived `removed_from_plan` items whose overdue-from date is after today go back to pending. Linked documents then decide received.
+  - Items already overdue stay waived, the same line as resume (AC-12).
+  - Each restored item writes one `expected.waive_undone` row (actor null, code only).
+  - Follow-up migration `20260930130000_expected_docs_restore.sql` (a draft; renamed at apply). Test: `expected-plan.test.ts` › "(R1)".
+  - R2 (refuse undo-waive off-plan) was not taken.
+
 ## Session log
 ### 2026-09-29
 - Done: intent approved (abfa7a8), spec approved (93f94de), plan approved.
@@ -125,3 +132,4 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 - Blocked / failing: `expected-plan.test.ts` 6/24 fail. Cause: the tests file documents with received on **2026-10-01**, and 03's document trigger refuses a future received-on against the **real** IST date (`RECEIVED_ON_FUTURE`). Today is 30 Sep; from 1 Oct IST that date is in the past. 3 tests fail directly; 3 fail as a knock-on (they expect items those documents would have completed). Not a 04 SQL defect. Tests unchanged.
 - Next step: Raja chooses. (a) Re-run after 00:00 IST 1 Oct, with no code change, and check the 00:15 job run at the same time. (b) D7: 03's received-on check uses `private.office_today` (the test clock in is_test offices only), via a small follow-up migration under 04's schema lock.
 - Decisions made (cross-cutting → flag for architecture.md): pg_cron job live on dev; migration version 20260930120658.
+- R1 (18:10): the test was written and is red for the right reason (the item stays waived after re-enabling Banking). The migration was drafted and dry-run on dev (rolled back; verified). **Waiting: Raja's SQL review of R1.** Option (a) chosen for the date issue: re-run after 00:00 IST, with no code change.
