@@ -49,9 +49,9 @@ Staging and prod get both at R1, in version order after or around 04's (both are
   - facet counts equal the result set, zero-count values hidden, inactive staff marked;
   - visibility matrix (4 roles × assigned/unassigned × classified/Inbox × own/others') on results, totals, facets and suggestions;
   - search writes no activity.
-- [ ] 2. **Migration** written, dry-run, applied to dev, advisors clean. Proof: step-1 tests green in CI. (1) [review SQL: 30 min]
-- [ ] 3. Validation + filter ↔ URL mapping. Proof: unit tests red → green. (0.5)
-- [ ] 4. Server actions (`suggest`, `searchDocuments`, `documentFacets`, `openDocId`), stale-response guard, error logging (code + request ID only). Proof: unit + RLS through the RPCs. (0.5)
+- [x] 2. **Migration** written, dry-run, applied to dev, advisors clean. Proof: step-1 tests green in CI. (1) [review SQL: 30 min]
+- [x] 3. Validation + filter ↔ URL mapping. Proof: unit tests red → green. (0.5)
+- [x] 4. Server actions (`suggest`, `searchDocuments`, `documentFacets`, `openDocId`), stale-response guard, error logging (code + request ID only). Proof: unit + RLS through the RPCs. (0.5)
 - [ ] 5. **Header search**: combobox, `/`, dropdown groups, DOC-ID jump, See all → session storage, mobile button. Proof: e2e + unit (keyboard, `/` rules). (1.5)
 - [ ] 6. **`/documents`**: filter chips + popovers with counts, result rows, sort, paging, Include archived, empty/loading/error states, text restored from session storage. Proof: e2e (URL round trip, Back/refresh; **a URL listener proves no search text in any URL**). (2)
 - [ ] ~~7. Volume~~ → **deferred** (Raja 2026-09-29): a 10k-document volume test, with the test-only seeding function, runs **after all R1 features are built** (roadmap "Before pilot"). Indexes wait until then.
@@ -83,6 +83,7 @@ Staging and prod get both at R1, in version order after or around 04's (both are
 - All 02/03/04 tests unchanged and green after the rebase.
 
 ## Deviations from plan
+- **Step 4 test file (2026-09-30):** the server-action unit tests live in a new `tests/unit/search-actions.test.ts`, which isn't in "Files that change". It's test-only and doesn't overlap with 04.
 - **Volume test deferred and reduced (Raja 2026-09-29 23:01).** Spec AC-12 is measured at **10k documents**, once all R1 features are built, not in 03b. The test-only `seed_test_documents` function is approved and ships with that volume test, not in 03b's migration. Consequences:
   - 03b's migration holds only the two search functions;
   - the indexes migration is deferred;
@@ -107,8 +108,11 @@ Staging and prod get both at R1, in version order after or around 04's (both are
   - Step 1: `tests/rls/document-search.test.ts` (48 tests: text rules, escaping, DOC-ID prefix, 5-word/50-char cut, current file name only, each filter, sort, paging, archived toggle, facets incl. own-filter exclusion and "(inactive)", visibility matrix incl. group- and type-level assignment, anon, no activity). Local run: 47 fail with "function not found" (right reason); the anon test passes vacuously until step 2.
   - Before any test had passed, I fixed two defects in my own step-1 test: a token collision ("zqmv" contained "zqm"), and assignments not being restored after a failure (now try/finally).
   - Step 2 in progress: migration `<ts>_document_search.sql` drafted. A rolled-back dry-run on dev (staff and Limited impersonated) found a NULL bug: a document with no file or remark matched every text. It's fixed with coalesce and re-verified.
-- In progress: step 2, waiting for the SQL gate (apply to dev → CI green).
-- Blocked / failing: nothing pushed since step 0, to avoid a known-red CI run.
-- Next step: SQL gate → apply to dev (rename the file to the applied version) → advisors → push → CI green → tick step 2.
+  - Step 2: SQL gate approved (Raja 18:39 IST): all 4 decisions — the migration as drafted, logic duplicated in both functions (no helper, per the exception), single-value filters, plan quality left to the volume test. Applied to dev as `20260930131025_document_search` (the file was renamed to match; applied statements md5-verified). Security advisors: nothing new. Local 48/48; **CI 36719993363 green** (about 18 min; `test:db` about 7 min).
+  - Step 3: `src/lib/validation/document-search.ts`, with unit tests 19/19 (red first).
+  - Step 4: `src/lib/search/{queries,actions}.ts`, with unit tests 10/10. The unit tests were written after the code; the logging test was mutation-checked (it fails when the text is logged).
+- In progress: CI for steps 3–4.
+- Blocked / failing: —
+- Next step: step 5, the header search combobox (read the Next docs under `node_modules/next/dist/docs/` first, per AGENTS.md).
 - Decisions made (cross-cutting → flag for architecture.md): none new.
 
