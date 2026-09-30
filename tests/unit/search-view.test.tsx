@@ -87,8 +87,8 @@ describe("SearchView", () => {
     view();
     await screen.findByRole("list", { name: "Documents" });
     const channel = screen.getByRole("combobox", { name: "Channel" });
-    expect(within(channel).getAllByRole("option").map((o) => o.textContent)).toEqual(["Channel: all", "Email (1)"]);
-    expect(within(screen.getByRole("combobox", { name: "Received by" })).getByRole("option", { name: "Asha (inactive) (1)" })).toBeInTheDocument();
+    expect(within(channel).getAllByRole("option").map((o) => o.textContent)).toEqual(["Channel: all", "Channel: Email (1)"]);
+    expect(within(screen.getByRole("combobox", { name: "Received by" })).getByRole("option", { name: "Received by: Asha (inactive) (1)" })).toBeInTheDocument();
   });
 
   it("choosing a filter writes the URL (filters only, page 1) and never the text (AC-6, AC-11)", async () => {

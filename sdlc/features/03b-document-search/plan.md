@@ -55,7 +55,7 @@ Staging and prod get both at R1, in version order after or around 04's (both are
 - [x] 5. **Header search**: combobox, `/`, dropdown groups, DOC-ID jump, See all → session storage, mobile button. Proof: e2e + unit (keyboard, `/` rules). (1.5)
 - [x] 6. **`/documents`**: filter chips + popovers with counts, result rows, sort, paging, Include archived, empty/loading/error states, text restored from session storage. Proof: e2e (URL round trip, Back/refresh; **a URL listener proves no search text in any URL**). (2)
 - [ ] ~~7. Volume~~ → **deferred** (Raja 2026-09-29): a 10k-document volume test, with the test-only seeding function, runs **after all R1 features are built** (roadmap "Before pilot"). Indexes wait until then.
-- [ ] 8. a11y (axe on the header dropdown and `/documents`), ≤ 390 px, screenshots, ui-reference.md deviations. Proof: e2e evidence. (0.5)
+- [x] 8. a11y (axe on the header dropdown and `/documents`), ≤ 390 px, screenshots, ui-reference.md deviations. Proof: e2e evidence. (0.5)
 - [ ] 9. AC-13: timed find check, Staff role, 5 lookups, recorded in the PR. [you or a staff member: 10 min]
 - [ ] 10. After 04 merges: rebase and run the full suite. Then `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. Proof: CI green, evidence for all suites. [PR review: 1 h]
 
@@ -83,6 +83,7 @@ Staging and prod get both at R1, in version order after or around 04's (both are
 - All 02/03/04 tests unchanged and green after the rebase.
 
 ## Deviations from plan
+- **Step 8 (2026-09-30):** filter option labels carry the filter name; step 6's two label assertions were updated to match (see session log).
 - **Step 6 filter UI (2026-09-30):**
   - Each filter is a native `<select>`, with facet counts in its option labels ("Courier (12)"), instead of a custom chip button + popover. It's the same information and fully keyboard/screen-reader accessible for free, with less code to get wrong.
   - On phones a "Filters" button shows or hides the filter panel in place, instead of a full-screen sheet (the spec's second cut).
@@ -128,8 +129,12 @@ Staging and prod get both at R1, in version order after or around 04's (both are
     - Chips each have a named ✕ plus "Clear all"; facet counts appear in the option labels. Sort, paging, and the empty/error/loading states are in.
     - Phones get a "Filters" button that toggles the filter panel.
     - Tests: unit `search-view` 12/12 (unit suite 233/233); e2e `search.spec` 8/8 locally (3 new). Screenshots checked by eye (desktop, header dropdown, 390 px).
-- In progress: CI for step 6.
+  - Step 6 **CI 36736927923 green**. Raja did not overrule the native-select filter UI (22:01 IST), so it stays.
+  - Step 8: new `tests/e2e/search-screenshots.spec.ts` (7 screenshots into `test-results/screenshots/`: header dropdown, results, filtered, empty, and at 390 px the results, filter panel and header search). Axe has no serious/critical issues at either width; no sideways scroll at 390 px. Three agreed deviations added to `ui-reference.md`.
+    - **The review changed step 6's own tests:** a closed filter select showed only its value ("Email (1)"). Options are now prefixed with the filter name ("Channel: Email (1)"), so the expected labels changed in 1 unit and 1 e2e assertion (step 6's, unmerged). That's a deliberate UI change, not a weakened test.
+    - Local: search e2e 9/9; unit 233/233.
+- In progress: CI for step 8.
 - Blocked / failing: —
-- Next step: step 8 (a11y/screenshots and the ui-reference.md deviations), then step 9 (AC-13 timed check, for Raja), then step 10 after 04 merges.
+- Next step: step 9, the AC-13 timed check (Raja or a Staff-role user, 5 lookups, ≤ 10 s median), then step 10 after 04 merges (rebase, full suite, verifier → sdlc-reviewer → PR).
 - Decisions made (cross-cutting → flag for architecture.md): none new.
 

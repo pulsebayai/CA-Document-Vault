@@ -122,8 +122,8 @@ test("AC-5, AC-6, AC-7, AC-11: results for the header text; a filter with counts
   await expect(results(page).filter({ hasText: classified.doc_code })).toContainText("Form 16 from employer · Searchable Traders");
 
   const channel = page.getByRole("combobox", { name: "Channel" });
-  await expect(channel.getByRole("option", { name: "Courier (1)" })).toBeAttached();
-  await channel.selectOption({ label: "Courier (1)" });
+  await expect(channel.getByRole("option", { name: "Channel: Courier (1)" })).toBeAttached();
+  await channel.selectOption({ label: "Channel: Courier (1)" });
   await page.waitForURL(/\/documents\?channel=courier$/);
   await expect(results(page)).toHaveCount(1);
   await expect(page.getByRole("button", { name: "Remove filter Channel: Courier" })).toBeVisible();

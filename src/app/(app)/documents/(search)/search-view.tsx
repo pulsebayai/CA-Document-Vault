@@ -286,7 +286,8 @@ function Select({ label, value, onChange, options, allLabel }: {
   return (
     <select aria-label={label} value={value ?? ""} onChange={(e) => onChange(e.target.value || null)} className={control}>
       {label !== "Sort" && <option value="">{allLabel ?? `${label}: all`}</option>}
-      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      {/* Prefixed with the filter's name so a closed select still says which filter it is (step 8 review). */}
+      {options.map((o) => <option key={o.value} value={o.value}>{label === "Sort" ? o.label : `${label}: ${o.label}`}</option>)}
     </select>
   );
 }
