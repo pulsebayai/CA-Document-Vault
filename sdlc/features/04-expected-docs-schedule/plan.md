@@ -57,7 +57,7 @@ Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 
   - metric maths on a fixture set
   - FY auto-create from 1 Feb; cron job registered
   - start default for new rows (AC-3)
-- [ ] 2. **Migration** written, dry-run, applied to dev, advisors clean, back-fill checked on the real office (counts by group look sane) — proof: step-1 tests green in CI (1.5) [review SQL: 45–60 min]
+- [x] 2. **Migration** written, dry-run, applied to dev, advisors clean, back-fill checked on the real office (counts by group look sane) — proof: step-1 tests green in CI (1.5) [review SQL: 45–60 min]
 - [ ] 3. `schedule.ts` + derived state — proof: unit tests red → green; the TS dates equal the SQL dates for a table of cases (0.5)
 - [ ] 4. `src/lib/expected` queries + actions (waive/undo/reopen with friendly errors) — proof: RLS tests via actions' RPCs + unit (0.5)
 - [ ] 5. **Client › Expected tab** + Waive modal + Reopen/Undo + Upload → Add document pre-fill (type/period/registration) → linked on save — proof: e2e (staff waives; limited can't; manager undoes; upload links and the item flips to Received) (1.5)
@@ -144,7 +144,7 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - Proven with a rolled-back dry-run on dev: adding a GSTIN made the registration trigger create exactly the 3 GSTIN items due 1 Oct (Sales Sep and Credit/debit notes Sep, overdue from 5 Oct; Purchase Q2, overdue from 10 Oct).
 - `expected-plan.test.ts` after midnight: 5 of the 6 date failures cleared. The 6th had a received date of 2026-10-10, so the fixture date was fixed (see Deviations; Raja approved). The file is now 25/25.
 - Full local `test:db` (before the fix): 226 pass, 1 fail (that test), 4 skipped (RUN_SLOW). The fix was then verified on the whole file.
-- In progress: CI on this push (step 2 proof).
-- Next step: CI green → tick step 2 → step 3 (`schedule.ts` + derived state, unit tests red → green).
+- **Step 2 done: CI 36763084116 green** (1b01dac, 00:55 IST: lint, typecheck, unit, build, RLS + e2e).
+- Next step: step 3 (`schedule.ts` + derived state, unit tests red → green).
 - Decisions made (cross-cutting → flag for architecture.md): — (03b's search functions `20260930131025_document_search` are on dev too: additive and invoker, untouched by 04).
 
