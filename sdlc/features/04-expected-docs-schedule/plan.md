@@ -42,7 +42,7 @@ Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 
    - Staging/prod get the same migration at R1. Extension creation there is part of the R1 checklist.
 
 ## Steps (estimates = build sessions with Claude; your time in brackets)
-- [ ] 0. **Wait for test-isolation to merge** → rebase on main → CI green on the branch — proof: CI run (docs-only commits so far) [—]
+- [x] 0. **Wait for test-isolation to merge** → rebase on main → CI green on the branch — proof: CI run (docs-only commits so far) [—]
 - [ ] 1. **RLS/DB tests first (red)**, all using `run_expected_generation(p_as_of)` in test offices (proof: `test:db` fails for the right reasons) (1.5). Cases:
   - date maths (month ends, 29 Feb, quarter/FY ends, offset 0) and earliest still-open period
   - generation counts per frequency; idempotent re-run
@@ -93,6 +93,10 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 
   Risk: the daily job is the riskiest query at scale, so it is **measured first** in that test.
 
+- **D1 — test clock persists per test office (step 1, 2026-09-30).** `run_expected_generation(p_as_of)` also sets `office.test_today` (honoured only when `is_test`; cleared by `reset_test_office`). Plan changes arrive in separate requests, and AC-2/AC-3/AC-12 tests need them to see the same "today" as the generation run. Real offices always use today in India. One nullable column on `office`; covered by the schema lock.
+- **D2 — step 0 merged main into the branch instead of rebasing** (2026-09-30): same result for CI, and no force-push of a published branch.
+- **D3 — contract details fixed by the step-1 tests** (for SQL review at step 2): error codes `ROLE_REQUIRED`, `NOT_TEST_OFFICE`, `REASON_REQUIRED`, `NOT_PENDING`, `NOT_RECEIVED`; activity actions `expected.generated` (entity office, data {created, linked}, actor null), `expected.waived` / `expected.waive_undone` / `expected.reopened` (actor = user, data {code …}), `expected.auto_waived` (one per item, actor null); system reasons "Removed from plan" · "Registration inactive" · "Before start period"; a document filed for a **waived** item is linked but the item stays waived until Undo (then received); `completed_by` = first document linked while pending, else the earliest remaining by received on; service-role-only `expected_job_info()` to read the pg_cron job.
+
 ## Session log
 ### 2026-09-29
 - Done: intent approved (abfa7a8), spec approved (93f94de), plan approved.
@@ -100,3 +104,10 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 - Blocked / failing: build blocked on the `test-isolation` chore (not started). Nightly: 30 Sep 01:30 IST run is the first with #9–#11; check next session.
 - Next step: plan approval → Batch C confirmation (Step 3, needs 03b's plan) → roadmap PR (locks) → test-isolation → build step 0.
 - Decisions made (cross-cutting → flag for architecture.md): the 5 approved spec changes (pg_cron system writer; FY auto-create from 1 Feb; default start = earliest still-open period; items exist from ask date; metric 1 on Settings › Collection); plan-effect logic in DB triggers; `app.expected_write` flag.
+
+### 2026-09-30
+- Done: step 0 — main (908b8ad, with #13–#16) merged into the branch; draft PR #17; CI 36697493473 green. Step 1 — tests written (a929b19): `tests/rls/expected-docs.test.ts` (generation, date maths incl. 31st/29 Feb/FY roll-over, exclusions, fan-out, back-link, linking on save/classify/edit/archive, visibility, write protection, job), `expected-plan.test.ts` (AC-2/3/5/9–12/18), `expected-metric.test.ts` (AC-16), `expected-perf.test.ts` (RUN_SLOW job-ran check), fixtures `tests/support/expected.ts`. Local: lint 0, typecheck 0, unit 172/172.
+- In progress: CI 36699140557 on a929b19 is red as expected: lint/typecheck/unit/build green; the RLS step fails, so e2e did not run. The per-file breakdown isn't visible from the cloud session (artifact host blocked). Confirm that only the 3 new files fail, and only on the missing contract, with a local `test:db` run (stage `.env.local`) or the `test-evidence` artifact in Raja's Chrome.
+- Blocked / failing: —
+- Next step: confirm red-for-the-right-reasons (above) → step 2 — the migration (dry-run on dev, SQL review by Raja 45–60 min, apply, advisors, back-fill counts).
+- Decisions made (cross-cutting → flag for architecture.md): D1 (per-test-office clock, extends the `app.doc_clock` rule). Open question for Raja: documents filed **without** a GSTIN for a per-GSTIN type don't link (spec-literal) — see chat.
