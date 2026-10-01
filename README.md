@@ -21,7 +21,7 @@ Tests use fixed test offices (`e2e office …`) and reusable test users on the r
 
 ## Create a new environment (staging / prod) — target < 30 min
 1. **Supabase** (org Pulsebay, region **ap-south-1**): create `<env> - CA Document Vault`. Plan: Pro for prod (backups).
-2. **Auth settings**: Authentication → Sign In / Providers → turn **off** "Allow new users to sign up". Emails → *Magic Link* and *Invite user* templates must show `{{ .Token }}` (6-digit code). URL configuration → Site URL = the env's app URL. For staging/prod configure **custom SMTP** (AWS SES ap-south-1) — Supabase's built-in email only delivers to project team members.
+2. **Auth settings**: Authentication → Sign In / Providers → turn **off** "Allow new users to sign up". Emails → *Magic Link* and *Invite user* templates must show `{{ .Token }}` (6-digit code). URL configuration → Site URL = the env's app URL. For staging/prod configure **custom SMTP** with the environment's own **Brevo** account (architecture: Brevo replaced SES, 2026-10-01) — Supabase's built-in email only delivers to project team members.
 3. **Schema**: apply every file in `supabase/migrations/` in order (Supabase CLI `supabase db push --db-url …` or the SQL editor). Staging first, always.
 4. **First Admin**: Authentication → Users → Invite the Admin's email, then run in the SQL editor:
    ```sql
@@ -29,7 +29,7 @@ Tests use fixed test offices (`e2e office …`) and reusable test users on the r
    select u.id, (select id from public.office where branch <> 'test' order by created_at limit 1), '<Full name>', lower(u.email), 'admin', 'invited'
    from auth.users u where lower(u.email) = lower('<admin email>');
    ```
-5. **Vercel**: use a **separate Vercel project per environment** (e.g. `ca-document-vault` = dev, `ca-document-vault-prod` = prod) so dev and prod keys never share a project. In each, set env vars for **Production + Preview** scopes (Vercel's "Development" scope is only for `vercel dev` on a laptop): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` (server-only). Region is pinned by `vercel.json` (`bom1`).
+5. **Vercel**: use a **separate Vercel project per environment** (e.g. `ca-document-vault` = dev, `ca-document-vault-prod` = prod) so dev and prod keys never share a project. In each, set env vars for **Production + Preview** scopes (Vercel's "Development" scope is only for `vercel dev` on a laptop): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY` (server-only), and for client reminders (06, all server-only): `MAIL_TRANSPORT=brevo`, `BREVO_API_KEY` (the environment's Brevo account), `MAIL_FROM_EMAIL` / `MAIL_FROM_NAME` (the firm's authenticated sender), `APP_ENV` (`production` only on prod; anywhere else only `EMAIL_ALLOWLIST` addresses get email), `EMAIL_DAILY_MAX` (default 200). Leaving `MAIL_TRANSPORT` unset means reminders are recorded but **never sent**. Region is pinned by `vercel.json` (`bom1`).
 6. **Verify**: Security Advisor shows no RLS warnings; Admin signs in with a code; `/settings/users` loads.
 
 ## Dev maintenance

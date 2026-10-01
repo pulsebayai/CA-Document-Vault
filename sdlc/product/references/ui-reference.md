@@ -45,3 +45,8 @@ Rule: build screens to match the mockup (layout, components, copy, tokens) **exc
 | 10: "10 more · Show all" | At most 5 open rows per card, then "N more open · Show all on Expected" | 2026-10-01 (04) |
 | 03 Clients: "1 overdue · reminders off"; active chip dark with × | "N overdue · N due today" (reminders text with 06); "Has overdue" is a toggle chip (pressed state, cleared by Clear) | 2026-10-01 (04) |
 | (no mockup) Client › Expected tab, Settings › Collection | Built from the design tokens and existing card/table patterns (04 AC-13, AC-16) | 2026-10-01 (04) |
+| 07 Settings › Reminders (timings, templates, nudges) | Not built: reminders are manual (Remind / Log call); the sender is configured per environment | 2026-10-01 (06) |
+| 01 Today: counts Overdue · Due this week · To review · Ready to dispatch · In inbox | Counts are pressed-state buttons that filter the cards (click again to clear), scope + filter in the URL as enums; To review / Ready to dispatch arrive with 07 (06 step 9); "In inbox" links to the Inbox | 2026-10-01 (06) |
+| 01 Today rows: Remind · Upload · Mark received ("hard copy expected") | Remind · **Log call** · Upload on every expected row; nothing records "hard copy expected", so that label and Mark received are not shown | 2026-10-01 (06) |
+| 01 / 10 "Remind" sends straight away | **Remind dialog**: all the client's open items (reminders-off items unticked), a message preview, **Send email** and **Open WhatsApp**, each with its disabled reason; one email per client per day | 2026-10-01 (06) |
+| (no mockup) Log call dialog, client Reminders list, Settings › Collection "Chasing load" | Built from the shared Modal, card/list and figure patterns (06 AC-11, AC-12, AC-15) | 2026-10-01 (06) |
