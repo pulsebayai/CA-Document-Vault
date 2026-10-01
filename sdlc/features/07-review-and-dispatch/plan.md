@@ -59,13 +59,13 @@ No migration overlap: 06 adds only its own tables and functions.
   - packets: atomic, ineligible document refuses the whole packet, archived client allowed, one live packet per original, dates rule, undo per item;
   - no app write path; activity has no reason/recipient/courier/tracking text;
   - search: Status values, Return filter, facets = results.
-- [ ] 2. **Migrations A + B**: written, dry-run, **SQL gate**, applied to dev, advisors clean. Proof: step-1 tests green in CI; 03, 04 and 03b RLS suites green **unedited**. (1.5) [review SQL: 45 min]
-- [ ] 3. `documentState()` + validation (statuses, returns, reason, dispatch input). Proof: unit tests red → green; SQL-vs-TS state parity test on fixtures. (0.5)
-- [ ] 4. Server actions (review, dispatch, corrected received-on), with errors logged as code + request ID only. Proof: unit + RLS through the actions. (0.5)
-- [ ] 5. **Client › Documents**: state text, Mark reviewed + Needs correction modal, Mark dispatched + dispatch dialog, Held N days. Proof: e2e + unit. (1.5)
-- [ ] 6. **Document page**: Review panel (history, undo for Admin/Manager), Dispatch panel (packet, undo), the corrected-file date in the version dialog. Proof: e2e. (1)
-- [ ] 7. **`/documents`**: Status values + Return filter (URL round trip, no text in the URL), state on rows. Proof: e2e + unit. **First cut if 07 slips.** (0.5)
-- [ ] 8. a11y (axe), ≤ 390 px, screenshots, the ui-reference deviation. Proof: e2e evidence. (0.5)
+- [x] 2. **Migrations A + B**: written, dry-run, **SQL gate**, applied to dev, advisors clean. Proof: step-1 tests green in CI; 03, 04 and 03b RLS suites green **unedited**. (1.5) [review SQL: 45 min]
+- [x] 3. `documentState()` + validation (statuses, returns, reason, dispatch input). Proof: unit tests red → green; SQL-vs-TS state parity test on fixtures. (0.5)
+- [x] 4. Server actions (review, dispatch, corrected received-on), with errors logged as code + request ID only. Proof: unit + RLS through the actions. (0.5)
+- [x] 5. **Client › Documents**: state text, Mark reviewed + Needs correction modal, Mark dispatched + dispatch dialog, Held N days. Proof: e2e + unit. (1.5)
+- [x] 6. **Document page**: Review panel (history, undo for Admin/Manager), Dispatch panel (packet, undo), the corrected-file date in the version dialog. Proof: e2e. (1)
+- [x] 7. **`/documents`**: Status values + Return filter (URL round trip, no text in the URL), state on rows. Proof: e2e + unit. **First cut if 07 slips.** (0.5)
+- [x] 8. a11y (axe), ≤ 390 px, screenshots, the ui-reference deviation. Proof: e2e evidence. (0.5)
 - [ ] 9. **RUN_SLOW** (07 changes 03/04 write paths): Regression dispatch on the branch with `base_url` = the preview; record save overhead (< 20 ms). (0.5) [none]
 - [ ] 10. Merge main → full suite → `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. (0.5) [PR review: 1 h]
 
@@ -91,6 +91,16 @@ No migration overlap: 06 adds only its own tables and functions.
 - **D3 (step 2) Write path = policies gated by transaction flags** (`app.doc_review`, `app.dispatch_write`), the same pattern as 04's `expected_doc` and 03's proposed types, rather than tables with literally no write policies. An invoker function needs a policy to insert. Direct inserts and updates through the API are still refused (asserted).
 - **D4 (step 2) Interpretations:** Needs correction may also be set on a Reviewed document by anyone who can see it (it only makes the metric stricter). `p_received_on` is ignored, not refused, when the document no longer Needs correction (a stale dialog). The dispatch date's "not in the future" uses the India date, not the test clock. The Status filter keeps 03b's raw meaning (`received` also matches Inbox documents, which 03b's tests assert); the UI pairs "To review" with filed documents (step 7).
 
+- **D5 (step 2) Migration C `20261001123450_review_dispatch_update_guard`** (one function). B's append-only trigger read `new.dispatch_id` in a condition shared with `tg_table_name`; plpgsql resolves every field, so an update of `document_review` failed with "record new has no field dispatch_id" instead of `IMMUTABLE`. The rows were already protected; only the error was wrong. Caught by the step-1 test; fixed by nesting the `if`.
+- **D6 (steps 5–6) A few extra files:**
+  - `clients/[id]/document-row.tsx`: the received-document row moved out of `documents-view.tsx`, so 06's merge has less to resolve in the shared file;
+  - `documents/[id]/review-panel.tsx`: the Review and Dispatch panels;
+  - `src/lib/review/messages.ts`: the error-code mapping;
+  - `clients/[id]/page.tsx`: passes `today`.
+
+  "Needs correction…" is a visible link-button next to Mark reviewed, not a hidden overflow menu (simpler for keyboard and screen readers; recorded in ui-reference.md). The dispatch dialog's list comes from `search_documents` with `return = ready` (one SQL definition of "ready"; at most 50 per client).
+- **D7 (step 7)** `DocumentFilters.return` and the new `DocumentHit` fields are optional, so 03b's unit tests and fixtures keep their exact shape (tests unedited). Choosing Status "To review" also sets Show: Classified (D4).
+
 ## Session log
 
 ### 2026-10-01 (session 2, ~17:40–)
@@ -99,4 +109,5 @@ No migration overlap: 06 adds only its own tables and functions.
 - Blocked / failing: none.
 - Next step: Raja approves B → apply → md5 check → advisors → step-1 tests green locally → 03/04/03b suites green unedited → push (CI full run).
 - Decisions made (cross-cutting → flag for architecture.md): D2 (status-change trigger for 04 linking), D3 (flag-gated write policies for history/packets). **For 05:** "map to existing" re-points `document.doc_type_id`, which resets reviews under AC-4. 05's spec should decide whether a catalogue merge resets reviews (probably not: bypass with a flag).
+- Update (same session, ~18:00–19:10): Raja approved B → applied as `20261001123125` (md5 = file), advisors: nothing new. Migration C fix (D5). Full `test:db` locally: **338 passed, 4 skipped (RUN_SLOW)** — 03, 04, 03b suites unedited. Steps 3–8 built: unit 338 → 359 passing; e2e `review-dispatch.spec.ts` 5/5 locally; CI run 36865967873 (d3229f1, steps 5–6) **fully green**. Save overhead measured on dev (rolled back): review 5.9 ms, a period change that resets a review +0.55 ms vs one that doesn't (< 20 ms). Step 9 RUN_SLOW Regression dispatched on the branch preview (run 36870727146).
 
