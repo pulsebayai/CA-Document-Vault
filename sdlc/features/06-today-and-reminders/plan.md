@@ -1,5 +1,5 @@
 # Plan: Today & reminders
-Spec: ./spec.md · Status: draft · Date: 2026-10-01
+Spec: ./spec.md · Status: approved (Raja 2026-10-01 17:32 IST) · Date: 2026-10-01
 Holds (from approval): **architecture lock** (batch D, Raja 2026-10-01); schema = **additive-only exception** (07 holds the schema lock). 06's architecture changes go into architecture.md **in this PR** (lock holder).
 Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06 merges main in after that (step 9) and re-runs the full suite.
 
@@ -83,7 +83,7 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
 - Every AC → test (table in the PR); the full suite green on the last code commit; the step-8 real send and the step-11 timing recorded.
 - Existing tests unchanged, **except** the post-sign-in URL assertions if decision 1 = (a).
 
-## Decisions needed at this gate
+## Decisions (Raja 2026-10-01: 1 = (a), 2 = yes, as recommended)
 1. **Landing after sign-in vs. merged tests.**
    - **(a) Recommended:** sign-in lands on Today (spec AC-1, your Q1). Change `/clients` → `/today` in the 4 post-sign-in assertions (`auth.spec.ts` ×3, `users.spec.ts` ×1) and the shared `signIn()` waits, and add one `goto("/clients")` in auth AC-1 before its Clients-shell checks (which stay as they are). One clearly labelled commit. This is an intended behaviour change, not weakening a test.
    - (b) Sign-in keeps landing on Clients; only `/` and the logo go to Today. No test changes, but staff start on Clients every morning, which contradicts Q1.
