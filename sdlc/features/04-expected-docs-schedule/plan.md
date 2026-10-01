@@ -62,7 +62,7 @@ Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 
 - [x] 4. `src/lib/expected` queries + actions (waive/undo/reopen with friendly errors) — proof: RLS tests via actions' RPCs + unit (0.5)
 - [x] 5. **Client › Expected tab** + Waive modal + Reopen/Undo + Upload → Add document pre-fill (type/period/registration) → linked on save — proof: e2e (staff waives; limited can't; manager undoes; upload links and the item flips to Received) (1.5)
 - [x] 6. **Documents cards** open rows + "All caught up" + Documents default tab + plan-row registration note — proof: e2e (1)
-- [ ] 7. **Clients list** overdue text + "Has overdue" chip (not in URL) — proof: e2e + unit (0.5)
+- [x] 7. **Clients list** overdue text + "Has overdue" chip (not in URL) — proof: e2e + unit (0.5)
 - [ ] 8. **Settings › Collection** (Admin/Manager; Staff/Limited get no item, and Not Found on the URL) — proof: e2e + RLS (0.5)
 - [ ] 9. **Job check** (the volume part is deferred, Raja 2026-09-29): a `RUN_SLOW` test asserts today's `expected.generated` row on the real dev office (nightly). Proof: a RUN_SLOW dispatch. (0.5)
   - **Deferred to the volume test after all R1 features:** about 180k items, the job < 60 s, screen queries < 1 s, a save adding < 50 ms.
@@ -127,6 +127,11 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - **Same principle, beyond the list shown at approval:** Add client and Edit client now redirect to `?tab=settings` (the details card and plan are there; Documents would show an empty client), and Edit's Cancel goes there too. So `client-edit.spec.ts` checks the new URL in 2 places (`…?tab=settings$`), and the id is read from the URL path. Its assertions on the details card are unchanged.
   - **Cards and FY:** viewing the current FY, a card also shows still-open items from earlier FYs (they're owed now); a past FY shows only its own. Cards = the client's collected groups + any group with documents or open items. A collected group with nothing open and no documents says "All caught up for FY …". With no cards at all, 03's empty state is unchanged.
   - **AC-5 note placement:** "No active GSTIN/TAN — nothing expected" sits under the schedule in the Collected column, not in the name cell. In the name cell it changed the cell's accessible name, which broke `client-plan.spec.ts:57` (caught locally, fixed in the code; the test is unchanged).
+
+- **D5 applied — `20261001053022_clients_overdue` (SQL gate: Raja 2026-10-01 10:59, with 2 changes).** `search_clients` was dropped and re-created with `p_has_overdue` and the `overdue`/`due_today` columns.
+  - Raja's changes: an **archived client counts 0** (its items may still be pending; consistent with AC-16), and the plan-row/group aliases were renamed `pr`/`pg` (readability).
+  - The stored statements match the file (md5); the advisors show nothing new.
+  - The "Has overdue" state is passed to `searchClientsAs` as a separate option, rather than added to `ClientSearch`, so 02's `parseClientSearch` unit test stays untouched.
 
 ## Session log
 ### 2026-09-29
@@ -216,6 +221,13 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - Migration drafted: `supabase/migrations/20261001100000_clients_overdue.sql`. It drops and re-creates `search_clients` with `p_has_overdue` and the `overdue`/`due_today` columns; same body, invoker, `search_path = ''` and grants as before.
   - Dry-run on dev inside a rolled-back transaction, as the fixture Staff user: counts match the screens' rules, and 03b's call shape still works.
   - App code and unit/e2e tests written, not yet pushed.
-  - **Waiting: Raja's SQL review.**
+  - SQL gate passed (Raja 10:59, with 2 changes). Applied as `20261001053022_clients_overdue`.
+- **Step 7 done:**
+  - Clients list: right-hand "N overdue · N due today" (only the parts that aren't 0; colour repeats the text) and a "Has overdue" toggle chip (`aria-pressed`, POST body only, shows Clear).
+  - Tests:
+    - RLS `expected-clients` 7/7 (incl. archived = 0, Limited, 03b's call shape, waive); 02's `clients-list` still green.
+    - Unit `clients-overdue` 3/3; suite 232/232.
+    - e2e AC-15 case in `expected.spec.ts` (+ axe, 390 px); `clients.spec` and `screenshots.spec` still green.
+- Next step: step 8 — Settings › Collection (Admin/Manager; metric 1 for the last 30 days).
 - Decisions made (cross-cutting → flag for architecture.md): none new.
 

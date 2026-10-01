@@ -3,7 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { groupId, mustInsertClient } from "../support/catalogue";
 import { createDocumentOffice } from "../support/documents";
-import { T, expectedItem, generateAsOf } from "../support/expected";
+import { T, expectedFor, expectedItem, generateAsOf } from "../support/expected";
 
 // Feature 04 step 7 (D5) — Clients list: "N overdue · N due today" per client and the "Has overdue" filter
 // (spec AC-15), from public.search_clients (SECURITY INVOKER: expected_doc RLS follows the client).
@@ -17,7 +17,7 @@ type Row = { id: string; name: string; overdue: number; due_today: number; total
 let officeId: string;
 const u = {} as Record<"admin" | "manager" | "staff" | "limited", { id: string; email: string }>;
 const as = {} as Record<keyof typeof u, SupabaseClient>;
-const ids = {} as Record<"late" | "onHold" | "none", string>;
+const ids = {} as Record<"late" | "onHold" | "none" | "archived", string>;
 
 async function search(c: SupabaseClient, args: Record<string, unknown> = {}): Promise<Row[]> {
   const { data, error } = await c.rpc("search_clients", args);
@@ -38,8 +38,9 @@ beforeAll(async () => {
   ids.late = (await mustInsertClient(as.staff, officeId, { name: "Late Co", client_type: "individual", incharge_id: u.limited.id })).id;
   ids.onHold = (await mustInsertClient(as.staff, officeId, { name: "On Hold Co", client_type: "individual", incharge_id: u.staff.id })).id;
   ids.none = (await mustInsertClient(as.staff, officeId, { name: "Nothing Co", client_type: "individual", incharge_id: u.staff.id })).id;
+  ids.archived = (await mustInsertClient(as.staff, officeId, { name: "Zed Archived Co", client_type: "individual", incharge_id: u.staff.id })).id;
   const banking = await groupId(officeId, "Banking");
-  for (const c of [ids.late, ids.onHold]) {
+  for (const c of [ids.late, ids.onHold, ids.archived]) {
     const { error } = await as.staff.rpc("enable_client_group", { p_client_id: c, p_doc_group_id: banking });
     if (error) throw new Error(error.message);
   }
@@ -48,6 +49,9 @@ beforeAll(async () => {
   const { error: pe } = await as.manager.from("client_group").update({ state: "paused", remark: "books with auditor" })
     .eq("client_id", ids.onHold).eq("doc_group_id", banking);
   if (pe) throw pe;
+  // Archived after its items exist: they stay pending, but an archived client counts 0 (as in AC-16's metric).
+  const { error: ae } = await as.manager.from("client").update({ archived_at: new Date().toISOString(), archived_by: u.manager.id }).eq("id", ids.archived);
+  if (ae) throw ae;
 });
 
 afterAll(async () => { await retireStaff(Object.values(u).filter(Boolean).map((x) => x.id)); });
@@ -80,6 +84,13 @@ describe("search_clients — overdue counts and Has overdue (AC-15)", () => {
     if (error) throw new Error(error.message);
     expect(counts(await search(as.staff))["Late Co"]).toEqual([0, 1]);
     expect(await search(as.staff, { p_has_overdue: true })).toEqual([]);
+  });
+
+  it("an archived client (shown with p_include_archived) counts 0 though its items are still pending (Raja 2026-10-01)", async () => {
+    const rows = await search(as.staff, { p_include_archived: true });
+    expect(counts(rows)["Zed Archived Co"]).toEqual([0, 0]);
+    expect((await expectedFor(ids.archived)).filter((e) => e.status === "pending").length).toBeGreaterThan(0);
+    expect((await search(as.staff, { p_include_archived: true, p_has_overdue: true })).map((r) => r.name)).not.toContain("Zed Archived Co");
   });
 
   it("is not callable without signing in", async () => {

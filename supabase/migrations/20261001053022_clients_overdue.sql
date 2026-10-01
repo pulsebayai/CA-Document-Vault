@@ -10,6 +10,7 @@
 --
 -- Counts follow the screens (src/lib/expected/shape.ts + schedule.ts):
 --   pending items whose plan row and group are not paused (paused = On hold, not counted);
+--   an archived client counts 0 (its items may still be pending; AC-16's metric excludes them too — Raja 2026-10-01);
 --   overdue   = office today >= overdue_from;
 --   due today = office today  = overdue_from - 1 (the "due by" date).
 -- "Today" is private.office_today(office): the date in India, or the test clock in an is_test office (D1).
@@ -65,12 +66,13 @@ as $$
     select count(*) filter (where e.overdue_from <= d.today) as overdue,
            count(*) filter (where e.overdue_from = d.today + 1) as due_today
       from public.expected_doc e
-      join public.client_doc_type r on r.id = e.client_doc_type_id
-      join public.client_group g on g.id = r.client_group_id
+      join public.client_doc_type pr on pr.id = e.client_doc_type_id
+      join public.client_group pg on pg.id = pr.client_group_id
      where e.client_id = c.id
+       and c.archived_at is null
        and e.status = 'pending'
-       and r.state <> 'paused'
-       and g.state <> 'paused'
+       and pr.state <> 'paused'
+       and pg.state <> 'paused'
   ) x
   where c.office_id = (select private.current_office_id())
     and (p_include_archived or c.archived_at is null)
