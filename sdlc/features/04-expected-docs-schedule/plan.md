@@ -59,7 +59,7 @@ Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 
   - start default for new rows (AC-3)
 - [x] 2. **Migration** written, dry-run, applied to dev, advisors clean, back-fill checked on the real office (counts by group look sane) — proof: step-1 tests green in CI (1.5) [review SQL: 45–60 min]
 - [x] 3. `schedule.ts` + derived state — proof: unit tests red → green; the TS dates equal the SQL dates for a table of cases (0.5)
-- [ ] 4. `src/lib/expected` queries + actions (waive/undo/reopen with friendly errors) — proof: RLS tests via actions' RPCs + unit (0.5)
+- [x] 4. `src/lib/expected` queries + actions (waive/undo/reopen with friendly errors) — proof: RLS tests via actions' RPCs + unit (0.5)
 - [ ] 5. **Client › Expected tab** + Waive modal + Reopen/Undo + Upload → Add document pre-fill (type/period/registration) → linked on save — proof: e2e (staff waives; limited can't; manager undoes; upload links and the item flips to Received) (1.5)
 - [ ] 6. **Documents cards** open rows + "All caught up" + Documents default tab + plan-row registration note — proof: e2e (1)
 - [ ] 7. **Clients list** overdue text + "Has overdue" chip (not in URL) — proof: e2e + unit (0.5)
@@ -166,6 +166,14 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - Unit `expected-schedule` 22/22 (red first: module missing).
   - **TS = SQL** parity test in expected-docs: every generated item in both test offices (month ends, 31st clamping, 29 Feb, FY crossing, offset 0) has exactly the dates `schedule.ts` computes. File 36/36. Mutation-checked: breaking the clamp fails it.
   - Unit suite 194/194, lint 0, typecheck 0.
-- Next step: step 4 (`src/lib/expected` queries + actions). Main's nightly keeps failing `plan.test.ts:70` until 04 merges (expected); the import failure should be gone from the next nightly.
+- **Step 4 done:** `src/lib/expected/{shape,queries,actions}.ts`.
+  - `shape.ts` (pure): `EXPECTED_SELECT`, `toItem` (shown state, On hold from row/group, GSTIN/TAN only when >1 active of that kind, assignee row → group, System vs person for waivers), filters, sort, `openCount`, `officeToday`, `expectedErrorMessage`.
+  - `queries.ts`: `listClientExpected`, `openItemsByGroup`, `collectionMetricAs`.
+  - `actions.ts`: `waiveExpected` / `undoWaiveExpected` / `reopenExpected` (role pre-check, reason 1–500, plain messages, log = code + request ID).
+  - Tests:
+    - RLS: expected-docs › "Expected tab query" runs the exact `EXPECTED_SELECT` as Staff and Limited (all 6 embeds resolve; Limited sees only its client). File 38/38.
+    - Unit: `expected-shape` 22/22 (written after the code; the RLS test and step 1's SQL tests pin the behaviour).
+    - Unit suite 216/216, lint 0, typecheck 0.
+- Next step: step 5, the Client › Expected tab + Waive modal + Reopen/Undo + Upload → Add document pre-fill (read the Next docs first, per AGENTS.md). Main's nightly keeps failing `plan.test.ts:70` until 04 merges (expected); the import failure should be gone from the next nightly.
 - Decisions made (cross-cutting → flag for architecture.md): `app.expected_defer` joins the transaction-flag list; the RUN_SLOW-before-merge rule for features touching 02/03 write paths (CLAUDE.md, at merge).
 

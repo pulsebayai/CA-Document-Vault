@@ -6,6 +6,7 @@ import { createDocumentOffice, documentRow, mustCreateDocument, periodId, typeId
 import { testGstin, testPan, testTan } from "../support/test-data";
 import { T, expectedActivity, expectedFor, expectedItem, expectedOf, generateAsOf, planRow } from "../support/expected";
 import { scheduleDates } from "@/lib/expected/schedule";
+import { EXPECTED_SELECT, repeatedKinds, toItem, type RawExpected } from "@/lib/expected/shape";
 
 // Feature 04 — expected documents: generation, date maths, exclusions, per-registration fan-out, back-link,
 // linking on 03's document paths, visibility and write protection (spec AC-1, AC-4 … AC-7, AC-17, AC-18,
@@ -373,6 +374,33 @@ describe("visibility and write protection (AC-17)", () => {
     expect(data ?? []).toEqual([]);
     const { error } = await as.outsider.rpc("waive_expected", { p_id: (await expectedItem(clientA, T.bank, "2026-04")).id, p_reason: "x" });
     expect(error?.message ?? "").toMatch(DENIED_OR_NOT_FOUND);
+  });
+});
+
+
+// ── Step 4: the screens' query under RLS ─────────────────────────────────────
+describe("Expected tab query (src/lib/expected, step 4)", () => {
+  it("runs as the user under RLS and every row shapes into an item with a state", async () => {
+    const { data, error } = await as.staff.from("expected_doc").select(EXPECTED_SELECT).eq("client_id", clientA);
+    expect(error).toBeNull();
+    const rows = (data ?? []) as unknown as RawExpected[];
+    expect(rows.length).toBe((await expectedFor(clientA)).length);
+    const { data: regs } = await as.staff.from("client_registration").select("kind, active").eq("client_id", clientA);
+    const repeated = repeatedKinds(regs ?? []);
+    expect(repeated.has("gstin")).toBe(true); // client A: two active GSTINs → shown on the rows
+    const items = rows.map((r) => toItem(r, "2026-07-01", repeated));
+    expect(items.every((i) => i.typeName && i.groupName && i.periodLabel && i.state.text)).toBe(true);
+    expect(items.some((i) => i.registration !== null)).toBe(true);
+    expect(items.filter((i) => i.registrationId && i.typeName === T.salaryTds).every((i) => i.registration === null)).toBe(true); // one TAN → not shown
+    expect(items.some((i) => i.state.kind === "received" && /DOC-FY/.test(i.state.text))).toBe(true);
+  });
+
+  it("Limited gets its own clients' rows only", async () => {
+    const mine = await as.limited.from("expected_doc").select(EXPECTED_SELECT).eq("client_id", clientA);
+    expect(mine.error).toBeNull();
+    expect((mine.data ?? []).length).toBeGreaterThan(0);
+    const other = await as.limited.from("expected_doc").select(EXPECTED_SELECT).eq("client_id", clientB);
+    expect(other.data ?? []).toEqual([]);
   });
 });
 
