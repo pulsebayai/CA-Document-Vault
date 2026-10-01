@@ -140,4 +140,4 @@ No migration overlap: 06 adds only its own tables and functions.
   - roadmap: 07 shipped; schema lock released;
   - architecture.md: 07's items (review history pattern, status gate + resets, Counts as received, dispatch packets, D2, D3), plus Q3 (a corrected file for a dispatched original = a new version; the dispatch stays);
   - tell the 06 session to merge main in (it reads `src/lib/documents/state.ts`).
-
+- **Merged 2026-10-02 00:24 IST (Raja, PR #25 → main 2c262a9).** Roadmap, architecture and lock release are done in the chore/roadmap-07-shipped docs PR.
