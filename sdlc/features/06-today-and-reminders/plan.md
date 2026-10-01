@@ -59,7 +59,7 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
 - [x] 4. **Server actions:** two-phase email send, WhatsApp record, log call, dialog data, history, Today data; errors as code + request ID. Proof: unit + RLS through the actions. (0.5)
 - [x] 5. **Today screen** (expected rows), the landing redirect, nav, logo; the sign-in assertions per decision 1. Proof: e2e + unit. (1.5)
 - [x] 6. **Remind + Log call dialogs** on Today, Client › Documents (expected rows) and Client › Expected; history; the client's Reminders list. Proof: e2e + unit. (1.5)
-- [ ] 7. **Metric 2** on Settings › Collection. Proof: RLS (definition) + e2e. (0.5)
+- [x] 7. **Metric 2** on Settings › Collection. Proof: RLS (definition) + e2e. (0.5)
 - [ ] 8. **Real-send check on dev:** set `MAIL_TRANSPORT=brevo` + the dev key + `EMAIL_ALLOWLIST=<your address>` on the preview, then send one reminder to a test client whose email is your address. Proof: you receive it; From / Reply-To / content are checked; the follow-up shows Sent. (0.25) [you: 10 min]
 - [ ] 9. **After 07 merges:** merge main; migration 2 (`today_items` + documents); To review / Ready to dispatch rows using 07's `documentState()` and actions. Proof: RLS + e2e. (1)
 - [ ] 10. a11y (axe), ≤ 390 px, screenshots, ui-reference deviations. Proof: e2e evidence. (0.5)

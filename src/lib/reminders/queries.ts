@@ -183,3 +183,16 @@ export async function itemHistoryAs(clientId: string, today: string): Promise<Re
   }
   return Object.fromEntries([...byItem].map(([id, h]) => [id, historyText(historyOf(h), today)]));
 }
+
+export type ChasingMetric = {
+  received: number; reminders: number; per_item: number | null; needed_pct: number | null;
+  by_channel: { email: number; whatsapp: number; phone: number };
+};
+
+/** Settings › Collection, metric 2 (AC-15): chasing load for [from, to]; Admin/Manager (the function checks). */
+export async function chasingMetricAs(from: string, to: string): Promise<ChasingMetric> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("chasing_metric", { p_from: from, p_to: to });
+  if (error) fail("chasing", error.code);
+  return data as ChasingMetric;
+}
