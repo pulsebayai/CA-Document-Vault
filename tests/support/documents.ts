@@ -159,3 +159,73 @@ export function currentFyYY(now = new Date()) {
   const two = (n: number) => String(n % 100).padStart(2, "0");
   return `${two(y)}-${two(y + 1)}`;
 }
+
+// ── Feature 07: review & dispatch (additions only) ─────────────────────────────
+// Contract under test (plan step 2 implements it):
+//   review_document(p_id uuid, p_outcome text 'reviewed'|'needs_correction', p_reason text default null) → void
+//   undo_review(p_id uuid, p_reason text) → void                                   (Admin/Manager)
+//   add_document_version(p_document_id uuid, p_file jsonb, p_received_on date default null) → { version_id, version_no }
+//       p_received_on replaces the document's received on only when it Needs correction (ignored otherwise).
+//   create_dispatch(p jsonb { client_id, document_ids[], dispatched_on, method, courier_name?, tracking_no?,
+//       recipient_name }) → { id }                                                 (one packet, all-or-nothing)
+//   undo_dispatch_item(p_document_id uuid, p_reason text) → void                    (Admin/Manager)
+//   tables document_review, dispatch, dispatch_item; document.reviewed_by / reviewed_at / correction_reason.
+//   search_documents / search_document_facets: filter `return` ('ready' | 'dispatched'), facet "return".
+
+export type ReviewOutcome = "reviewed" | "needs_correction";
+
+export async function reviewDocument(as: SupabaseClient, id: string, outcome: ReviewOutcome = "reviewed", reason: string | null = null) {
+  const { error } = await as.rpc("review_document", { p_id: id, p_outcome: outcome, p_reason: reason });
+  return { error: error as { message: string } | null };
+}
+
+export async function mustReview(as: SupabaseClient, id: string, outcome: ReviewOutcome = "reviewed", reason: string | null = null) {
+  const { error } = await reviewDocument(as, id, outcome, reason);
+  if (error) throw new Error(error.message);
+}
+
+export async function undoReview(as: SupabaseClient, id: string, reason: string) {
+  const { error } = await as.rpc("undo_review", { p_id: id, p_reason: reason });
+  return { error: error as { message: string } | null };
+}
+
+/** An original (hard copy that must go back), optionally already reviewed by `reviewer`. */
+export async function mustCreateOriginal(as: SupabaseClient, doc: NewDocument, reviewer?: SupabaseClient) {
+  const created = await mustCreateDocument(as, { ...doc, received_as: "original" });
+  if (reviewer) await mustReview(reviewer, created.id);
+  return created;
+}
+
+export type NewDispatch = {
+  client_id: string; document_ids: string[]; dispatched_on?: string; method?: "courier" | "hand_delivery" | "client_collected" | "other";
+  courier_name?: string | null; tracking_no?: string | null; recipient_name?: string;
+};
+
+export async function createDispatch(as: SupabaseClient, p: NewDispatch) {
+  const body = { method: "hand_delivery", recipient_name: "Test recipient", ...p };
+  const res = await as.rpc("create_dispatch", { p: body });
+  return res as { data: { id: string } | null; error: { message: string } | null };
+}
+
+export async function mustDispatch(as: SupabaseClient, p: NewDispatch) {
+  const { data, error } = await createDispatch(as, p);
+  if (error) throw new Error(error.message);
+  return data!;
+}
+
+/** Review history of a document as the service role sees it, oldest first. */
+export async function reviewHistory(documentId: string) {
+  const { data, error } = await adminClient().from("document_review").select("*").eq("document_id", documentId).order("created_at").order("id");
+  if (error) throw error;
+  return data as Array<{ id: string; office_id: string; document_id: string; outcome: string; reason: string | null; actor_id: string | null; created_at: string }>;
+}
+
+/** The live (not removed) packet item of a document, or null. */
+export async function liveDispatchItem(documentId: string) {
+  const { data, error } = await adminClient().from("dispatch_item").select("*, dispatch:dispatch_id(*)")
+    .eq("document_id", documentId).is("removed_at", null).maybeSingle();
+  if (error) throw error;
+  return data as null | { id: string; dispatch_id: string; document_id: string; removed_at: string | null;
+    dispatch: { id: string; client_id: string; dispatched_on: string; method: string; courier_name: string | null;
+      tracking_no: string | null; recipient_name: string; created_by: string } };
+}
