@@ -45,8 +45,8 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
 2. `<ts>_today_documents`: after 07 merges. Replaces only `today_items`. Same gate.
 
 ## Steps (estimates = build sessions with Claude; your time in brackets)
-- [ ] 0. Draft PR; CI green (docs). (—)
-- [ ] 1. **RLS/DB tests first (red)**, proof: `test:db` fails for the right reasons (1). Cases:
+- [x] 0. Draft PR; CI green (docs). (—) — PR #24 (draft).
+- [x] 1. **RLS/DB tests first (red)**, proof: `test:db` fails for the right reasons (1). Cases:
   - cap (second email refused; failed doesn't count; pending > 10 min ignored; office ceiling);
   - items must be the client's and open;
   - visibility per role, incl. Limited;

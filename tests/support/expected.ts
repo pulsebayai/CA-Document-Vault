@@ -92,3 +92,126 @@ export const T = {
   bank: "Bank statement", // monthly, +1/1 · +1/7
   gstReturns: "GST returns filed & acknowledgements", // firm record
 } as const;
+
+// ── Feature 06 — follow-ups (reminders) and Today. Additions only (06 plan "Files that change"). ──────────
+// Written before 06's migration (plan step 1). Contract under test (plan step 2 implements it):
+//
+//   table follow_up      id, office_id, client_id, channel ('email'|'whatsapp'|'phone'),
+//                        status ('pending'|'sent'|'failed'|'suppressed'|'opened'|'logged'), sent_by, sent_at,
+//                        sent_on (office "today": the IST date, or the test clock in an is_test office),
+//                        recipient (email/mobile snapshot; null for phone), provider_message_id, error_code,
+//                        note (phone, ≤ 300), finished_at.     SELECT iff can_see_client; no app writes.
+//   table follow_up_item id, office_id, follow_up_id, expected_doc_id.  SELECT iff its follow-up is visible.
+//
+//   begin_email_reminder(p_client uuid, p_items uuid[], p_daily_max integer default 200) → { id, recipient }
+//       inserts a 'pending' email follow-up after: NOT_FOUND (client not visible) · NO_ITEMS · ITEMS_INVALID
+//       (an item not the client's, or not open: pending, row and group not paused, client not archived) ·
+//       NO_EMAIL · ALREADY_EMAILED_TODAY (pending < 10 min, sent or suppressed today; failed and stale pending
+//       don't count — a stale pending is closed as failed/TIMEOUT) · DAILY_LIMIT (office's sent + fresh pending
+//       today ≥ p_daily_max; the server action passes EMAIL_DAILY_MAX).
+//   finish_email_reminder(p_id uuid, p_status text, p_provider_id text, p_error_code text) → void
+//       'pending' → 'sent' | 'failed' | 'suppressed', by the sender only; writes activity reminder.email.
+//   record_follow_up(p_client uuid, p_items uuid[], p_channel text, p_on date default null, p_note text default null) → uuid
+//       'whatsapp' → status opened, recipient = client mobile (NO_MOBILE), sent_on = today;
+//       'phone' → status logged, sent_on = p_on (default today; FUTURE_DATE), note ≤ 300 (NOTE_TOO_LONG).
+//       Activity reminder.whatsapp / reminder.call. Same item and visibility checks as begin_email_reminder.
+//   today_items(p_scope text, p_show text default null, p_page integer default 0, p_limit integer default 30) → TodayData
+//   chasing_metric(p_from date, p_to date) → ChasingMetric (Admin/Manager; ROLE_REQUIRED otherwise)
+
+export type FollowUp = {
+  id: string; office_id: string; client_id: string; channel: "email" | "whatsapp" | "phone";
+  status: "pending" | "sent" | "failed" | "suppressed" | "opened" | "logged"; sent_by: string; sent_at: string;
+  sent_on: string; recipient: string | null; provider_message_id: string | null; error_code: string | null;
+  note: string | null; finished_at: string | null;
+};
+
+export type TodayRow = {
+  expected_doc_id: string; kind: "overdue" | "due_today" | "due_week"; group: string; type: string;
+  period: string; state_code: string | null; overdue_from: string; days_late: number | null;
+  reminders: boolean; reminded: number; last_reminded_on: string | null; last_reminded_by: string | null;
+  last_channel: string | null;
+};
+export type TodayCard = {
+  client_id: string; name: string; incharge: string; assignees: Array<{ group: string; name: string }>;
+  overdue: number; due_week: number; rows: TodayRow[];
+};
+export type TodayData = {
+  today: string; counts: { overdue: number; due_week: number }; cards: TodayCard[]; has_more: boolean;
+};
+
+export type ChasingMetric = {
+  received: number; reminders: number; per_item: number | null; needed_pct: number | null;
+  by_channel: { email: number; whatsapp: number; phone: number };
+};
+
+/** Calls an RPC and returns { data, error } with the error as a message (for toThrow / match checks). */
+export async function rpc<T>(as: SupabaseClient, fn: string, args: Record<string, unknown>) {
+  const { data, error } = await as.rpc(fn, args);
+  return { data: data as T, error: error?.message ?? null };
+}
+
+export async function mustRpc<T>(as: SupabaseClient, fn: string, args: Record<string, unknown>): Promise<T> {
+  const { data, error } = await rpc<T>(as, fn, args);
+  if (error) throw new Error(`${fn}: ${error}`);
+  return data;
+}
+
+/** begin + finish in one go (the server action's two phases, without a mailer). */
+export async function emailReminder(as: SupabaseClient, client: string, items: string[],
+  finish: "sent" | "failed" | "suppressed" = "suppressed", dailyMax?: number) {
+  const begun = await mustRpc<{ id: string; recipient: string }>(as, "begin_email_reminder",
+    { p_client: client, p_items: items, ...(dailyMax === undefined ? {} : { p_daily_max: dailyMax }) });
+  await mustRpc(as, "finish_email_reminder", {
+    p_id: begun.id, p_status: finish, p_provider_id: finish === "sent" ? `test-${begun.id}` : null,
+    p_error_code: finish === "failed" ? "PROVIDER_ERROR" : null,
+  });
+  return begun;
+}
+
+/** The office's follow-ups as the service role sees them (setup/expectations only). */
+export async function followUpsOf(officeId: string, clientId?: string): Promise<FollowUp[]> {
+  let q = adminClient().from("follow_up").select("*").eq("office_id", officeId);
+  if (clientId) q = q.eq("client_id", clientId);
+  const { data, error } = await q.order("sent_at");
+  if (error) throw error;
+  return (data ?? []) as FollowUp[];
+}
+
+/** Activity rows written by 06 for an office, oldest first. */
+export async function reminderActivity(officeId: string) {
+  const { data, error } = await adminClient().from("activity").select("action, actor_id, entity_type, entity_id, data")
+    .eq("office_id", officeId).like("action", "reminder.%").order("id");
+  if (error) throw error;
+  return data as Array<{ action: string; actor_id: string | null; entity_type: string; entity_id: string; data: Record<string, unknown> }>;
+}
+
+/**
+ * A client whose plan is Banking › Bank statement only (monthly; asked +1/1, overdue +1/7 unless `overdue` is
+ * given), so item counts are exact. Enabled as `as` at the office's current test clock.
+ */
+export async function bankOnlyClient(as: SupabaseClient, officeId: string, c: {
+  name: string; incharge_id: string; email?: string | null; mobile?: string | null;
+  overdue?: { months: number; day: number };
+}) {
+  const { data: client, error } = await as.from("client").insert({
+    office_id: officeId, name: c.name, client_type: "individual", incharge_id: c.incharge_id,
+    email: c.email ?? null, mobile: c.mobile ?? null,
+  }).select("id").single();
+  if (error) throw error;
+  const { data: g, error: eg } = await adminClient().from("doc_group").select("id").eq("office_id", officeId).eq("name", "Banking").single();
+  if (eg) throw eg;
+  const { error: e1 } = await as.rpc("enable_client_group", { p_client_id: client.id, p_doc_group_id: g.id });
+  if (e1) throw new Error(e1.message);
+  for (const n of ["Loan statement / interest certificate", "Bank balance confirmation", "FD / interest certificates"]) {
+    const row = await planRow(client.id, n);
+    const { error: e2 } = await as.from("client_doc_type").update({ state: "removed" }).eq("id", row.id);
+    if (e2) throw e2;
+  }
+  if (c.overdue) {
+    const row = await planRow(client.id, T.bank);
+    const { error: e3 } = await as.from("client_doc_type")
+      .update({ overdue_after_months: c.overdue.months, overdue_day: c.overdue.day }).eq("id", row.id);
+    if (e3) throw e3;
+  }
+  return client.id as string;
+}
