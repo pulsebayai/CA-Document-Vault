@@ -43,7 +43,7 @@ function ItemPicker({ items, ticked, toggle }: { items: DialogItem[]; ticked: Se
   return (
     <fieldset>
       <legend className="mb-2 text-[13px] font-medium text-ink-2">Open documents</legend>
-      <ul className="max-h-60 space-y-2 overflow-y-auto pr-1">
+      <ul aria-label="Open documents" tabIndex={0} className="relative max-h-60 space-y-2 overflow-y-auto pr-1 focus-visible:outline-2 focus-visible:outline-accent">
         {items.map((i) => (
           <li key={i.id}>
             <label className="flex items-start gap-2.5">
@@ -117,12 +117,14 @@ function RemindBody({ clientId, close }: { clientId: string; close: () => void }
     <div className="space-y-4">
       <ItemPicker items={data.items} ticked={ticked} toggle={toggle} />
       {data.items.length > 0 && (
-        <section aria-labelledby={previewId}>
+        <div>
           <h3 id={previewId} className="mb-1 text-[13px] font-medium text-ink-2">Message preview</h3>
-          <pre className="max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg border border-line bg-canvas p-3 font-sans text-[13px]">
-            {preview || "Choose at least one document to see the message."}
-          </pre>
-        </section>
+          {/* Scrolls when long: focusable + named, so keyboard users can scroll it (axe scrollable-region-focusable). */}
+          <div role="region" aria-labelledby={previewId} tabIndex={0}
+            className="relative max-h-48 overflow-y-auto rounded-lg border border-line bg-canvas p-3 focus-visible:outline-2 focus-visible:outline-accent">
+            <pre className="whitespace-pre-wrap font-sans text-[13px]">{preview || "Choose at least one document to see the message."}</pre>
+          </div>
+        </div>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2">
