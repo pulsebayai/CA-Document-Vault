@@ -57,7 +57,7 @@ Staging and prod get both at R1, in version order after or around 04's (both are
 - [ ] ~~7. Volume~~ → **deferred** (Raja 2026-09-29): a 10k-document volume test, with the test-only seeding function, runs **after all R1 features are built** (roadmap "Before pilot"). Indexes wait until then.
 - [x] 8. a11y (axe on the header dropdown and `/documents`), ≤ 390 px, screenshots, ui-reference.md deviations. Proof: e2e evidence. (0.5)
 - [x] 9. AC-13: timed find check, Staff role, 5 lookups, recorded in the PR. [you or a staff member: 10 min]
-- [ ] 10. After 04 merges: rebase and run the full suite. Then `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. Proof: CI green, evidence for all suites. [PR review: 1 h]
+- [x] 10. After 04 merges: rebase and run the full suite. Then `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. Proof: CI green, evidence for all suites. [PR review: 1 h]
 
 **Total ≈ 7.5 build sessions** (volume step deferred). Your review ≈ 2–3 h. **First cut if it slips:** facet counts (plain filters without counts). Second cut: the mobile search sheet.
 
@@ -154,4 +154,20 @@ Staging and prod get both at R1, in version order after or around 04's (both are
 - Blocked / failing: —
 - Next step: step 10 after 04 merges: rebase on main → full suite (04 changes `search_clients`; check its old parameters still work) → `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table.
 - Decisions made (cross-cutting → flag for architecture.md): none new.
+
+### 2026-10-01
+- Done (step 10):
+  - Merged main (04, 1549f8a) into the branch (c521086); one conflict: `ui-reference.md` deviation rows, kept both.
+  - 04's shared surfaces checked: `search_clients` (all new parameters default; 03b reads id/name/code); client links land on the Documents tab; 03b doesn't touch `documents/new`. Dev migration history = the branch's files, same order.
+  - `sdlc-reviewer`: no Important findings. Nits 1 and 4 fixed (Raja approved 1a + 2, 14:56 IST; see Deviations): migration `20261001093454` (SQL gate approved, applied to dev, md5-verified, advisors: nothing new) and the archived-client picker. Nits 2–3 → the volume-test item; other nits listed in the PR as follow-ups.
+  - Local: lint, typecheck, unit 298/298, build. **CI 36843722573 green** (full suite incl. RLS + e2e) on 00eaffe.
+  - The volume test stays deferred (Raja, 2026-10-01).
+- In progress: —
+- Blocked / failing: —
+- Next step: Raja reviews and merges PR #19 (after #21). Then on main: roadmap 03b → shipped; architecture.md flags below; volume-test item gets the review's two notes.
+- Decisions made (cross-cutting → flag for architecture.md at merge):
+  - Read-only migration exception: a feature without the schema lock may, with owner approval, add or replace only SECURITY INVOKER read functions that alter nothing else (03b used it twice).
+  - Search text reaches the next page through the tab's session storage, never the URL (extends the privacy rule and the search data-access pattern).
+  - Search parsing/matching is written out in both SQL functions and in `normaliseSearchText`; change all three together (the facets-equal-results RLS test keeps the SQL pair in step).
+  - The Limited `client_id = any(visible)` hint in search must mirror `document_select` exactly; RLS stays the enforcement.
 
