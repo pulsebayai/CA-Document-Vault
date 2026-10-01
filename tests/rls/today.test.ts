@@ -46,11 +46,11 @@ beforeAll(async () => {
   u.limited = await createStaff(officeId, "td-limited", "limited");
   for (const k of Object.keys(u) as Who[]) as[k] = await signedInClient(u[k].email);
   await generateAsOf(as.admin, "2026-03-15");
-  const mk = (name: string, incharge: string, overdue?: { months: number; day: number }) =>
-    bankOnlyClient(as.s1, officeId, { name, incharge_id: incharge, overdue });
+  const mk = (name: string, incharge: string, overdue?: { months: number; day: number }, email?: string) =>
+    bankOnlyClient(as.s1, officeId, { name, incharge_id: incharge, overdue, email });
   c.alpha = await mk("Today Alpha", u.s1.id);
   c.bravo = await mk("Today Bravo", u.s1.id);
-  c.charlie = await mk("Today Charlie", u.s1.id);
+  c.charlie = await mk("Today Charlie", u.s1.id, undefined, "today-charlie@example.test"); // emailed in the history test
   c.delta = await mk("Today Delta", u.limited.id);
   c.hold = await mk("Today Hold", u.s1.id);
   c.archived = await mk("Today Archived", u.s1.id);

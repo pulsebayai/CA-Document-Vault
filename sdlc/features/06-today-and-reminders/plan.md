@@ -54,7 +54,7 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
   - `today_items`: counts = rows, effective assignee type → group → incharge, the due-this-week boundary (IST), on-hold excluded, scope;
   - chasing metric (reminders before receipt only, per channel);
   - test purge works.
-- [ ] 2. **Migration 1**: written, dry-run, **SQL gate**, applied, advisors clean. Proof: step-1 tests green in CI; all existing suites green. (1) [review SQL: 30 min]
+- [x] 2. **Migration 1**: written, dry-run, **SQL gate**, applied, advisors clean. Proof: step-1 tests green in CI; all existing suites green. (1) [review SQL: 30 min]
 - [ ] 3. **Mailer + message builder:** transports, allow-list, `.test` rule, default `test`, ESLint fence; the builder's AC-10 rules. Proof: unit tests red → green, incl. a fetch spy proving zero network calls under `test`. (0.5)
 - [ ] 4. **Server actions:** two-phase email send, WhatsApp record, log call, dialog data, history, Today data; errors as code + request ID. Proof: unit + RLS through the actions. (0.5)
 - [ ] 5. **Today screen** (expected rows), the landing redirect, nav, logo; the sign-in assertions per decision 1. Proof: e2e + unit. (1.5)
@@ -90,6 +90,8 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
 2. **Default mail transport = `test` when unset.** Recommend **yes**: the safest default; staging/prod must opt in.
 
 ## Deviations from plan
-(filled in during the build)
+- **D1 (step 2, SQL gate approved by Raja 2026-10-01 17:56):** writes go through private SECURITY DEFINER helpers called from the SECURITY INVOKER public functions (spec: invoker + no app write policies — both hold). The office ceiling arrives as `p_daily_max` from the server's `EMAIL_DAILY_MAX` (a pending row sends nothing; only the server action calls Brevo) and counts sent + pending < 10 min only. A pending email older than 10 minutes is closed as failed / `TIMEOUT` by the next begin for that client. "Due this week" count includes Due today; cards order by overdue count, then name. Metric 2 counts reminders with `sent_on ≤ received_on`; archived clients excluded.
+- **D2 (spec gap, flagged at the gate):** nothing records "hard copy expected", so that label is dropped; **Upload** and **Mark received** both open Add document pre-filled (Mark received pre-sets hard copy).
+- Migration 1 applied as `20261001122813_follow_up` (md5 6f8502015721ec7e1dfa461a9f40084b = file); advisors: nothing new.
 
 ## Session log
