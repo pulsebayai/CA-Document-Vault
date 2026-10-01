@@ -35,4 +35,4 @@ Subagents: `verifier` (after each step), `sdlc-reviewer` (before a PR). Hook: `.
 - No PII (PAN, mobile, email, client names) in URLs, logs or analytics.
 - Every release follows the Release & regression policy in architecture.md (staging gate, manual checklist, evidence in sdlc/releases/). Never run data-writing tests against prod.
 - Never hard-delete documents or clients (archive only).
-- v1 is staff-only: no client-facing auth or links. The only client-facing outputs are staff-triggered reminders: email via SES and pre-filled WhatsApp click-to-chat (no attachments, no app links, no PAN/GSTIN). No automatic sends.
+- v1 is staff-only: no client-facing auth or links. The only client-facing outputs are staff-triggered reminders: email via Brevo and pre-filled WhatsApp click-to-chat (no attachments, no app links, no PAN/GSTIN). No automatic sends.
