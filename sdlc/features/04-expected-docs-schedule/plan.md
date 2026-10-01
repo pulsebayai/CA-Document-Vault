@@ -284,3 +284,11 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - confirm the next nightly is green (`plan.test.ts:70` clears).
 - Decisions made (cross-cutting → flag for architecture.md): none new — all applied in this PR.
 
+### 2026-10-01 (14:41 IST) — merged
+- Raja merged PR #17 → main 1549f8a (09:10 UTC). 04 status → shipped; schema + architecture locks released (roadmap PR).
+- Follow-ups:
+  - 03b rebases and runs its full suite;
+  - the next nightly should clear `plan.test.ts:70`;
+  - R1 checklist items stay as recorded (pg_cron extension + job on staging/prod; plan fidelity with 5 clients; volume test);
+  - small chore: make `createStaff` resumable.
+
