@@ -450,6 +450,38 @@ describe("visibility matrix (AC-10)", () => {
   });
 });
 
+// ── Unfiled own document on a client Limited can't see (review finding, 2026-10-01) ─────────────────────────
+// document_select lets the creator keep seeing a document that has a client but no type yet, even when the client
+// isn't theirs. Search's extra Limited filter (a planner hint, not enforcement) must not hide it.
+describe("limited's own unfiled document on another client (AC-10)", () => {
+  let doc: string;
+  beforeAll(async () => {
+    doc = (await mustCreateDocument(as.limited, { remark: "zqw", channel: "courier" })).id;
+    const { error } = await as.staff.rpc("update_document", { p_id: doc, p: { client_id: clientB } });
+    expect(error).toBeNull();
+  });
+
+  it("RLS still lets limited open it", async () => {
+    const { data } = await as.limited.from("document").select("id").eq("id", doc);
+    expect(data?.map((d) => d.id)).toEqual([doc]);
+  });
+
+  it("limited finds it in results, total, facets and suggestions", async () => {
+    const r = await mustSearch("limited", { text: "zqw" });
+    expect(idSet(r)).toEqual(new Set([doc]));
+    expect(r.total).toBe(1);
+    expect(facetOf(await facets("limited", { text: "zqw" }), "channel")).toEqual([expect.objectContaining({ value: "courier", n: 1 })]);
+    expect(idSet(await mustSearch("limited", { text: "zqw", page_size: 5 }))).toEqual(new Set([doc]));
+  });
+
+  it("once it is filed (type set), limited no longer finds it", async () => {
+    const { error } = await as.staff.rpc("update_document", { p_id: doc, p: { doc_type_id: t.form16 } });
+    expect(error).toBeNull();
+    expect((await mustSearch("limited", { text: "zqw" })).total).toBe(0);
+    expect(facetOf(await facets("limited", { text: "zqw" }), "channel")).toEqual([]);
+  });
+});
+
 // ── Read-only (AC-11) ────────────────────────────────────────────────────────
 describe("search is read-only (AC-11)", () => {
   it("writes no activity rows", async () => {

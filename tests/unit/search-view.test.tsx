@@ -13,7 +13,7 @@ const documentFacets = vi.fn();
 const findClients = vi.fn();
 vi.mock("@/lib/search/actions", () => ({
   searchDocuments: (i: unknown) => searchDocuments(i), documentFacets: (i: unknown) => documentFacets(i),
-  findClients: (t: string) => findClients(t), suggest: vi.fn(), openDocId: vi.fn(),
+  findClients: (t: string, archived?: boolean) => findClients(t, archived), suggest: vi.fn(), openDocId: vi.fn(),
 }));
 
 const { SearchView, activeChips, rowText, withoutFilter } = await import("@/app/(app)/documents/(search)/search-view");
@@ -160,5 +160,15 @@ describe("SearchView", () => {
     await user.type(screen.getByRole("searchbox", { name: "Client" }), "acme");
     await user.click(await screen.findByRole("button", { name: "Acme Traders · C0007" }, { timeout: 2000 }));
     expect(push).toHaveBeenLastCalledWith(`/documents?client=${C}`, { scroll: false });
+  });
+
+  it("with Include archived on, the client filter also finds archived clients, marked as such (review fix 2026-10-01)", async () => {
+    findClients.mockResolvedValue({ ok: true, clients: [{ id: C, name: "Acme Traders", code: "C0007", archived: true }] });
+    const user = userEvent.setup();
+    render(<SearchView filters={{ ...DEFAULT_FILTERS, archived: true }} options={{ ...options, client: null }} />);
+    await user.type(screen.getByRole("searchbox", { name: "Client" }), "acme");
+    await user.click(await screen.findByRole("button", { name: "Acme Traders · C0007 · Archived" }, { timeout: 2000 }));
+    expect(findClients).toHaveBeenLastCalledWith("acme", true);
+    expect(push).toHaveBeenLastCalledWith(`/documents?client=${C}&archived=1`, { scroll: false });
   });
 });

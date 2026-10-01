@@ -31,6 +31,7 @@ export type DocumentHit = {
 export type FacetName = "group" | "received_as" | "channel" | "received_by" | "status";
 export type FacetValue = { facet: FacetName; value: string; label: string; n: number };
 export type ClientHit = { id: string; name: string; code: string };
+export type PickerClient = ClientHit & { archived: boolean };
 
 type Row = {
   id: string; doc_code: string; client_id: string | null; client_name: string | null; client_code: string | null;
@@ -81,6 +82,17 @@ export async function suggestClientsAs(text: string, limit = 5): Promise<ClientH
   const { data, error } = await supabase.rpc("search_clients", { p_query: text, p_limit: limit, p_offset: 0 });
   if (error) fail("clients", error.code);
   return ((data ?? []) as Array<{ id: string; name: string; code: string }>).map((c) => ({ id: c.id, name: c.name, code: c.code }));
+}
+
+/** Client filter picker on /documents: like suggestClientsAs, plus archived clients (marked) when the user has
+ *  ticked "Include archived" — otherwise an archived client could never be picked as a filter. */
+export async function findClientsAs(text: string, limit: number, includeArchived: boolean): Promise<PickerClient[]> {
+  const supabase = await createClient();
+  const args = { p_query: text, p_limit: limit, p_offset: 0, ...(includeArchived ? { p_include_archived: true } : {}) };
+  const { data, error } = await supabase.rpc("search_clients", args);
+  if (error) fail("clients", error.code);
+  return ((data ?? []) as Array<{ id: string; name: string; code: string; archived: boolean }>)
+    .map((c) => ({ id: c.id, name: c.name, code: c.code, archived: Boolean(c.archived) }));
 }
 
 /** The document with this exact DOC-ID, if the user can open it (a single select under RLS). */

@@ -13,7 +13,7 @@ const select = vi.fn(() => ({ eq }));
 const from = vi.fn(() => ({ select }));
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc, from }) }));
 
-const { suggest, searchDocuments, documentFacets, openDocId } = await import("@/lib/search/actions");
+const { suggest, searchDocuments, documentFacets, openDocId, findClients } = await import("@/lib/search/actions");
 
 const A = "11111111-1111-4111-8111-111111111111";
 const row = {
@@ -116,5 +116,21 @@ describe("openDocId (AC-3)", () => {
   it("says so when there is no such document the user can open (RLS returns no row)", async () => {
     maybeSingle.mockResolvedValue({ data: null, error: null });
     expect(await openDocId("doc-fy26-27-00123")).toEqual({ ok: false, error: "No document DOC-FY26-27-00123 that you can open" });
+  });
+});
+
+describe("findClients — Client filter picker (AC-6, review fix 2026-10-01)", () => {
+  it("leaves archived clients out by default (same call shape as 02's list)", async () => {
+    rpc.mockResolvedValue({ data: [{ id: A, name: "Acme", code: "C0001", archived: false }], error: null });
+    const r = await findClients("  acme ");
+    expect(rpcCall("search_clients")![1]).toEqual({ p_query: "acme", p_limit: 8, p_offset: 0 });
+    expect(r).toEqual({ ok: true, clients: [{ id: A, name: "Acme", code: "C0001", archived: false }] });
+  });
+
+  it("includes archived clients, marked, when Include archived is on", async () => {
+    rpc.mockResolvedValue({ data: [{ id: A, name: "Acme", code: "C0001", archived: true }], error: null });
+    const r = await findClients("acme", true);
+    expect(rpcCall("search_clients")![1]).toEqual({ p_query: "acme", p_limit: 8, p_offset: 0, p_include_archived: true });
+    expect(r).toEqual({ ok: true, clients: [{ id: A, name: "Acme", code: "C0001", archived: true }] });
   });
 });

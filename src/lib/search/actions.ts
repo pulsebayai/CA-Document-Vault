@@ -5,8 +5,8 @@ import {
   MIN_SUGGEST_CHARS, SUGGEST_LIMIT, filtersToQuery, normaliseSearchText, parseDocId, parseDocumentSearchParams, toSearchInput, type DocumentFilters,
 } from "@/lib/validation/document-search";
 import {
-  SearchError, documentFacetsAs, findDocIdAs, searchDocumentsAs, suggestClientsAs,
-  type ClientHit, type DocumentHit, type FacetValue,
+  SearchError, documentFacetsAs, findClientsAs, findDocIdAs, searchDocumentsAs, suggestClientsAs,
+  type ClientHit, type DocumentHit, type FacetValue, type PickerClient,
 } from "./queries";
 
 // Spec 03b AC-2…AC-4, AC-11. Server actions are POSTs, so the search text is only ever in a request body.
@@ -88,15 +88,16 @@ export async function openDocId(text: string): Promise<OpenDocIdResult> {
   }
 }
 
-export type FindClientsResult = { ok: true; clients: ClientHit[] } | Failure;
+export type FindClientsResult = { ok: true; clients: PickerClient[] } | Failure;
 
-/** Client filter picker on /documents (AC-6): up to 8 visible clients, with 02's matching. */
-export async function findClients(text: string): Promise<FindClientsResult> {
+/** Client filter picker on /documents (AC-6): up to 8 visible clients, with 02's matching; archived ones too
+ *  (marked) when "Include archived" is on. */
+export async function findClients(text: string, includeArchived = false): Promise<FindClientsResult> {
   await requireStaff();
   const t = normaliseSearchText(typeof text === "string" ? text : "");
   if (!t) return { ok: true, clients: [] };
   try {
-    return { ok: true, clients: await suggestClientsAs(t, 8) };
+    return { ok: true, clients: await findClientsAs(t, 8, includeArchived === true) };
   } catch (e) {
     return failure(e, "clients");
   }

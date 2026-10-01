@@ -7,7 +7,7 @@ import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { LoadingState, Block } from "@/components/states";
 import { SEARCH_TEXT_EVENT, handOffSearchText } from "@/components/header-search";
 import { documentFacets, findClients, searchDocuments } from "@/lib/search/actions";
-import type { ClientHit, DocumentHit, FacetName, FacetValue, FilterOptions } from "@/lib/search/queries";
+import type { ClientHit, DocumentHit, FacetName, FacetValue, FilterOptions, PickerClient } from "@/lib/search/queries";
 import { CHANNELS, RECEIVED_AS } from "@/lib/validation/document";
 import {
   DEFAULT_FILTERS, DOC_STATES, DOC_STATUSES, PAGE_SIZE, SEARCH_TEXT_KEY, SORTS, SUGGEST_DEBOUNCE_MS, filtersToQuery,
@@ -166,7 +166,7 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
         </div>
 
         <div id="document-filters" className={`${showFilters ? "flex" : "hidden"} mt-3 flex-wrap items-center gap-2 sm:flex`}>
-          <ClientPicker selected={options.client} onPick={(c) => set({ client: c, registration: null })} />
+          <ClientPicker selected={options.client} includeArchived={filters.archived} onPick={(c) => set({ client: c, registration: null })} />
           {filters.client && options.registrations.length > 0 && (
             <Select label="GSTIN/TAN" value={filters.registration} onChange={(v) => set({ registration: v })}
               options={options.registrations.map((r) => ({ value: r.id, label: `${r.kind === "gstin" ? "GSTIN" : "TAN"} ${r.number}` }))} />
@@ -302,9 +302,9 @@ function DateInput({ label, value, onChange }: { label: string; value: string | 
 }
 
 /** Client filter: type to find (02's matching, server action), pick one. The typed text never reaches the URL. */
-function ClientPicker({ selected, onPick }: { selected: ClientHit | null; onPick: (id: string) => void }) {
+function ClientPicker({ selected, includeArchived, onPick }: { selected: ClientHit | null; includeArchived: boolean; onPick: (id: string) => void }) {
   const [text, setText] = useState("");
-  const [hits, setHits] = useState<{ q: string; clients: ClientHit[] } | null>(null);
+  const [hits, setHits] = useState<{ q: string; archived: boolean; clients: PickerClient[] } | null>(null);
   const request = useRef(0);
   const q = normaliseSearchText(text);
 
@@ -312,19 +312,19 @@ function ClientPicker({ selected, onPick }: { selected: ClientHit | null; onPick
     const id = ++request.current;
     if (q.length < 2) return;
     const t = window.setTimeout(async () => {
-      const r = await findClients(q).catch(() => null);
-      if (id === request.current) setHits({ q, clients: r && r.ok ? r.clients : [] });
+      const r = await findClients(q, includeArchived).catch(() => null);
+      if (id === request.current) setHits({ q, archived: includeArchived, clients: r && r.ok ? r.clients : [] });
     }, SUGGEST_DEBOUNCE_MS);
     return () => window.clearTimeout(t);
-  }, [q]);
+  }, [q, includeArchived]);
 
-  const list: ReactNode = q.length >= 2 && hits?.q === q && (
+  const list: ReactNode = q.length >= 2 && hits?.q === q && hits.archived === includeArchived && (
     <ul aria-label="Matching clients" className="absolute left-0 top-full z-20 mt-1 w-72 rounded-xl border border-line bg-panel p-1 shadow-card">
       {hits.clients.length === 0 && <li className="px-3 py-2 text-[13.5px] text-ink-2">No matching clients.</li>}
       {hits.clients.map((c) => (
         <li key={c.id}>
           <button type="button" onClick={() => { setText(""); onPick(c.id); }} className="w-full rounded-lg px-3 py-2 text-left text-[13.5px] hover:bg-canvas">
-            {c.name} · {c.code}
+            {c.name} · {c.code}{c.archived && " · Archived"}
           </button>
         </li>
       ))}
