@@ -89,6 +89,13 @@ Rollback: dev only. Revert the PR, add a compensating migration (unschedule the 
 AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E evidence). RUN_SLOW volume run green. Screenshots vs mockups 03/10. Back-fill counts noted. architecture.md updated with the 5 approved changes. All 02/03 tests unchanged and green.
 
 ## Deviations from plan
+- **Bulk-path generation fix (Raja 2026-10-01 07:56, option A; SQL gate 08:05), migration `20261001023641_expected_bulk_defer`.**
+  - Found by **nightly 36792152274**: 02's import-timing test (RUN_SLOW) hit the 8 s statement limit (`57014`). 04's per-row plan/registration triggers ran generation for every inserted row.
+  - Measured on dev (rolled back), one 200-client chunk with GSTIN + GST: 2.85 s without 04's triggers, **9.36 s** with them.
+  - Fix: a transaction "defer" mode (`app.expected_defer`). In bulk mode the triggers still waive and restore per row, but only note the client. The outermost bulk call (`enable_group_core`, plus **02's `import_clients` and `create_client`**, outside this plan's file list) then generates once, set-based, through the new `generate_expected_for`. `generate_expected` keeps its signature as a wrapper.
+  - Result: **3.09 s** per chunk (same 1,000 plan rows / 600 items; the daily job afterwards finds nothing new). 1,000-client import **22.2 s** (target < 60 s).
+  - Guard tests added (expected-docs › "bulk paths generate once per client"). Stored statements md5-verified; advisors show nothing new.
+  - **Lesson:** PR CI doesn't run RUN_SLOW, so changes to 02/03 write paths must run the slow tests before merge. Proposed as a CLAUDE.md rule at 04's merge (Raja agreed in principle 2026-10-01).
 - **`expected-plan.test.ts:256` fixture date (Raja 2026-10-01 00:3x IST):** a document's received-on changed **2026-10-10 → 2026-10-01**. 03's `RECEIVED_ON_FUTURE` rejects future dates against the real IST date, so this one test would have stayed red until 10 Oct; the 30 Sep plan (option a, "clears at midnight") missed that date. The assertion is unchanged: a received item stays received when its row is removed. It's 04's own unmerged step-1 test. No other test or fixture in the repo uses a received date after today.
 - **Volume measurements deferred (Raja 2026-09-29 23:06).** The spec's NFR timings (180k items: job < 60 s, screens < 1 s, save + < 50 ms) run in the volume test once all R1 features are built (roadmap "Before pilot"). The nightly job-ran assertion stays in 04. `tests/rls/expected-perf.test.ts` keeps only that assertion; the volume cases go to the volume-test item.
 
@@ -147,4 +154,13 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 - **Step 2 done: CI 36763084116 green** (1b01dac, 00:55 IST: lint, typecheck, unit, build, RLS + e2e).
 - Next step: step 3 (`schedule.ts` + derived state, unit tests red → green).
 - Decisions made (cross-cutting → flag for architecture.md): — (03b's search functions `20260930131025_document_search` are on dev too: additive and invoker, untouched by 04).
+
+### 2026-10-01 (07:44–08:20 IST)
+- Nightly 36792152274 on main (4db150c = #20 roadmap docs) **failed**: RLS step, 2 tests. Reproduced locally on a main worktree with RUN_SLOW.
+  - `plan.test.ts:70` (start period, expected 2026-10, got 2026-09): main's test predates 04's AC-3 change, and dev already runs 04's rule. It clears when 04 merges (this branch carries the updated test). On 30 Sep both rules agreed; they diverge from 1 Oct.
+  - `import.test.ts` 1,000-client timing: **a real 04 regression** → fixed (see Deviations).
+- After the fix: full local `test:db` **with RUN_SLOW: 233/233** (16 files); import timing 22.2 s.
+- In progress: CI on this push.
+- Next step: CI green → step 3 (`schedule.ts`). Main's nightly keeps failing `plan.test.ts:70` until 04 merges (expected); the import failure should be gone from the next nightly.
+- Decisions made (cross-cutting → flag for architecture.md): `app.expected_defer` joins the transaction-flag list; the RUN_SLOW-before-merge rule for features touching 02/03 write paths (CLAUDE.md, at merge).
 
