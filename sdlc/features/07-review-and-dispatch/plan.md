@@ -67,7 +67,7 @@ No migration overlap: 06 adds only its own tables and functions.
 - [x] 7. **`/documents`**: Status values + Return filter (URL round trip, no text in the URL), state on rows. Proof: e2e + unit. **First cut if 07 slips.** (0.5)
 - [x] 8. a11y (axe), ≤ 390 px, screenshots, the ui-reference deviation. Proof: e2e evidence. (0.5)
 - [x] 9. **RUN_SLOW** (07 changes 03/04 write paths): Regression dispatch on the branch with `base_url` = the preview; record save overhead (< 20 ms). (0.5) [none]
-- [ ] 10. Merge main → full suite → `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. (0.5) [PR review: 1 h]
+- [x] 10. Merge main → full suite → `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. (0.5) [PR review: 1 h]
 
 **Total ≈ 8 build sessions.** Your review ≈ 2.5 h. **First cut:** step 7's Return filter. Second cut: the Dispatch panel's "Also in this packet" list.
 
@@ -130,4 +130,14 @@ No migration overlap: 06 adds only its own tables and functions.
   - **Q3:** a corrected file for an already-dispatched original is added as a **new version of that document** (same DOC-ID). No extra rule: dispatch stays a separate dimension, so the document keeps its packet ("Dispatched"), and the version resets only the review.
   - **Q4:** confirmed. A Needs-correction original shows **Ready to dispatch** (spec order 4 before 5).
 - **CI 36888132235 (e5c40ad) failed** on 02's `clients-list.test.ts` NFR check ("first page and a search each return in under 1 s", 1,134 ms vs 1,000 ms; US runner → Mumbai round trip). 339 other tests passed. Log read via Raja's Chrome (the API can't reach logs). 07 doesn't touch `search_clients` or its tables, so this is treated as a timing flake in an existing check. **Likely the same cause as the a527377 failures.** The failed job was re-run (attempt 2). **Flag for the batch E checkpoint:** a chore to measure this check server-side (or loosen the round-trip budget with Raja's OK). Tests are not edited here.
+- Update (2026-10-02 00:11 IST):
+  - **CI 36888132235 attempt 2 (e5c40ad) fully green.**
+  - **Full RUN_SLOW Regression 36903979616 green** on the branch preview: RLS with RUN_SLOW 14 min, e2e 15 min; head 6189570 = docs only on top of e5c40ad.
+  - Main hadn't moved (d9016af), so there was nothing to merge in.
+  - Step 10 done: the verification commands were run directly (lint, typecheck, unit, `test:db`, build; e2e locally and in CI); sdlc-reviewer was run and its findings handled (D8, D9); the PR has the AC → test → result table.
+  - **#25 marked ready for review; the merge is Raja's.**
+- **At merge (on main):**
+  - roadmap: 07 shipped; schema lock released;
+  - architecture.md: 07's items (review history pattern, status gate + resets, Counts as received, dispatch packets, D2, D3), plus Q3 (a corrected file for a dispatched original = a new version; the dispatch stays);
+  - tell the 06 session to merge main in (it reads `src/lib/documents/state.ts`).
 
