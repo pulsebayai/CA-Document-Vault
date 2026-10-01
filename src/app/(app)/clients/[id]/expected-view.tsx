@@ -54,7 +54,12 @@ export function ExpectedView({ clientId, items, fys, currentFyId, perms }: Props
 
   const fyCode = fys.find((f) => f.id === fy)?.code ?? "";
   const groups = [...new Map(items.map((i) => [i.groupId, { id: i.groupId, name: i.groupName }])).values()];
-  const shown = items.filter((i) => (!fy || i.fyId === fy) && (!group || i.groupId === group) && matchesStatus(i, status));
+  // Viewing the current FY also lists still-pending items of earlier FYs (yearly items, Q4 and March are asked in
+  // the next FY), so the list agrees with the tab count and the Documents cards (review Important 2; Raja: pending).
+  const codeOf = (id: string) => fys.find((f) => f.id === id)?.code ?? "";
+  const inFy = (i: ExpectedItem) => !fy || i.fyId === fy
+    || (fy === currentFyId && i.status === "pending" && status !== "received" && status !== "not_needed" && codeOf(i.fyId) < fyCode);
+  const shown = items.filter((i) => inFy(i) && (!group || i.groupId === group) && matchesStatus(i, status));
   const byGroup = groups.map((g) => ({ ...g, items: shown.filter((i) => i.groupId === g.id) })).filter((g) => g.items.length);
 
   return (
@@ -101,7 +106,10 @@ export function ExpectedView({ clientId, items, fys, currentFyId, perms }: Props
                 <span className="text-[13px] text-ink-3">{g.items.length} item{g.items.length === 1 ? "" : "s"}</span>
               </header>
               <ul aria-label={`${g.name} expected documents`} className="divide-y divide-line">
-                {g.items.map((i) => <Row key={i.id} clientId={clientId} item={i} perms={perms} onDone={setNotice} />)}
+                {g.items.map((i) => (
+                  <Row key={i.id} clientId={clientId} item={i} perms={perms} onDone={setNotice}
+                    earlierFy={i.fyId !== fy && !i.periodLabel.includes(codeOf(i.fyId)) ? codeOf(i.fyId) : null} />
+                ))}
               </ul>
             </section>
           </Card>
@@ -111,8 +119,10 @@ export function ExpectedView({ clientId, items, fys, currentFyId, perms }: Props
   );
 }
 
-function Row({ clientId, item: i, perms, onDone }: {
+function Row({ clientId, item: i, perms, onDone, earlierFy = null }: {
   clientId: string; item: ExpectedItem; perms: ExpectedPermissions; onDone: (r: ExpectedActionResult) => void;
+  /** Set when an earlier FY's item is listed under the current FY and its period label doesn't say the FY. */
+  earlierFy?: string | null;
 }) {
   const [pending, start] = useTransition();
   const [confirmReopen, setConfirmReopen] = useState(false);
@@ -123,7 +133,7 @@ function Row({ clientId, item: i, perms, onDone }: {
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
       <div className="min-w-0 flex-1">
-        <p className="break-words font-medium">{label}</p>
+        <p className="break-words font-medium">{label}{earlierFy && <span className="font-normal text-ink-3"> · FY {earlierFy}</span>}</p>
         <p className="mt-0.5 flex flex-wrap gap-x-1.5 text-[13px]">
           <span className={`break-words font-medium ${TONE[i.state.kind]}`}>{i.state.text}</span>
           {waived && <span className="text-ink-3">· {i.waivedBy}{i.waivedAt ? `, ${day.format(new Date(i.waivedAt))}` : ""}</span>}

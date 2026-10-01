@@ -133,6 +133,20 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - The stored statements match the file (md5); the advisors show nothing new.
   - The "Has overdue" state is passed to `searchClientsAs` as a separate option, rather than added to `ClientSearch`, so 02's `parseClientSearch` unit test stays untouched.
 
+- **Pre-PR review (`sdlc-reviewer`, 2026-10-01 12:30): 2 Important, 7 Nits. The security pass is clean, and every edit to a 02/03 test is an approved one.**
+  - **Important 1, frequency change (SQL gate pending):** changing a plan row's frequency left its pending items open forever. For example, monthly → "as needed" kept every month Overdue in the Clients list, metric 1 and the Expected count. Fix: draft migration `20261001120000_expected_review_followups.sql` adds the waiver code `schedule_changed` ("Schedule changed"); changing back restores items that aren't yet overdue. Tests first: `tests/rls/expected-followups.test.ts`, red for the right reason.
+  - **Important 2, earlier FYs (Raja's OK pending):** the Expected tab hid still-open items from earlier FYs (yearly, Q4 and March items are asked in the next FY), while the tab count and the cards included them. Fix: under the current FY, Open/All also list earlier-FY pending items, with "· FY 2025-26" when the period label doesn't show it. This departs from AC-13's literal "FY (default current)". `expected-view` unit test updated + 1 new case.
+  - **Nit 1:** in the same migration, a re-activated GSTIN/TAN restores its `registration_inactive` items, and moving the start period earlier restores `before_start` items. Both follow R1's rule: only items not yet overdue come back.
+  - **Nits 2–3:** also in the migration: `recompute_expected` checks the tenant first, and the `earliest_open_period` fallback uses the office clock.
+  - **Nit 4:** `listClientExpected` pages through all rows (ordered by id, 1,000 per page), so PostgREST's row cap can't silently cut items.
+  - **Nit 5:** when nothing fell due, Collection shows only "Overdue now" next to the empty-state card.
+  - **Nit 6:** "All caught up" cards appear only in the current FY.
+  - **Nit 7, files beyond the plan's list:**
+    - new `src/lib/expected/shape.ts`, `prefill.ts`
+    - changed `src/lib/plan/queries.ts` (registrationKind), `src/components/dialog.tsx` (triggerLabel), `src/lib/clients/actions.ts` (redirects)
+    - new tests: `tests/rls/expected-clients.test.ts`, `expected-followups.test.ts`, `tests/unit/clients-overdue.test.tsx`, `expected-prefill.test.ts`, `expected-shape.test.ts`, `tests/e2e/expected-screenshots.spec.ts`
+    - listed but not changed: `tests/support/test-data.ts`, `tests/e2e/clients.spec.ts` (the AC-15 case lives in `expected.spec.ts`), `src/lib/validation/client-search.ts`
+
 ## Session log
 ### 2026-09-29
 - Done: intent approved (abfa7a8), spec approved (93f94de), plan approved.
@@ -245,4 +259,11 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 - **Cadence (approved by Raja 11:30):** verify each step locally, back it up with `[skip ci]` pushes, then one full CI run after step 10 and the final CI + RUN_SLOW Regression at step 11. CLAUDE.md requires a full green run only on the last commit before merge.
 - Decisions made (cross-cutting → flag for architecture.md): none new.
 - Next step: the combined CI run for steps 8–10 (this push), then step 11: architecture.md (5 approved changes + D-items + decision log), the CLAUDE.md RUN_SLOW-before-merge rule, `verifier` → `sdlc-reviewer` → fix Important findings → final CI + full RUN_SLOW Regression on the branch → PR with the AC → test → result table.
+
+### 2026-10-01 (12:16– IST)
+- Raja approved the combined-CI cadence. Steps 9–10 were done by a parallel session on this branch (87be7db; combined CI **36823447247 green**), and main was merged in (27cad62).
+- Step 11 in progress:
+  - architecture.md + CLAUDE.md committed (1b16c8c).
+  - `verifier`: lint 0 · typecheck 0 · unit 237/237 · `test:db` 239 passed / 4 skipped (RUN_SLOW) / 0 failed · build 0.
+  - `sdlc-reviewer`: 2 Important (see Deviations). Nits 4–7 fixed. **Waiting:** Raja's SQL gate (Important 1 + Nits 1–3) and OK on Important 2.
 

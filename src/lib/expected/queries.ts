@@ -28,6 +28,23 @@ export async function todayForOffice(officeId: string): Promise<string> {
 export type ClientExpected = { today: string; items: ExpectedItem[]; open: number };
 
 /**
+ * Every expected row of one client, in pages: PostgREST caps a response at the project's max-rows (Supabase default
+ * 1,000), which a client with several GSTINs reaches in a few years — a silent cut would make the counts wrong.
+ * Ordered by id so the pages don't overlap. (Review nit 4; volume timing is part of the deferred volume test.)
+ */
+const PAGE = 1000;
+async function allExpectedRows(supabase: Awaited<ReturnType<typeof createClient>>, clientId: string) {
+  const rows: RawExpected[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase.from("expected_doc").select(EXPECTED_SELECT).eq("client_id", clientId)
+      .order("id").range(from, from + PAGE - 1);
+    if (error) return { rows, error };
+    rows.push(...((data ?? []) as unknown as RawExpected[]));
+    if ((data ?? []).length < PAGE) return { rows, error: null };
+  }
+}
+
+/**
  * Client › Expected (AC-13): items of one client, optionally one FY and group, filtered by status, sorted
  * group → type → newest period. `open` (the tab count) is Due + Overdue across the FY, whatever the status filter.
  */
@@ -37,12 +54,12 @@ export async function listClientExpected(
   const supabase = await createClient();
   const [today, res, regs] = await Promise.all([
     todayForOffice(officeId),
-    supabase.from("expected_doc").select(EXPECTED_SELECT).eq("client_id", clientId),
+    allExpectedRows(supabase, clientId),
     supabase.from("client_registration").select("kind, active").eq("client_id", clientId),
   ]);
   if (res.error) fail("list", res.error.code);
   const repeated = repeatedKinds((regs.data ?? []) as Array<{ kind: string; active: boolean }>);
-  const rows = ((res.data ?? []) as unknown as RawExpected[])
+  const rows = res.rows
     .filter((r) => !opts.fyId || r.period.financial_year_id === opts.fyId);
   const all = rows.map((r) => toItem(r, today, repeated));
   const shown = sortItems(rows, all.filter((i) => (!opts.groupId || i.groupId === opts.groupId) && matchesStatus(i, opts.status ?? "open")));

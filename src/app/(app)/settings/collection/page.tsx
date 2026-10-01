@@ -43,7 +43,8 @@ export default async function CollectionPage() {
       )}
 
       <dl aria-label="Collection figures" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {tiles.map(([label, value, note]) => (
+        {/* Nothing fell due in the window: only "Overdue now" means anything (review nit 5). */}
+        {tiles.filter(([label]) => m.due > 0 || label === "Overdue now").map(([label, value, note]) => (
           <Card key={label} className="px-4 py-3">
             <dt className="text-[13px] text-ink-3">{label}</dt>
             <dd className="mt-1 text-[22px] font-semibold leading-tight">{value}</dd>

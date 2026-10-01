@@ -58,7 +58,9 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
       docs: shown.filter((d) => d.groupId === g.id).sort((a, b) =>
         a.typeName.localeCompare(b.typeName) || (b.periodStart ?? "").localeCompare(a.periodStart ?? "") || b.receivedOn.localeCompare(a.receivedOn)),
     }))
-    .filter((g) => g.docs.length || g.open.length || planIds.has(g.id));
+    // A collected group with nothing open and no documents gets an "All caught up" card — for the current FY only:
+    // in a past FY the client may not have been collected for that group at all (review nit 6).
+    .filter((g) => g.docs.length || g.open.length || (fy === currentFy && planIds.has(g.id)));
 
   return (
     <div className="space-y-4">

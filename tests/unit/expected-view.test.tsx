@@ -36,7 +36,10 @@ describe("ExpectedView (AC-13)", () => {
     expect(within(gst).getAllByRole("listitem")).toHaveLength(1);
     expect(within(gst).getByRole("listitem")).toHaveTextContent("Sales invoices / sales register · Sep 2026");
     expect(within(gst).getByRole("listitem")).toHaveTextContent("Overdue · 3 days late");
-    expect(within(screen.getByRole("list", { name: "Banking expected documents" })).getAllByRole("listitem")).toHaveLength(1); // Mar 2026 is FY 2025-26
+    // Review Important 2: the still-open Mar 2026 item (FY 2025-26) is listed under the current FY too, marked with its FY.
+    const banking = within(screen.getByRole("list", { name: "Banking expected documents" })).getAllByRole("listitem");
+    expect(banking).toHaveLength(2);
+    expect(banking.find((li) => li.textContent?.includes("Mar 2026"))).toHaveTextContent("Bank statement · Mar 2026 · FY 2025-26");
   });
 
   it("status and FY filters, and the empty state", async () => {
@@ -99,3 +102,16 @@ describe("uploadHref (AC-8)", () => {
     expect(itemLabel(item({ registration: "33AAAPA0001A1Z1" }))).toBe("Sales invoices / sales register · Sep 2026 · 33AAAPA0001A1Z1");
   });
 });
+
+describe("ExpectedView — earlier FYs (review Important 2)", () => {
+  it("lists still-pending earlier-FY items only under the current FY, and not in Received / Not needed", async () => {
+    const user = userEvent.setup();
+    render(<ExpectedView clientId={CLIENT} items={items} fys={fys} currentFyId="fy27" perms={all} />);
+    await user.selectOptions(screen.getByLabelText("Status"), "Received");
+    expect(screen.queryByText(/Mar 2026/)).toBeNull();
+    await user.selectOptions(screen.getByLabelText("Status"), "Open");
+    await user.selectOptions(screen.getByLabelText("Financial year"), "FY 2025-26");
+    expect(screen.getByText("Bank statement · Mar 2026")).toBeInTheDocument(); // its own FY: no FY suffix
+  });
+});
+
