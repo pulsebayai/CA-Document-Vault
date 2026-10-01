@@ -1,5 +1,5 @@
 # Intent: Review & dispatch
-Author: Raja (drafted with Claude) · Status: draft · Date: 2026-10-01
+Author: Raja (drafted with Claude) · Status: approved (Raja 2026-10-01) · Date: 2026-10-01
 Roadmap item: 07-review-and-dispatch · Release: R1 · Batch D (with 06; **07 merges first**, holds the schema lock) · Moves product metric: 1 (on-time completeness: a wrong document stops counting as received) and the vision's "received → **returned**" step
 
 ## Problem
@@ -58,9 +58,13 @@ Every classified document has a visible **review state**, and every original has
 - Acknowledgement emails to clients on receipt or dispatch; courier integrations or label printing; reviewer assignment and queues per person; review checklists per document type.
 - A "Scanned" flag for hard copies (shown in mockup 10). It's left out unless you want it; see Q4.
 
-## Open questions (my recommendation first)
-1. **Can an original that Needs correction be dispatched?** Recommend **yes**: a wrong original still has to go back to the client, and often goes back *with* the correction request. Originals still in To review can't be dispatched; review them first.
-2. **How does a correction get resolved?** Recommend: uploading a new version of the same document (03's versions) **or** filing a separate correct document both work. A new version puts the document back to To review. A separate document links to the expected item as usual, and the wrong one stays marked Needs correction for the record.
-3. **Undo rules?** Recommend: Admin/Manager can undo any review, correction or dispatch (a reason is required, and it's logged). Staff can't undo, so the trail stays trustworthy. Is a same-day self-undo for the person who did it worth adding? Recommend not in 07.
-4. **The mockup's "Scanned" badge on hard copies:** leave it out (recommend) or include it in 07?
-5. **Pilot volume:** roughly how many originals a month does the firm receive, and how long are they usually held? This sets whether a "held > N days" warning is worth building now. Recommend: show the held age only, with no warning, in 07.
+## Decisions (Raja 2026-10-01, all as recommended)
+- **Q1** An original that Needs correction **can** be dispatched; an original still To review can't.
+- **Q2** A correction is resolved by a **new version** of the same document (back to To review) **or** a separate correct document. The wrong one stays Needs correction.
+- **Q3** **Undo = Admin/Manager only**, reason required, logged. No self-undo in 07.
+- **Q4** No "Scanned" badge in 07.
+- **Q5** Show **how long an original has been held**; no "held too long" warning in 07.
+- Also: reviewer = anyone who can see the document; every classified document needs review; Needs correction reopens the expected item; dispatch = a packet per client.
+
+## Open questions
+None. Settled at the intent gate 2026-10-01.
