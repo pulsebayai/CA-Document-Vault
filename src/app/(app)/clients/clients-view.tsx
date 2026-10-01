@@ -15,6 +15,9 @@ export type ClientListItem = {
   groups: string[];
   pausedGroups: string[];
   archived: boolean;
+  /** 04 AC-15: open expected items — overdue now, and due today (not On hold). */
+  overdue?: number;
+  dueToday?: number;
 };
 
 type Props = {
@@ -73,13 +76,32 @@ function ClientRow({ c }: { c: ClientListItem }) {
   const meta = [CLIENT_TYPE_LABEL[c.clientType], c.pan, `Incharge ${c.inchargeName}`, c.groups.length ? c.groups.join(", ") : null]
     .filter(Boolean).join(" · ");
   return (
-    <li aria-labelledby={nameId} className="border-b border-line px-5 py-3 last:border-0">
-      <Link id={nameId} href={`/clients/${c.id}`} className={`font-medium hover:underline ${c.archived ? "text-ink-3" : ""}`}>{c.name}</Link>
-      <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[13.5px] text-ink-2">
-        <span>{meta}</span>
-        {c.pausedGroups.map((g) => <Badge key={g} tone="muted">{g} paused</Badge>)}
-        {c.archived && <Badge tone="warn">Archived</Badge>}
+    <li aria-labelledby={nameId} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 border-b border-line px-5 py-3 last:border-0">
+      <div className="min-w-0">
+        <Link id={nameId} href={`/clients/${c.id}`} className={`font-medium hover:underline ${c.archived ? "text-ink-3" : ""}`}>{c.name}</Link>
+        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[13.5px] text-ink-2">
+          <span>{meta}</span>
+          {c.pausedGroups.map((g) => <Badge key={g} tone="muted">{g} paused</Badge>)}
+          {c.archived && <Badge tone="warn">Archived</Badge>}
+        </div>
       </div>
+      <OpenText overdue={c.overdue ?? 0} dueToday={c.dueToday ?? 0} />
     </li>
+  );
+}
+
+/** Mockup 03, right-hand text (04 AC-15): "2 overdue · 1 due today"; nothing when both are 0. */
+export function openText(overdue: number, dueToday: number): string {
+  return [overdue > 0 && `${overdue} overdue`, dueToday > 0 && `${dueToday} due today`].filter(Boolean).join(" · ");
+}
+
+function OpenText({ overdue, dueToday }: { overdue: number; dueToday: number }) {
+  if (!overdue && !dueToday) return null;
+  return (
+    <span className="whitespace-nowrap text-[13.5px] font-medium">
+      {overdue > 0 && <span className="text-bad">{overdue} overdue</span>}
+      {overdue > 0 && dueToday > 0 && <span className="text-ink-3"> · </span>}
+      {dueToday > 0 && <span className="text-warn">{dueToday} due today</span>}
+    </span>
   );
 }

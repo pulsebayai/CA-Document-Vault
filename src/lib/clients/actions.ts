@@ -23,11 +23,11 @@ export type SearchResult = ({ ok: true } & ClientSearchResult) | { ok: false; er
  * browser history or access logs.
  */
 export async function searchClients(input: {
-  query?: string; clientType?: string | null; inchargeId?: string | null; includeArchived?: boolean; page?: number;
+  query?: string; clientType?: string | null; inchargeId?: string | null; includeArchived?: boolean; hasOverdue?: boolean; page?: number;
 }): Promise<SearchResult> {
   await requireStaff();
   try {
-    return { ok: true, ...(await searchClientsAs(parseClientSearch(input ?? {}))) };
+    return { ok: true, ...(await searchClientsAs(parseClientSearch(input ?? {}), { hasOverdue: input?.hasOverdue === true })) };
   } catch {
     return { ok: false, error: "Could not load clients. Please try again." };
   }
@@ -77,7 +77,8 @@ export async function createClientAction(_prev: ClientFormState, fd: FormData): 
     return { error: e.message, fieldErrors: e.field ? { [e.field]: e.message } : {}, warnings };
   }
   revalidatePath("/clients");
-  redirect(`/clients/${data.id}`);
+  // Lands on Settings (details card + plan): Documents became the default client tab in 04 (AC-14).
+  redirect(`/clients/${data.id}?tab=settings`);
 }
 
 export async function updateClientAction(_prev: ClientFormState, fd: FormData): Promise<ClientFormState> {
@@ -99,7 +100,7 @@ export async function updateClientAction(_prev: ClientFormState, fd: FormData): 
   }
   revalidatePath("/clients");
   revalidatePath(`/clients/${id}`);
-  redirect(`/clients/${id}`);
+  redirect(`/clients/${id}?tab=settings`); // back to the details just edited (04 AC-14 made Documents the default)
 }
 
 // ── Archive / unarchive (AC-11) ──────────────────────────────────────────────

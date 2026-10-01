@@ -67,7 +67,7 @@ test("screens vs mockups 03 / 05 / 11 + import + add client, desktop and phone w
   await shoot(page, "03-clients");
 
   // Mockup 11 — Client › Settings
-  await page.goto(`/clients/${clientId}`);
+  await page.goto(`/clients/${clientId}?tab=settings`); // 04 AC-14: Documents is the default client tab; Settings is ?tab=settings (Raja 2026-10-01, option A)
   await expect(page.getByRole("heading", { name: "Sankar Software Pvt Ltd" })).toBeVisible();
   // AC-18 header: type, PAN, GSTIN count, incharge, email, mobile (mockup 11).
   await expect(page.getByRole("heading", { name: "Sankar Software Pvt Ltd" }).locator("xpath=following-sibling::p[1]"))
@@ -113,7 +113,7 @@ test("screens vs mockups 03 / 05 / 11 + import + add client, desktop and phone w
   await expect(page.getByRole("list", { name: "Clients" })).toBeVisible();
   expect(await pageWidth(), (await wide()).join("\n")).toBeLessThanOrEqual(390);
   await shoot(page, "mobile-03-clients");
-  await page.goto(`/clients/${clientId}`);
+  await page.goto(`/clients/${clientId}?tab=settings`); // 04 AC-14: Documents is the default client tab; Settings is ?tab=settings (Raja 2026-10-01, option A)
   await expect(page.getByRole("heading", { name: "Sankar Software Pvt Ltd" })).toBeVisible();
   expect(await pageWidth(), (await wide()).join("\n")).toBeLessThanOrEqual(390);
   await shoot(page, "mobile-11-client-settings");

@@ -1,0 +1,286 @@
+# Plan: Expected documents & schedule
+Spec: ./spec.md · Status: approved (Raja 2026-09-29 20:29 IST) · Date: 2026-09-29
+Holds (from approval): **schema lock** + **architecture lock** (spec's 5 approved changes; applied to architecture.md in this feature's PR, as in 02/03).
+Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 onwards) starts only after the `test-isolation` chore merges** (Batch C decision, 2026-09-29); then rebase.
+
+## Design choices made while planning (from reading the code)
+- **Plan changes are caught by DB triggers, not by server actions.** 02's pause/resume/remove/edit paths update `client_doc_type` / `client_group` directly through PostgREST (`src/lib/plan/actions.ts`), and registrations change inside `update_client`. Only AFTER triggers on `client_doc_type`, `client_group`, `client_registration` and `client` (archive) see every path, including direct API calls. The triggers are SECURITY DEFINER, check the tenant first, and use `search_path = ''`, like 03's.
+- **Effective plan state = group state AND row state.** Pausing a group leaves its rows `active` (02), so generation and "On hold" check both.
+- **Only functions write `expected_doc`.** This uses a transaction flag (`app.expected_write`) in the same pattern as 03's `begin_doc_write`, and adds no INSERT/UPDATE policies for app roles.
+- **Linking** is an AFTER trigger on `document` (insert, plus update of client/type/period/registration/archived_at). It sets `document.expected_doc_id` and the item's status/received_on. 03's functions themselves are unchanged.
+- **Keep 04 out of `src/lib/documents/queries.ts`** (03b's main file). Expected queries live in the new `src/lib/expected/`, so 04's only overlap with 03b is the client page and the Add document form.
+- **Nightly job check without editing the workflows.** A `RUN_SLOW` RLS test asserts that the real office has an `expected.generated` row from the last 26 h. Nightly and release runs already set `RUN_SLOW`, so neither `regression.yml` nor `ci.yml` changes. The test-isolation chore edits those files; this avoids overlapping with it.
+
+## Files that change
+| Path | New/Mod | Why |
+|---|---|---|
+| supabase/migrations/<ts>_expected_docs.sql | new | pg_cron; `expected_status`; `expected_doc` (+ indexes, RLS, forbid_delete); `document.expected_doc_id`; `schedule_dates`, `earliest_open_period`, `generate_expected`, linking + plan/registration/client triggers; `waive_expected` / `undo_waive_expected` / `reopen_expected`; `run_expected_generation` (test offices); `collection_metric`; FY auto-create in the job; cron schedule; `enable_group_core` / `add_client_doc_type` start default; `search_clients` + overdue counts and `p_has_overdue`; `reset_test_office` + expected_doc; back-fill |
+| src/lib/expected/schedule.ts | new | TS mirror of `schedule_dates` + derived state (Due / Due today / Overdue N days / On hold / Received / Not needed) |
+| src/lib/expected/{queries,actions}.ts | new | client expected list, open items for cards, metric; waive / undo / reopen server actions |
+| src/app/(app)/clients/[id]/page.tsx | mod | tabs Documents (default) · Expected (count) · Settings |
+| src/app/(app)/clients/[id]/expected-view.tsx | new | Expected tab (filters, rows, Waive modal, Reopen, Undo, Upload) |
+| src/app/(app)/clients/[id]/documents-view.tsx | mod | open rows on top of each group card, "All caught up" |
+| src/app/(app)/clients/[id]/plan-view.tsx | mod | "No active GSTIN/TAN — nothing expected" note (AC-5) |
+| src/app/(app)/documents/new/page.tsx, document-form.tsx | mod | pre-fill `type`, `period`, `registration` params (UUIDs, validated) |
+| src/app/(app)/clients/{clients-view,clients-browser}.tsx, src/lib/clients/{queries,actions}.ts, src/lib/validation/client-search.ts | mod | overdue text + "Has overdue" chip (not in URL) |
+| src/app/(app)/settings/layout.tsx, settings/collection/page.tsx (+ loading/error) | mod/new | Collection item (Admin/Manager) + metric page |
+| tests/rls/expected-docs.test.ts, expected-plan.test.ts, expected-metric.test.ts | new | written first (step 1) |
+| tests/rls/expected-perf.test.ts | new | RUN_SLOW volume + nightly job assertion |
+| tests/unit/expected-schedule.test.ts, expected-view.test.tsx | new | date maths, state text, view logic |
+| tests/e2e/expected.spec.ts, collection.spec.ts; clients.spec.ts, client-documents.spec.ts, screenshots.spec.ts | new/mod | new e2e; existing specs **extended only** (new cases), never edited to pass |
+| tests/support/expected.ts, test-data.ts | new/mod | fixtures: scheduled plan rows, fixed-date generation, purge |
+| sdlc/product/architecture.md | mod | 5 approved changes + decision log rows (in the PR, with the lock) |
+
+**Overlap with 03b** (for the batch confirmation): `clients/[id]/page.tsx` (tabs) is certain. `documents/new/document-form.tsx` is possible, if 03b links to it. `src/lib/documents/queries.ts` is **avoided** by design. Migration: 04 only (03b's indexes come after 04 merges).
+
+## Migrations (schema lock: 04)
+1. `<ts>_expected_docs.sql`: everything above in one additive migration, plus advisor fix-ups if needed (as in 03).
+   - Dry-run on dev inside a rolled-back block (impersonating admin/staff/limited).
+   - Apply, then run the advisors.
+   - Back-fill: `generate_expected` for all offices as of the apply date. This links 03's documents.
+   - Cron: `cron.schedule('expected-docs-daily', '45 18 * * *', …)` (00:15 IST).
+   - Staging/prod get the same migration at R1. Extension creation there is part of the R1 checklist.
+
+## Steps (estimates = build sessions with Claude; your time in brackets)
+- [x] 0. **Wait for test-isolation to merge** → rebase on main → CI green on the branch — proof: CI run (docs-only commits so far) [—]
+- [x] 1. **RLS/DB tests first (red)**, all using `run_expected_generation(p_as_of)` in test offices (proof: `test:db` fails for the right reasons) (1.5). Cases:
+  - date maths (month ends, 29 Feb, quarter/FY ends, offset 0) and earliest still-open period
+  - generation counts per frequency; idempotent re-run
+  - exclusions: paused/removed row or group, as-needed/firm/proposed types, archived client
+  - per-registration fan-out; none without a registration
+  - back-link of earlier documents
+  - plan-change effects: immediate generation, pending-only date recompute, on hold, no generation while paused, auto-waive codes
+  - linking/unlinking on save, classify, edit, archive and unarchive; received_on recompute
+  - waive/undo/reopen role matrix; reason required
+  - visibility matrix; direct writes rejected; DELETE rejected
+  - activity rows without free text or PII
+  - metric maths on a fixture set
+  - FY auto-create from 1 Feb; cron job registered
+  - start default for new rows (AC-3)
+- [x] 2. **Migration** written, dry-run, applied to dev, advisors clean, back-fill checked on the real office (counts by group look sane) — proof: step-1 tests green in CI (1.5) [review SQL: 45–60 min]
+- [x] 3. `schedule.ts` + derived state — proof: unit tests red → green; the TS dates equal the SQL dates for a table of cases (0.5)
+- [x] 4. `src/lib/expected` queries + actions (waive/undo/reopen with friendly errors) — proof: RLS tests via actions' RPCs + unit (0.5)
+- [x] 5. **Client › Expected tab** + Waive modal + Reopen/Undo + Upload → Add document pre-fill (type/period/registration) → linked on save — proof: e2e (staff waives; limited can't; manager undoes; upload links and the item flips to Received) (1.5)
+- [x] 6. **Documents cards** open rows + "All caught up" + Documents default tab + plan-row registration note — proof: e2e (1)
+- [x] 7. **Clients list** overdue text + "Has overdue" chip (not in URL) — proof: e2e + unit (0.5)
+- [x] 8. **Settings › Collection** (Admin/Manager; Staff/Limited get no item, and Not Found on the URL) — proof: e2e + RLS (0.5)
+- [x] 9. **Job check** (the volume part is deferred, Raja 2026-09-29): a `RUN_SLOW` test asserts today's `expected.generated` row on the real dev office (nightly). Proof: a RUN_SLOW dispatch. (0.5)
+  - **Deferred to the volume test after all R1 features:** about 180k items, the job < 60 s, screen queries < 1 s, a save adding < 50 ms.
+- [x] 10. States + a11y (axe on Expected tab, Collection) + ≤ 390 px + screenshots vs mockups 03/10 — proof: e2e evidence (0.5)
+- [x] 11. architecture.md (5 changes + decision log) · `verifier` → `sdlc-reviewer` → fix Important → PR with AC → test → result table — proof: CI green, evidence with all suites [PR review: 1–2 h]
+- (Not a build step) **Plan fidelity (success metric 2)** is checked on staging/pilot with 5 clients, and goes on the R1 checklist.
+
+**Total ≈ 9 build sessions** (volume part of step 9 deferred) (03 took ~9.5 for a similar surface, ~2 working days at that pace). Your review ≈ 3–4 h. **First cut if it slips:** step 6's open rows in the Documents cards (spec risk). Second cut: the per-group table on Collection (keep the headline figure).
+
+## Risks
+| Risk | Mitigation |
+|---|---|
+| Triggers on 02's plan tables change 02 behaviour | triggers only write `expected_doc`, never the plan rows; all 02 RLS/e2e tests must stay green unchanged; step-1 tests cover each plan path |
+| Linking trigger slows or breaks 03's save | set-based lookup on the unique key (index); volume test measures the save; 03's tests unchanged and green |
+| Generation writes as definer (bypasses RLS) | tenant-first check; only called with an office id from the row being changed or from the cron loop; tests prove a user can't trigger generation for another office's client |
+| pg_cron job not running (dev paused, extension missing on staging/prod) | nightly assertion (step 9); Collection shows "Last generated"; R1 checklist: extension + job exist on staging/prod |
+| Back-fill floods the real dev office | dev has synthetic data only; back-fill uses Q1's "earliest still-open" rule for the stored start periods only; counts reviewed at step 2 |
+| FY boundary (April) untested in real time | fixed-date tests across 31 Mar/1 Apr and FY auto-create on 1 Feb |
+| Concurrent generation (job + plan edit on the same row) | unique key + ON CONFLICT DO NOTHING; linking is idempotent |
+| Merge conflicts with 03b (client page tabs) | 04 merges first (batch rule); tabs change is small |
+Rollback: dev only. Revert the PR, add a compensating migration (unschedule the job, drop the trigger functions/table/column, restore 02's start default). No real data.
+
+## Proof of done
+AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E evidence). RUN_SLOW volume run green. Screenshots vs mockups 03/10. Back-fill counts noted. architecture.md updated with the 5 approved changes. All 02/03 tests unchanged and green.
+
+## Deviations from plan
+- **Bulk-path generation fix (Raja 2026-10-01 07:56, option A; SQL gate 08:05), migration `20261001023641_expected_bulk_defer`.**
+  - Found by **nightly 36792152274**: 02's import-timing test (RUN_SLOW) hit the 8 s statement limit (`57014`). 04's per-row plan/registration triggers ran generation for every inserted row.
+  - Measured on dev (rolled back), one 200-client chunk with GSTIN + GST: 2.85 s without 04's triggers, **9.36 s** with them.
+  - Fix: a transaction "defer" mode (`app.expected_defer`). In bulk mode the triggers still waive and restore per row, but only note the client. The outermost bulk call (`enable_group_core`, plus **02's `import_clients` and `create_client`**, outside this plan's file list) then generates once, set-based, through the new `generate_expected_for`. `generate_expected` keeps its signature as a wrapper.
+  - Result: **3.09 s** per chunk (same 1,000 plan rows / 600 items; the daily job afterwards finds nothing new). 1,000-client import **22.2 s** (target < 60 s).
+  - Guard tests added (expected-docs › "bulk paths generate once per client"). Stored statements md5-verified; advisors show nothing new.
+  - **Lesson:** PR CI doesn't run RUN_SLOW, so changes to 02/03 write paths must run the slow tests before merge. Proposed as a CLAUDE.md rule at 04's merge (Raja agreed in principle 2026-10-01).
+- **`expected-plan.test.ts:256` fixture date (Raja 2026-10-01 00:3x IST):** a document's received-on changed **2026-10-10 → 2026-10-01**. 03's `RECEIVED_ON_FUTURE` rejects future dates against the real IST date, so this one test would have stayed red until 10 Oct; the 30 Sep plan (option a, "clears at midnight") missed that date. The assertion is unchanged: a received item stays received when its row is removed. It's 04's own unmerged step-1 test. No other test or fixture in the repo uses a received date after today.
+- **Volume measurements deferred (Raja 2026-09-29 23:06).** The spec's NFR timings (180k items: job < 60 s, screens < 1 s, save + < 50 ms) run in the volume test once all R1 features are built (roadmap "Before pilot"). The nightly job-ran assertion stays in 04. `tests/rls/expected-perf.test.ts` keeps only that assertion; the volume cases go to the volume-test item.
+
+  Risk: the daily job is the riskiest query at scale, so it is **measured first** in that test.
+
+- **D1 — test clock persists per test office (step 1, 2026-09-30; approved by Raja 2026-09-30 17:34).** `run_expected_generation(p_as_of)` also sets `office.test_today` (honoured only when `is_test`; cleared by `reset_test_office`). Plan changes arrive in separate requests, and AC-2/AC-3/AC-12 tests need them to see the same "today" as the generation run. Real offices always use today in India. One nullable column on `office`; covered by the schema lock.
+- **D2 — step 0 merged main into the branch instead of rebasing** (2026-09-30): same result for CI, and no force-push of a published branch.
+- **D3 — contract details fixed by the step-1 tests** (for SQL review at step 2): error codes `ROLE_REQUIRED`, `NOT_TEST_OFFICE`, `REASON_REQUIRED`, `NOT_PENDING`, `NOT_RECEIVED`; activity actions `expected.generated` (entity office, data {created, linked}, actor null), `expected.waived` / `expected.waive_undone` / `expected.reopened` (actor = user, data {code …}), `expected.auto_waived` (one per item, actor null); system reasons "Removed from plan" · "Registration inactive" · "Before start period"; a document filed for a **waived** item is linked but the item stays waived until Undo (then received); `completed_by` = first document linked while pending, else the earliest remaining by received on; service-role-only `expected_job_info()` to read the pg_cron job.
+
+- **D4 — linking without a registration (Raja 2026-09-30, option b; spec amended).** A document with no GSTIN/TAN for a per-registration type links to the item of the client's only active registration of that kind; with ≥ 2 active it doesn't link. The document's own `registration_id` stays null. Test: `expected-docs.test.ts` › linking.
+
+- **D5 — `search_clients` overdue counts move to step 7 (approved by Raja 2026-09-30)** (own small migration, same schema lock). Step 2 carries everything the step-1 tests need; the list query is only needed by the Clients screen, and keeping it apart keeps 03b's `search_clients` untouched until then.
+- **D6 — resume via `resumed_on` (approved by Raja 2026-09-30)** (new nullable column on `client_doc_type` and `client_group`, set by a BEFORE trigger when a paused/removed row or group becomes active; not granted to users). Generation skips periods whose overdue date had passed on that day, which is AC-12's "resume continues from the earliest still-open period" without moving the stored start period (moving it would auto-waive items still owed from before the pause).
+- **Flag for review — one 02 test encodes the old start default:** `tests/rls/plan.test.ts:70` expects the new row to start at the *current* month. AC-3 (approved) changes the default to the earliest still-open period. They agree on days 6–31 of a month (Sales: overdue day 5), but on the 1st–5th the new rule gives the previous month, so that test would fail on those days. Updating that one assertion to AC-3 is a spec-driven change, not weakening a test; it needs Raja's OK (CLAUDE.md rule). **Raja OK'd it 2026-09-30:** the assertion now computes the AC-3 start (the earliest office month whose overdue-from date, the 5th of the next month, is after today in IST).
+
+- **R1 — re-enabling restores not-yet-overdue "Removed from plan" items (Raja 2026-09-30, from the step-2 SQL review).**
+  - When a row or group leaves `removed`, its system-waived `removed_from_plan` items whose overdue-from date is after today go back to pending. Linked documents then decide received.
+  - Items already overdue stay waived, the same line as resume (AC-12).
+  - Each restored item writes one `expected.waive_undone` row (actor null, code only).
+  - Follow-up migration applied to dev as `20260930124132_expected_docs_restore.sql` (Raja approved 18:11: reuse `expected.waive_undone`; line = overdue-from after today). Test: `expected-plan.test.ts` › "(R1)".
+  - R2 (refuse undo-waive off-plan) was not taken.
+
+- **Step 5 — small changes outside the file list (2026-10-01):**
+  - `src/components/dialog.tsx`: shared `Modal` gains an optional `triggerLabel` (the trigger's accessible name; default stays the title), so "Waive <type · period>" is distinct per row while the dialog title asks "Not needed for <type · period>?". Additive; existing callers unchanged.
+  - Add document's `safeReturn` also accepts `/clients/<id>?tab=expected`, and the form appends `saved=` with `&` when the return path already has a query. Pre-fill validation lives in `src/lib/expected/prefill.ts` (type the client can file, period kind allowed for the type, the client's own registration of the type's kind; otherwise dropped → the form's normal defaults).
+  - The client page loads the client's expected items on every tab (the tab count). Measured in the deferred volume test with the other screen timings.
+
+- **Step 6 — Documents default tab: existing e2e tests changed (Raja 2026-10-01 10:15, option A).** AC-14 makes Documents the default client tab; Settings is now `?tab=settings` (`?tab=documents` still works for 03's links). Tests that opened the bare client page for Settings content now open `?tab=settings`: `client-plan.spec.ts` (2), `proposed-types.spec.ts` (1), `screenshots.spec.ts` (2). `client-documents.spec.ts:49` now asserts Documents is the default (was "Settings still the default"). No assertion was removed or loosened.
+  - **Same principle, beyond the list shown at approval:** Add client and Edit client now redirect to `?tab=settings` (the details card and plan are there; Documents would show an empty client), and Edit's Cancel goes there too. So `client-edit.spec.ts` checks the new URL in 2 places (`…?tab=settings$`), and the id is read from the URL path. Its assertions on the details card are unchanged.
+  - **Cards and FY:** viewing the current FY, a card also shows still-open items from earlier FYs (they're owed now); a past FY shows only its own. Cards = the client's collected groups + any group with documents or open items. A collected group with nothing open and no documents says "All caught up for FY …". With no cards at all, 03's empty state is unchanged.
+  - **AC-5 note placement:** "No active GSTIN/TAN — nothing expected" sits under the schedule in the Collected column, not in the name cell. In the name cell it changed the cell's accessible name, which broke `client-plan.spec.ts:57` (caught locally, fixed in the code; the test is unchanged).
+
+- **D5 applied — `20261001053022_clients_overdue` (SQL gate: Raja 2026-10-01 10:59, with 2 changes).** `search_clients` was dropped and re-created with `p_has_overdue` and the `overdue`/`due_today` columns.
+  - Raja's changes: an **archived client counts 0** (its items may still be pending; consistent with AC-16), and the plan-row/group aliases were renamed `pr`/`pg` (readability).
+  - The stored statements match the file (md5); the advisors show nothing new.
+  - The "Has overdue" state is passed to `searchClientsAs` as a separate option, rather than added to `ClientSearch`, so 02's `parseClientSearch` unit test stays untouched.
+
+- **Pre-PR review (`sdlc-reviewer`, 2026-10-01 12:30): 2 Important, 7 Nits. The security pass is clean, and every edit to a 02/03 test is an approved one.**
+  - **Important 1, frequency change (SQL gate: Raja 2026-10-01 12:39; applied as `20261001070941_expected_review_followups`, md5 verified, advisors clean):** changing a plan row's frequency left its pending items open forever. For example, monthly → "as needed" kept every month Overdue in the Clients list, metric 1 and the Expected count. Fix: draft migration `20261001120000_expected_review_followups.sql` adds the waiver code `schedule_changed` ("Schedule changed"); changing back restores items that aren't yet overdue. Tests first: `tests/rls/expected-followups.test.ts`, red for the right reason.
+  - **Important 2, earlier FYs (approved by Raja 2026-10-01 12:39):** the Expected tab hid still-open items from earlier FYs (yearly, Q4 and March items are asked in the next FY), while the tab count and the cards included them. Fix: under the current FY, Open/All also list earlier-FY pending items, with "· FY 2025-26" when the period label doesn't show it. This departs from AC-13's literal "FY (default current)". `expected-view` unit test updated + 1 new case.
+  - **Nit 1:** in the same migration, a re-activated GSTIN/TAN restores its `registration_inactive` items, and moving the start period earlier restores `before_start` items. Both follow R1's rule: only items not yet overdue come back.
+  - **Nits 2–3:** also in the migration: `recompute_expected` checks the tenant first, and the `earliest_open_period` fallback uses the office clock.
+  - **Nit 4:** `listClientExpected` pages through all rows (ordered by id, 1,000 per page), so PostgREST's row cap can't silently cut items.
+  - **Nit 5:** when nothing fell due, Collection shows only "Overdue now" next to the empty-state card.
+  - **Nit 6:** "All caught up" cards appear only in the current FY.
+  - **Nit 7, files beyond the plan's list:**
+    - new `src/lib/expected/shape.ts`, `prefill.ts`
+    - changed `src/lib/plan/queries.ts` (registrationKind), `src/components/dialog.tsx` (triggerLabel), `src/lib/clients/actions.ts` (redirects)
+    - new tests: `tests/rls/expected-clients.test.ts`, `expected-followups.test.ts`, `tests/unit/clients-overdue.test.tsx`, `expected-prefill.test.ts`, `expected-shape.test.ts`, `tests/e2e/expected-screenshots.spec.ts`
+    - listed but not changed: `tests/support/test-data.ts`, `tests/e2e/clients.spec.ts` (the AC-15 case lives in `expected.spec.ts`), `src/lib/validation/client-search.ts`
+
+## Session log
+### 2026-09-29
+- Done: intent approved (abfa7a8), spec approved (93f94de), plan approved.
+- In progress: — (plan approved 2026-09-29 20:29 IST; locks recorded in the roadmap at batch launch).
+- Blocked / failing: build blocked on the `test-isolation` chore (not started). Nightly: 30 Sep 01:30 IST run is the first with #9–#11; check next session.
+- Next step: plan approval → Batch C confirmation (Step 3, needs 03b's plan) → roadmap PR (locks) → test-isolation → build step 0.
+- Decisions made (cross-cutting → flag for architecture.md): the 5 approved spec changes (pg_cron system writer; FY auto-create from 1 Feb; default start = earliest still-open period; items exist from ask date; metric 1 on Settings › Collection); plan-effect logic in DB triggers; `app.expected_write` flag.
+
+### 2026-09-30
+- Done: step 0 — main (908b8ad, with #13–#16) merged into the branch; draft PR #17; CI 36697493473 green. Step 1 — tests written (a929b19): `tests/rls/expected-docs.test.ts` (generation, date maths incl. 31st/29 Feb/FY roll-over, exclusions, fan-out, back-link, linking on save/classify/edit/archive, visibility, write protection, job), `expected-plan.test.ts` (AC-2/3/5/9–12/18), `expected-metric.test.ts` (AC-16), `expected-perf.test.ts` (RUN_SLOW job-ran check), fixtures `tests/support/expected.ts`. Local: lint 0, typecheck 0, unit 172/172.
+- Red for the right reasons (confirmed 2026-09-30 15:45 IST, local `test:db` against dev with `.env.local` staged from Raja's Mac): expected-docs, expected-plan and expected-metric all stop in `beforeAll` on one error, `Could not find the function public.run_expected_generation(p_as_of)`, so 63 tests don't run. expected-perf is skipped (no RUN_SLOW). In CI (36699140557) lint, typecheck, unit and build are green; existing files are unchanged since the green step-0 run (36697493473).
+- Blocked / failing: —
+- Next step: step 2 — the migration (dry-run on dev, SQL review by Raja 45–60 min, apply, advisors, back-fill counts).
+- Decisions made (cross-cutting → flag for architecture.md): D1 (per-test-office clock, extends the `app.doc_clock` rule). Raja chose option b for GSTIN-less documents (D4, test added). **CI chore approved** (docs-only PRs/pushes skip the heavy jobs via a changes job; nightly unconditional; the last commit before merge always has a run) — do it **after 04 step 2**, as `chore/ci-docs-only` from main.
+- Step 2 (in progress): migration drafted (`supabase/migrations/20260930120000_expected_docs.sql`; renamed to the applied version at apply). Dry-run on dev in one transaction, rolled back by a deliberate error: all DDL, functions, triggers, cron schedule and back-fill ran. Back-fill on Kushal Associates = 0 items (1 client, 12 scheduled rows starting Sep 2026 / Q2 / FY 2026-27; first ask 1 Oct), 7 `expected.generated` rows (one per non-test office), job registered `45 18 * * *`. Rollback verified (no table, extension, column or activity rows left). SQL review: approved by Raja 2026-09-30 17:34 IST (as drafted; R1/R2 from the review offered as an optional follow-up).
+
+### 2026-09-30 (evening)
+- Done: SQL gate passed (Raja 17:34 IST: migration as drafted, D1/D5/D6, plan.test.ts:70, timing). Applied to dev as `20260930120658_expected_docs` (the stored statements are byte-identical to the file; the file was renamed to match). Advisors: the only new WARN is `run_expected_generation`, a SECURITY DEFINER function executable by `authenticated`. That is intended (D1: Admin of an is_test office only). Unused-index INFO on the empty `expected_doc`. Back-fill: 0 items, 7 `expected.generated` rows, job `expected-docs-daily` `45 18 * * *` active. `tests/rls/plan.test.ts:70` updated to AC-3.
+- Local verification: lint 0, typecheck 0, unit 172/172. `test:db`: 13 files and 202 tests pass, 4 skipped (RUN_SLOW). That includes plan.test.ts, expected-docs and expected-metric.
+- Blocked / failing: `expected-plan.test.ts` 6/24 fail. Cause: the tests file documents with received on **2026-10-01**, and 03's document trigger refuses a future received-on against the **real** IST date (`RECEIVED_ON_FUTURE`). Today is 30 Sep; from 1 Oct IST that date is in the past. 3 tests fail directly; 3 fail as a knock-on (they expect items those documents would have completed). Not a 04 SQL defect. Tests unchanged.
+- Next step: Raja chooses. (a) Re-run after 00:00 IST 1 Oct, with no code change, and check the 00:15 job run at the same time. (b) D7: 03's received-on check uses `private.office_today` (the test clock in is_test offices only), via a small follow-up migration under 04's schema lock.
+- Decisions made (cross-cutting → flag for architecture.md): pg_cron job live on dev; migration version 20260930120658.
+- R1 (18:10): the test was written and is red for the right reason (the item stays waived after re-enabling Banking). The migration was drafted and dry-run on dev (rolled back; verified). **Waiting: Raja's SQL review of R1.** Option (a) chosen for the date issue: re-run after 00:00 IST, with no code change.
+- R1 applied (18:12) as `20260930124132_expected_docs_restore`. The stored statements match the file (md5), and the advisors show nothing new. `expected-plan` is 19/25: the R1 test is green, and the 6 failures left are the dated-1-Oct ones (option a). Next: after 00:15 IST on 1 Oct, check `cron.job_run_details` and Kushal's `expected.generated` row; run the full `test:db`; push without [skip ci]; CI green → tick step 2.
+
+### 2026-10-01 (00:15–00:45 IST)
+- **First cron run:** `expected-docs-daily` succeeded at 00:15:00 IST in 0.30 s. It wrote 8 `expected.generated` rows (one per non-test office, actor null).
+- **Kushal Associates: 0 items created, which is correct.** The handoff's "first real items expected" was wrong.
+  - Every monthly row starting Sep 2026 (asked from 1 Oct) is per-GSTIN/TAN, and the client has no active registration (AC-5: nothing expected).
+  - The rows without a registration aren't due yet (Form 16A Q2 from 1 Dec; the yearly items from Apr–May 2027).
+  - Proven with a rolled-back dry-run on dev: adding a GSTIN made the registration trigger create exactly the 3 GSTIN items due 1 Oct (Sales Sep and Credit/debit notes Sep, overdue from 5 Oct; Purchase Q2, overdue from 10 Oct).
+- `expected-plan.test.ts` after midnight: 5 of the 6 date failures cleared. The 6th had a received date of 2026-10-10, so the fixture date was fixed (see Deviations; Raja approved). The file is now 25/25.
+- Full local `test:db` (before the fix): 226 pass, 1 fail (that test), 4 skipped (RUN_SLOW). The fix was then verified on the whole file.
+- **Step 2 done: CI 36763084116 green** (1b01dac, 00:55 IST: lint, typecheck, unit, build, RLS + e2e).
+- Next step: step 3 (`schedule.ts` + derived state, unit tests red → green).
+- Decisions made (cross-cutting → flag for architecture.md): — (03b's search functions `20260930131025_document_search` are on dev too: additive and invoker, untouched by 04).
+
+### 2026-10-01 (07:44–08:20 IST)
+- Nightly 36792152274 on main (4db150c = #20 roadmap docs) **failed**: RLS step, 2 tests. Reproduced locally on a main worktree with RUN_SLOW.
+  - `plan.test.ts:70` (start period, expected 2026-10, got 2026-09): main's test predates 04's AC-3 change, and dev already runs 04's rule. It clears when 04 merges (this branch carries the updated test). On 30 Sep both rules agreed; they diverge from 1 Oct.
+  - `import.test.ts` 1,000-client timing: **a real 04 regression** → fixed (see Deviations).
+- After the fix: full local `test:db` **with RUN_SLOW: 233/233** (16 files); import timing 22.2 s.
+- Fix CI **36807540286 green** (0d945bf). Quick check on main: Regression `only=import` (RUN_SLOW) **36807547694 green**, so the import failure is fixed on dev.
+- **Step 3 done:** `src/lib/expected/schedule.ts`.
+  - `offsetDate` / `scheduleDates` (+ due-by) / `todayInIndia` / `expectedState` (Due <date> · Due today · Overdue · N days late (the overdue-from date = 1 day late) · On hold · Received <date> · DOC-ID · Not needed · reason) / `isOpen`.
+  - Unit `expected-schedule` 22/22 (red first: module missing).
+  - **TS = SQL** parity test in expected-docs: every generated item in both test offices (month ends, 31st clamping, 29 Feb, FY crossing, offset 0) has exactly the dates `schedule.ts` computes. File 36/36. Mutation-checked: breaking the clamp fails it.
+  - Unit suite 194/194, lint 0, typecheck 0.
+- **Step 4 done:** `src/lib/expected/{shape,queries,actions}.ts`.
+  - `shape.ts` (pure): `EXPECTED_SELECT`, `toItem` (shown state, On hold from row/group, GSTIN/TAN only when >1 active of that kind, assignee row → group, System vs person for waivers), filters, sort, `openCount`, `officeToday`, `expectedErrorMessage`.
+  - `queries.ts`: `listClientExpected`, `openItemsByGroup`, `collectionMetricAs`.
+  - `actions.ts`: `waiveExpected` / `undoWaiveExpected` / `reopenExpected` (role pre-check, reason 1–500, plain messages, log = code + request ID).
+  - Tests:
+    - RLS: expected-docs › "Expected tab query" runs the exact `EXPECTED_SELECT` as Staff and Limited (all 6 embeds resolve; Limited sees only its client). File 38/38.
+    - Unit: `expected-shape` 22/22 (written after the code; the RLS test and step 1's SQL tests pin the behaviour).
+    - Unit suite 216/216, lint 0, typecheck 0.
+- Next step: step 5, the Client › Expected tab + Waive modal + Reopen/Undo + Upload → Add document pre-fill (read the Next docs first, per AGENTS.md). Main's nightly keeps failing `plan.test.ts:70` until 04 merges (expected); the import failure should be gone from the next nightly.
+- Decisions made (cross-cutting → flag for architecture.md): `app.expected_defer` joins the transaction-flag list; the RUN_SLOW-before-merge rule for features touching 02/03 write paths (CLAUDE.md, at merge).
+
+### 2026-10-01 (08:51– IST)
+- Session start: new cloud container; repo re-cloned; `.env.local` staged from Raja's Mac. CI for 3007709: lint/unit/build green, RLS + e2e still running at push time (superseded by step 5's run).
+- **Step 5 done:** Client › Expected tab.
+  - `expected-view.tsx`: FY (default current, by the office's today) · group · status (Open default) filters; group cards; state text with colour as a repeat only; assignee; "Not needed · reason · who, date". Actions: Upload (pending), Waive (Staff+; Modal, reason required), Reopen (received; inline "Still waiting for more?"), Undo (Admin/Manager). One live status region + alert for outcomes. No actions on an archived client.
+  - Client page tabs: Documents · **Expected N** (Due + Overdue, every FY) · Settings. Settings stays the default until step 6.
+  - Upload → `/documents/new?client=&type=&period=&registration=&from=` (UUIDs only) → pre-filled (0 dimension choices) → saved → back on `?tab=expected&saved=DOC-…`; the linking trigger marks the item Received.
+  - Tests: unit `expected-prefill` 5/5, `expected-view` 6/6 (unit suite 227/227). e2e `tests/e2e/expected.spec.ts` 5/5 locally against dev (AC-13 incl. axe + 390 px; staff waives with required reason; Limited has no Waive; manager undoes; Upload pre-fill incl. GSTIN → Received → Reopen → Due today), run twice; `client-documents` + `add-document` still 9/9. RLS `expected-docs` 38/38. Lint 0, typecheck 0.
+- **CI 36811533417 green** on ccf05bf (lint, typecheck, unit, build, RLS + e2e incl. the new expected.spec).
+- Blocked / failing: —. Watch: an interrupted e2e set-up left an orphan auth user (`createStaff` creates the auth user and the staff row in two steps); repaired by inserting its staff row. Not 04's code; noted in the handoff.
+- Next step: step 6 — Documents cards open rows + "All caught up" + Documents as the default tab + plan-row registration note. **Needs Raja's OK first:** 03's `client-documents.spec.ts:49` asserts Settings is the default tab (`// still the default`); AC-14 (approved) makes Documents the default, so that one assertion must change with the spec (same pattern as `plan.test.ts:70`).
+- Decisions made (cross-cutting → flag for architecture.md): — (`Modal.triggerLabel` is a component detail, not architecture).
+
+### 2026-10-01 (10:15– IST)
+- Raja approved option A (Documents default; Settings → `?tab=settings`; the listed tests navigate there).
+- **Step 6 done:**
+  - Documents default tab.
+  - Group cards list open items first (Overdue by most days late, then Due today, then Due; "Not received · N days late", Overdue/Due badge, Upload back to Documents), then 03's documents list; "All caught up for FY …".
+  - Plan-row note for per-GSTIN/TAN rows without an active registration (AC-5).
+  - Code: `documents-view.tsx`, `openForCards` (shape.ts), `listPlanGroups`, `PlanType.registrationKind`, add/edit client redirects.
+- Tests:
+  - Unit: `openForCards` +2, suite 229/229.
+  - e2e locally against dev: `expected.spec.ts` 8/8 (3 new: cards order + axe + 390 px; Upload from a card → received; caught-up + AC-5 note), and these, all green: client-documents, client-plan, proposed-types, client-edit, add-document, screenshots, document-screenshots, inbox.
+  - Lint 0, typecheck 0, build 0.
+- **CI 36817885749 green** on 2b3ee24 (all jobs).
+- Step 7 (in progress):
+  - RLS tests written first: `tests/rls/expected-clients.test.ts`, 6 cases. Red for the right reasons: no `overdue`/`due_today` columns, and `p_has_overdue` unknown.
+  - Migration drafted: `supabase/migrations/20261001100000_clients_overdue.sql`. It drops and re-creates `search_clients` with `p_has_overdue` and the `overdue`/`due_today` columns; same body, invoker, `search_path = ''` and grants as before.
+  - Dry-run on dev inside a rolled-back transaction, as the fixture Staff user: counts match the screens' rules, and 03b's call shape still works.
+  - App code and unit/e2e tests written, not yet pushed.
+  - SQL gate passed (Raja 10:59, with 2 changes). Applied as `20261001053022_clients_overdue`.
+- **Step 7 done:**
+  - Clients list: right-hand "N overdue · N due today" (only the parts that aren't 0; colour repeats the text) and a "Has overdue" toggle chip (`aria-pressed`, POST body only, shows Clear).
+  - Tests:
+    - RLS `expected-clients` 7/7 (incl. archived = 0, Limited, 03b's call shape, waive); 02's `clients-list` still green.
+    - Unit `clients-overdue` 3/3; suite 232/232.
+    - e2e AC-15 case in `expected.spec.ts` (+ axe, 390 px); `clients.spec` and `screenshots.spec` still green.
+- **Step 8 done (local proof; pushed with [skip ci], combined CI after step 10):**
+  - `/settings/collection` (+ loading/error), visible to Admin/Manager only. Staff/Limited get no nav item and Not Found on the URL.
+  - Tiles: On time % · Received on time · Received late · Still missing · Overdue now. Plus a per-group table, a definition note, and "last generated" (in red "never" if the job hasn't run).
+  - Empty state ("Nothing has fallen due yet …") when nothing fell due in the window. This branch has no e2e case (it would need another fixture office); the condition is just `due === 0`.
+  - Tests: unit `onTimePct`/`pctText`; e2e `collection.spec.ts` 4/4 (Manager figures 50% / 1 / 0 / 1 / overdue now 3 + Banking row + axe + 390 px; Admin; Staff and Limited Not Found). `catalogue.spec` and `users.spec` still green. Unit 233/233.
+- Step 9: `expected-perf.test.ts` (RUN_SLOW) passes locally against dev (the real office's 00:15 IST run is present). Proof dispatch pending.
+- **Step 9 done:** Regression quick check on this branch, `only=expected-perf` with RUN_SLOW: run **36822555253 green** (the real dev office's 00:15 IST `expected.generated` row was found).
+- **Step 10 done:**
+  - New `tests/e2e/expected-screenshots.spec.ts`: Documents cards (mockup 10), Expected tab, Clients with overdue (mockup 03) and Collection, at desktop and 390 px, with axe on each. Screenshots go to `test-results/screenshots/` (CI evidence).
+  - Compared by eye with mockups 03 and 10: same pattern. Deviations recorded in `ui-reference.md` (5 rows).
+  - **Found and fixed:** at 390 px the Collection table scroll area wasn't keyboard-focusable (axe `scrollable-region-focusable`). It's now a focusable, named region.
+  - **Added:** each Documents card shows at most 5 open rows, then "N more open · Show all on Expected" (mockup 10's "10 more · Show all"). The AC-14 e2e test now checks the cap and the link instead of a Due-today row that is now past the cap; Due today stays covered on the Expected tab (AC-13 test).
+  - Loading/error states: the route-level `clients/[id]` loading/error cover the Expected tab; Collection has its own.
+  - Local: unit 233/233; e2e expected (9), expected-screenshots, client-documents, document-screenshots, collection all green.
+- **Cadence (approved by Raja 11:30):** verify each step locally, back it up with `[skip ci]` pushes, then one full CI run after step 10 and the final CI + RUN_SLOW Regression at step 11. CLAUDE.md requires a full green run only on the last commit before merge.
+- Decisions made (cross-cutting → flag for architecture.md): none new.
+- Next step: the combined CI run for steps 8–10 (this push), then step 11: architecture.md (5 approved changes + D-items + decision log), the CLAUDE.md RUN_SLOW-before-merge rule, `verifier` → `sdlc-reviewer` → fix Important findings → final CI + full RUN_SLOW Regression on the branch → PR with the AC → test → result table.
+
+### 2026-10-01 (12:16– IST)
+- Raja approved the combined-CI cadence. Steps 9–10 were done by a parallel session on this branch (87be7db; combined CI **36823447247 green**), and main was merged in (27cad62).
+- Step 11 in progress:
+  - architecture.md + CLAUDE.md committed (1b16c8c).
+  - `verifier`: lint 0 · typecheck 0 · unit 237/237 · `test:db` 239 passed / 4 skipped (RUN_SLOW) / 0 failed · build 0.
+  - `sdlc-reviewer`: 2 Important (see Deviations). Nits 4–7 fixed. **Waiting:** Raja's SQL gate (Important 1 + Nits 1–3) and OK on Important 2.
+
+
+- 12:39: Raja approved the SQL gate (Important 1 + Nits 1–3) and Important 2. The migration was applied as `20261001070941_expected_review_followups`.
+  - RLS `expected-followups` 6/6; `expected-plan`, `expected-docs` and `plan.test` still green (82/82 across the 4 files).
+  - e2e locally: expected (9), expected-screenshots and collection all green. Unit 238/238.
+  - The earlier-FY listing has unit coverage; there's no e2e fixture with a previous-FY item.
+- Next: final full CI on this push → RUN_SLOW Regression on the branch preview (CLAUDE.md rule) → PR #17 ready for review with the AC table. Raja merges.
+- **Step 11 done:**
+  - Final CI **36829444496 green** on 011145a.
+  - RUN_SLOW Regression (full suite, `base_url` = branch preview) **36829702465 green**: RLS incl. the 1,000-client import timing and the nightly job check, plus full e2e against the preview.
+  - PR #17 marked ready for review with the AC → test → result table.
+- Next (after Raja merges #17), on main:
+  - mark 04 shipped; release the schema + architecture locks;
+  - session handoff;
+  - tell 03b to rebase and re-run its full suite;
+  - confirm the next nightly is green (`plan.test.ts:70` clears).
+- Decisions made (cross-cutting → flag for architecture.md): none new — all applied in this PR.
+

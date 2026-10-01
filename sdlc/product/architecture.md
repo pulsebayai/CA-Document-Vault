@@ -1,12 +1,12 @@
 # Architecture: CA Document Vault
-Status: approved · Updated: 2026-09-29 (chore test-isolation: test lanes)
+Status: approved · Updated: 2026-10-01 (04 expected docs: 5 approved changes + build decisions)
 
 ## Stack
 - **Next.js (App Router) + TypeScript** — one codebase for UI and server actions/API routes.
 - **Supabase (Postgres + Auth + Storage), region ap-south-1 (Mumbai)** — relational data, row-level security, private file storage in India.
 - **Vercel, functions pinned to bom1 (Mumbai)** — preview deploys per PR; no document bytes cached (private bucket, short-lived signed URLs).
 - **Email:** Supabase Auth for staff sign-in codes/invites (dev: custom SMTP via dedicated Gmail `cadocvault.dev@gmail.com`; staging/prod: SES); **client reminder emails via AWS SES ap-south-1** from the firm's domain (SPF/DKIM/DMARC required), Reply-To = assigned staff.
-- **Scheduled jobs:** Supabase pg_cron for expected-doc generation and overdue/nudge calculation.
+- **Scheduled jobs:** Supabase pg_cron. `expected-docs-daily` (18:45 UTC = 00:15 IST) runs `private.run_office_expected` for every non-test office: next FY from 1 February, generation, back-link, one `expected.generated` activity row (actor = system). This is the first writer with no signed-in user: definer, tenant-scoped per office (04). The extension and job must exist on staging/prod (R1 checklist).
 - Tailwind · Vitest + React Testing Library · Playwright · ESLint · GitHub Actions.
 
 ## Core entities — dimensional document model
@@ -35,7 +35,14 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
   - Later master edits do **not** silently change existing clients; admin can explicitly "apply to existing clients" (logged).
   - Staff+ (not Limited) can add a type to one client only (proposed type, after the closest existing types are suggested) — it becomes a `client_doc_type` immediately (as needed, no reminders); if the group isn't enabled for that client, a client group row is created holding only that type. Proposed names are unique per group per client (05 merges) (03).
   - `client_doc_type` rows *are* the client's collection plan; `expected_doc` rows are generated from them.
-- `expected_doc` (client × doc_type × period [× registration]; ask/overdue dates; status pending|received|waived) — **unit of metric 1**. 1 expected_doc : n documents (e.g. many invoice PDFs for one month).
+- `expected_doc` (client × doc_type × period [× registration]; ask/overdue dates; status pending|received|waived) — **unit of metric 1**. 1 expected_doc : n documents (e.g. many invoice PDFs for one month). (04)
+  - **Exists from its ask date** (period end + offsets, IST); no stored "upcoming" items. Generated for active, scheduled, client-source, approved plan rows from the row's start period; one per active GSTIN/TAN for per-registration types (none without one). Unique (plan row, period, registration).
+  - **Shown state is derived, never stored:** Due · Due today · Overdue · On hold (row or group paused) · Received · Not needed. One TS mirror (`src/lib/expected/schedule.ts`) is tested equal to the SQL dates for every generated item.
+  - **Plan changes act in DB triggers** on `client_doc_type`, `client_group`, `client_registration` and `client` (definer, tenant-first): immediate generation; pending-only date recompute; auto-waive with a system code (removed from plan · registration inactive · before start). Re-enabling restores not-yet-overdue "removed" items; resume (`resumed_on`) skips periods that fell overdue while paused.
+  - **Default start period = the earliest still-open period** of the row's frequency (changes 02's "current period").
+  - **Linking:** an AFTER trigger on `document` maintains `document.expected_doc_id` and the item's status / received on. A document with no GSTIN/TAN for a per-registration type links only when the client has exactly one active registration of that kind.
+  - **Staff actions:** Waive (Staff+, reason) · Undo (Admin/Manager) · Reopen (anyone who sees the client): invoker functions. Only functions write `expected_doc` (no app write policies).
+  - **Metric 1** = received before the overdue date ÷ items whose overdue date passed (waived, on-hold and archived-client items excluded): `collection_metric`, shown on Settings › Collection (Admin/Manager).
 - **To-do / Today = derived view:** expected_doc with no linked document, filtered by assigned staff and dates. Not stored.
 
 **Operational**
@@ -68,9 +75,12 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
   - Multi-row/multi-table writes = **one SECURITY INVOKER SQL function per user action** (atomic, RLS applies, writes one `activity` row). Single-row edits log activity from the server action (best-effort).
   - UI aggregates and PII searches = security-invoker views/functions (e.g. `search_clients`), called from server actions (POST) so search text never reaches a URL.
   - SECURITY DEFINER only for counters/guards; every definer trigger checks the tenant (office) first; `search_path = ''` everywhere. Service-role-only helpers live in `public` with EXECUTE revoked (PostgREST can't reach `private`).
-  - Transaction flags (`app.plan_bulk`, `app.purge_office`, 03: `app.doc_version`, `app.propose_type`, `app.doc_clock`) let the owning functions bypass per-row checks; nothing else sets them. `app.doc_clock` (fixed-date DOC-ID tests) is honoured only in `is_test` offices.
+  - Transaction flags (`app.plan_bulk`, `app.purge_office`, 03: `app.doc_version`, `app.propose_type`, `app.doc_clock`, 04: `app.expected_write`, `app.expected_defer`) let the owning functions bypass per-row checks; nothing else sets them. `app.doc_clock` (fixed-date DOC-ID tests) is honoured only in `is_test` offices.
+  - **Bulk paths defer generation (04):** inside `import_clients` / `create_client` / `enable_group_core`, the plan triggers only note the client (`app.expected_defer`); the outermost call generates once, set-based. A per-row trigger doing set work in a bulk path tripled 02's import time (nightly 36792152274).
+  - **Test clock (04):** `office.test_today` (is_test offices only, set by `run_expected_generation`, cleared by `reset_test_office`) is "today" for every 04 rule in that office (`private.office_today`); real offices always use the date in India.
 - **Activity:** field names and IDs only; free text (e.g. archive reason) lives on the entity. A DB trigger (`ACTIVITY_PII`) rejects PAN/GSTIN/email/mobile keys or values in `activity.data` (02).
 - **Bulk work** (CSV import): the browser drives bounded chunks (≤ 200 rows per server action); the server re-validates every chunk against the DB as it is now. Server-action body limit 3 MB. CSV files we generate neutralise formula-looking cells (02).
+- **Client page tabs (04):** Documents (default) · Expected N · Settings (`?tab=settings`). Add/Edit client land on Settings.
 - **Screens:** every screen has its own loading (`role="status"`) and error (alert + retry) state (`src/components/states.tsx`); dialogs use the shared native-`<dialog>` Modal; horizontal-scroll wrappers are `position: relative` (sr-only content escapes otherwise); key screens are asserted ≤ 390 px wide in e2e (02).
 
 ## External integrations
@@ -128,4 +138,8 @@ Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature b
 | 2026-09-28 | Received as = soft copy · hard copy · original; channels WhatsApp · Email · Hand delivery · Courier · Portal download · Other | Original = must be returned (07 dispatch) | 03 |
 | 2026-09-28 | UI token `--warn` darkened #B0611A → #9C5717 | 4.06:1 on `--warn-soft` failed WCAG AA (axe, Hard copy badge) | 03 |
 | 2026-09-29 | **Test lanes** replace the serialised `dev-database` queue: CI/Regression lease 1 of 2 lanes (3 at first; cut to 2 the same day after an overlap timed out e2e — Raja) (`test_lane`, service role only) and use lane-suffixed fixture offices/users; local runs use the un-suffixed set. Chosen over per-run fixtures + nightly purge | A waiting run was cancelled 4× on 28–29 Sep; per-run fixtures would add ~750 auth users/day (≈ 20k MAU/month on dev) and need hard-delete exceptions for staff/activity; lanes cap fixtures at 2 × 75 users with no purge. `test_lane` is test infrastructure: no `office_id`, service role only (RLS on, no policies) — a deliberate exception to the per-office table rule | chore test-isolation |
-
+| 2026-09-29 | pg_cron system job generates expected docs daily (definer, tenant-scoped, actor = system); next FY auto-created from 1 February | First non-user writer; generation must never stall at the FY boundary (spec changes 1–2) | 04 |
+| 2026-09-29 | Expected items exist from their ask date (no stored "upcoming"); default start period = earliest still-open period; metric 1 on a new Settings › Collection page | Keeps volume/noise down; early documents link at generation; no Office page exists yet (spec changes 3–5) | 04 |
+| 2026-09-30 | Plan-change effects in DB triggers, not server actions; only functions write `expected_doc`; per-test-office clock (`office.test_today`); `resumed_on`; re-enable restores not-yet-overdue removed items; GSTIN-less documents link when exactly one active registration of the kind (D1, D4, D6, R1) | 02's plan paths write through PostgREST directly; triggers see every path; tests need one "today" across requests | 04 |
+| 2026-10-01 | Bulk paths defer generation to one set-based run (`app.expected_defer`); features touching 02/03 write paths run RUN_SLOW before merge | Nightly 36792152274: per-row generation made 02's 1,000-client import time out (9.36 s → 3.09 s per chunk after the fix) | 04 |
+| 2026-10-01 | `search_clients` returns overdue / due-today counts and takes `p_has_overdue` (archived clients count 0); Documents is the default client tab | Clients list "N overdue · N due today" + Has overdue (AC-15); staff land on what is owed (AC-14) | 04 |
