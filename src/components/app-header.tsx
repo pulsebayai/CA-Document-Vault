@@ -4,6 +4,7 @@ import { initials, ROLE_LABEL } from "@/lib/auth/roles";
 import type { CurrentStaff } from "@/lib/auth/staff";
 import { BrandMark } from "./ui";
 import { AddDocumentLink, NavLink } from "./nav-link";
+import { HeaderSearch } from "./header-search";
 
 /** Mockup header (references/mockup/01-today.jpg). Only shipped screens appear in the nav. */
 export function AppHeader({ me, inboxCount }: { me: CurrentStaff; inboxCount: number }) {
@@ -32,8 +33,12 @@ export function AppHeader({ me, inboxCount }: { me: CurrentStaff; inboxCount: nu
           </NavLink>
         ))}
       </nav>
-      {/* Mockup header "+ Add document"; on phones just "+" (same accessible name) so the header fits 390 px. */}
-      <AddDocumentLink />
+      {/* Mockup header: search with the "/" hint (03b), then "+ Add document"; on phones both collapse to icon buttons
+          (same accessible names) so the header fits 390 px. */}
+      <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3">
+        <HeaderSearch />
+        <AddDocumentLink />
+      </div>
       <details className="relative shrink-0">
         <summary aria-label={`Account menu for ${me.fullName}`} className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent [&::-webkit-details-marker]:hidden">
           {initials(me.fullName)}

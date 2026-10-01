@@ -37,6 +37,9 @@ Rule: build screens to match the mockup (layout, components, copy, tokens) **exc
 | Brand "Sharma & Co" | "Kushal Associates" · Pondicherry | 2026-09-25 |
 | Warning token --warn #B0611A (4.06:1 on --warn-soft) | Darkened to #9C5717 (WCAG AA) | 2026-09-28 (03) |
 | Header at phone width | ≤ 390 px: nav scrolls sideways, office name hidden below md, "Add document" shows as "+" (with accessible name) | 2026-09-28 (03) |
+| Header search (mockup 01: box with "/" hint, no dropdown shown) | Combobox dropdown with **Clients** and **Documents** groups (≤ 5 each) and "See all results for '…'"; a complete DOC-ID + Enter opens the document. Below 640 px the box is a **Search** icon button that opens a full-width field with a Close button | 2026-09-29/30 (03b) |
+| No documents results screen in the mockup | **`/documents`** (no nav item): title + "N documents", a search field, filter dropdowns showing counts ("Channel: Courier (12)"), removable filter chips + "Clear all", rows in 03's Inbox row style, Previous/Next paging. On phones a "Filters" button shows or hides the filter panel in place (no full-screen sheet) | 2026-09-30 (03b) |
+| Filter chips open popovers (Clients screen style) | `/documents` filters are native selects styled as chips, not popovers: same values and counts, keyboard/screen-reader access built in | 2026-09-30 (03b) |
 | 10 Client › Documents: card header "GST · Priya · Monthly · 14 documents" | "N open · N documents"; the assignee shows on Expected rows and in Settings | 2026-10-01 (04) |
 | 10: "Due today" as orange text; Remind / Mark received / review states | "Overdue" / "Due today" / "Due" badges + "Not received · …" text; Remind (06) and review/dispatch states (07) come later | 2026-10-01 (04) |
 | 10: "10 more · Show all" | At most 5 open rows per card, then "N more open · Show all on Expected" | 2026-10-01 (04) |
