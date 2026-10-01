@@ -67,7 +67,7 @@ Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 
 - [x] 9. **Job check** (the volume part is deferred, Raja 2026-09-29): a `RUN_SLOW` test asserts today's `expected.generated` row on the real dev office (nightly). Proof: a RUN_SLOW dispatch. (0.5)
   - **Deferred to the volume test after all R1 features:** about 180k items, the job < 60 s, screen queries < 1 s, a save adding < 50 ms.
 - [x] 10. States + a11y (axe on Expected tab, Collection) + ≤ 390 px + screenshots vs mockups 03/10 — proof: e2e evidence (0.5)
-- [ ] 11. architecture.md (5 changes + decision log) · `verifier` → `sdlc-reviewer` → fix Important → PR with AC → test → result table — proof: CI green, evidence with all suites [PR review: 1–2 h]
+- [x] 11. architecture.md (5 changes + decision log) · `verifier` → `sdlc-reviewer` → fix Important → PR with AC → test → result table — proof: CI green, evidence with all suites [PR review: 1–2 h]
 - (Not a build step) **Plan fidelity (success metric 2)** is checked on staging/pilot with 5 clients, and goes on the R1 checklist.
 
 **Total ≈ 9 build sessions** (volume part of step 9 deferred) (03 took ~9.5 for a similar surface, ~2 working days at that pace). Your review ≈ 3–4 h. **First cut if it slips:** step 6's open rows in the Documents cards (spec risk). Second cut: the per-group table on Collection (keep the headline figure).
@@ -273,4 +273,14 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - e2e locally: expected (9), expected-screenshots and collection all green. Unit 238/238.
   - The earlier-FY listing has unit coverage; there's no e2e fixture with a previous-FY item.
 - Next: final full CI on this push → RUN_SLOW Regression on the branch preview (CLAUDE.md rule) → PR #17 ready for review with the AC table. Raja merges.
+- **Step 11 done:**
+  - Final CI **36829444496 green** on 011145a.
+  - RUN_SLOW Regression (full suite, `base_url` = branch preview) **36829702465 green**: RLS incl. the 1,000-client import timing and the nightly job check, plus full e2e against the preview.
+  - PR #17 marked ready for review with the AC → test → result table.
+- Next (after Raja merges #17), on main:
+  - mark 04 shipped; release the schema + architecture locks;
+  - session handoff;
+  - tell 03b to rebase and re-run its full suite;
+  - confirm the next nightly is green (`plan.test.ts:70` clears).
+- Decisions made (cross-cutting → flag for architecture.md): none new — all applied in this PR.
 
