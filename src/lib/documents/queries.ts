@@ -165,6 +165,9 @@ export type ClientDocument = {
   periodLabel: string | null; periodStart: string | null; fyCode: string; receivedOn: string; receivedBy: string;
   receivedAs: "soft_copy" | "hard_copy" | "original"; versionCount: number;
   current: { id: string; mimeType: string } | null; proposed: boolean;
+  // 07: review state and the live packet (documentState() in ./state.ts).
+  status: string; reviewedAt: string | null; reviewedByName: string | null; correctionReason: string | null;
+  dispatchedOn: string | null; dispatchMethod: string | null;
 };
 
 type ClientDocRow = {
@@ -173,6 +176,8 @@ type ClientDocRow = {
   doc_type: { name: string; status: string; doc_group: { id: string; name: string; sort: number } | null } | null;
   period: { label: string; start_date: string; financial_year: { code: string } | null } | null;
   current: { id: string; mime_type: string } | null;
+  status: string; reviewed_at: string | null; correction_reason: string | null; reviewer: { full_name: string } | null;
+  packets: Array<{ removed_at: string | null; dispatch: { dispatched_on: string; method: string } | null }> | null;
 };
 
 /**
@@ -197,7 +202,17 @@ export async function listClientDocuments(clientId: string): Promise<ClientDocum
     receivedOn: r.received_on, receivedBy: r.receiver?.full_name ?? "—", receivedAs: r.received_as,
     versionCount: r.version_count, current: r.current ? { id: r.current.id, mimeType: r.current.mime_type } : null,
     proposed: r.doc_type!.status === "proposed",
+    ...reviewFields(r),
   }));
+}
+
+/** 07: the review columns + the live packet (at most one: unique index on live items). */
+function reviewFields(r: ClientDocRow) {
+  const live = (r.packets ?? []).find((p) => p.removed_at === null)?.dispatch ?? null;
+  return {
+    status: r.status, reviewedAt: r.reviewed_at, reviewedByName: r.reviewer?.full_name ?? null, correctionReason: r.correction_reason,
+    dispatchedOn: live?.dispatched_on ?? null, dispatchMethod: live?.method ?? null,
+  };
 }
 
 export async function countClientDocuments(clientId: string): Promise<number> {
@@ -218,6 +233,8 @@ export type DocumentDetail = DocumentForForm & {
   typeName: string | null; groupName: string | null; periodLabel: string | null; registrationNumber: string | null;
   receivedBy: string; addedBy: string; createdAt: string; archivedAt: string | null; archiveReason: string | null;
   currentVersionId: string | null;
+  // 07: review state (the history and packets load separately: src/lib/review, src/lib/dispatch).
+  status: string; reviewedAt: string | null; reviewedByName: string | null; correctionReason: string | null;
   versions: { id: string; versionNo: number; fileName: string; mimeType: string; sizeBytes: number; uploadedAt: string; uploadedBy: string }[];
   activity: { action: string; actor: string; at: string }[];
 };
@@ -228,6 +245,7 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
   const supabase = await createClient();
   const [doc, versions, activity] = await Promise.all([
     supabase.from("document").select(`created_at, archived_at, archive_reason, current_version_id,
+        status, reviewed_at, correction_reason, reviewer:reviewed_by (full_name),
         receiver:received_by (full_name), creator:created_by (full_name),
         doc_type:doc_type_id (name, doc_group:doc_group_id (name)), period:period_id (label), registration:registration_id (number)`)
       .eq("id", id).single(),
@@ -239,6 +257,7 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
   if (doc.error || versions.error) throw new Error("Could not load the document.");
   const d = doc.data as unknown as {
     created_at: string; archived_at: string | null; archive_reason: string | null; current_version_id: string | null;
+    status: string; reviewed_at: string | null; correction_reason: string | null; reviewer: { full_name: string } | null;
     receiver: { full_name: string } | null; creator: { full_name: string } | null;
     doc_type: { name: string; doc_group: { name: string } | null } | null; period: { label: string } | null;
     registration: { number: string } | null;
@@ -248,6 +267,7 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
     typeName: d.doc_type?.name ?? null, groupName: d.doc_type?.doc_group?.name ?? null, periodLabel: d.period?.label ?? null,
     registrationNumber: d.registration?.number ?? null, receivedBy: d.receiver?.full_name ?? "—", addedBy: d.creator?.full_name ?? "—",
     createdAt: d.created_at, archivedAt: d.archived_at, archiveReason: d.archive_reason, currentVersionId: d.current_version_id,
+    status: d.status, reviewedAt: d.reviewed_at, reviewedByName: d.reviewer?.full_name ?? null, correctionReason: d.correction_reason,
     versions: ((versions.data ?? []) as unknown as Array<{ id: string; version_no: number; file_name: string; mime_type: string; size_bytes: number; uploaded_at: string; uploader: { full_name: string } | null }>)
       .map((v) => ({ id: v.id, versionNo: v.version_no, fileName: v.file_name, mimeType: v.mime_type, sizeBytes: v.size_bytes, uploadedAt: v.uploaded_at, uploadedBy: v.uploader?.full_name ?? "—" })),
     activity: ((activity.data ?? []) as unknown as Array<{ action: string; created_at: string; actor: { full_name: string } | null }>)

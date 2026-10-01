@@ -8,6 +8,11 @@ import { CHANNELS, RECEIVED_AS } from "@/lib/validation/document";
 import { Badge, Card } from "@/components/ui";
 import { FileButtons } from "../file-buttons";
 import { ArchiveDocument, NewVersion } from "./document-controls";
+import { DispatchPanel, ReviewPanel } from "./review-panel";
+import { documentState, isReadyToDispatch } from "@/lib/documents/state";
+import { istDate } from "@/lib/documents/period";
+import { reviewHistoryFor } from "@/lib/review/queries";
+import { packetsForDocument } from "@/lib/dispatch/queries";
 
 // Document page (spec AC-11): details, current file (View/Download), versions, activity; edit, new version,
 // archive (Admin/Manager). RLS: a document the user can't see is Not Found (AC-12).
@@ -17,6 +22,8 @@ const CHANNEL_LABEL = Object.fromEntries(CHANNELS.map((c) => [c.value, c.label])
 const ACTION_LABEL: Record<string, string> = {
   "document.added": "added", "document.classified": "filed (client/type)", "document.updated": "edited",
   "document.version_added": "uploaded a new version", "document.archived": "archived", "document.unarchived": "unarchived",
+  "document.reviewed": "marked it reviewed", "document.needs_correction": "marked it as needing correction",
+  "document.review_undone": "undid the review",
 };
 const when = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const date = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
@@ -32,6 +39,18 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
   if (!d) notFound();
   const current = d.versions.find((v) => v.id === d.currentVersionId);
   const archived = !!d.archivedAt;
+  // 07 (AC-13): review history + packets; the Review panel shows the review state alone (not the dispatch state).
+  const [history, packets] = await Promise.all([reviewHistoryFor(d.id), d.receivedAs === "original" ? packetsForDocument(d.id) : Promise.resolve([])]);
+  const today = istDate();
+  const live = packets.find((p) => p.removedAt === null) ?? null;
+  const stateInput = {
+    archived, clientId: d.client?.id ?? null, docTypeId: d.docTypeId, receivedAs: d.receivedAs, status: d.status,
+    reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
+    dispatchedOn: live?.dispatchedOn ?? null, dispatchMethod: live?.method ?? null,
+  };
+  const reviewState = documentState({ ...stateInput, receivedAs: "hard_copy", dispatchedOn: null }, today);
+  const canUndo = canManageCatalogue(me.role);
+  const label = `${d.typeName ?? "Document"}${d.periodLabel ? ` · ${d.periodLabel}` : ""} (${d.docCode})`;
 
   return (
     <div className="mx-auto max-w-[1000px] space-y-5">
@@ -75,7 +94,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
             ) : (
               <p className="mt-2 text-[13.5px] text-ink-2">No file yet — {RECEIVED_LABEL[d.receivedAs].toLowerCase()} only.</p>
             )}
-            {!archived && <div className="mt-4"><NewVersion documentId={d.id} /></div>}
+            {!archived && <div className="mt-4"><NewVersion documentId={d.id} correction={d.status === "needs_correction" ? { today } : undefined} /></div>}
           </Card>
 
           <Card className="p-5">
@@ -95,6 +114,12 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
         </div>
 
         <div className="space-y-5">
+          <ReviewPanel documentId={d.id} clientId={d.client?.id ?? null} label={label} canUndo={canUndo && !archived}
+            state={reviewState} reviewable={d.classified && !archived} status={d.status} history={history} />
+          {d.receivedAs === "original" && d.classified && (
+            <DispatchPanel documentId={d.id} clientId={d.client?.id ?? null} label={label} canUndo={canUndo && !archived}
+              packets={packets} ready={isReadyToDispatch(stateInput)} today={today} />
+          )}
           <Card className="p-5">
             <h2 className="font-semibold">Details</h2>
             <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-[14px]">

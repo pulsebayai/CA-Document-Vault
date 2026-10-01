@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import type { ClientDocument } from "@/lib/documents/queries";
 import { openForCards, type ExpectedItem } from "@/lib/expected/shape";
 import { Badge, Card } from "@/components/ui";
-import { FileButtons } from "../../documents/file-buttons";
+import { DocumentRow } from "./document-row";
 import { itemLabel, uploadHref } from "./expected-view";
 
 // Client › Documents (mockup 10; 03 spec AC-10, 04 AC-14). Grouped group → type → period (newest period first).
@@ -15,8 +15,6 @@ import { itemLabel, uploadHref } from "./expected-view";
 
 /** Mockup 10 caps a card ("10 more · Show all"); the rest are one click away on the Expected tab. */
 export const CARD_OPEN_LIMIT = 5;
-
-const day = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 
 type Props = {
   clientId: string;
@@ -28,9 +26,11 @@ type Props = {
   fys?: Array<{ id: string; code: string }>;
   /** Upload from a card (not on an archived client). */
   canUpload?: boolean;
+  /** 07: India date (from the server, so the state text and held days don't depend on the browser clock). */
+  today?: string;
 };
 
-export function DocumentsView({ clientId, documents, currentFy, expected = [], planGroups = [], fys = [], canUpload = false }: Props) {
+export function DocumentsView({ clientId, documents, currentFy, expected = [], planGroups = [], fys = [], canUpload = false, today }: Props) {
   const fyCode = useMemo(() => new Map(fys.map((f) => [f.id, f.code])), [fys]);
   const codeOf = (id: string) => fyCode.get(id) ?? "";
   const fyList = useMemo(
@@ -110,24 +110,7 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
                 )}
                 {g.docs.length > 0 && (
                   <ul aria-label={`${g.name} documents`} className="divide-y divide-line">
-                    {g.docs.map((d) => (
-                      <li key={d.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-                        <div className="min-w-0 flex-1">
-                          <Link href={`/documents/${d.id}`} className="break-words font-medium hover:underline">
-                            {d.typeName}{d.periodLabel ? ` · ${d.periodLabel}` : ""}
-                          </Link>
-                          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-ink-2">
-                            <span>Received {day.format(new Date(`${d.receivedOn}T00:00:00+05:30`))} by {d.receivedBy}</span>
-                            <span className="text-ink-3">{d.docCode}</span>
-                            {d.receivedAs === "hard_copy" && <Badge tone="warn">Hard copy</Badge>}
-                            {d.receivedAs === "original" && <Badge tone="bad">Original</Badge>}
-                            {d.versionCount > 1 && <Badge tone="muted">{d.versionCount} versions</Badge>}
-                            {d.proposed && <Badge tone="accent">Proposed type</Badge>}
-                          </p>
-                        </div>
-                        {d.current && <FileButtons versionId={d.current.id} mimeType={d.current.mimeType} docCode={d.docCode} />}
-                      </li>
-                    ))}
+                    {g.docs.map((d) => <DocumentRow key={d.id} d={d} clientId={clientId} today={today ?? indiaToday()} />)}
                   </ul>
                 )}
                 {g.open.length === 0 && g.docs.length === 0 && (
@@ -160,4 +143,9 @@ function OpenRow({ clientId, item: i, canUpload }: { clientId: string; item: Exp
       )}
     </li>
   );
+}
+
+/** Fallback "today" when the caller passes none (older callers/tests): the browser's India date. */
+function indiaToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
 }
