@@ -9,8 +9,10 @@ import { SEARCH_TEXT_EVENT, handOffSearchText } from "@/components/header-search
 import { documentFacets, findClients, searchDocuments } from "@/lib/search/actions";
 import type { ClientHit, DocumentHit, FacetName, FacetValue, FilterOptions, PickerClient } from "@/lib/search/queries";
 import { CHANNELS, RECEIVED_AS } from "@/lib/validation/document";
+import { documentState, type ShownStateKind } from "@/lib/documents/state";
+import { istDate } from "@/lib/documents/period";
 import {
-  DEFAULT_FILTERS, DOC_STATES, DOC_STATUSES, PAGE_SIZE, SEARCH_TEXT_KEY, SORTS, SUGGEST_DEBOUNCE_MS, filtersToQuery,
+  DEFAULT_FILTERS, DOC_RETURNS, DOC_STATES, DOC_STATUSES, PAGE_SIZE, SEARCH_TEXT_KEY, SORTS, SUGGEST_DEBOUNCE_MS, filtersToQuery,
   isFiltered, normaliseSearchText, type DocumentFilters,
 } from "@/lib/validation/document-search";
 
@@ -21,6 +23,7 @@ const RECEIVED_LABEL: Record<string, string> = Object.fromEntries(RECEIVED_AS.ma
 const CHANNEL_LABEL: Record<string, string> = Object.fromEntries(CHANNELS.map((c) => [c.value, c.label]));
 const STATUS_LABEL: Record<string, string> = Object.fromEntries(DOC_STATUSES.map((s) => [s.value, s.label]));
 const STATE_LABEL: Record<string, string> = Object.fromEntries(DOC_STATES.map((s) => [s.value, s.label]));
+const RETURN_LABEL: Record<string, string> = Object.fromEntries(DOC_RETURNS.map((s) => [s.value, s.label]));
 const day = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 const shortDate = (iso: string) => day.format(new Date(`${iso}T00:00:00+05:30`));
 
@@ -64,6 +67,7 @@ export function activeChips(f: DocumentFilters, o: FilterOptions, facets: FacetV
   add("to", "To", f.to ? shortDate(f.to) : null);
   add("status", "Status", f.status ? STATUS_LABEL[f.status] : null);
   add("state", "Show", f.state ? STATE_LABEL[f.state] : null);
+  if (f.return) chips.push({ key: "return", label: `Return: ${RETURN_LABEL[f.return]}` }); // 07
   if (f.archived) chips.push({ key: "archived", label: "Including archived" });
   return chips;
 }
@@ -71,6 +75,7 @@ export function activeChips(f: DocumentFilters, o: FilterOptions, facets: FacetV
 /** Removing a chip also clears the filters that depend on it (type needs group, period needs FY, GSTIN needs client). */
 export function withoutFilter(f: DocumentFilters, key: keyof DocumentFilters): DocumentFilters {
   const next: DocumentFilters = { ...f, page: 1, [key]: key === "archived" ? false : null };
+  if (key === "return") delete next.return; // 07: optional key (absent, not null)
   if (key === "group") next.type = null;
   if (key === "fy") next.period = null;
   if (key === "client") next.registration = null;
@@ -134,6 +139,11 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
     router.push(q ? `/documents?${q}` : "/documents", { scroll: false });
   };
   const set = (patch: Partial<DocumentFilters>) => go({ ...filters, page: 1, ...patch });
+  const setReturn = (v: string | null) => {
+    const next: DocumentFilters = { ...filters, page: 1 };
+    if (v === "ready" || v === "dispatched") next.return = v; else delete next.return;
+    go(next);
+  };
 
   const facetOptions = (facet: FacetName, labelOf: (v: string, l: string) => string, current: string | null) => {
     const list = facets.filter((x) => x.facet === facet).map((x) => ({ value: x.value, label: `${labelOf(x.value, x.label)} (${x.n})` }));
@@ -191,8 +201,11 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
             options={facetOptions("received_by", (_v, l) => l, filters.by)} />
           <DateInput label="Received from" value={filters.from} onChange={(v) => set({ from: v })} />
           <DateInput label="Received to" value={filters.to} onChange={(v) => set({ to: v })} />
-          <Select label="Status" value={filters.status} onChange={(v) => set({ status: v as DocumentFilters["status"] })}
+          {/* 07: "To review" (received) also matches Inbox documents in the database, so choosing it also shows filed only. */}
+          <Select label="Status" value={filters.status} onChange={(v) => set({ status: v as DocumentFilters["status"], ...(v === "received" && !filters.state ? { state: "classified" as const } : {}) })}
             options={facetOptions("status", (v) => STATUS_LABEL[v] ?? v, filters.status)} />
+          <Select label="Return" value={filters.return ?? null} onChange={(v) => setReturn(v)}
+            options={facetOptions("return", (v) => RETURN_LABEL[v] ?? v, filters.return ?? null)} />
           <Select label="Show" value={filters.state} onChange={(v) => set({ state: v as DocumentFilters["state"] })}
             options={DOC_STATES.map((s) => ({ value: s.value, label: s.label }))} allLabel="Show: classified and Inbox" />
           <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">
@@ -256,8 +269,23 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
   );
 }
 
+const STATE_TONE: Record<ShownStateKind, string> = {
+  archived: "text-ink-3", inbox: "text-ink-3", dispatched: "text-ok", ready: "text-accent",
+  needs_correction: "text-bad", reviewed: "text-ok", to_review: "text-warn",
+};
+
+/** 07 AC-14: the shown state of a result row (same order as Client › Documents). */
+export function rowState(d: DocumentHit, today: string) {
+  return documentState({
+    archived: d.archived, clientId: d.clientId, docTypeId: d.docTypeId ?? (d.typeName ? "filed" : null), receivedAs: d.receivedAs,
+    status: d.status, reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
+    dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod,
+  }, today);
+}
+
 function ResultRow({ d }: { d: DocumentHit }) {
   const { what, who, how } = rowText(d);
+  const state = rowState(d, istDate());
   return (
     <li className="relative flex flex-wrap items-center gap-3 px-5 py-3.5 hover:bg-canvas">
       <div className="min-w-0 flex-1">
@@ -268,6 +296,9 @@ function ResultRow({ d }: { d: DocumentHit }) {
           <span className="text-ink-2"> · {who}</span>
         </p>
         <p className="mt-0.5 break-words text-[13.5px] text-ink-2">{how}</p>
+        {state.kind !== "archived" && state.kind !== "inbox" && (
+          <p className={`mt-0.5 break-words text-[13px] font-medium ${STATE_TONE[state.kind]}`}>{state.text}</p>
+        )}
       </div>
       <span className="flex shrink-0 gap-1.5">
         {d.receivedAs !== "soft_copy" && <Badge tone={d.receivedAs === "original" ? "bad" : "warn"}>{RECEIVED_LABEL[d.receivedAs]}</Badge>}

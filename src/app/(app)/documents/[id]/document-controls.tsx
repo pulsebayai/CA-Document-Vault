@@ -7,11 +7,16 @@ import { putFile } from "@/lib/documents/upload-client";
 import { ACCEPT_ATTRIBUTE, validateFile } from "@/lib/validation/document";
 import { Button } from "@/components/ui";
 
-/** AC-11: upload a new version (same rules as AC-2; it becomes current, same DOC-ID). */
-export function NewVersion({ documentId }: { documentId: string }) {
+/**
+ * AC-11: upload a new version (same rules as AC-2; it becomes current, same DOC-ID).
+ * 07 AC-4: for a Needs-correction document (`correction`), it also asks when the corrected file arrived (default
+ * today, India) — that date replaces received on, so metric 1 counts from when the right file came in.
+ */
+export function NewVersion({ documentId, correction }: { documentId: string; correction?: { today: string } }) {
   const router = useRouter();
   const uid = useId();
   const input = useRef<HTMLInputElement>(null);
+  const [receivedOn, setReceivedOn] = useState(correction?.today ?? "");
   const [state, setState] = useState<{ status: "idle" } | { status: "uploading"; progress: number } | { status: "error"; error: string } | { status: "done" }>({ status: "idle" });
 
   async function choose(file: File | undefined) {
@@ -27,7 +32,8 @@ export function NewVersion({ documentId }: { documentId: string }) {
       setState({ status: "error", error: "The upload failed. Check your connection and try again." });
       return;
     }
-    const r = await addVersionAction(documentId, { path: ticket.path, size: v.data.size, mime: v.data.mime, fileName: v.data.fileName });
+    const r = await addVersionAction(documentId, { path: ticket.path, size: v.data.size, mime: v.data.mime, fileName: v.data.fileName },
+      correction ? receivedOn : null);
     if (!r.ok) { setState({ status: "error", error: r.error }); return; }
     setState({ status: "done" });
     if (input.current) input.current.value = "";
@@ -36,6 +42,13 @@ export function NewVersion({ documentId }: { documentId: string }) {
 
   return (
     <div>
+      {correction && (
+        <label className="mb-3 block max-w-xs text-[13.5px] font-medium">Corrected file received on
+          <input type="date" value={receivedOn} max={correction.today} onChange={(e) => setReceivedOn(e.target.value)}
+            className="mt-1 w-full rounded-[9px] border border-line-2 bg-panel px-3 py-2 text-[14px] outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft" />
+          <span className="mt-1 block text-[12.5px] font-normal text-ink-3">Replaces the received-on date, and sends it back to To review.</span>
+        </label>
+      )}
       <div className="inline-flex rounded-[7px] focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
       <label htmlFor={`${uid}-v`} className="inline-flex h-[30px] cursor-pointer items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas">
         Upload new version
