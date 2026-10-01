@@ -15,21 +15,19 @@ import { MAX_COURIER, MAX_RECIPIENT, MAX_TRACKING } from "@/lib/validation/docum
 // method, courier details (Courier only) and the recipient (required). If the save is refused because an original
 // is no longer ready, the dialog re-lists the valid ones.
 
-type Props = { clientId: string; documentId: string; label: string; today: string };
+type Props = { clientId: string; clientName?: string | null; documentId: string; label: string; today: string; onMessage: (text: string) => void };
 
-export function DispatchDialog({ clientId, documentId, label, today }: Props) {
+/** `onMessage`: the parent's live region announces the result (this button disappears once the row is dispatched). */
+export function DispatchDialog({ clientId, clientName, documentId, label, today, onMessage }: Props) {
   const router = useRouter();
-  const [msg, setMsg] = useState<string | null>(null);
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Modal trigger="Mark dispatched" title="Mark originals dispatched" triggerLabel={`Mark dispatched: ${label}`} triggerVariant="button">
-        {(close) => (
-          <DispatchForm clientId={clientId} documentId={documentId} today={today} close={close}
-            onDone={(m) => { setMsg(m); router.refresh(); }} />
-        )}
-      </Modal>
-      {msg && <span role="status" className="text-[13px] text-ok">{msg}</span>}
-    </div>
+    <Modal trigger="Mark dispatched" title={clientName ? `Mark originals dispatched — ${clientName}` : "Mark originals dispatched"}
+      triggerLabel={`Mark dispatched: ${label}`} triggerVariant="button">
+      {(close) => (
+        <DispatchForm clientId={clientId} documentId={documentId} today={today} close={close}
+          onDone={(m) => { onMessage(m); router.refresh(); }} />
+      )}
+    </Modal>
   );
 }
 
@@ -101,7 +99,7 @@ export function DispatchForm({ clientId, documentId, today, close, onDone }: {
                 <input type="checkbox" className="mt-1" checked={ticked.has(o.id)} onChange={() => toggle(o.id)} />
                 <span className="min-w-0 break-words">
                   {o.typeName ?? "Document"}{o.periodLabel ? ` · ${o.periodLabel}` : ""}
-                  <span className="block text-[12.5px] text-ink-3">{o.docCode} · held {Math.max(daysBetween(o.receivedOn, today), 0)} days</span>
+                  <span className="block text-[12.5px] text-ink-3">{o.docCode} · held {heldText(Math.max(daysBetween(o.receivedOn, today), 0))}</span>
                 </span>
               </label>
             </li>
@@ -158,3 +156,5 @@ export function DispatchForm({ clientId, documentId, today, close, onDone }: {
     </form>
   );
 }
+
+const heldText = (n: number) => `${n} day${n === 1 ? "" : "s"}`;

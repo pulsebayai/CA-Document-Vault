@@ -28,9 +28,11 @@ type Props = {
   canUpload?: boolean;
   /** 07: India date (from the server, so the state text and held days don't depend on the browser clock). */
   today?: string;
+  /** 07: shown in the dispatch dialog's heading. */
+  clientName?: string;
 };
 
-export function DocumentsView({ clientId, documents, currentFy, expected = [], planGroups = [], fys = [], canUpload = false, today }: Props) {
+export function DocumentsView({ clientId, documents, currentFy, expected = [], planGroups = [], fys = [], canUpload = false, today, clientName }: Props) {
   const fyCode = useMemo(() => new Map(fys.map((f) => [f.id, f.code])), [fys]);
   const codeOf = (id: string) => fyCode.get(id) ?? "";
   const fyList = useMemo(
@@ -110,7 +112,7 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
                 )}
                 {g.docs.length > 0 && (
                   <ul aria-label={`${g.name} documents`} className="divide-y divide-line">
-                    {g.docs.map((d) => <DocumentRow key={d.id} d={d} clientId={clientId} today={today ?? indiaToday()} />)}
+                    {g.docs.map((d) => <DocumentRow key={d.id} d={d} clientId={clientId} clientName={clientName} today={today ?? indiaToday()} />)}
                   </ul>
                 )}
                 {g.open.length === 0 && g.docs.length === 0 && (

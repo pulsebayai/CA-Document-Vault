@@ -75,7 +75,7 @@ test("AC-1, AC-2, AC-11, AC-12: rows show their state and the next action; Mark 
 
   // AC-2: Needs correction needs a reason; keyboard-reachable.
   const fix = rowOf(page, doc.fix.doc_code);
-  await fix.getByRole("button", { name: "Needs correction…" }).focus();
+  await fix.getByRole("button", { name: new RegExp(`^Needs correction: .*${doc.fix.doc_code}`) }).focus();
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog", { name: /Needs correction/ });
   await dialog.getByRole("button", { name: "Mark needs correction" }).click();
@@ -141,6 +141,7 @@ test("AC-13, AC-5, AC-10: the document page's Review and Dispatch panels; Admin/
   await undo.getByRole("button", { name: "Undo dispatch" }).click();
   await expect(page.getByRole("region", { name: "Dispatch" })).toContainText("Ready to dispatch");
   await expect(page.getByRole("region", { name: "Dispatch" })).toContainText("Courier returned it");
+  await expect(page.getByRole("region", { name: "Dispatch" })).toContainText("Packet: 1 of 2 removed"); // AC-10
 
   await page.getByRole("button", { name: /Undo review/ }).click();
   const undoR = page.getByRole("dialog", { name: /Undo review/ });

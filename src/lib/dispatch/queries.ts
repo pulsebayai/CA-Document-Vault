@@ -58,10 +58,3 @@ export async function packetsForDocument(documentId: string): Promise<Packet[]> 
     }))
     .sort((a, b) => (a.removedAt === null ? -1 : b.removedAt === null ? 1 : b.createdAt.localeCompare(a.createdAt)));
 }
-
-/** "1 of 3 removed" / "Cancelled" (AC-10). */
-export function packetSummary(items: PacketItem[]): string | null {
-  const removed = items.filter((i) => i.removedAt).length;
-  if (!removed) return null;
-  return removed === items.length ? "Cancelled" : `${removed} of ${items.length} removed`;
-}

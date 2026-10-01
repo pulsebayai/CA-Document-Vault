@@ -115,9 +115,10 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
 
         <div className="space-y-5">
           <ReviewPanel documentId={d.id} clientId={d.client?.id ?? null} label={label} canUndo={canUndo && !archived}
-            state={reviewState} reviewable={d.classified && !archived} status={d.status} history={history} />
+            state={reviewState} reviewable={d.classified && !archived} status={d.status}
+            history={history.map((h) => ({ ...h, atText: when.format(new Date(h.at)) }))} />
           {d.receivedAs === "original" && d.classified && (
-            <DispatchPanel documentId={d.id} clientId={d.client?.id ?? null} label={label} canUndo={canUndo && !archived}
+            <DispatchPanel documentId={d.id} clientId={d.client?.id ?? null} clientName={d.client?.name ?? null} label={label} canUndo={canUndo && !archived}
               packets={packets} ready={isReadyToDispatch(stateInput)} today={today} />
           )}
           <Card className="p-5">

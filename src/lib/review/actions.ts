@@ -23,7 +23,14 @@ async function run(op: string, args: Record<string, unknown>, fn: string, ids: {
   if (error) {
     console.error(`review.${op}_failed`, { code: error.code ?? "unknown", requestId: randomUUID() });
     if (isStale(error.message)) refresh(ids);
-    return { ok: false, error: reviewErrorMessage(error.message), stale: isStale(error.message) };
+    let message = reviewErrorMessage(error.message);
+    if (/ALREADY_REVIEWED/.test(error.message)) {
+      // Spec: "Already reviewed by <name>" — read under RLS (the user can see this document).
+      const { data } = await supabase.from("document").select("reviewer:reviewed_by (full_name)").eq("id", ids.id).maybeSingle();
+      const name = (data?.reviewer as unknown as { full_name: string } | null)?.full_name;
+      if (name) message = `Already reviewed by ${name}. The page has been refreshed.`;
+    }
+    return { ok: false, error: message, stale: isStale(error.message) };
   }
   refresh(ids);
   return { ok: true, message: ok };

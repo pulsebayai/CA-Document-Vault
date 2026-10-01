@@ -8,7 +8,9 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 const me = { id: "me", role: "staff" as string };
 vi.mock("@/lib/auth/staff", () => ({ requireStaff: vi.fn(async () => me) }));
 const rpc = vi.fn();
-vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc }) }));
+const maybeSingle = vi.fn(async () => ({ data: { reviewer: { full_name: "Priya" } }, error: null }));
+const from = vi.fn(() => ({ select: () => ({ eq: () => ({ maybeSingle }) }) }));
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc, from }) }));
 
 const { markReviewed, markNeedsCorrection, undoReview } = await import("@/lib/review/actions");
 const { createDispatch, undoDispatchItem, readyOriginals } = await import("@/lib/dispatch/actions");
@@ -52,7 +54,7 @@ describe("review actions", () => {
   it("a stale action (someone reviewed it first) says so and is marked stale; errors log a code only", async () => {
     rpc.mockResolvedValue({ error: { code: "P0001", message: "ALREADY_REVIEWED: this document has already been reviewed" } });
     const r = await markReviewed({ id: D });
-    expect(r).toEqual({ ok: false, stale: true, error: expect.stringMatching(/already reviewed/i) });
+    expect(r).toEqual({ ok: false, stale: true, error: "Already reviewed by Priya. The page has been refreshed." }); // spec: "Already reviewed by <name>"
     expect(errorLog).toHaveBeenCalledWith("review.reviewed_failed", { code: "P0001", requestId: expect.any(String) });
   });
 
@@ -102,6 +104,21 @@ describe("dispatch actions", () => {
     rpc.mockResolvedValue({ error: null });
     expect((await undoDispatchItem({ documentId: D, reason: "Returned" })).ok).toBe(true);
     expect(rpc).toHaveBeenCalledWith("undo_dispatch_item", { p_document_id: D, p_reason: "Returned" });
+  });
+});
+
+describe("packet race and messages (sdlc-reviewer nits 5, 6)", () => {
+  it("losing the one-live-packet race is treated as stale and re-lists the originals", async () => {
+    rpc.mockImplementation(async (name: string) => name === "create_dispatch"
+      ? { error: { code: "23505", message: 'duplicate key value violates unique constraint "dispatch_item_live_key"' } }
+      : { data: { total: 0, rows: [] }, error: null });
+    const r = await createDispatch({ clientId: C, documentIds: [D], dispatchedOn: "2026-09-30", method: "other", recipientName: "X" });
+    expect(r).toMatchObject({ ok: false, stale: true, originals: [] });
+    expect((r as { error: string }).error).toMatch(/no longer ready/);
+  });
+  it("a signed-out caller is told to sign in, not that only Admins can act", () => {
+    expect(reviewErrorMessage("ROLE_REQUIRED: sign in as active staff")).toMatch(/Sign in again/);
+    expect(reviewErrorMessage("ROLE_REQUIRED: only Admin or Manager can undo a review")).toMatch(/Admin or Manager/);
   });
 });
 

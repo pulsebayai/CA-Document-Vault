@@ -11,12 +11,17 @@ import { MAX_REASON } from "@/lib/validation/document";
 // state text only). One click marks it reviewed; "Needs correction…" opens the shared Modal for the reason.
 // A stale action ("someone already reviewed it") refreshes the page and says so.
 
-export function ReviewControls({ documentId, clientId, label }: { documentId: string; clientId: string; label: string }) {
+export type RowMessage = { ok: boolean; text: string };
+
+/** `onMessage`: the parent shows the result in a live region that stays mounted after the refresh (the controls
+ *  themselves disappear once the row's next action changes). */
+export function ReviewControls({ documentId, clientId, label, onMessage }: {
+  documentId: string; clientId: string; label: string; onMessage: (m: RowMessage) => void;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const done = (r: ReviewActionResult) => {
-    setMsg(r.ok ? { ok: true, text: r.message } : { ok: false, text: r.error });
+    onMessage(r.ok ? { ok: true, text: r.message } : { ok: false, text: r.error });
     if (r.ok || r.stale) router.refresh();
   };
   return (
@@ -25,7 +30,7 @@ export function ReviewControls({ documentId, clientId, label }: { documentId: st
         onClick={() => start(async () => done(await markReviewed({ id: documentId, clientId })))}>
         {pending ? "Saving…" : "Mark reviewed"}
       </Button>
-      <Modal trigger="Needs correction…" title={`Needs correction: ${label}`} triggerVariant="link">
+      <Modal trigger="Needs correction…" title={`Needs correction: ${label}`} triggerLabel={`Needs correction: ${label}`} triggerVariant="link">
         {(close) => (
           <ReasonForm
             intro="Say what is wrong. The document stays filed, but no longer counts as received until it is corrected or reviewed."
@@ -33,7 +38,6 @@ export function ReviewControls({ documentId, clientId, label }: { documentId: st
             onSubmit={(reason) => markNeedsCorrection({ id: documentId, clientId, reason })} onDone={done} />
         )}
       </Modal>
-      {msg && <span role={msg.ok ? "status" : "alert"} className={`text-[13px] ${msg.ok ? "text-ok" : "text-bad"}`}>{msg.text}</span>}
     </div>
   );
 }

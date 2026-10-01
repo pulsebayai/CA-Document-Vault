@@ -100,6 +100,16 @@ No migration overlap: 06 adds only its own tables and functions.
 
   "Needs correction…" is a visible link-button next to Mark reviewed, not a hidden overflow menu (simpler for keyboard and screen readers; recorded in ui-reference.md). The dispatch dialog's list comes from `search_documents` with `return = ready` (one SQL definition of "ready"; at most 50 per client).
 - **D7 (step 7)** `DocumentFilters.return` and the new `DocumentHit` fields are optional, so 03b's unit tests and fixtures keep their exact shape (tests unedited). Choosing Status "To review" also sets Show: Classified (D4).
+- **D8 (step 10, sdlc-reviewer)** Also changed:
+  - `src/lib/documents/selects.ts`: `CLIENT_DOCUMENTS_SELECT` gains the review columns and the live packet. It's shared with 03's perf test, so RUN_SLOW measures it.
+  - `tests/unit/search-review.test.tsx` (new);
+  - `src/lib/dispatch/summary.ts` (pure `packetSummary`);
+  - `src/components/dialog.tsx`: the link-variant trigger now honours `triggerLabel`. This is additive: unchanged when no label is passed.
+
+  Reviewer findings:
+  - **Fixed:** the Important finding (packet "N of M removed" / "Cancelled" on earlier packets, AC-10); concurrent-packet race mapped to stale; "Already reviewed by <name>"; the session-ended message; live regions that survive the refresh; unique "Needs correction: <document>" names; server-formatted history times (hydration); the client name in the dispatch heading; "1 day".
+  - **Accepted:** double recompute when a reset and a relink happen in one save (idempotent; +0.55 ms measured); choosing "To review" adds a visible Show: Classified chip that the user can remove.
+  - **Open for Raja:** see the PR description (lock rows in `update_document` / `add_document_version`; type/client changes of a dispatched original; a corrected file for a dispatched original; a Needs-correction original shows Ready to dispatch).
 
 ## Session log
 

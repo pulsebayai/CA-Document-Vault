@@ -149,3 +149,12 @@ describe("/documents Status and Return values (AC-14)", () => {
     expect(isFiltered(DEFAULT_FILTERS)).toBe(false);
   });
 });
+
+describe("packetSummary (AC-10)", async () => {
+  const { packetSummary } = await import("@/lib/dispatch/summary");
+  it("says how many items were removed, and Cancelled when all were", () => {
+    expect(packetSummary([{ removedAt: null }, { removedAt: null }])).toBeNull();
+    expect(packetSummary([{ removedAt: "2026-09-01T00:00:00Z" }, { removedAt: null }, { removedAt: null }])).toBe("1 of 3 removed");
+    expect(packetSummary([{ removedAt: "2026-09-01T00:00:00Z" }, { removedAt: "2026-09-02T00:00:00Z" }])).toBe("Cancelled");
+  });
+});

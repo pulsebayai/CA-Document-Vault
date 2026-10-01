@@ -93,7 +93,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
         <div>
           <h2 className="sr-only">Documents</h2>
           <DocumentsView clientId={c.id} documents={documents} currentFy={fyCodeOf(expected.today)}
-            expected={expected.items} planGroups={planGroups} fys={fys} canUpload={!c.archived} today={expected.today} />
+            expected={expected.items} planGroups={planGroups} fys={fys} canUpload={!c.archived} today={expected.today} clientName={c.name} />
         </div>
       ) : tab === "expected" ? (
         <div>

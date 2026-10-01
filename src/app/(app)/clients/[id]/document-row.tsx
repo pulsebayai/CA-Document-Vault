@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import type { ClientDocument } from "@/lib/documents/queries";
 import { documentState, heldDays, nextAction, type ShownStateKind } from "@/lib/documents/state";
 import { Badge } from "@/components/ui";
 import { FileButtons } from "../../documents/file-buttons";
-import { ReviewControls } from "./review-controls";
+import { ReviewControls, type RowMessage } from "./review-controls";
 import { DispatchDialog } from "./dispatch-dialog";
 
 // One received document on Client › Documents (mockup 10; 03 AC-10; 07 AC-11, AC-12). 07 owns this row; 06 owns
@@ -19,7 +20,8 @@ const TONE: Record<ShownStateKind, string> = {
   needs_correction: "text-bad", reviewed: "text-ok", to_review: "text-warn",
 };
 
-export function DocumentRow({ d, clientId, today }: { d: ClientDocument; clientId: string; today: string }) {
+export function DocumentRow({ d, clientId, clientName, today }: { d: ClientDocument; clientId: string; clientName?: string | null; today: string }) {
+  const [msg, setMsg] = useState<RowMessage | null>(null);
   const input = { archived: false, clientId, docTypeId: d.typeName ? "filed" : null, receivedAs: d.receivedAs, status: d.status,
     reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
     dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod };
@@ -45,9 +47,13 @@ export function DocumentRow({ d, clientId, today }: { d: ClientDocument; clientI
         </p>
         <p className={`mt-0.5 break-words text-[13px] font-medium ${TONE[state.kind]}`} data-testid="doc-state">{state.text}</p>
       </div>
-      {action === "review" && <ReviewControls documentId={d.id} clientId={clientId} label={label} />}
-      {action === "dispatch" && <DispatchDialog clientId={clientId} documentId={d.id} label={label} today={today} />}
+      {action === "review" && <ReviewControls documentId={d.id} clientId={clientId} label={label} onMessage={setMsg} />}
+      {action === "dispatch" && (
+        <DispatchDialog clientId={clientId} clientName={clientName} documentId={d.id} label={label} today={today} onMessage={(text) => setMsg({ ok: true, text })} />
+      )}
       {d.current && <FileButtons versionId={d.current.id} mimeType={d.current.mimeType} docCode={d.docCode} />}
+      {/* Always mounted, so the result is announced even though the action that produced it has gone. */}
+      <p role="status" aria-live="polite" className={`basis-full text-[13px] empty:hidden ${msg?.ok === false ? "text-bad" : "text-ok"}`}>{msg?.text ?? ""}</p>
     </li>
   );
 }

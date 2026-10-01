@@ -106,7 +106,7 @@ describe("DocumentRow (AC-11, AC-12)", () => {
     expect(li).toHaveTextContent("To review");
     await user.click(within(li).getByRole("button", { name: /Mark reviewed/ }));
     expect(markReviewed).toHaveBeenCalledWith({ id: O1, clientId: CLIENT });
-    expect(within(li).getByRole("button", { name: "Needs correction…" })).toBeInTheDocument();
+    expect(within(li).getByRole("button", { name: /^Needs correction: Form 16/ })).toBeInTheDocument();
     await waitFor(() => expect(refresh).toHaveBeenCalled());
   });
 
