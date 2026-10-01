@@ -60,6 +60,14 @@ export async function openItemsByGroup(officeId: string, clientId: string): Prom
   return byGroup;
 }
 
+/** Financial years of the office, newest first (Expected tab FY filter). */
+export async function listFinancialYears(): Promise<Array<{ id: string; code: string }>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("financial_year").select("id, code").order("start_date", { ascending: false });
+  if (error) fail("fys", error.code);
+  return data ?? [];
+}
+
 export type CollectionMetric = {
   due: number; on_time: number; late: number; missing: number; on_time_pct: number | null; overdue_now: number;
   last_generated_at: string | null;

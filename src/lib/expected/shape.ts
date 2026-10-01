@@ -37,6 +37,7 @@ export type ExpectedItem = {
   typeName: string;
   periodId: string;
   periodLabel: string;
+  fyId: string;
   /** The full GSTIN/TAN, only when the client has more than one active registration of that kind (AC-13). */
   registration: string | null;
   registrationId: string | null;
@@ -72,6 +73,7 @@ export function toItem(r: RawExpected, today: string, repeated: Set<string>): Ex
     typeName: r.doc_type.name,
     periodId: r.period.id,
     periodLabel: r.period.label,
+    fyId: r.period.financial_year_id,
     registration: r.registration && repeated.has(r.registration.kind) ? r.registration.number : null,
     registrationId: r.registration_id,
     status: r.status,

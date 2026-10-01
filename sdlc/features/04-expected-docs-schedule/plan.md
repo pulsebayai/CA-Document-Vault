@@ -60,7 +60,7 @@ Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 
 - [x] 2. **Migration** written, dry-run, applied to dev, advisors clean, back-fill checked on the real office (counts by group look sane) — proof: step-1 tests green in CI (1.5) [review SQL: 45–60 min]
 - [x] 3. `schedule.ts` + derived state — proof: unit tests red → green; the TS dates equal the SQL dates for a table of cases (0.5)
 - [x] 4. `src/lib/expected` queries + actions (waive/undo/reopen with friendly errors) — proof: RLS tests via actions' RPCs + unit (0.5)
-- [ ] 5. **Client › Expected tab** + Waive modal + Reopen/Undo + Upload → Add document pre-fill (type/period/registration) → linked on save — proof: e2e (staff waives; limited can't; manager undoes; upload links and the item flips to Received) (1.5)
+- [x] 5. **Client › Expected tab** + Waive modal + Reopen/Undo + Upload → Add document pre-fill (type/period/registration) → linked on save — proof: e2e (staff waives; limited can't; manager undoes; upload links and the item flips to Received) (1.5)
 - [ ] 6. **Documents cards** open rows + "All caught up" + Documents default tab + plan-row registration note — proof: e2e (1)
 - [ ] 7. **Clients list** overdue text + "Has overdue" chip (not in URL) — proof: e2e + unit (0.5)
 - [ ] 8. **Settings › Collection** (Admin/Manager; Staff/Limited get no item, and Not Found on the URL) — proof: e2e + RLS (0.5)
@@ -117,6 +117,11 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - Each restored item writes one `expected.waive_undone` row (actor null, code only).
   - Follow-up migration applied to dev as `20260930124132_expected_docs_restore.sql` (Raja approved 18:11: reuse `expected.waive_undone`; line = overdue-from after today). Test: `expected-plan.test.ts` › "(R1)".
   - R2 (refuse undo-waive off-plan) was not taken.
+
+- **Step 5 — small changes outside the file list (2026-10-01):**
+  - `src/components/dialog.tsx`: shared `Modal` gains an optional `triggerLabel` (the trigger's accessible name; default stays the title), so "Waive <type · period>" is distinct per row while the dialog title asks "Not needed for <type · period>?". Additive; existing callers unchanged.
+  - Add document's `safeReturn` also accepts `/clients/<id>?tab=expected`, and the form appends `saved=` with `&` when the return path already has a query. Pre-fill validation lives in `src/lib/expected/prefill.ts` (type the client can file, period kind allowed for the type, the client's own registration of the type's kind; otherwise dropped → the form's normal defaults).
+  - The client page loads the client's expected items on every tab (the tab count). Measured in the deferred volume test with the other screen timings.
 
 ## Session log
 ### 2026-09-29
@@ -176,4 +181,15 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
     - Unit suite 216/216, lint 0, typecheck 0.
 - Next step: step 5, the Client › Expected tab + Waive modal + Reopen/Undo + Upload → Add document pre-fill (read the Next docs first, per AGENTS.md). Main's nightly keeps failing `plan.test.ts:70` until 04 merges (expected); the import failure should be gone from the next nightly.
 - Decisions made (cross-cutting → flag for architecture.md): `app.expected_defer` joins the transaction-flag list; the RUN_SLOW-before-merge rule for features touching 02/03 write paths (CLAUDE.md, at merge).
+
+### 2026-10-01 (08:51– IST)
+- Session start: new cloud container; repo re-cloned; `.env.local` staged from Raja's Mac. CI for 3007709: lint/unit/build green, RLS + e2e still running at push time (superseded by step 5's run).
+- **Step 5 done:** Client › Expected tab.
+  - `expected-view.tsx`: FY (default current, by the office's today) · group · status (Open default) filters; group cards; state text with colour as a repeat only; assignee; "Not needed · reason · who, date". Actions: Upload (pending), Waive (Staff+; Modal, reason required), Reopen (received; inline "Still waiting for more?"), Undo (Admin/Manager). One live status region + alert for outcomes. No actions on an archived client.
+  - Client page tabs: Documents · **Expected N** (Due + Overdue, every FY) · Settings. Settings stays the default until step 6.
+  - Upload → `/documents/new?client=&type=&period=&registration=&from=` (UUIDs only) → pre-filled (0 dimension choices) → saved → back on `?tab=expected&saved=DOC-…`; the linking trigger marks the item Received.
+  - Tests: unit `expected-prefill` 5/5, `expected-view` 6/6 (unit suite 227/227). e2e `tests/e2e/expected.spec.ts` 5/5 locally against dev (AC-13 incl. axe + 390 px; staff waives with required reason; Limited has no Waive; manager undoes; Upload pre-fill incl. GSTIN → Received → Reopen → Due today), run twice; `client-documents` + `add-document` still 9/9. RLS `expected-docs` 38/38. Lint 0, typecheck 0.
+- Blocked / failing: —. Watch: an interrupted e2e set-up left an orphan auth user (`createStaff` creates the auth user and the staff row in two steps); repaired by inserting its staff row. Not 04's code; noted in the handoff.
+- Next step: step 6 — Documents cards open rows + "All caught up" + Documents as the default tab + plan-row registration note. **Needs Raja's OK first:** 03's `client-documents.spec.ts:49` asserts Settings is the default tab (`// still the default`); AC-14 (approved) makes Documents the default, so that one assertion must change with the spec (same pattern as `plan.test.ts:70`).
+- Decisions made (cross-cutting → flag for architecture.md): — (`Modal.triggerLabel` is a component detail, not architecture).
 

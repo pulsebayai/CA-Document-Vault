@@ -9,6 +9,8 @@ import { getClientPlan } from "@/lib/plan/queries";
 import { countClientDocuments, listClientDocuments } from "@/lib/documents/queries";
 import { fyCodeOf, istDate } from "@/lib/documents/period";
 import { DocumentsView } from "./documents-view";
+import { listClientExpected, listFinancialYears } from "@/lib/expected/queries";
+import { ExpectedView } from "./expected-view";
 import { Card } from "@/components/ui";
 import { ArchiveControls } from "./archive-controls";
 import { PlanView } from "./plan-view";
@@ -27,12 +29,15 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   if (!z.uuid().safeParse(id).success) notFound();
   const c = await getClient(id);
   if (!c) notFound();
-  // AC-10: Documents is a second tab; Settings stays the default until 04 (spec "Existing code affected").
-  const tab = sp.tab === "documents" ? "documents" : "settings";
-  const [plan, docCount, documents] = await Promise.all([
+  // AC-10: Documents is a second tab; Settings stays the default until 04 step 6 (spec "Existing code affected").
+  // 04 AC-13: Expected, with the open count (Due + Overdue, every FY) on the tab on every tab.
+  const tab = sp.tab === "documents" ? "documents" : sp.tab === "expected" ? "expected" : "settings";
+  const [plan, docCount, documents, expected, fys] = await Promise.all([
     tab === "settings" ? getClientPlan(c.id) : null,
     countClientDocuments(c.id),
     tab === "documents" ? listClientDocuments(c.id) : [],
+    listClientExpected(me.officeId, c.id, { status: "all" }),
+    tab === "expected" ? listFinancialYears() : [],
   ]);
   const gstins = c.registrations.filter((r) => r.kind === "gstin");
   const tans = c.registrations.filter((r) => r.kind === "tan");
@@ -70,11 +75,13 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
 
       <nav aria-label="Client sections" className="border-b border-line">
         <ul className="flex gap-1">
-          {([["documents", `Documents`, `/clients/${c.id}?tab=documents`], ["settings", "Settings", `/clients/${c.id}`]] as const).map(([key, label, href]) => (
+          {([["documents", `Documents`, `/clients/${c.id}?tab=documents`], ["expected", "Expected", `/clients/${c.id}?tab=expected`],
+            ["settings", "Settings", `/clients/${c.id}`]] as const).map(([key, label, href]) => (
             <li key={key}>
               <Link href={href} aria-current={tab === key ? "page" : undefined}
                 className={`-mb-px inline-block border-b-2 px-3 py-2 text-[14px] ${tab === key ? "border-ink font-medium" : "border-transparent text-ink-2 hover:text-ink"}`}>
                 {label}{key === "documents" && <span className="ml-1 text-ink-3">{docCount}</span>}
+                {key === "expected" && <span className="ml-1 text-ink-3">{expected.open}</span>}
               </Link>
             </li>
           ))}
@@ -85,6 +92,13 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
         <div>
           <h2 className="sr-only">Documents</h2>
           <DocumentsView clientId={c.id} documents={documents} currentFy={fyCodeOf(istDate())} />
+        </div>
+      ) : tab === "expected" ? (
+        <div>
+          <h2 className="sr-only">Expected documents</h2>
+          <ExpectedView clientId={c.id} items={expected.items} fys={fys}
+            currentFyId={fys.find((f) => f.code === fyCodeOf(expected.today))?.id ?? null}
+            perms={{ canAct: !c.archived, canWaive: me.role !== "limited" && !c.archived, canUndo: canManage }} />
         </div>
       ) : (
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
