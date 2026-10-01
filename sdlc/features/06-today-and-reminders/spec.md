@@ -1,5 +1,5 @@
 # Spec: Today & reminders
-Intent: ./intent.md · Status: draft · Date: 2026-10-01
+Intent: ./intent.md · Status: approved (Raja 2026-10-01) · Date: 2026-10-01
 Screens:
 - `references/mockup/01-today.jpg`: Today, counts, client cards, rows, My clients / Everyone.
 - `10-client-documents.jpg`: Remind on expected rows.
@@ -187,7 +187,7 @@ All new tests join the regression suite. Smoke-safe for prod: none.
 ## Out of scope
 Automatic or scheduled reminders, nudges, upload links, acknowledgements, templates, Settings › Reminders, bulk reminders, the WhatsApp Business API, the Brevo webhook, CC to contacts, other languages, the Activity screen (08).
 
-## Decisions needed at this gate (my recommendation first)
+## Decisions (Raja 2026-10-01: all six approved as recommended)
 1. **Reply-To = the staff member who presses Send**, not each item's assignee: one email can cover items with different assignees, and the sender is the one following up. Recommend **yes** (updates the architecture line "Reply-To = assigned staff").
 2. **Store the recipient address on the follow-up row** (a snapshot), so "we emailed a…@… on 3 Oct" survives a later change to the client's email. Recommend **yes** (RLS-protected, never in activity or logs).
 3. **Brevo HTTP API, not SMTP, for reminders.** It gives a message ID and clear errors, and works from Vercel functions. Sign-in keeps using Supabase's SMTP setting. Recommend **yes**.
