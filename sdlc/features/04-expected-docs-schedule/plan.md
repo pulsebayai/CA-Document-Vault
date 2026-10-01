@@ -58,7 +58,7 @@ Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 
   - FY auto-create from 1 Feb; cron job registered
   - start default for new rows (AC-3)
 - [x] 2. **Migration** written, dry-run, applied to dev, advisors clean, back-fill checked on the real office (counts by group look sane) — proof: step-1 tests green in CI (1.5) [review SQL: 45–60 min]
-- [ ] 3. `schedule.ts` + derived state — proof: unit tests red → green; the TS dates equal the SQL dates for a table of cases (0.5)
+- [x] 3. `schedule.ts` + derived state — proof: unit tests red → green; the TS dates equal the SQL dates for a table of cases (0.5)
 - [ ] 4. `src/lib/expected` queries + actions (waive/undo/reopen with friendly errors) — proof: RLS tests via actions' RPCs + unit (0.5)
 - [ ] 5. **Client › Expected tab** + Waive modal + Reopen/Undo + Upload → Add document pre-fill (type/period/registration) → linked on save — proof: e2e (staff waives; limited can't; manager undoes; upload links and the item flips to Received) (1.5)
 - [ ] 6. **Documents cards** open rows + "All caught up" + Documents default tab + plan-row registration note — proof: e2e (1)
@@ -160,7 +160,12 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - `plan.test.ts:70` (start period, expected 2026-10, got 2026-09): main's test predates 04's AC-3 change, and dev already runs 04's rule. It clears when 04 merges (this branch carries the updated test). On 30 Sep both rules agreed; they diverge from 1 Oct.
   - `import.test.ts` 1,000-client timing: **a real 04 regression** → fixed (see Deviations).
 - After the fix: full local `test:db` **with RUN_SLOW: 233/233** (16 files); import timing 22.2 s.
-- In progress: CI on this push.
-- Next step: CI green → step 3 (`schedule.ts`). Main's nightly keeps failing `plan.test.ts:70` until 04 merges (expected); the import failure should be gone from the next nightly.
+- Fix CI **36807540286 green** (0d945bf). Quick check on main: Regression `only=import` (RUN_SLOW) **36807547694 green**, so the import failure is fixed on dev.
+- **Step 3 done:** `src/lib/expected/schedule.ts`.
+  - `offsetDate` / `scheduleDates` (+ due-by) / `todayInIndia` / `expectedState` (Due <date> · Due today · Overdue · N days late (the overdue-from date = 1 day late) · On hold · Received <date> · DOC-ID · Not needed · reason) / `isOpen`.
+  - Unit `expected-schedule` 22/22 (red first: module missing).
+  - **TS = SQL** parity test in expected-docs: every generated item in both test offices (month ends, 31st clamping, 29 Feb, FY crossing, offset 0) has exactly the dates `schedule.ts` computes. File 36/36. Mutation-checked: breaking the clamp fails it.
+  - Unit suite 194/194, lint 0, typecheck 0.
+- Next step: step 4 (`src/lib/expected` queries + actions). Main's nightly keeps failing `plan.test.ts:70` until 04 merges (expected); the import failure should be gone from the next nightly.
 - Decisions made (cross-cutting → flag for architecture.md): `app.expected_defer` joins the transaction-flag list; the RUN_SLOW-before-merge rule for features touching 02/03 write paths (CLAUDE.md, at merge).
 

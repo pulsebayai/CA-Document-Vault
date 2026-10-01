@@ -5,6 +5,7 @@ import { DENIED, createCatalogueOffice, groupId, mustInsertClient } from "../sup
 import { createDocumentOffice, documentRow, mustCreateDocument, periodId, typeId } from "../support/documents";
 import { testGstin, testPan, testTan } from "../support/test-data";
 import { T, expectedActivity, expectedFor, expectedItem, expectedOf, generateAsOf, planRow } from "../support/expected";
+import { scheduleDates } from "@/lib/expected/schedule";
 
 // Feature 04 — expected documents: generation, date maths, exclusions, per-registration fan-out, back-link,
 // linking on 03's document paths, visibility and write protection (spec AC-1, AC-4 … AC-7, AC-17, AC-18,
@@ -436,6 +437,27 @@ describe("schedule date maths and FY roll-over", () => {
     await generateAsOf(as.clockAdmin, "2028-03-20");
     // FY 2027-28 ends 31 Mar 2028: asked 15 Mar 2028, overdue from 31 Mar 2028.
     expect(await expectedItem(clientD, "Exp offset zero", "2027-28")).toMatchObject({ ask_on: "2028-03-15", overdue_from: "2028-03-31" });
+  });
+
+  // Step 3 proof: src/lib/expected/schedule.ts computes exactly the dates the database stored, for every item
+  // generated in both offices (month ends, 31st clamping, 29 Feb, FY crossing, offset 0, monthly/quarterly/yearly).
+  it("schedule.ts gives the same ask / overdue-from dates as the database for every generated item", async () => {
+    const { data, error } = await adminClient().from("expected_doc")
+      .select("ask_on, overdue_from, period:period_id(code, end_date), row:client_doc_type_id(ask_after_months, ask_day, overdue_after_months, overdue_day)")
+      .in("office_id", [officeId, clockOffice]);
+    expect(error).toBeNull();
+    type R = { ask_on: string; overdue_from: string; period: { code: string; end_date: string };
+      row: { ask_after_months: number; ask_day: number; overdue_after_months: number; overdue_day: number } };
+    const rows = (data ?? []) as unknown as R[];
+    expect(rows.length).toBeGreaterThan(20);
+    const mismatches = rows.filter((r) => {
+      const d = scheduleDates(r.period.end_date, {
+        askAfterMonths: r.row.ask_after_months, askDay: r.row.ask_day,
+        overdueAfterMonths: r.row.overdue_after_months, overdueDay: r.row.overdue_day,
+      });
+      return d.askOn !== r.ask_on || d.overdueFrom !== r.overdue_from;
+    }).map((r) => `${r.period.code}: db ${r.ask_on}/${r.overdue_from}`);
+    expect(mismatches).toEqual([]);
   });
 });
 
