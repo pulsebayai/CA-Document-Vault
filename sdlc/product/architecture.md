@@ -1,5 +1,5 @@
 # Architecture: CA Document Vault
-Status: approved · Updated: 2026-10-01 (04 expected docs: 5 approved changes + build decisions)
+Status: approved · Updated: 2026-10-01 (03b search decisions) · earlier: 2026-10-01 (04 expected docs: 5 approved changes + build decisions)
 
 ## Stack
 - **Next.js (App Router) + TypeScript** — one codebase for UI and server actions/API routes.
@@ -28,7 +28,7 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
   - **DOC-ID = `DOC-FY26-27-00001`**: per-office counter (`doc_counter`) per FY of the date the document is **added** (IST), restarts 1 April, no gaps, never reused or edited (03).
   - **Classified** = client + type; otherwise the document is in the **Inbox**. `classified_at` is set once (metric 4) (03).
 - **Derived, not stored:** doc_group (from doc_type) and FY (from period). Prevents "type in GST, group = Banking" inconsistencies and makes admin re-mapping of types safe.
-- Search = filters on any combination of dimensions + facets (status, received_as, channel, received_by) + text on file name/remark (Postgres full-text + pg_trgm). Composite indexes on (client, period), (doc_type, period).
+- **Search (03b)** = `search_documents` + `search_document_facets` (SECURITY INVOKER, one jsonb argument from a server action): filters on any combination of dimensions; facets (group, received as, channel, received by, status) counting the visible matches with every filter except their own; text = up to 5 words, each matching (case-insensitive, partial, `\ % _` escaped) the remark or current file name, or prefixing the DOC-ID. No full-text/pg_trgm and no search indexes yet: both wait for the volume test (roadmap "Before pilot"). The word rules are written out in both SQL functions and in `normaliseSearchText`; change all three together.
 
 **Expectation layer (= "collection requirement" in reference doc)**
 - **Master templates → client instances.** Master = `doc_group` + its `doc_type`s with default schedule (frequency, ask day, overdue day, reminders on/off). When a group is enabled for a client, its types are **copied** into `client_doc_type` rows (client × doc_type: frequency, schedule, reminders, assigned staff, active/paused, start period). The copy keeps `doc_type_id`, so the dimension stays shared for search, but the schedule is the client's own.
@@ -74,6 +74,8 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **Data-access patterns (02):**
   - Multi-row/multi-table writes = **one SECURITY INVOKER SQL function per user action** (atomic, RLS applies, writes one `activity` row). Single-row edits log activity from the server action (best-effort).
   - UI aggregates and PII searches = security-invoker views/functions (e.g. `search_clients`), called from server actions (POST) so search text never reaches a URL.
+  - **Search text hand-off (03b):** to carry typed text to the next page (header → `/documents`), use the tab's `sessionStorage`, never the URL. Filters (IDs, enums, dates) may live in the URL.
+  - **Limited planner hints (03b):** a function may add an explicit "clients this Limited user can see" filter for speed, but it must mirror the table's SELECT policy exactly (incl. `document_select`'s own-unclassified rule); RLS stays the enforcement.
   - SECURITY DEFINER only for counters/guards; every definer trigger checks the tenant (office) first; `search_path = ''` everywhere. Service-role-only helpers live in `public` with EXECUTE revoked (PostgREST can't reach `private`).
   - Transaction flags (`app.plan_bulk`, `app.purge_office`, 03: `app.doc_version`, `app.propose_type`, `app.doc_clock`, 04: `app.expected_write`, `app.expected_defer`) let the owning functions bypass per-row checks; nothing else sets them. `app.doc_clock` (fixed-date DOC-ID tests) is honoured only in `is_test` offices.
   - **Bulk paths defer generation (04):** inside `import_clients` / `create_client` / `enable_group_core`, the plan triggers only note the client (`app.expected_defer`); the outermost call generates once, set-based. A per-row trigger doing set work in a bulk path tripled 02's import time (nightly 36792152274).
@@ -143,3 +145,5 @@ Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature b
 | 2026-09-30 | Plan-change effects in DB triggers, not server actions; only functions write `expected_doc`; per-test-office clock (`office.test_today`); `resumed_on`; re-enable restores not-yet-overdue removed items; GSTIN-less documents link when exactly one active registration of the kind (D1, D4, D6, R1) | 02's plan paths write through PostgREST directly; triggers see every path; tests need one "today" across requests | 04 |
 | 2026-10-01 | Bulk paths defer generation to one set-based run (`app.expected_defer`); features touching 02/03 write paths run RUN_SLOW before merge | Nightly 36792152274: per-row generation made 02's 1,000-client import time out (9.36 s → 3.09 s per chunk after the fix) | 04 |
 | 2026-10-01 | `search_clients` returns overdue / due-today counts and takes `p_has_overdue` (archived clients count 0); Documents is the default client tab | Clients list "N overdue · N due today" + Has overdue (AC-15); staff land on what is owed (AC-14) | 04 |
+| 2026-10-01 | **Read-only migration exception:** a feature without the schema lock may, with owner approval, add or replace only SECURITY INVOKER read functions of its own (no table, column, policy, trigger or other function change), so it can merge in either order with the lock holder | 03b ran in parallel with 04 (schema lock) without blocking either; used twice (`20260930131025`, `20261001093454`) | 03b |
+| 2026-10-01 | Search text reaches the next page via `sessionStorage`; search functions take one jsonb POST argument; no search indexes until the volume test | No PII/search text in URLs; measure before indexing | 03b |
