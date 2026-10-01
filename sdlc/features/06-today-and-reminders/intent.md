@@ -1,5 +1,5 @@
 # Intent: Today & reminders
-Author: Raja (drafted with Claude) · Status: draft · Date: 2026-10-01
+Author: Raja (drafted with Claude) · Status: approved (Raja 2026-10-01) · Date: 2026-10-01
 Roadmap item: 06-today-and-reminders · Release: R1 · Batch D (with 07; **07 merges first**, then 06 rebases) · Moves product metrics: 2 (chasing load), made measurable here; 1 (on-time completeness), via faster chasing; 5 (adoption), via a daily starting screen
 
 ## Problem
@@ -24,7 +24,7 @@ Since 04 the vault knows what each client still owes, but only **one client at a
     - **WhatsApp**, which opens a pre-filled chat in the staff member's own WhatsApp (click-to-chat). The staff member presses Send.
   - Both list document type + period only: no attachments, no links into the app, no PAN/GSTIN.
 - **Log call:** records a phone reminder (date, optional short note) against the client's items, so metric 2 counts all chasing (Raja 2026-10-01).
-- **Follow-up history:** every reminder (email, WhatsApp, call) is recorded with who, when, channel and which items. Rows show it ("reminded twice", "last reminded 3 days ago"). Email rows show delivery status as reported by Brevo (sent / delivered / bounced).
+- **Follow-up history:** every reminder (email, WhatsApp, call) is recorded with who, when, channel and which items. Rows show it ("reminded twice", "last reminded 3 days ago"). Email rows show **Sent** (Brevo accepted it) or **Failed** (Brevo refused it at send time). No delivery or bounce tracking in the pilot (Raja 2026-10-01).
 - **Metric 2 figure:** reminders per expected item before it was received, for Admin/Manager next to metric 1 on Settings › Collection (04's page).
 
 ## Users & systems affected
@@ -48,7 +48,7 @@ Since 04 the vault knows what each client still owes, but only **one client at a
    - Limited users never see another client's items.
    - The cap is enforced in the database, not just the UI.
    - **No email is ever sent to a `.test` address or, outside production, to anyone not on an allow-list.**
-4. **Delivery (staging/pilot):** ≥ 95 % of reminder emails are accepted by Brevo, and every bounce is visible on the item.
+4. **Sending works (staging/pilot):** ≥ 95 % of reminder emails are accepted by Brevo at send time; every refusal shows as Failed on the item with a plain message. *Known gap:* bounces after acceptance are visible only in the Brevo dashboard. An Admin checks it weekly during the pilot, and a bounced reminder still counts in metric 2.
 
 ## Constraints
 - **Cap (Raja 2026-10-01):** at most **1 reminder email per client per day** (IST). A second attempt is blocked with a clear message. WhatsApp and calls aren't capped (a person sends or makes them).
@@ -81,13 +81,18 @@ Since 04 the vault knows what each client still owes, but only **one client at a
 ## Out of scope
 - Automatic or scheduled reminders, the weekly repeat, staff nudge emails, upload links, acknowledgement emails → **Later** (v1 rule).
 - WhatsApp Business API (sending from the firm's number, delivery status, replies into the Inbox) → **Later**; decide with pilot data.
+- Email delivery/bounce tracking (Brevo webhook, the vault's first inbound endpoint) → **Later**; decide after the pilot.
 - Editable email templates and a Settings › Reminders page; multiple recipients or CC to client contacts; languages other than English.
 - Bulk reminders across many clients in one click.
 - An Activity screen → **08**.
 
-## Open questions (my recommendation first)
-1. **Landing page:** Today becomes the page after sign-in, and `/` redirects there instead of Clients. Recommend **yes** (mockup nav order; "what needs me today" is the daily question).
-2. **Items with reminders switched off** (`client_doc_type.reminders = false`, the default for many types): in the Remind preview they are **listed but not ticked**, marked "reminders off", and staff can tick them deliberately. Recommend **yes**. The alternative, hiding them entirely, risks a client never being asked.
-3. **Recipient:** the client's main email and mobile only. Recommend **yes**; choosing among client contacts later.
-4. **Delivery status:** recommend Brevo **webhook** events (delivered / bounced), stored on the follow-up. This adds the vault's first inbound endpoint, which needs a shared-secret check and no PII in logs. It gets an architecture review in the spec. The alternative: record "sent" only and skip delivery status (simpler, but bounces go unnoticed).
-5. **Due this week:** recommend items whose overdue date falls in the next 7 days (IST), not yet overdue.
+## Decisions (Raja 2026-10-01)
+- Effective assignee for "My clients" (type → group → incharge); one Remind per client covering all due and overdue items; **1 email per client per day**; **Log call** included.
+- **Q1** Today is the landing page (`/` → Today).
+- **Q2** Items with reminders off are listed in the Remind preview but **not ticked**.
+- **Q3** Recipients: the client's main email and mobile only.
+- **Q4** Email status: **Sent / Failed (at send time) only** for the pilot; **no webhook**. Bounces go to the Later list.
+- **Q5** Due this week = overdue date within the next 7 days (IST), not yet overdue.
+
+## Open questions
+None. Settled at the intent gate 2026-10-01.
