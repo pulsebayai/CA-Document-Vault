@@ -60,7 +60,7 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
 - [x] 5. **Today screen** (expected rows), the landing redirect, nav, logo; the sign-in assertions per decision 1. Proof: e2e + unit. (1.5)
 - [x] 6. **Remind + Log call dialogs** on Today, Client › Documents (expected rows) and Client › Expected; history; the client's Reminders list. Proof: e2e + unit. (1.5)
 - [x] 7. **Metric 2** on Settings › Collection. Proof: RLS (definition) + e2e. (0.5)
-- [ ] 8. **Real-send check on dev:** set `MAIL_TRANSPORT=brevo` + the dev key + `EMAIL_ALLOWLIST=<your address>` on the preview, then send one reminder to a test client whose email is your address. Proof: you receive it; From / Reply-To / content are checked; the follow-up shows Sent. (0.25) [you: 10 min]
+- [x] 8. **Real-send check on dev:** set `MAIL_TRANSPORT=brevo` + the dev key + `EMAIL_ALLOWLIST=<your address>` on the preview, then send one reminder to a test client whose email is your address. Proof: you receive it; From / Reply-To / content are checked; the follow-up shows Sent. (0.25) [you: 10 min]
 - [ ] 9. **After 07 merges:** merge main; migration 2 (`today_items` + documents); To review / Ready to dispatch rows using 07's `documentState()` and actions. Proof: RLS + e2e. (1)
 - [x] 10. a11y (axe), ≤ 390 px, screenshots, ui-reference deviations. Proof: e2e evidence. (0.5)
 - [ ] 11. **Timed check** (Staff role, preview): sign-in → find overdue → remind one client, ≤ 30 s. [you or a staff member: 10 min]
@@ -98,6 +98,14 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
 - **D6 (steps 5–6, files beyond the list):** `src/lib/supabase/proxy.ts` (D5), `clients/[id]/page.tsx` (loads history + the Reminders list; the Settings tab's "Reminders arrive with 06" card now links to it), `clients/[id]/reminders-list.tsx`, and `tests/support/setup-dom.ts` (inert stubs for `@/lib/reminders/actions`, so existing view tests load now that the views render the dialogs — additions only). Today's subtitle says "30+ clients" when there is another page; migration 2 can return the exact client count. To review / Ready to dispatch counts arrive in step 9.
 - Migration 1 applied as `20261001122813_follow_up` (md5 6f8502015721ec7e1dfa461a9f40084b = file); advisors: nothing new.
 
+## R1 checklist items from 06 (carry into roadmap.md R1 at merge — 06 may not edit the roadmap)
+Learned in step 8 (2026-10-02): Brevo returns 201 ("Sent" in the vault) **before** it checks the sender, then drops the email if the sender isn't verified. With no webhook in the pilot, the vault can't see that, so a wrong sender fails silently.
+- [ ] **Brevo sender verified before go-live** (staging and prod accounts): the firm's domain authenticated in Brevo (DKIM + DMARC, added by whoever runs its DNS), or at least the `MAIL_FROM_EMAIL` address added and confirmed under Senders. Check: Brevo → Senders, Domains → status *Verified / Authenticated*.
+- [ ] **Env vars per environment** (Vercel, server-only): `MAIL_TRANSPORT=brevo`, `BREVO_API_KEY` (that environment's own Brevo account, Secret), `MAIL_FROM_EMAIL` (a plain address — no name, quotes or `<…>`; otherwise the vault shows `MAIL_FROM_MISSING`), `MAIL_FROM_NAME`, `EMAIL_DAILY_MAX`; `APP_ENV=production` **only on prod** (staging keeps the allow-list: `EMAIL_ALLOWLIST` = the testers' addresses).
+- [ ] **One real send per environment, confirmed in the Brevo log** — not just "Sent" in the vault: Remind → Send email to an allow-listed address on staging, then Brevo → Transactional → Logs shows **Delivered** for that message ID (stored on the follow-up as `provider_message_id`), and the email is in the inbox (not spam) with From = the firm, Reply-To = the sender.
+- [ ] **Weekly bounce check during the pilot** (Brevo → Transactional → Logs: blocked / bounced / spam), since the vault records only Sent / Failed.
+- [ ] Step 11 timing (Staff role: sign-in → find overdue → remind one client ≤ 30 s) re-done on staging.
+
 ## Session log
 
 ### 2026-10-01 (build session 1, ~17:40–19:10 IST)
@@ -115,3 +123,8 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
 - Blocked / failing: step 9 waits for 07 to merge. Watch: `client-plan.spec.ts` AC-18 (02) timed out at "Enable GST" in two runs today (failed twice on 36886467111 while 07's CI shared the dev DB; flaky-passed on 36899157203). 06 doesn't touch that screen; check the 2 Oct nightly.
 - Next step: step 8 result → step 9 after 07 merges (merge main, migration 2 for To review / Ready to dispatch + exact client count) → step 11 timed check → step 12 verifier + sdlc-reviewer → PR ready.
 - Decisions made: none new beyond D5/D6 (already in Deviations and architecture.md).
+
+### 2026-10-02 (~00:00–00:45 IST) — step 8
+- Done: **step 8 passed** on the PR preview (dev, Brevo, allow-list = davakrish1@gmail.com). Sequence: (1) `MAIL_FROM_EMAIL` not readable → vault showed **Failed `MAIL_FROM_MISSING`** with Retry, nothing sent, the day's email not used (2 rows, as designed); (2) sender set but not verified in Brevo → vault **Sent** (201, `<202610011850.10494838918@smtp-relay.mailin.fr>`) but Brevo then rejected it ("sender rajak@pulsebay.in is not valid"); (3) sender verified in Brevo → **Sent and received** ("Step 8 check 3", `<202610011910.37968924155@smtp-relay.mailin.fr>`, 19:10 UTC). Cap behaved: each client got one counting email per day.
+- Finding → R1 checklist above: a wrong sender fails *after* "Sent" (no webhook) — verify senders and confirm one delivery in the Brevo log per environment.
+- Next step: step 9 after 07 merges; step 11 timed check; step 12 review + PR ready.
