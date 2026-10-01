@@ -169,6 +169,41 @@ describe("generation as of 1 Jul 2026 (AC-1)", () => {
   });
 });
 
+
+// ── Bulk paths (nightly import-timing fix, Raja 2026-10-01, option A) ─────────────
+// import_clients / create_client / enable_client_group defer generation to one run per client at the end of the
+// call (04's per-row triggers made a 200-client import chunk 3.3× slower and past the 8 s statement limit).
+// The result must be exactly what generating per row gave.
+describe("bulk paths generate once per client, with the same result", () => {
+  const shape = async (client: string) =>
+    (await expectedFor(client)).map((e) => `${e.doc_type.name}|${e.period.code}|${e.registration_id ? "reg" : "-"}|${e.status}`).sort();
+  const row = (n: number, groups: string[]) => {
+    const pan = testPan("P", 4200 + n);
+    return { name: `Expected bulk ${n}`, client_type: "proprietorship", pan, incharge_id: u.staff.id,
+      registrations: [{ kind: "gstin", number: testGstin(pan, "33", 1) }, { kind: "tan", number: testTan(4200 + n) }], group_ids: groups };
+  };
+
+  it("import_clients gives each client the same items as create_client, with nothing left un-generated", async () => {
+    const groups = await Promise.all(["GST", "TDS/TCS", "Banking"].map((g) => groupId(officeId, g)));
+    const { data: imported, error } = await as.staff.rpc("import_clients", { p_rows: [row(1, groups), row(2, groups)] });
+    expect(error).toBeNull();
+    const { data: single, error: e2 } = await as.staff.rpc("create_client", { p: row(3, groups) });
+    expect(e2).toBeNull();
+    const reference = await shape(single.id as string);
+    expect(reference.length).toBeGreaterThan(0); // the clock (1 Jul 2026) has items due for these groups
+    expect(reference.some((k) => k.includes("|reg|"))).toBe(true); // per-GSTIN/TAN types included
+    for (const r of imported as Array<{ client_id: string }>) expect(await shape(r.client_id)).toEqual(reference);
+  });
+
+  it("enabling a group on an existing client still generates its items at once", async () => {
+    const { data, error } = await as.staff.rpc("create_client", { p: row(4, []) });
+    expect(error).toBeNull();
+    expect(await expectedFor(data.id as string)).toEqual([]);
+    await enable(as.staff, data.id as string, officeId, "Banking");
+    expect((await expectedOf(data.id as string, T.bank)).length).toBeGreaterThan(0);
+  });
+});
+
 // ── Linking on 03's paths (AC-6, AC-7) ────────────────────────────────────────
 describe("linking documents (AC-6, AC-7)", () => {
   it("saving a matching document marks the item received with that document's date — no extra fields", async () => {
