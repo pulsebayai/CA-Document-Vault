@@ -97,3 +97,11 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
 - Migration 1 applied as `20261001122813_follow_up` (md5 6f8502015721ec7e1dfa461a9f40084b = file); advisors: nothing new.
 
 ## Session log
+
+### 2026-10-01 (build session 1, ~17:40–19:10 IST)
+- Done: step 0 (draft PR #24; main merged in). Step 1: 34 RLS/DB tests red first (follow-up, today, chasing-metric). Step 2: migration 1 dry-run (rolled back), **SQL gate approved by Raja 17:56**, applied as `20261001122813_follow_up` (md5 verified), advisors nothing new; the 06 DB tests pass (37). Step 3: mailer (brevo/test, allow-list, `.test`, default test, ESLint fence) + message builder — 20 unit tests. Step 4: server actions + Today data — 15 unit tests. Full local `test:db`: 319 passed, 17 skipped (slow); 2 failures were test-side and are fixed (see below). Lint, typecheck, unit (all) green.
+- In progress: — (next is step 5).
+- Blocked / failing: none. One transient `statement timeout` in today.test.ts setup (`enable_client_group`) during the full local run while CI was also on the dev DB; passed on rerun. Watch in CI.
+- Test-side fixes (never assertion changes): today.test.ts Charlie needed an email (setup error); follow-up.test.ts activity check scoped to this run's follow-ups (activity survives reset_test_office).
+- Next step: step 5 — Today screen, `/` + logo → `/today`, nav, and the **one labelled commit** for the post-sign-in assertions (decision 1a). Then step 6 dialogs.
+- Decisions made (cross-cutting → architecture.md in this PR, 06 holds the lock): D1 (definer write helpers behind invoker functions; ceiling via `p_daily_max`; stale pending → TIMEOUT); mailer core/transport split and the 3-block ESLint secrets fence (D3).
