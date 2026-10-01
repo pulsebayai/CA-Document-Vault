@@ -262,8 +262,10 @@ describe("visibility and write paths (AC-16)", () => {
 
 describe("activity (AC-17)", () => {
   it("one row per finished follow-up, with IDs, channel, status and item count only — never address, text or note", async () => {
-    const acts = await reminderActivity(officeId);
+    // Activity is append-only and survives reset_test_office, so earlier runs' rows remain: check this run's only.
     const all = await followUpsOf(officeId);
+    const current = new Set(all.map((f) => f.id));
+    const acts = (await reminderActivity(officeId)).filter((a) => current.has(a.entity_id));
     expect(acts.map((a) => a.action)).toEqual(expect.arrayContaining(["reminder.email", "reminder.whatsapp", "reminder.call"]));
     for (const a of acts) {
       expect(a.entity_type).toBe("follow_up");

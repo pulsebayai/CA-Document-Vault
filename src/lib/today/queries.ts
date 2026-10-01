@@ -1,0 +1,32 @@
+import "server-only";
+import { randomUUID } from "node:crypto";
+import { createClient } from "@/lib/supabase/server";
+import { toTodayCard, type Scope, type Show, type TodayCard, type TodayRaw } from "./shape";
+
+// Feature 06 — Today data (AC-2…AC-5): one call to today_items() as the signed-in user (RLS applies).
+// Errors are logged as a code + request ID only.
+
+export class TodayError extends Error {
+  constructor(readonly requestId: string) { super("TODAY_FAILED"); }
+}
+
+export type TodayData = { today: string; counts: { overdue: number; dueWeek: number }; cards: TodayCard[]; hasMore: boolean };
+
+export async function todayDataAs(scope: Scope, show: Show | null, page: number): Promise<TodayData> {
+  const supabase = await createClient();
+  // "Show more" (?page=N) shows pages 0…N, 30 cards each, so earlier cards stay on a reload.
+  const pages = await Promise.all(Array.from({ length: page + 1 }, (_, p) =>
+    supabase.rpc("today_items", { p_scope: scope, p_show: show, p_page: p })));
+  const failed = pages.find((r) => r.error);
+  if (failed?.error) {
+    const requestId = randomUUID();
+    console.error("today.load_failed", { code: failed.error.code ?? "unknown", requestId });
+    throw new TodayError(requestId);
+  }
+  const raws = pages.map((r) => r.data as TodayRaw);
+  const last = raws[raws.length - 1];
+  return {
+    today: last.today, counts: { overdue: last.counts.overdue, dueWeek: last.counts.due_week },
+    cards: raws.flatMap((r) => r.cards.map((c) => toTodayCard(c, last.today))), hasMore: last.has_more,
+  };
+}
