@@ -215,3 +215,15 @@ export async function bankOnlyClient(as: SupabaseClient, officeId: string, c: {
   }
   return client.id as string;
 }
+
+// ── Feature 06 step 9 (after 07): Today's document rows. Additions only. ───────────────────────────────────────
+// today_items() then also returns, per card, document rows and two more counts:
+//   counts { overdue, due_week, to_review, ready } · clients (total cards in scope and filter) · p_show adds
+//   'to_review' | 'ready'. A row is "to_review" when filed, live and status 'received' (07 isToReview), "ready" when a
+//   filed, live original is reviewed or needs correction and has no live dispatch item (07 isReadyToDispatch).
+//   Mine = plan row's staff (active row) → group's staff (active group) → incharge, as for expected items.
+export type TodayDocRow = {
+  document_id: string; kind: "to_review" | "ready"; doc_code: string; group: string; type: string; period: string | null;
+  received_as: string; received_on: string; reviewed_on: string | null; reviewed_by: string | null; needs_correction: boolean;
+};
+export type TodayDocCounts = { overdue: number; due_week: number; to_review: number; ready: number };
