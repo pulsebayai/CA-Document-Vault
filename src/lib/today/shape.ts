@@ -19,10 +19,11 @@ export function parseTodayParams(sp: Record<string, string | string[] | undefine
 }
 
 /** The URL for a scope / filter (clicking an active count clears it). */
-export function todayHref(scope: Scope, show: Show | null): string {
+export function todayHref(scope: Scope, show: Show | null, page = 0): string {
   const q = new URLSearchParams();
   if (scope !== "mine") q.set("scope", scope);
   if (show) q.set("show", show);
+  if (page > 0) q.set("page", String(page));
   const s = q.toString();
   return s ? `/today?${s}` : "/today";
 }
@@ -40,9 +41,18 @@ export type TodayCardRaw = {
 export type TodayRaw = { today: string; counts: { overdue: number; due_week: number }; cards: TodayCardRaw[]; has_more: boolean };
 
 export type TodayRow = {
-  id: string; kind: TodayRowRaw["kind"]; title: string; status: string; reminders: boolean;
-  /** Client page link for Upload (Add document pre-filled is opened from the client's Expected tab, 04). */
+  id: string; kind: TodayRowRaw["kind"];
+  /** "GST · Sales invoices / sales register · Tamil Nadu · Aug 2026" */
+  title: string;
+  /** Right-hand state (mockup 01): "Overdue" · "Due today" · "Due Fri 18 Sep". Text, not colour alone. */
+  label: string;
+  labelTone: "late" | "due" | "muted";
+  /** "Not received · 13 days late · reminded twice" (+ "reminders off"). */
+  detail: string;
+  reminders: boolean;
   overdueFrom: string;
+  /** Add document pre-filled (04's link: UUIDs only), set by the query; null if the IDs couldn't be read. */
+  uploadHref: string | null;
 };
 export type TodayCard = {
   clientId: string; name: string; initials: string; people: string; badge: string; badgeTone: "late" | "due";
@@ -59,12 +69,21 @@ function registration(r: TodayRowRaw): string {
   return r.reg_kind === "tan" ? " · TAN" : "";
 }
 
-/** AC-5: "Not received · 12 days late · reminded twice" / "Due today" / "Due 4 Oct" (+ "reminders off"). */
-export function rowStatus(r: TodayRowRaw, today: string): string {
-  const parts: string[] = [];
-  if (r.kind === "overdue") parts.push("Not received", `${r.days_late} ${r.days_late === 1 ? "day" : "days"} late`);
-  else if (r.kind === "due_today") parts.push("Due today");
-  else parts.push(`Due ${shortDate(addDays(r.overdue_from, -1), today)}`);
+const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const weekday = (date: string) => WEEKDAY[new Date(`${date}T00:00:00Z`).getUTCDay()];
+
+/** Mockup 01's right-hand state: Overdue · Due today · "Due Fri 18 Sep" (the due-by date). */
+export function rowLabel(r: TodayRowRaw, today: string): { label: string; tone: TodayRow["labelTone"] } {
+  if (r.kind === "overdue") return { label: "Overdue", tone: "late" };
+  if (r.kind === "due_today") return { label: "Due today", tone: "due" };
+  const dueBy = addDays(r.overdue_from, -1);
+  return { label: `Due ${weekday(dueBy)} ${shortDate(dueBy, today)}`, tone: "muted" };
+}
+
+/** AC-5 detail line: "Not received · 13 days late · reminded twice" (+ "reminders off"). */
+export function rowDetail(r: TodayRowRaw): string {
+  const parts = ["Not received"];
+  if (r.kind === "overdue" && r.days_late) parts.push(`${r.days_late} ${r.days_late === 1 ? "day" : "days"} late`);
   const reminded = remindedShort(r.reminded);
   if (reminded) parts.push(reminded);
   if (!r.reminders) parts.push("reminders off");
@@ -79,7 +98,17 @@ export function toTodayCard(c: TodayCardRaw, today: string): TodayCard {
     badge: c.overdue > 0 ? `${c.overdue} overdue` : "Due this week", badgeTone: c.overdue > 0 ? "late" : "due",
     rows: c.rows.map((r) => ({
       id: r.expected_doc_id, kind: r.kind, title: `${r.group} · ${r.type}${registration(r)} · ${r.period}`,
-      status: rowStatus(r, today), reminders: r.reminders, overdueFrom: r.overdue_from,
+      ...(({ label, tone }) => ({ label, labelTone: tone }))(rowLabel(r, today)),
+      detail: rowDetail(r), reminders: r.reminders, overdueFrom: r.overdue_from, uploadHref: null,
     })),
   };
+}
+
+/** 04's Add document link from an expected row. Returns to the client's Expected tab (Add document's return
+ *  allow-list; the saved item is visible there as Received). */
+export function uploadHref(clientId: string, ids: { typeId: string; periodId: string; registrationId: string | null }): string {
+  const q = new URLSearchParams({ client: clientId, type: ids.typeId, period: ids.periodId });
+  if (ids.registrationId) q.set("registration", ids.registrationId);
+  q.set("from", `/clients/${clientId}?tab=expected`);
+  return `/documents/new?${q.toString()}`;
 }

@@ -6,10 +6,11 @@ import { BrandMark } from "./ui";
 import { AddDocumentLink, NavLink } from "./nav-link";
 import { HeaderSearch } from "./header-search";
 
-/** Mockup header (references/mockup/01-today.jpg). Only shipped screens appear in the nav. */
+/** Mockup header (references/mockup/01-today.jpg). Only shipped screens appear in the nav (Activity arrives with 08). */
 export function AppHeader({ me, inboxCount }: { me: CurrentStaff; inboxCount: number }) {
   // Settings is for everyone from 02: the catalogue is readable by all staff (AC-6); Users stays Admin only.
   const nav = [
+    { href: "/today", label: "Today" },
     { href: "/inbox", label: "Inbox", count: inboxCount },
     { href: "/clients", label: "Clients" },
     { href: "/settings/catalogue", label: "Settings" },
@@ -17,7 +18,7 @@ export function AppHeader({ me, inboxCount }: { me: CurrentStaff; inboxCount: nu
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-line bg-white/[.92] px-4 backdrop-blur sm:gap-6 sm:px-6">
-      <Link href="/clients" aria-label={me.officeName} className="flex shrink-0 items-center gap-2.5">
+      <Link href="/today" aria-label={me.officeName} className="flex shrink-0 items-center gap-2.5">
         <BrandMark />
         <span aria-hidden className="hidden leading-tight md:block">
           <span className="block font-semibold">{me.officeName}</span>

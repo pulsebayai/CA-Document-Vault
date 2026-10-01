@@ -1,7 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
-import { toTodayCard, type Scope, type Show, type TodayCard, type TodayRaw } from "./shape";
+import { toTodayCard, uploadHref, type Scope, type Show, type TodayCard, type TodayRaw } from "./shape";
 
 // Feature 06 — Today data (AC-2…AC-5): one call to today_items() as the signed-in user (RLS applies).
 // Errors are logged as a code + request ID only.
@@ -25,8 +25,16 @@ export async function todayDataAs(scope: Scope, show: Show | null, page: number)
   }
   const raws = pages.map((r) => r.data as TodayRaw);
   const last = raws[raws.length - 1];
-  return {
-    today: last.today, counts: { overdue: last.counts.overdue, dueWeek: last.counts.due_week },
-    cards: raws.flatMap((r) => r.cards.map((c) => toTodayCard(c, last.today))), hasMore: last.has_more,
-  };
+  const cards = raws.flatMap((r) => r.cards.map((c) => toTodayCard(c, last.today)));
+  // Upload (Add document pre-filled, 04) needs the item's type / period / registration IDs: one lookup under RLS.
+  const ids = cards.flatMap((c) => c.rows.map((r) => r.id));
+  if (ids.length > 0) {
+    const { data: refs } = await supabase.from("expected_doc").select("id, doc_type_id, period_id, registration_id").in("id", ids);
+    const byId = new Map((refs ?? []).map((x) => [x.id as string, x]));
+    for (const c of cards) for (const r of c.rows) {
+      const x = byId.get(r.id);
+      if (x) r.uploadHref = uploadHref(c.clientId, { typeId: x.doc_type_id, periodId: x.period_id, registrationId: x.registration_id });
+    }
+  }
+  return { today: last.today, counts: { overdue: last.counts.overdue, dueWeek: last.counts.due_week }, cards, hasMore: last.has_more };
 }

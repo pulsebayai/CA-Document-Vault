@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initials, parseTodayParams, rowStatus, toTodayCard, todayHref, type TodayRowRaw } from "@/lib/today/shape";
+import { initials, parseTodayParams, rowDetail, rowLabel, toTodayCard, todayHref, type TodayRowRaw } from "@/lib/today/shape";
 import { dialogItems, historyOf, historyText, maskEmail, type HistoryEntry } from "@/lib/reminders/shape";
 
 // Feature 06 — Today URL enums and view model (AC-2…AC-5), dialog ticks and row history (AC-7, AC-12).
@@ -23,11 +23,16 @@ const row = (o: Partial<TodayRowRaw> = {}): TodayRowRaw => ({
 });
 
 describe("Today rows and cards (AC-4, AC-5)", () => {
-  it("row status text", () => {
-    expect(rowStatus(row(), "2026-10-01")).toBe("Not received · 27 days late · reminded twice");
-    expect(rowStatus(row({ days_late: 1, reminded: 0, reminders: false }), "2026-10-01")).toBe("Not received · 1 day late · reminders off");
-    expect(rowStatus(row({ kind: "due_today", days_late: null, reminded: 1, overdue_from: "2026-10-02" }), "2026-10-01")).toBe("Due today · reminded once");
-    expect(rowStatus(row({ kind: "due_week", days_late: null, reminded: 0, overdue_from: "2026-10-08" }), "2026-10-01")).toBe("Due 7 Oct");
+  it("right-hand label (mockup 01): Overdue · Due today · Due <weekday> <date>", () => {
+    expect(rowLabel(row(), "2026-10-01")).toEqual({ label: "Overdue", tone: "late" });
+    expect(rowLabel(row({ kind: "due_today", days_late: null, overdue_from: "2026-10-02" }), "2026-10-01")).toEqual({ label: "Due today", tone: "due" });
+    expect(rowLabel(row({ kind: "due_week", days_late: null, overdue_from: "2026-10-08" }), "2026-10-01")).toEqual({ label: "Due Wed 7 Oct", tone: "muted" });
+  });
+
+  it("detail line (AC-5): not received, days late, reminded, reminders off", () => {
+    expect(rowDetail(row())).toBe("Not received · 27 days late · reminded twice");
+    expect(rowDetail(row({ days_late: 1, reminded: 0, reminders: false }))).toBe("Not received · 1 day late · reminders off");
+    expect(rowDetail(row({ kind: "due_today", days_late: null, reminded: 1 }))).toBe("Not received · reminded once");
   });
 
   it("card header, badge and row titles (registration by state, never number)", () => {
