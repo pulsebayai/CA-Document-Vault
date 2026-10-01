@@ -44,7 +44,7 @@ test.describe.configure({ mode: "serial" });
 
 test("AC-18, AC-19, AC-21: staff enables GST, edits the plan, disables and re-enables it without duplicates", async ({ page, baseURL }) => {
   await signIn(page, staff.email, baseURL);
-  await page.goto(`/clients/${clientId}`);
+  await page.goto(`/clients/${clientId}?tab=settings`); // 04 AC-14: Documents is the default client tab; Settings is ?tab=settings (Raja 2026-10-01, option A)
   await expect(page.getByRole("heading", { name: "Plan Target" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Client sections" }).getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("No document groups are collected for this client yet")).toBeVisible();
@@ -107,7 +107,7 @@ test("AC-20: a manager pauses and resumes the group with a remark, reassigns it,
   if (error) throw error;
 
   await signIn(page, manager.email, baseURL);
-  await page.goto(`/clients/${clientId}`);
+  await page.goto(`/clients/${clientId}?tab=settings`); // 04 AC-14: Documents is the default client tab; Settings is ?tab=settings (Raja 2026-10-01, option A)
   const gst = gstSection(page);
 
   await gst.getByRole("button", { name: "Pause GST", exact: true }).click();

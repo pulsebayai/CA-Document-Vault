@@ -19,11 +19,13 @@ type Props = {
   canManage: boolean;
   /** Shown when the plan is read-only (Limited user). */
   note?: string;
+  /** Kinds of registration the client has an active one of (04 AC-5 note on per-GSTIN/TAN rows). */
+  activeKinds?: Array<"gstin" | "tan">;
 };
 type Staff = ClientPlan["staff"];
 
 /** Client › Settings — the client's collection plan (spec 02 AC-19 … AC-21, mockup 11). */
-export function PlanView({ clientId, plan, inchargeId, canEdit, canManage, note }: Props) {
+export function PlanView({ clientId, plan, inchargeId, canEdit, canManage, note, activeKinds = [] }: Props) {
   const nameOf = (id: string | null) => plan.staff.find((s) => s.id === id)?.name ?? null;
   return (
     <div className="space-y-4">
@@ -35,7 +37,7 @@ export function PlanView({ clientId, plan, inchargeId, canEdit, canManage, note 
         </Card>
       )}
       {plan.groups.map((g) => (
-        <GroupCard key={g.id} clientId={clientId} group={g} periods={plan.periods} staff={plan.staff}
+        <GroupCard key={g.id} clientId={clientId} group={g} periods={plan.periods} staff={plan.staff} activeKinds={activeKinds}
           assigneeName={nameOf(g.assignedStaffId ?? inchargeId)} nameOf={nameOf} canEdit={canEdit} canManage={canManage} />
       ))}
       {plan.otherGroups.length > 0 && <OtherGroups clientId={clientId} groups={plan.otherGroups} canEdit={canEdit} />}
@@ -59,8 +61,8 @@ const monthYear = (iso: string) =>
   new Intl.DateTimeFormat("en-IN", { month: "short", year: "numeric", timeZone: "Asia/Kolkata" }).format(new Date(iso));
 
 // ── Group ────────────────────────────────────────────────────────────────────
-function GroupCard({ clientId, group, periods, staff, assigneeName, nameOf, canEdit, canManage }: {
-  clientId: string; group: PlanGroup; periods: PlanPeriod[]; staff: Staff; assigneeName: string | null;
+function GroupCard({ clientId, group, periods, staff, assigneeName, nameOf, canEdit, canManage, activeKinds }: {
+  clientId: string; group: PlanGroup; periods: PlanPeriod[]; staff: Staff; assigneeName: string | null; activeKinds: Array<"gstin" | "tan">;
   nameOf: (id: string | null) => string | null; canEdit: boolean; canManage: boolean;
 }) {
   const { pending, result, run } = useAct();
@@ -120,7 +122,7 @@ function GroupCard({ clientId, group, periods, staff, assigneeName, nameOf, canE
                 <tr><td colSpan={5} className="px-5 py-3 text-[13.5px] text-ink-3">No types in this group yet.</td></tr>
               )}
               {group.types.map((t) => (
-                <TypeRow key={t.id} type={t} periods={periods} staff={staff} groupAssignee={assigneeName}
+                <TypeRow key={t.id} type={t} periods={periods} staff={staff} groupAssignee={assigneeName} activeKinds={activeKinds}
                   assigneeName={nameOf(t.assignedStaffId)} canEdit={canEdit} canManage={canManage} />
               ))}
             </tbody>
@@ -137,8 +139,8 @@ function GroupCard({ clientId, group, periods, staff, assigneeName, nameOf, canE
 }
 
 // ── Type row ─────────────────────────────────────────────────────────────────
-function TypeRow({ type: t, periods, staff, groupAssignee, assigneeName, canEdit, canManage }: {
-  type: PlanType; periods: PlanPeriod[]; staff: Staff; groupAssignee: string | null; assigneeName: string | null;
+function TypeRow({ type: t, periods, staff, groupAssignee, assigneeName, canEdit, canManage, activeKinds }: {
+  type: PlanType; periods: PlanPeriod[]; staff: Staff; groupAssignee: string | null; assigneeName: string | null; activeKinds: Array<"gstin" | "tan">;
   canEdit: boolean; canManage: boolean;
 }) {
   const { pending, result, run } = useAct();
@@ -158,6 +160,10 @@ function TypeRow({ type: t, periods, staff, groupAssignee, assigneeName, canEdit
       <td className="px-3 py-2.5">
         {FREQUENCY_LABEL[t.frequency]}
         {summary && !removed && <span className="block max-w-[34ch] text-[12.5px] text-ink-3">{summary}</span>}
+        {/* 04 AC-5: with the schedule, not in the name cell (whose accessible name is the type name). */}
+        {!removed && t.frequency !== "as_needed" && t.registrationKind && !activeKinds.includes(t.registrationKind) && (
+          <span className="block text-[12.5px] text-ink-2">No active {t.registrationKind === "gstin" ? "GSTIN" : "TAN"} — nothing expected</span>
+        )}
       </td>
       <td className="px-3 py-2.5">
         <Switch checked={t.reminders} label={`Reminders for ${t.name}`}

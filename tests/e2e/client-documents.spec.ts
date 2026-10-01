@@ -46,7 +46,7 @@ test("AC-10: Documents tab groups by group → type → period with FY and group
   await signIn(page, staff.email, baseURL);
   await page.goto(`/clients/${clientId}`);
   const tabs = page.getByRole("navigation", { name: "Client sections" });
-  await expect(tabs.getByRole("link", { name: "Settings" })).toHaveAttribute("aria-current", "page"); // still the default
+  await expect(tabs.getByRole("link", { name: /Documents/ })).toHaveAttribute("aria-current", "page"); // 04 AC-14: Documents is the default client tab; Settings is ?tab=settings (Raja 2026-10-01, option A)
   await tabs.getByRole("link", { name: /Documents\s*2/ }).click();
   await expect(tabs.getByRole("link", { name: /Documents/ })).toHaveAttribute("aria-current", "page");
 

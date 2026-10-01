@@ -9,8 +9,8 @@ import { PAGE_SIZE } from "@/lib/validation/client-search";
 import { Button } from "@/components/ui";
 import { ClientsView } from "./clients-view";
 
-type Filters = { query: string; clientType: string; inchargeId: string; includeArchived: boolean; page: number };
-const EMPTY: Filters = { query: "", clientType: "", inchargeId: "", includeArchived: false, page: 1 };
+type Filters = { query: string; clientType: string; inchargeId: string; includeArchived: boolean; hasOverdue: boolean; page: number };
+const EMPTY: Filters = { query: "", clientType: "", inchargeId: "", includeArchived: false, hasOverdue: false, page: 1 };
 
 const control = "h-9 rounded-full border border-line-2 bg-panel px-3 text-[13.5px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft";
 
@@ -31,7 +31,7 @@ export function ClientsBrowser({ initial, staff, canAdd }: { initial: ClientSear
     start(async () => {
       const r = await searchClients({
         query: f.query, clientType: f.clientType || null, inchargeId: f.inchargeId || null,
-        includeArchived: f.includeArchived, page: f.page,
+        includeArchived: f.includeArchived, hasOverdue: f.hasOverdue, page: f.page,
       });
       if (id !== requestId.current) return; // a newer search has started
       if (r.ok) { setData(r); setError(null); } else setError(r.error);
@@ -46,7 +46,7 @@ export function ClientsBrowser({ initial, staff, canAdd }: { initial: ClientSear
   }, [filters]);
 
   const set = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, page: 1, ...patch }));
-  const filtered = !!(filters.query.trim() || filters.clientType || filters.inchargeId || filters.includeArchived);
+  const filtered = !!(filters.query.trim() || filters.clientType || filters.inchargeId || filters.includeArchived || filters.hasOverdue);
   const pages = Math.max(1, Math.ceil(data.matched / PAGE_SIZE));
 
   const toolbar = (
@@ -70,6 +70,9 @@ export function ClientsBrowser({ initial, staff, canAdd }: { initial: ClientSear
         <input type="checkbox" checked={filters.includeArchived} onChange={(e) => set({ includeArchived: e.target.checked })} className="h-4 w-4 accent-accent" />
         Show archived
       </label>
+      {/* 04 AC-15: a toggle chip; its state goes to the server action like the other filters, never the URL. */}
+      <button type="button" aria-pressed={filters.hasOverdue} onClick={() => set({ hasOverdue: !filters.hasOverdue })}
+        className={`${control} font-medium ${filters.hasOverdue ? "border-bad bg-bad-soft text-bad" : ""}`}>Has overdue</button>
       {filtered && <Button type="button" size="sm" variant="secondary" onClick={() => setFilters(EMPTY)}>Clear</Button>}
       <span role="status" aria-live="polite" className="sr-only">
         {pending ? "Searching…" : `${data.matched} ${data.matched === 1 ? "client" : "clients"} found`}

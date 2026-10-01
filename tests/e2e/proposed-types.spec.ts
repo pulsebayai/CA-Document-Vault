@@ -57,7 +57,7 @@ test("AC-16: Staff don't get the approval panel", async ({ page, baseURL }) => {
 
 test("AC-15: Client › Settings shows the proposed type in its own group, badged 'Proposed'", async ({ page, baseURL }) => {
   await signIn(page, staff.email, baseURL);
-  await page.goto(`/clients/${clientId}`);
+  await page.goto(`/clients/${clientId}?tab=settings`); // 04 AC-14: Documents is the default client tab; Settings is ?tab=settings (Raja 2026-10-01, option A)
   const banking = page.getByRole("region", { name: "Banking", exact: true });
   await expect(banking).toContainText("Locker rent receipt");
   await expect(banking).toContainText("Proposed");

@@ -13,6 +13,7 @@ import {
 } from "@/lib/validation/document";
 import { Button, Card } from "@/components/ui";
 import { putFile } from "@/lib/documents/upload-client";
+import type { Prefill } from "@/lib/expected/prefill";
 
 // Add document (mockup 12, spec AC-1 … AC-5, AC-15). The file uploads straight to private Storage as soon as it
 // is chosen (signed URL from the server), so "Save" is usually instant. ≤ 3 clicks after choosing the file when
@@ -28,6 +29,8 @@ type Props = {
   returnTo: string;
   /** Assign (Inbox) / edit: the same form for an existing document — no file here (new versions: document page). */
   existing?: DocumentForForm;
+  /** From an expected row's "Upload" (04 AC-8): type, period and registration chosen already (validated server-side). */
+  prefill?: Prefill | null;
 };
 
 type Upload =
@@ -44,7 +47,7 @@ const control = "w-full rounded-[9px] border border-line-2 bg-panel px-3 py-2 ou
 const noSubscribe = () => () => {};
 const kb = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
-export function DocumentForm({ initialClient, initialTypes, periods, groups, today, canPropose, returnTo, existing }: Props) {
+export function DocumentForm({ initialClient, initialTypes, periods, groups, today, canPropose, returnTo, existing, prefill }: Props) {
   const router = useRouter();
   const uid = useId();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -57,13 +60,19 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
 
   // Fields
   const existingPeriod = existing?.periodId ? periods.find((p) => p.id === existing.periodId) : undefined;
+  const prefillType = !existing && prefill ? [...initialTypes.planTypes, ...initialTypes.otherTypes].find((t) => t.id === prefill.docTypeId) : undefined;
+  const prefillDefault = prefillType ? defaultPeriod(prefillType.frequency, today) : null;
+  const initialPeriod = existingPeriod ?? (prefillType
+    ? periods.find((p) => p.id === prefill!.periodId)
+      ?? (prefillDefault ? periods.find((p) => p.kind === prefillDefault.kind && p.code === prefillDefault.code) : undefined)
+    : undefined);
   const [receivedAs, setReceivedAs] = useState<ReceivedAs>(existing?.receivedAs ?? "soft_copy");
   const [client, setClient] = useState<ClientOption | null>(existing ? existing.client : initialClient);
   const [types, setTypes] = useState<ClientTypes>(initialTypes);
-  const [docTypeId, setDocTypeId] = useState(existing?.docTypeId ?? "");
-  const [periodChoice, setPeriodChoice] = useState<PeriodChoice>(existingPeriod?.kind ?? "none");
-  const [periodId, setPeriodId] = useState(existingPeriod?.id ?? "");
-  const [registrationId, setRegistrationId] = useState(existing?.registrationId ?? "");
+  const [docTypeId, setDocTypeId] = useState(existing?.docTypeId ?? prefillType?.id ?? "");
+  const [periodChoice, setPeriodChoice] = useState<PeriodChoice>(initialPeriod?.kind ?? "none");
+  const [periodId, setPeriodId] = useState(initialPeriod?.id ?? "");
+  const [registrationId, setRegistrationId] = useState(existing?.registrationId ?? (prefillType ? prefill!.registrationId : ""));
   const [channel, setChannel] = useState<Channel>((existing?.channel as Channel) ?? "whatsapp");
   const [receivedOn, setReceivedOn] = useState(existing?.receivedOn ?? today);
   const [remark, setRemark] = useState(existing?.remark ?? "");
@@ -239,7 +248,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     });
     setSaving(null);
     if (!r.ok) { setError(r.error); setFieldErrors(r.fieldErrors); return; }
-    router.push(`${returnTo}?saved=${encodeURIComponent(r.docCode)}`); // AC-4: back where the user came from
+    router.push(`${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=${encodeURIComponent(r.docCode)}`); // AC-4: back where the user came from
   }
 
   const busy = saving !== null;

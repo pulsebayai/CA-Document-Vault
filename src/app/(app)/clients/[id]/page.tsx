@@ -7,15 +7,17 @@ import { getClient } from "@/lib/clients/queries";
 import { CLIENT_TYPE_LABEL } from "@/lib/validation/client";
 import { getClientPlan } from "@/lib/plan/queries";
 import { countClientDocuments, listClientDocuments } from "@/lib/documents/queries";
-import { fyCodeOf, istDate } from "@/lib/documents/period";
+import { fyCodeOf } from "@/lib/documents/period";
 import { DocumentsView } from "./documents-view";
+import { listClientExpected, listFinancialYears, listPlanGroups } from "@/lib/expected/queries";
+import { ExpectedView } from "./expected-view";
 import { Card } from "@/components/ui";
 import { ArchiveControls } from "./archive-controls";
 import { PlanView } from "./plan-view";
 
 /**
- * Client page (mockup 11, spec AC-18): header, tabs, the collection plan (Settings tab) and the client card.
- * In 02 only Settings exists; Documents / Expected / Activity arrive with 03 / 04 / 08 (no dead tabs).
+ * Client page (mockups 10–11; 02 AC-18, 03 AC-10, 04 AC-13/14): header and tabs Documents (default, 04 AC-14) ·
+ * Expected · Settings (the collection plan and the client card). Activity arrives with 08 (no dead tabs).
  * RLS returns nothing for a client a Limited user can't see → Not Found (AC-12).
  */
 export default async function ClientPage({ params, searchParams }: PageProps<"/clients/[id]">) {
@@ -27,12 +29,16 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   if (!z.uuid().safeParse(id).success) notFound();
   const c = await getClient(id);
   if (!c) notFound();
-  // AC-10: Documents is a second tab; Settings stays the default until 04 (spec "Existing code affected").
-  const tab = sp.tab === "documents" ? "documents" : "settings";
-  const [plan, docCount, documents] = await Promise.all([
+  // 04 AC-14: Documents is the default tab (?tab=documents still works for 03's links); Settings is ?tab=settings.
+  // 04 AC-13: Expected, with the open count (Due + Overdue, every FY) on the tab, whichever tab is shown.
+  const tab = sp.tab === "settings" ? "settings" : sp.tab === "expected" ? "expected" : "documents";
+  const [plan, docCount, documents, expected, fys, planGroups] = await Promise.all([
     tab === "settings" ? getClientPlan(c.id) : null,
     countClientDocuments(c.id),
     tab === "documents" ? listClientDocuments(c.id) : [],
+    listClientExpected(me.officeId, c.id, { status: "all" }),
+    tab !== "settings" ? listFinancialYears() : [],
+    tab === "documents" ? listPlanGroups(c.id) : [],
   ]);
   const gstins = c.registrations.filter((r) => r.kind === "gstin");
   const tans = c.registrations.filter((r) => r.kind === "tan");
@@ -70,11 +76,13 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
 
       <nav aria-label="Client sections" className="border-b border-line">
         <ul className="flex gap-1">
-          {([["documents", `Documents`, `/clients/${c.id}?tab=documents`], ["settings", "Settings", `/clients/${c.id}`]] as const).map(([key, label, href]) => (
+          {([["documents", `Documents`, `/clients/${c.id}`], ["expected", "Expected", `/clients/${c.id}?tab=expected`],
+            ["settings", "Settings", `/clients/${c.id}?tab=settings`]] as const).map(([key, label, href]) => (
             <li key={key}>
               <Link href={href} aria-current={tab === key ? "page" : undefined}
                 className={`-mb-px inline-block border-b-2 px-3 py-2 text-[14px] ${tab === key ? "border-ink font-medium" : "border-transparent text-ink-2 hover:text-ink"}`}>
                 {label}{key === "documents" && <span className="ml-1 text-ink-3">{docCount}</span>}
+                {key === "expected" && <span className="ml-1 text-ink-3">{expected.open}</span>}
               </Link>
             </li>
           ))}
@@ -84,13 +92,22 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       {tab === "documents" ? (
         <div>
           <h2 className="sr-only">Documents</h2>
-          <DocumentsView clientId={c.id} documents={documents} currentFy={fyCodeOf(istDate())} />
+          <DocumentsView clientId={c.id} documents={documents} currentFy={fyCodeOf(expected.today)}
+            expected={expected.items} planGroups={planGroups} fys={fys} canUpload={!c.archived} />
+        </div>
+      ) : tab === "expected" ? (
+        <div>
+          <h2 className="sr-only">Expected documents</h2>
+          <ExpectedView clientId={c.id} items={expected.items} fys={fys}
+            currentFyId={fys.find((f) => f.code === fyCodeOf(expected.today))?.id ?? null}
+            perms={{ canAct: !c.archived, canWaive: me.role !== "limited" && !c.archived, canUndo: canManage }} />
         </div>
       ) : (
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div>
           <h2 className="sr-only">Collection plan</h2>
           <PlanView clientId={c.id} plan={plan!} inchargeId={c.inchargeId} canEdit={canEdit} canManage={canManage}
+            activeKinds={[...new Set(c.registrations.map((r) => r.kind))]}
             note={me.role === "limited" ? "You can view this plan. Staff and above can change it." : undefined} />
         </div>
         <div className="space-y-5">

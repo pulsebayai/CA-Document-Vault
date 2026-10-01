@@ -63,11 +63,21 @@ describe("enable a group (AC-19)", () => {
     expect(plan.every((p) => p.state === "active" && p.assigned_staff_id === null)).toBe(true);
   });
 
-  it("copies the master's frequency, offsets and reminders, and starts at the current period", async () => {
+  // Start period rule changed by 04 AC-3 (Raja 2026-09-30): the earliest period whose overdue-from date is
+  // still ahead (Sales: 5th of the next month) — the previous month on the 1st–4th, otherwise the current one.
+  it("copies the master's frequency, offsets and reminders, and starts at the earliest still-open period (04 AC-3)", async () => {
     const sales = await byName("Sales invoices / sales register");
     expect(sales).toMatchObject({ frequency: "monthly", ask_after_months: 1, ask_day: 1, overdue_after_months: 1, overdue_day: 5, reminders: true });
     const { data: period } = await adminClient().from("period").select("code").eq("id", sales.start_period_id!).single();
-    expect(period?.code).toBe(currentPeriodCodes().month);
+    const { data: months } = await adminClient().from("period").select("code, end_date")
+      .eq("office_id", officeId).eq("kind", "month").order("start_date");
+    const todayIst = new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10);
+    const overdueFrom = (end: string) => { // 5th of the month after the period's end
+      const [y, m] = end.split("-").map(Number);
+      return `${m === 12 ? y + 1 : y}-${String(m === 12 ? 1 : m + 1).padStart(2, "0")}-05`;
+    };
+    const open = (months ?? []).find((p) => overdueFrom(p.end_date as string) > todayIst);
+    expect(period?.code).toBe(open?.code ?? currentPeriodCodes().month);
     const notice = await byName("GST notice / order received");
     expect(notice.frequency).toBe("as_needed");
     expect(notice.start_period_id).toBeNull();
