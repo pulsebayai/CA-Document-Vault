@@ -37,3 +37,8 @@ Rule: build screens to match the mockup (layout, components, copy, tokens) **exc
 | Brand "Sharma & Co" | "Kushal Associates" · Pondicherry | 2026-09-25 |
 | Warning token --warn #B0611A (4.06:1 on --warn-soft) | Darkened to #9C5717 (WCAG AA) | 2026-09-28 (03) |
 | Header at phone width | ≤ 390 px: nav scrolls sideways, office name hidden below md, "Add document" shows as "+" (with accessible name) | 2026-09-28 (03) |
+| 10 Client › Documents: card header "GST · Priya · Monthly · 14 documents" | "N open · N documents"; the assignee shows on Expected rows and in Settings | 2026-10-01 (04) |
+| 10: "Due today" as orange text; Remind / Mark received / review states | "Overdue" / "Due today" / "Due" badges + "Not received · …" text; Remind (06) and review/dispatch states (07) come later | 2026-10-01 (04) |
+| 10: "10 more · Show all" | At most 5 open rows per card, then "N more open · Show all on Expected" | 2026-10-01 (04) |
+| 03 Clients: "1 overdue · reminders off"; active chip dark with × | "N overdue · N due today" (reminders text with 06); "Has overdue" is a toggle chip (pressed state, cleared by Clear) | 2026-10-01 (04) |
+| (no mockup) Client › Expected tab, Settings › Collection | Built from the design tokens and existing card/table patterns (04 AC-13, AC-16) | 2026-10-01 (04) |

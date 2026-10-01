@@ -170,7 +170,12 @@ test("AC-14: Documents is the default tab; each card lists open items first (Ove
   const gst = outstanding(page, "GST");
   await expect(gst.first()).toContainText("Not received · 30 days late");
   await expect(gst.first()).toContainText("Overdue");
-  await expect(gst.filter({ hasText: `${T.sales} · Jun 2026 · ${g1}` })).toContainText("Not received · Due today");
+  // Capped at 5 rows (mockup 10's "N more · Show all"); the rest are on the Expected tab.
+  const gstOpen = (await expectedFor(clientId)).filter((e) => e.status === "pending" && e.doc_type.name !== T.bank).length;
+  expect(gstOpen).toBeGreaterThan(5);
+  await expect(gst).toHaveCount(5);
+  await expect(page.getByText(`${gstOpen - 5} more open`)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Show all on Expected" })).toHaveAttribute("href", `/clients/${clientId}?tab=expected`);
   // The document filed in the Upload test is listed below the open rows (03's list, unchanged).
   await expect(page.getByRole("list", { name: "GST documents" }).getByRole("listitem")).toHaveCount(1);
   const bank = outstanding(page, "Banking");

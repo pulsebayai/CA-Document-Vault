@@ -64,9 +64,9 @@ Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 
 - [x] 6. **Documents cards** open rows + "All caught up" + Documents default tab + plan-row registration note — proof: e2e (1)
 - [x] 7. **Clients list** overdue text + "Has overdue" chip (not in URL) — proof: e2e + unit (0.5)
 - [x] 8. **Settings › Collection** (Admin/Manager; Staff/Limited get no item, and Not Found on the URL) — proof: e2e + RLS (0.5)
-- [ ] 9. **Job check** (the volume part is deferred, Raja 2026-09-29): a `RUN_SLOW` test asserts today's `expected.generated` row on the real dev office (nightly). Proof: a RUN_SLOW dispatch. (0.5)
+- [x] 9. **Job check** (the volume part is deferred, Raja 2026-09-29): a `RUN_SLOW` test asserts today's `expected.generated` row on the real dev office (nightly). Proof: a RUN_SLOW dispatch. (0.5)
   - **Deferred to the volume test after all R1 features:** about 180k items, the job < 60 s, screen queries < 1 s, a save adding < 50 ms.
-- [ ] 10. States + a11y (axe on Expected tab, Collection) + ≤ 390 px + screenshots vs mockups 03/10 — proof: e2e evidence (0.5)
+- [x] 10. States + a11y (axe on Expected tab, Collection) + ≤ 390 px + screenshots vs mockups 03/10 — proof: e2e evidence (0.5)
 - [ ] 11. architecture.md (5 changes + decision log) · `verifier` → `sdlc-reviewer` → fix Important → PR with AC → test → result table — proof: CI green, evidence with all suites [PR review: 1–2 h]
 - (Not a build step) **Plan fidelity (success metric 2)** is checked on staging/pilot with 5 clients, and goes on the R1 checklist.
 
@@ -234,6 +234,15 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - Empty state ("Nothing has fallen due yet …") when nothing fell due in the window. This branch has no e2e case (it would need another fixture office); the condition is just `due === 0`.
   - Tests: unit `onTimePct`/`pctText`; e2e `collection.spec.ts` 4/4 (Manager figures 50% / 1 / 0 / 1 / overdue now 3 + Banking row + axe + 390 px; Admin; Staff and Limited Not Found). `catalogue.spec` and `users.spec` still green. Unit 233/233.
 - Step 9: `expected-perf.test.ts` (RUN_SLOW) passes locally against dev (the real office's 00:15 IST run is present). Proof dispatch pending.
-- **Cadence change (proposed to Raja 11:26):** verify each step locally, back it up with `[skip ci]` pushes, then one full CI run after step 10 and the final CI + RUN_SLOW Regression at step 11. CLAUDE.md requires a full green run only on the last commit before merge.
+- **Step 9 done:** Regression quick check on this branch, `only=expected-perf` with RUN_SLOW: run **36822555253 green** (the real dev office's 00:15 IST `expected.generated` row was found).
+- **Step 10 done:**
+  - New `tests/e2e/expected-screenshots.spec.ts`: Documents cards (mockup 10), Expected tab, Clients with overdue (mockup 03) and Collection, at desktop and 390 px, with axe on each. Screenshots go to `test-results/screenshots/` (CI evidence).
+  - Compared by eye with mockups 03 and 10: same pattern. Deviations recorded in `ui-reference.md` (5 rows).
+  - **Found and fixed:** at 390 px the Collection table scroll area wasn't keyboard-focusable (axe `scrollable-region-focusable`). It's now a focusable, named region.
+  - **Added:** each Documents card shows at most 5 open rows, then "N more open · Show all on Expected" (mockup 10's "10 more · Show all"). The AC-14 e2e test now checks the cap and the link instead of a Due-today row that is now past the cap; Due today stays covered on the Expected tab (AC-13 test).
+  - Loading/error states: the route-level `clients/[id]` loading/error cover the Expected tab; Collection has its own.
+  - Local: unit 233/233; e2e expected (9), expected-screenshots, client-documents, document-screenshots, collection all green.
+- **Cadence (approved by Raja 11:30):** verify each step locally, back it up with `[skip ci]` pushes, then one full CI run after step 10 and the final CI + RUN_SLOW Regression at step 11. CLAUDE.md requires a full green run only on the last commit before merge.
 - Decisions made (cross-cutting → flag for architecture.md): none new.
+- Next step: the combined CI run for steps 8–10 (this push), then step 11: architecture.md (5 approved changes + D-items + decision log), the CLAUDE.md RUN_SLOW-before-merge rule, `verifier` → `sdlc-reviewer` → fix Important findings → final CI + full RUN_SLOW Regression on the branch → PR with the AC → test → result table.
 

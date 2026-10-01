@@ -13,6 +13,9 @@ import { itemLabel, uploadHref } from "./expected-view";
 // (Overdue, then Due, with Upload), then the received documents; a collected group with nothing open and no
 // documents says "All caught up". Waive / Reopen / Undo live on the Expected tab.
 
+/** Mockup 10 caps a card ("10 more · Show all"); the rest are one click away on the Expected tab. */
+export const CARD_OPEN_LIMIT = 5;
+
 const day = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 
 type Props = {
@@ -91,9 +94,17 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
                   </span>
                 </header>
                 {g.open.length > 0 && (
-                  <ul aria-label={`${g.name} outstanding`} className="divide-y divide-line border-b border-line">
-                    {g.open.map((i) => <OpenRow key={i.id} clientId={clientId} item={i} canUpload={canUpload} />)}
-                  </ul>
+                  <div className="border-b border-line">
+                    <ul aria-label={`${g.name} outstanding`} className="divide-y divide-line">
+                      {g.open.slice(0, CARD_OPEN_LIMIT).map((i) => <OpenRow key={i.id} clientId={clientId} item={i} canUpload={canUpload} />)}
+                    </ul>
+                    {g.open.length > CARD_OPEN_LIMIT && (
+                      <p className="border-t border-line px-5 py-2.5 text-[13.5px] text-ink-2">
+                        {g.open.length - CARD_OPEN_LIMIT} more open ·{" "}
+                        <Link href={`/clients/${clientId}?tab=expected`} className="font-medium text-accent hover:underline">Show all on Expected</Link>
+                      </p>
+                    )}
+                  </div>
                 )}
                 {g.docs.length > 0 && (
                   <ul aria-label={`${g.name} documents`} className="divide-y divide-line">

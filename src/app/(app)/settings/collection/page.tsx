@@ -54,7 +54,8 @@ export default async function CollectionPage() {
 
       {m.groups.length > 0 && (
         <Card>
-          <div className="relative overflow-x-auto">
+          {/* Scrolls sideways on a phone: focusable + named, so keyboard users can scroll it (axe scrollable-region-focusable). */}
+          <div className="relative overflow-x-auto" tabIndex={0} role="region" aria-label="On-time collection by group">
             <table className="w-full text-left text-[14px]">
               <caption className="sr-only">On-time collection by group, last {WINDOW_DAYS} days</caption>
               <thead className="text-[13px] text-ink-3">
