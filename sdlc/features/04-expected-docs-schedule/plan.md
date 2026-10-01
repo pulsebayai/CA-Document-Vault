@@ -210,6 +210,12 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - Unit: `openForCards` +2, suite 229/229.
   - e2e locally against dev: `expected.spec.ts` 8/8 (3 new: cards order + axe + 390 px; Upload from a card → received; caught-up + AC-5 note), and these, all green: client-documents, client-plan, proposed-types, client-edit, add-document, screenshots, document-screenshots, inbox.
   - Lint 0, typecheck 0, build 0.
-- Next step: step 7 (Clients list overdue text + "Has overdue" chip). This needs the D5 `search_clients` migration, so there's a SQL review gate.
+- **CI 36817885749 green** on 2b3ee24 (all jobs).
+- Step 7 (in progress):
+  - RLS tests written first: `tests/rls/expected-clients.test.ts`, 6 cases. Red for the right reasons: no `overdue`/`due_today` columns, and `p_has_overdue` unknown.
+  - Migration drafted: `supabase/migrations/20261001100000_clients_overdue.sql`. It drops and re-creates `search_clients` with `p_has_overdue` and the `overdue`/`due_today` columns; same body, invoker, `search_path = ''` and grants as before.
+  - Dry-run on dev inside a rolled-back transaction, as the fixture Staff user: counts match the screens' rules, and 03b's call shape still works.
+  - App code and unit/e2e tests written, not yet pushed.
+  - **Waiting: Raja's SQL review.**
 - Decisions made (cross-cutting → flag for architecture.md): none new.
 
