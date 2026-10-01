@@ -1,5 +1,5 @@
 # Spec: Review & dispatch
-Intent: ./intent.md · Status: draft · Date: 2026-10-01
+Intent: ./intent.md · Status: approved (Raja 2026-10-01) · Date: 2026-10-01
 Screens:
 - `references/mockup/10-client-documents.jpg`: row states "To review" / "Reviewed" / "Ready to dispatch" / "Dispatched", "reviewed <date> by <name>", **Mark dispatched**.
 - `references/mockup/01-today.jpg`: **Mark reviewed** / **Mark dispatched** wording. The Today screen itself, its counts and its rows are 06.
@@ -172,7 +172,7 @@ All new tests join the regression suite. Smoke-safe for prod: none (all need sig
 ## Out of scope
 Today counts and rows (06) · bulk mark reviewed (08) · acknowledgement emails · courier integrations and labels · reviewer assignment and queues · per-type checklists · the "Scanned" badge · a "held too long" warning.
 
-## Decisions needed at this gate (my recommendation first)
+## Decisions (Raja 2026-10-01: all six approved as recommended)
 1. **Review and dispatch are separate dimensions** (status = review only; dispatch = packet), not one status list. Recommend **yes**. One list would lose "needs correction" when a wrong original is dispatched, and 04 would count it as received.
 2. **What resets a review** (AC-4): a new version, or a client/type/period/registration change. Recommend **yes, both**.
 3. **A corrected version replaces received on** (Needs-correction documents only, default today, editable). Recommend **yes**: it makes metric 1 honest. The alternative keeps the old date and overstates on-time completeness.
