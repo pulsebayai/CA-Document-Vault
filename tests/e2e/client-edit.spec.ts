@@ -57,7 +57,7 @@ test("AC-8, AC-9, AC-23: staff adds a client with a GSTIN and a group; the vault
   expect(await seriousAxe(page)).toEqual([]);
   await page.getByRole("button", { name: "Add client" }).click();
 
-  await expect(page).toHaveURL(/\/clients\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/clients\/[0-9a-f-]{36}\?tab=settings$/); // 04 AC-14: client details live on ?tab=settings (Raja 2026-10-01, option A)
   expect(page.url()).not.toContain(pan);
   await expect(page.getByRole("heading", { name: "Adyar Agencies" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText(/C\d{4}/);
@@ -65,7 +65,7 @@ test("AC-8, AC-9, AC-23: staff adds a client with a GSTIN and a group; the vault
   await expect(page.getByText("GST", { exact: true })).toBeVisible();
   expect(await seriousAxe(page)).toEqual([]);
 
-  const id = page.url().split("/").pop()!;
+  const id = new URL(page.url()).pathname.split("/").pop()!;
   const { data: log } = await adminClient().from("activity").select("action, data").eq("entity_id", id);
   expect(log?.map((l) => l.action)).toEqual(["client.created"]);
   expect(JSON.stringify(log)).not.toContain(pan);
@@ -82,7 +82,7 @@ test("AC-10, AC-11: staff edit but can't change incharge or archive; a manager a
   await expect(sp.getByLabel("Incharge")).toBeDisabled();
   await sp.getByLabel("Email").fill("owner@example.test");
   await sp.getByRole("button", { name: "Save changes" }).click();
-  await expect(sp).toHaveURL(new RegExp(`/clients/${editId}$`));
+  await expect(sp).toHaveURL(new RegExp(`/clients/${editId}\\?tab=settings$`)); // 04 AC-14: client details live on ?tab=settings (Raja 2026-10-01, option A)
   await expect(sp.getByText("owner@example.test", { exact: true })).toBeVisible();
   await staffCtx.close();
 

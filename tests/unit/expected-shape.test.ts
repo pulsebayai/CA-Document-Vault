@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  expectedErrorMessage, matchesStatus, officeToday, openCount, repeatedKinds, sortItems, toItem, type RawExpected,
+  expectedErrorMessage, matchesStatus, officeToday, openCount, openForCards, repeatedKinds, sortItems, toItem, type RawExpected,
 } from "@/lib/expected/shape";
 
 // Feature 04 step 4 — shaping for the Expected tab / Documents cards (AC-13, AC-14) and the waive / undo / reopen
@@ -153,5 +153,27 @@ describe("actions", () => {
     expect(event).toBe("expected.waive_failed");
     expect(Object.keys(detail as object).sort()).toEqual(["code", "requestId"]);
     expect(JSON.stringify(log.mock.calls)).not.toMatch(/Sharma/);
+  });
+});
+
+describe("openForCards (AC-14: Documents cards)", () => {
+  const fyCode = (id: string) => ({ fy26: "2025-26", fy27: "2026-27" } as Record<string, string>)[id] ?? "";
+  const at = (id: string, over: Partial<RawExpected>, today = "2026-10-20") => ({ ...toItem(raw({ id, ...over }), today, none) });
+  const items = [
+    at("due", { overdue_from: "2026-10-25" }),
+    at("late3", { overdue_from: "2026-10-18" }),
+    at("late10", { overdue_from: "2026-10-11" }),
+    at("today", { overdue_from: "2026-10-21" }),
+    at("old", { overdue_from: "2026-06-10", period: { id: "p0", code: "2025-26", label: "FY 2025-26", start_date: "2025-04-01", financial_year_id: "fy26" } }),
+    at("recv", { status: "received", received_on: "2026-10-02" }),
+    at("hold", { row: { state: "paused", assigned: null, group: { state: "active", assigned: null } } }),
+  ];
+
+  it("Overdue (most days late first), then Due today, then Due; received and on-hold items are left out", () => {
+    expect(openForCards(items, fyCode, "2026-27", "2026-27").map((i) => i.id)).toEqual(["old", "late10", "late3", "today", "due"]);
+  });
+
+  it("the current FY also shows still-open items of earlier FYs; a past FY shows only its own", () => {
+    expect(openForCards(items, fyCode, "2025-26", "2026-27").map((i) => i.id)).toEqual(["old"]);
   });
 });

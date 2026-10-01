@@ -22,7 +22,7 @@ export default async function EditClientPage({ params }: PageProps<"/clients/[id
     <div className="mx-auto max-w-[760px]">
       <PageHeader title={`Edit ${client.name}`} subtitle={`Client code ${client.code}`} />
       <ClientForm action={updateClientAction} staff={options} client={client} defaultInchargeId={client.inchargeId}
-        canChangeIncharge={canManageCatalogue(me.role)} cancelHref={`/clients/${id}`} />
+        canChangeIncharge={canManageCatalogue(me.role)} cancelHref={`/clients/${id}?tab=settings`} />
     </div>
   );
 }

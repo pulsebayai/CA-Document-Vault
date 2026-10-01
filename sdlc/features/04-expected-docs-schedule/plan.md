@@ -61,7 +61,7 @@ Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 
 - [x] 3. `schedule.ts` + derived state — proof: unit tests red → green; the TS dates equal the SQL dates for a table of cases (0.5)
 - [x] 4. `src/lib/expected` queries + actions (waive/undo/reopen with friendly errors) — proof: RLS tests via actions' RPCs + unit (0.5)
 - [x] 5. **Client › Expected tab** + Waive modal + Reopen/Undo + Upload → Add document pre-fill (type/period/registration) → linked on save — proof: e2e (staff waives; limited can't; manager undoes; upload links and the item flips to Received) (1.5)
-- [ ] 6. **Documents cards** open rows + "All caught up" + Documents default tab + plan-row registration note — proof: e2e (1)
+- [x] 6. **Documents cards** open rows + "All caught up" + Documents default tab + plan-row registration note — proof: e2e (1)
 - [ ] 7. **Clients list** overdue text + "Has overdue" chip (not in URL) — proof: e2e + unit (0.5)
 - [ ] 8. **Settings › Collection** (Admin/Manager; Staff/Limited get no item, and Not Found on the URL) — proof: e2e + RLS (0.5)
 - [ ] 9. **Job check** (the volume part is deferred, Raja 2026-09-29): a `RUN_SLOW` test asserts today's `expected.generated` row on the real dev office (nightly). Proof: a RUN_SLOW dispatch. (0.5)
@@ -122,6 +122,11 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - `src/components/dialog.tsx`: shared `Modal` gains an optional `triggerLabel` (the trigger's accessible name; default stays the title), so "Waive <type · period>" is distinct per row while the dialog title asks "Not needed for <type · period>?". Additive; existing callers unchanged.
   - Add document's `safeReturn` also accepts `/clients/<id>?tab=expected`, and the form appends `saved=` with `&` when the return path already has a query. Pre-fill validation lives in `src/lib/expected/prefill.ts` (type the client can file, period kind allowed for the type, the client's own registration of the type's kind; otherwise dropped → the form's normal defaults).
   - The client page loads the client's expected items on every tab (the tab count). Measured in the deferred volume test with the other screen timings.
+
+- **Step 6 — Documents default tab: existing e2e tests changed (Raja 2026-10-01 10:15, option A).** AC-14 makes Documents the default client tab; Settings is now `?tab=settings` (`?tab=documents` still works for 03's links). Tests that opened the bare client page for Settings content now open `?tab=settings`: `client-plan.spec.ts` (2), `proposed-types.spec.ts` (1), `screenshots.spec.ts` (2). `client-documents.spec.ts:49` now asserts Documents is the default (was "Settings still the default"). No assertion was removed or loosened.
+  - **Same principle, beyond the list shown at approval:** Add client and Edit client now redirect to `?tab=settings` (the details card and plan are there; Documents would show an empty client), and Edit's Cancel goes there too. So `client-edit.spec.ts` checks the new URL in 2 places (`…?tab=settings$`), and the id is read from the URL path. Its assertions on the details card are unchanged.
+  - **Cards and FY:** viewing the current FY, a card also shows still-open items from earlier FYs (they're owed now); a past FY shows only its own. Cards = the client's collected groups + any group with documents or open items. A collected group with nothing open and no documents says "All caught up for FY …". With no cards at all, 03's empty state is unchanged.
+  - **AC-5 note placement:** "No active GSTIN/TAN — nothing expected" sits under the schedule in the Collected column, not in the name cell. In the name cell it changed the cell's accessible name, which broke `client-plan.spec.ts:57` (caught locally, fixed in the code; the test is unchanged).
 
 ## Session log
 ### 2026-09-29
@@ -193,4 +198,18 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
 - Blocked / failing: —. Watch: an interrupted e2e set-up left an orphan auth user (`createStaff` creates the auth user and the staff row in two steps); repaired by inserting its staff row. Not 04's code; noted in the handoff.
 - Next step: step 6 — Documents cards open rows + "All caught up" + Documents as the default tab + plan-row registration note. **Needs Raja's OK first:** 03's `client-documents.spec.ts:49` asserts Settings is the default tab (`// still the default`); AC-14 (approved) makes Documents the default, so that one assertion must change with the spec (same pattern as `plan.test.ts:70`).
 - Decisions made (cross-cutting → flag for architecture.md): — (`Modal.triggerLabel` is a component detail, not architecture).
+
+### 2026-10-01 (10:15– IST)
+- Raja approved option A (Documents default; Settings → `?tab=settings`; the listed tests navigate there).
+- **Step 6 done:**
+  - Documents default tab.
+  - Group cards list open items first (Overdue by most days late, then Due today, then Due; "Not received · N days late", Overdue/Due badge, Upload back to Documents), then 03's documents list; "All caught up for FY …".
+  - Plan-row note for per-GSTIN/TAN rows without an active registration (AC-5).
+  - Code: `documents-view.tsx`, `openForCards` (shape.ts), `listPlanGroups`, `PlanType.registrationKind`, add/edit client redirects.
+- Tests:
+  - Unit: `openForCards` +2, suite 229/229.
+  - e2e locally against dev: `expected.spec.ts` 8/8 (3 new: cards order + axe + 390 px; Upload from a card → received; caught-up + AC-5 note), and these, all green: client-documents, client-plan, proposed-types, client-edit, add-document, screenshots, document-screenshots, inbox.
+  - Lint 0, typecheck 0, build 0.
+- Next step: step 7 (Clients list overdue text + "Has overdue" chip). This needs the D5 `search_clients` migration, so there's a SQL review gate.
+- Decisions made (cross-cutting → flag for architecture.md): none new.
 

@@ -131,3 +131,21 @@ export function expectedErrorMessage(message: string | undefined): string {
   if (/row-level security|permission denied/.test(m)) return "You don't have permission to do that.";
   return "Something went wrong. Please try again.";
 }
+
+const OPEN_RANK: Record<string, number> = { overdue: 0, due_today: 1, due: 2 };
+
+/**
+ * Client › Documents cards (AC-14): the open items to show for the chosen FY, Overdue first (most days late first),
+ * then Due today, then Due (soonest first). Viewing the current FY also shows items of earlier FYs that are still
+ * open — they are owed now; a past FY shows only its own.
+ */
+export function openForCards(items: ExpectedItem[], fyCodeOf: (fyId: string) => string, fy: string, currentFy: string): ExpectedItem[] {
+  const late = (i: ExpectedItem) => (i.state.kind === "overdue" ? i.state.daysLate : 0);
+  const dueBy = (i: ExpectedItem) => (i.state.kind === "due" || i.state.kind === "due_today" ? i.state.dueBy : "");
+  return items
+    .filter((i) => i.open && (fy === currentFy ? fyCodeOf(i.fyId) <= fy : fyCodeOf(i.fyId) === fy))
+    .sort((a, b) => (OPEN_RANK[a.state.kind] - OPEN_RANK[b.state.kind])
+      || late(b) - late(a)
+      || dueBy(a).localeCompare(dueBy(b))
+      || a.typeName.localeCompare(b.typeName));
+}

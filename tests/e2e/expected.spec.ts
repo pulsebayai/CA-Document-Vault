@@ -24,6 +24,7 @@ let clientId: string;
 let g1: string; // GSTIN numbers
 let g2: string;
 let g1Id: string;
+let caughtUpId: string; // GST collected, no GSTIN → nothing expected (AC-5, AC-14 "All caught up")
 
 test.beforeAll(async () => {
   test.setTimeout(120_000); // office reset + 4 fixture users + 2 generation runs, US runner → Mumbai DB
@@ -48,6 +49,11 @@ test.beforeAll(async () => {
   await generateAsOf(asAdmin, TODAY);
   const { data: regs } = await asStaff.from("client_registration").select("id, number").eq("client_id", clientId);
   g1Id = regs!.find((r) => r.number === g1)!.id;
+  const second = await asStaff.rpc("create_client", { p: {
+    name: "Caught Up Co", client_type: "individual", incharge_id: u.staff.id, group_ids: [await groupId(officeId, "GST")],
+  } });
+  if (second.error) throw second.error;
+  caughtUpId = second.data.id;
 });
 test.afterAll(async () => { await retireStaff(Object.values(u).map((x) => x.id)); });
 test.describe.configure({ mode: "serial" });
@@ -150,3 +156,60 @@ test("AC-8 + AC-11: Upload pre-fills Add document (0 choices); saving links it �
   await expect(row(page, "GST", label)).toContainText("Due today");
   expect((await expectedItem(clientId, T.sales, "2026-06", g1Id)).status).toBe("pending");
 });
+
+// ── Step 6: Client › Documents cards (AC-14), default tab, plan-row note (AC-5) ──────────────────────────────────
+const outstanding = (page: Page, group: string) => page.getByRole("list", { name: `${group} outstanding` }).getByRole("listitem");
+
+test("AC-14: Documents is the default tab; each card lists open items first (Overdue, most late first), then documents", async ({ page, baseURL }) => {
+  await signIn(page, u.staff.email, baseURL);
+  await page.goto(`/clients/${clientId}`);
+  const tabs = page.getByRole("navigation", { name: "Client sections" });
+  await expect(tabs.getByRole("link", { name: /^Documents/ })).toHaveAttribute("aria-current", "page");
+  await expect(tabs.getByRole("link", { name: "Settings" })).toHaveAttribute("href", `/clients/${clientId}?tab=settings`);
+
+  const gst = outstanding(page, "GST");
+  await expect(gst.first()).toContainText("Not received · 30 days late");
+  await expect(gst.first()).toContainText("Overdue");
+  await expect(gst.filter({ hasText: `${T.sales} · Jun 2026 · ${g1}` })).toContainText("Not received · Due today");
+  // The document filed in the Upload test is listed below the open rows (03's list, unchanged).
+  await expect(page.getByRole("list", { name: "GST documents" }).getByRole("listitem")).toHaveCount(1);
+  const bank = outstanding(page, "Banking");
+  await expect(bank).toHaveCount(2);
+  await expect(bank.nth(0)).toContainText(`${T.bank} · May 2026`);
+  await expect(bank.nth(0)).toContainText("Not received · 28 days late");
+  await expect(bank.nth(1)).toContainText("Not received · Due 6 Jul");
+  expect(await seriousAxe(page)).toEqual([]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test("AC-14 + AC-8: Upload from a card pre-fills, returns to Documents, and the item moves from open to received", async ({ page, baseURL }) => {
+  await signIn(page, u.staff.email, baseURL);
+  await page.goto(`/clients/${clientId}`);
+  const label = `${T.bank} · Jun 2026`;
+  await outstanding(page, "Banking").filter({ hasText: label }).getByRole("link", { name: `Upload ${label}` }).click();
+  await expect(page.getByRole("combobox", { name: "Month" }).locator("option:checked")).toHaveText("Jun 2026");
+  await page.locator('input[type="file"]').setInputFiles({ name: "Jun-2026-bank.pdf", mimeType: "application/pdf", buffer: TINY.pdf.bytes });
+  await expect(page.getByText("Uploaded", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Save to vault" }).click();
+  await page.waitForURL(new RegExp(`/clients/${clientId}\\?saved=`));
+  await expect(outstanding(page, "Banking")).toHaveCount(1);
+  await expect(page.getByRole("list", { name: "Banking documents" }).getByRole("listitem")).toContainText(label);
+  expect((await expectedItem(clientId, T.bank, "2026-06")).status).toBe("received");
+});
+
+test("AC-14 + AC-5: a collected group with nothing open and no documents is 'All caught up'; the plan row says why", async ({ page, baseURL }) => {
+  expect(await expectedFor(caughtUpId)).toEqual([]); // GST is per-GSTIN and this client has none
+  await signIn(page, u.staff.email, baseURL);
+  await page.goto(`/clients/${caughtUpId}`);
+  const card = page.getByRole("region", { name: "GST" });
+  await expect(card).toContainText("All caught up for FY 2026-27");
+  await expect(page.getByRole("list", { name: "GST outstanding" })).toHaveCount(0);
+  await expect(page.getByRole("navigation", { name: "Client sections" }).getByRole("link", { name: /^Expected/ })).toHaveText(/Expected\s*0$/);
+
+  await page.goto(`/clients/${caughtUpId}?tab=settings`);
+  const gstPlan = page.getByRole("region", { name: "GST", exact: true });
+  await expect(gstPlan.getByRole("row", { name: new RegExp(T.sales.replace(/[/]/g, "\\/")) })).toContainText("No active GSTIN — nothing expected");
+  await expect(gstPlan.getByRole("row", { name: /E-way bills/ })).not.toContainText("nothing expected"); // as needed: never expected anyway
+});
+

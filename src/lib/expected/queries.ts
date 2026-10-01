@@ -60,6 +60,16 @@ export async function openItemsByGroup(officeId: string, clientId: string): Prom
   return byGroup;
 }
 
+/** The client's collected groups (not removed), for the Documents cards (AC-14: a card per group, even when empty). */
+export async function listPlanGroups(clientId: string): Promise<Array<{ id: string; name: string; sort: number }>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("client_group").select("doc_group_id, state, doc_group(name, sort)")
+    .eq("client_id", clientId).neq("state", "removed");
+  if (error) fail("plan_groups", error.code);
+  return ((data ?? []) as unknown as Array<{ doc_group_id: string; doc_group: { name: string; sort: number } | null }>)
+    .filter((g) => g.doc_group).map((g) => ({ id: g.doc_group_id, name: g.doc_group!.name, sort: g.doc_group!.sort }));
+}
+
 /** Financial years of the office, newest first (Expected tab FY filter). */
 export async function listFinancialYears(): Promise<Array<{ id: string; code: string }>> {
   const supabase = await createClient();

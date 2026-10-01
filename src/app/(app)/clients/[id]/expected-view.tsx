@@ -38,10 +38,11 @@ const day = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", y
 
 export const itemLabel = (i: ExpectedItem) => `${i.typeName} · ${i.periodLabel}${i.registration ? ` · ${i.registration}` : ""}`;
 
-export function uploadHref(clientId: string, i: ExpectedItem): string {
+/** Add document for this item; `from` = where to come back to after saving (default: the Expected tab). */
+export function uploadHref(clientId: string, i: ExpectedItem, from = expectedTabPath(clientId)): string {
   const q = new URLSearchParams({ client: clientId, type: i.typeId, period: i.periodId });
   if (i.registrationId) q.set("registration", i.registrationId);
-  q.set("from", expectedTabPath(clientId));
+  q.set("from", from);
   return `/documents/new?${q.toString()}`;
 }
 
