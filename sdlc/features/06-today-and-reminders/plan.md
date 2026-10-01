@@ -62,7 +62,7 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
 - [x] 7. **Metric 2** on Settings › Collection. Proof: RLS (definition) + e2e. (0.5)
 - [ ] 8. **Real-send check on dev:** set `MAIL_TRANSPORT=brevo` + the dev key + `EMAIL_ALLOWLIST=<your address>` on the preview, then send one reminder to a test client whose email is your address. Proof: you receive it; From / Reply-To / content are checked; the follow-up shows Sent. (0.25) [you: 10 min]
 - [ ] 9. **After 07 merges:** merge main; migration 2 (`today_items` + documents); To review / Ready to dispatch rows using 07's `documentState()` and actions. Proof: RLS + e2e. (1)
-- [ ] 10. a11y (axe), ≤ 390 px, screenshots, ui-reference deviations. Proof: e2e evidence. (0.5)
+- [x] 10. a11y (axe), ≤ 390 px, screenshots, ui-reference deviations. Proof: e2e evidence. (0.5)
 - [ ] 11. **Timed check** (Staff role, preview): sign-in → find overdue → remind one client, ≤ 30 s. [you or a staff member: 10 min]
 - [ ] 12. architecture.md (lock) → full suite → `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. (0.5) [PR review: 1 h]
 
@@ -107,3 +107,11 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
 - Test-side fixes (never assertion changes): today.test.ts Charlie needed an email (setup error); follow-up.test.ts activity check scoped to this run's follow-ups (activity survives reset_test_office).
 - Next step: step 5 — Today screen, `/` + logo → `/today`, nav, and the **one labelled commit** for the post-sign-in assertions (decision 1a). Then step 6 dialogs.
 - Decisions made (cross-cutting → architecture.md in this PR, 06 holds the lock): D1 (definer write helpers behind invoker functions; ceiling via `p_daily_max`; stale pending → TIMEOUT); mailer core/transport split and the 3-block ESLint secrets fence (D3).
+
+### 2026-10-01 (build session 1, cont. ~20:40–23:40 IST)
+- Done: step 5 (Today, landing, nav, logo; labelled sign-in test commit f7ef2ac), step 6 (Remind + Log call dialogs on Today, Client › Documents expected rows and Client › Expected; row history; client Reminders list), step 7 (metric 2 on Settings › Collection), step 10 docs + screenshots (ui-reference deviations, today-screenshots.spec with axe at desktop + 390 px), architecture.md (lock holder) and README env vars. **CI green on c79d1dd (run 36899157203): 76 e2e passed**, unit + RLS green.
+- Fixed on the way: axe `scrollable-region-focusable` in the Remind dialog (preview and item list now focusable + named; run 36886467111).
+- In progress: step 8 — Raja adds the Preview-scope env vars (MAIL_TRANSPORT=brevo, dev BREVO_API_KEY, MAIL_FROM_EMAIL = the sign-in sender, MAIL_FROM_NAME, EMAIL_ALLOWLIST=davakrish1@gmail.com; APP_ENV unset), redeploys the PR preview, adds a test client with that email + Banking, presses Remind → Send email.
+- Blocked / failing: step 9 waits for 07 to merge. Watch: `client-plan.spec.ts` AC-18 (02) timed out at "Enable GST" in two runs today (failed twice on 36886467111 while 07's CI shared the dev DB; flaky-passed on 36899157203). 06 doesn't touch that screen; check the 2 Oct nightly.
+- Next step: step 8 result → step 9 after 07 merges (merge main, migration 2 for To review / Ready to dispatch + exact client count) → step 11 timed check → step 12 verifier + sdlc-reviewer → PR ready.
+- Decisions made: none new beyond D5/D6 (already in Deviations and architecture.md).
