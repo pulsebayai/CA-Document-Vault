@@ -27,7 +27,7 @@ export function Modal({ trigger, title, triggerVariant, triggerLabel, children }
   return (
     <>
       {triggerVariant === "link" ? (
-        <button type="button" className="text-[13.5px] font-medium text-accent hover:underline" onClick={() => setOpen(true)}>{trigger}</button>
+        <button type="button" aria-label={triggerLabel} className="text-[13.5px] font-medium text-accent hover:underline" onClick={() => setOpen(true)}>{trigger}</button>
       ) : (
         <Button size="sm" variant="secondary" aria-label={triggerLabel ?? title} onClick={() => setOpen(true)}>{trigger}</Button>
       )}

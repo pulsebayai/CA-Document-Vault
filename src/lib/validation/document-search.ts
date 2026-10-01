@@ -33,8 +33,20 @@ export const DOC_STATES = [
 ] as const;
 export type DocState = (typeof DOC_STATES)[number]["value"];
 
-export const DOC_STATUSES = [{ value: "received", label: "Received" }] as const; // 07 adds review/dispatch values
-export type DocStatus = (typeof DOC_STATUSES)[number]["value"];
+// 07: the review status. "received" keeps 03b's raw meaning in the database (it also matches Inbox documents);
+// the results page shows it as "To review" and pairs it with filed documents.
+export const DOC_STATUSES = [
+  { value: "received", label: "To review" },
+  { value: "reviewed", label: "Reviewed" },
+  { value: "needs_correction", label: "Needs correction" },
+] as const;export type DocStatus = (typeof DOC_STATUSES)[number]["value"];
+
+/** 07 AC-14: originals waiting to go back, or already sent (search_documents' `return` filter). */
+export const DOC_RETURNS = [
+  { value: "ready", label: "Ready to dispatch" },
+  { value: "dispatched", label: "Dispatched" },
+] as const;
+export type DocReturn = (typeof DOC_RETURNS)[number]["value"];
 
 export type DocumentFilters = {
   client: string | null;
@@ -50,6 +62,8 @@ export type DocumentFilters = {
   to: string | null;
   status: DocStatus | null;
   state: DocState | null;
+  /** 07: optional, so filters written before 07 (and their tests) keep their exact shape. */
+  return?: DocReturn;
   archived: boolean;
   sort: Sort;
   page: number;
@@ -62,7 +76,7 @@ export const DEFAULT_FILTERS: DocumentFilters = Object.freeze({
 
 /** URL keys in the order they are written. */
 const UUID_KEYS = ["client", "group", "type", "fy", "period", "registration"] as const;
-const URL_ORDER = ["client", "group", "type", "fy", "period", "registration", "as", "channel", "by", "from", "to", "status", "state", "archived", "sort", "page"] as const;
+const URL_ORDER = ["client", "group", "type", "fy", "period", "registration", "as", "channel", "by", "from", "to", "status", "state", "return", "archived", "sort", "page"] as const;
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -88,6 +102,8 @@ export function parseDocumentSearchParams(params: Params): DocumentFilters {
   f.channel = oneOf(CHANNELS, get("channel"));
   f.status = oneOf(DOC_STATUSES, get("status"));
   f.state = oneOf(DOC_STATES, get("state"));
+  const ret = oneOf(DOC_RETURNS, get("return"));
+  if (ret) f.return = ret;
   f.sort = oneOf(SORTS, get("sort")) ?? "received";
   f.archived = get("archived") === "1";
   const page = get("page");
@@ -136,7 +152,7 @@ export type SearchInput = {
 const RPC_KEYS: Record<Exclude<(typeof URL_ORDER)[number], "archived" | "sort" | "page">, string> = {
   client: "client_id", group: "group_id", type: "doc_type_id", fy: "fy_id", period: "period_id",
   registration: "registration_id", as: "received_as", channel: "channel", by: "received_by",
-  from: "from", to: "to", status: "status", state: "state",
+  from: "from", to: "to", status: "status", state: "state", return: "return",
 };
 
 /** The `p` argument for search_documents / search_document_facets. */
@@ -152,5 +168,5 @@ export function toSearchInput(f: DocumentFilters, text: string | null | undefine
 
 /** True when any filter narrows the results (sort and page don't count). */
 export function isFiltered(f: DocumentFilters): boolean {
-  return f.archived || (Object.keys(RPC_KEYS) as (keyof typeof RPC_KEYS)[]).some((k) => f[k] !== null);
+  return f.archived || (Object.keys(RPC_KEYS) as (keyof typeof RPC_KEYS)[]).some((k) => f[k] != null);
 }

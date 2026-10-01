@@ -159,3 +159,55 @@ export function validateDocumentMeta(
   if (errors.length) return { data: null, errors };
   return { data: { receivedAs, channel, receivedOn, remark: remark || null, ...ids }, errors };
 }
+
+// ── Feature 07: review & dispatch (mirrors review_document / undo_review / create_dispatch) ──────────────
+export const MAX_REASON = 500;
+export const MAX_RECIPIENT = 120;
+export const MAX_COURIER = 100;
+export const MAX_TRACKING = 60;
+
+/** Needs correction / Undo reasons: 1–500 characters after trimming. */
+export function validateReason(v: unknown): { data: string | null; error: string | null } {
+  const r = str(v);
+  if (!r) return { data: null, error: "Give a reason." };
+  if (r.length > MAX_REASON) return { data: null, error: `Keep the reason to ${MAX_REASON} characters.` };
+  return { data: r, error: null };
+}
+
+export type DispatchInput = {
+  clientId?: unknown; documentIds?: unknown; dispatchedOn?: unknown; method?: unknown;
+  courierName?: unknown; trackingNo?: unknown; recipientName?: unknown;
+};
+export type ValidDispatch = {
+  clientId: string; documentIds: string[]; dispatchedOn: string; method: "courier" | "hand_delivery" | "client_collected" | "other";
+  courierName: string | null; trackingNo: string | null; recipientName: string;
+};
+const DISPATCH_METHOD_VALUES = ["courier", "hand_delivery", "client_collected", "other"] as const;
+
+/**
+ * AC-8: the dispatch dialog. `today` = India date. `latestReceivedOn` = the newest received on among the ticked
+ * originals (the date can't be before it). Courier details are kept only for Courier, as the database does.
+ */
+export function validateDispatch(input: DispatchInput, ctx: { today: string; latestReceivedOn?: string | null }): { data: ValidDispatch | null; errors: FieldIssue[] } {
+  const errors: FieldIssue[] = [];
+  const clientId = str(input.clientId);
+  if (!z.uuid().safeParse(clientId).success) errors.push({ field: "clientId", message: "Choose the client again." });
+  const ids = Array.isArray(input.documentIds) ? [...new Set(input.documentIds.map(str))] : [];
+  if (!ids.length) errors.push({ field: "documentIds", message: "Tick at least one original." });
+  else if (!ids.every((id) => z.uuid().safeParse(id).success)) errors.push({ field: "documentIds", message: "Refresh and tick the originals again." });
+  const dispatchedOn = str(input.dispatchedOn);
+  if (!isRealDate(dispatchedOn)) errors.push({ field: "dispatchedOn", message: "Enter the date dispatched." });
+  else if (dispatchedOn > ctx.today) errors.push({ field: "dispatchedOn", message: "The dispatch date can't be in the future." });
+  else if (ctx.latestReceivedOn && dispatchedOn < ctx.latestReceivedOn) errors.push({ field: "dispatchedOn", message: "The dispatch date can't be before a ticked original was received." });
+  const method = str(input.method) as ValidDispatch["method"];
+  if (!DISPATCH_METHOD_VALUES.includes(method)) errors.push({ field: "method", message: "Choose how it was dispatched." });
+  const courier = method === "courier" ? str(input.courierName) : "";
+  const tracking = method === "courier" ? str(input.trackingNo) : "";
+  if (courier.length > MAX_COURIER) errors.push({ field: "courierName", message: `Keep the courier name to ${MAX_COURIER} characters.` });
+  if (tracking.length > MAX_TRACKING) errors.push({ field: "trackingNo", message: `Keep the tracking number to ${MAX_TRACKING} characters.` });
+  const recipientName = str(input.recipientName);
+  if (!recipientName) errors.push({ field: "recipientName", message: "Enter who received it." });
+  else if (recipientName.length > MAX_RECIPIENT) errors.push({ field: "recipientName", message: `Keep the name to ${MAX_RECIPIENT} characters.` });
+  if (errors.length) return { data: null, errors };
+  return { data: { clientId, documentIds: ids, dispatchedOn, method, courierName: courier || null, trackingNo: tracking || null, recipientName }, errors };
+}

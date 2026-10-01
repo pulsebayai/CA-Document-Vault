@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import type { ClientDocument } from "@/lib/documents/queries";
 import { openForCards, type ExpectedItem } from "@/lib/expected/shape";
 import { Badge, Card } from "@/components/ui";
-import { FileButtons } from "../../documents/file-buttons";
+import { DocumentRow } from "./document-row";
 import { itemLabel, uploadHref } from "./expected-view";
 import { LogCallButton, RemindButton, type ReminderProps } from "../remind-dialog";
 
@@ -17,8 +17,6 @@ import { LogCallButton, RemindButton, type ReminderProps } from "../remind-dialo
 /** Mockup 10 caps a card ("10 more · Show all"); the rest are one click away on the Expected tab. */
 export const CARD_OPEN_LIMIT = 5;
 
-const day = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
-
 type Props = {
   clientId: string;
   documents: ClientDocument[];
@@ -29,11 +27,15 @@ type Props = {
   fys?: Array<{ id: string; code: string }>;
   /** Upload from a card (not on an archived client). */
   canUpload?: boolean;
+  /** 07: India date (from the server, so the state text and held days don't depend on the browser clock). */
+  today?: string;
+  /** 07: shown in the dispatch dialog's heading. */
+  clientName?: string;
   /** 06 (expected rows only): Remind / Log call and "reminded N times …" (AC-7, AC-11, AC-12). */
   reminders?: ReminderProps;
 };
 
-export function DocumentsView({ clientId, documents, currentFy, expected = [], planGroups = [], fys = [], canUpload = false, reminders }: Props) {
+export function DocumentsView({ clientId, documents, currentFy, expected = [], planGroups = [], fys = [], canUpload = false, today, clientName, reminders }: Props) {
   const fyCode = useMemo(() => new Map(fys.map((f) => [f.id, f.code])), [fys]);
   const codeOf = (id: string) => fyCode.get(id) ?? "";
   const fyList = useMemo(
@@ -113,24 +115,7 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
                 )}
                 {g.docs.length > 0 && (
                   <ul aria-label={`${g.name} documents`} className="divide-y divide-line">
-                    {g.docs.map((d) => (
-                      <li key={d.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-                        <div className="min-w-0 flex-1">
-                          <Link href={`/documents/${d.id}`} className="break-words font-medium hover:underline">
-                            {d.typeName}{d.periodLabel ? ` · ${d.periodLabel}` : ""}
-                          </Link>
-                          <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-ink-2">
-                            <span>Received {day.format(new Date(`${d.receivedOn}T00:00:00+05:30`))} by {d.receivedBy}</span>
-                            <span className="text-ink-3">{d.docCode}</span>
-                            {d.receivedAs === "hard_copy" && <Badge tone="warn">Hard copy</Badge>}
-                            {d.receivedAs === "original" && <Badge tone="bad">Original</Badge>}
-                            {d.versionCount > 1 && <Badge tone="muted">{d.versionCount} versions</Badge>}
-                            {d.proposed && <Badge tone="accent">Proposed type</Badge>}
-                          </p>
-                        </div>
-                        {d.current && <FileButtons versionId={d.current.id} mimeType={d.current.mimeType} docCode={d.docCode} />}
-                      </li>
-                    ))}
+                    {g.docs.map((d) => <DocumentRow key={d.id} d={d} clientId={clientId} clientName={clientName} today={today ?? indiaToday()} />)}
                   </ul>
                 )}
                 {g.open.length === 0 && g.docs.length === 0 && (
@@ -170,4 +155,9 @@ function OpenRow({ clientId, item: i, canUpload, reminders }: { clientId: string
       )}
     </li>
   );
+}
+
+/** Fallback "today" when the caller passes none (older callers/tests): the browser's India date. */
+function indiaToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date());
 }
