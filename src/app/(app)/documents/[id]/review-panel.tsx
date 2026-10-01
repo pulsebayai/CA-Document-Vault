@@ -143,7 +143,7 @@ function PacketItems({ packet, documentId }: { packet: Packet; documentId: strin
       {others.length > 0 && (
         <p className="break-words">Also in this packet:{" "}
           {others.map((i, n) => (
-            <span key={i.documentId}>{n > 0 && ", "}<Link href={`/documents/${i.documentId}`} className="text-accent hover:underline">{i.docCode}</Link>{i.removedAt ? " (removed)" : ""}</span>
+            <span key={i.documentId}>{n > 0 && ", "}<Link href={`/documents/${i.documentId}`} className="text-accent underline">{i.docCode}</Link>{i.removedAt ? " (removed)" : ""}</span>
           ))}
         </p>
       )}

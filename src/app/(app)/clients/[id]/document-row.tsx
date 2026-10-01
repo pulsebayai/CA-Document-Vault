@@ -29,7 +29,8 @@ export function DocumentRow({ d, clientId, today }: { d: ClientDocument; clientI
   const label = `${d.typeName}${d.periodLabel ? ` · ${d.periodLabel}` : ""} (${d.docCode})`;
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
-      <div className="min-w-0 flex-1">
+      {/* min width: on a half-width card the actions wrap below instead of squeezing the text column */}
+      <div className="min-w-[min(100%,15rem)] flex-1">
         <Link href={`/documents/${d.id}`} className="break-words font-medium hover:underline">
           {d.typeName}{d.periodLabel ? ` · ${d.periodLabel}` : ""}
         </Link>
