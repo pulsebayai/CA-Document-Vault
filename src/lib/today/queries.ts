@@ -32,9 +32,17 @@ export async function todayDataAs(scope: Scope, show: Show | null, page: number)
   const cards = raws.flatMap((r) => r.cards.map((c) => toTodayCard(c, last.today)));
   // Upload (Add document pre-filled, 04) needs the item's type / period / registration IDs: one lookup under RLS.
   const ids = cards.flatMap((c) => c.rows.map((r) => r.id));
-  if (ids.length > 0) {
-    const { data: refs } = await supabase.from("expected_doc").select("id, doc_type_id, period_id, registration_id").in("id", ids);
-    const byId = new Map((refs ?? []).map((x) => [x.id as string, x]));
+  // Review I-2: in batches of 100 (a 30-card page can hold hundreds of rows; one GET would exceed URL limits).
+  // A failed batch only loses that batch's Upload links, and is logged.
+  type Ref = { id: string; doc_type_id: string; period_id: string; registration_id: string | null };
+  const refs: Ref[] = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data, error } = await supabase.from("expected_doc").select("id, doc_type_id, period_id, registration_id").in("id", ids.slice(i, i + 100));
+    if (error) console.error("today.upload_refs_failed", { code: error.code ?? "unknown", requestId: randomUUID() });
+    refs.push(...((data ?? []) as Ref[]));
+  }
+  if (refs.length > 0) {
+    const byId = new Map(refs.map((x) => [x.id, x]));
     for (const c of cards) for (const r of c.rows) {
       const x = byId.get(r.id);
       if (x) r.uploadHref = uploadHref(c.clientId, { typeId: x.doc_type_id, periodId: x.period_id, registrationId: x.registration_id });

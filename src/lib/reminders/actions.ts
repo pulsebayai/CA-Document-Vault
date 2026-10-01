@@ -67,7 +67,13 @@ export type SendEmailResult =
 export async function sendEmailReminder(clientId: string, itemIds: string[]): Promise<SendEmailResult> {
   const me = await requireStaff();
   if (!uuid.safeParse(clientId).success || !ids.safeParse(itemIds).success) return { ok: false, error: reminderErrorMessage("NO_ITEMS") };
-  const cfg = mailConfig();
+  let cfg;
+  try {
+    cfg = mailConfig();
+  } catch {
+    const l = logged("config", "MAIL_CONFIG"); // review N-3: a bad MAIL_TRANSPORT is a plain error, not a crash
+    return { ok: false, error: `Email isn't set up correctly here (Ref ${l.requestId.slice(0, 8)}). Use WhatsApp or log a call.` };
+  }
   let built;
   try {
     built = await messageFor(me, clientId, itemIds);
@@ -86,11 +92,20 @@ export async function sendEmailReminder(clientId: string, itemIds: string[]): Pr
     replyTo: { email: me.email, name: me.fullName },
   }, cfg);
 
-  const fin = await supabase.rpc("finish_email_reminder", {
+  const finish = () => supabase.rpc("finish_email_reminder", {
     p_id: id, p_status: result.status, p_provider_id: result.providerId, p_error_code: result.errorCode,
   });
-  if (fin.error) logged("finish", fin.error.code); // the row stays pending and is closed as TIMEOUT later
+  let fin = await finish();
+  if (fin.error) fin = await finish(); // review N-2: one retry before giving up
   touch(clientId);
+  if (fin.error) {
+    // The provider's answer couldn't be recorded: the row stays pending (closed as TIMEOUT after 10 minutes).
+    // If it was sent, a second send later today would be a real duplicate — say so instead of "Sent".
+    const l = logged("finish", fin.error.code);
+    return { ok: false, error: result.status === "sent"
+      ? `The email was sent, but the vault couldn't record it (Ref ${l.requestId.slice(0, 8)}). Don't send it again today.`
+      : `The result couldn't be recorded (Ref ${l.requestId.slice(0, 8)}). Please try again in a few minutes.` };
+  }
   return {
     ok: true, status: result.status, at: new Date().toISOString(), to: maskEmail(recipient),
     ...(result.status === "failed" ? { error: `Not sent (${result.errorCode ?? "error"}). You can retry.` } : {}),

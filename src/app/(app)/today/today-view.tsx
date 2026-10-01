@@ -8,7 +8,7 @@ import { DispatchDialog } from "../clients/[id]/dispatch-dialog";
 import { ReviewControls } from "../clients/[id]/review-controls";
 import type { TodayData } from "@/lib/today/queries";
 import { LogCallButton, RemindButton } from "../clients/remind-dialog";
-import { todayHref, type Scope, type Show, type TodayCard } from "@/lib/today/shape";
+import { MAX_PAGE, todayHref, type Scope, type Show, type TodayCard } from "@/lib/today/shape";
 
 // Today (mockup 01, spec 06 AC-1…AC-5). Counts are buttons with a pressed state that filter the cards
 // (click again to clear); the scope toggle is a pressed-state pair. Both live in the URL as enums only.
@@ -74,7 +74,8 @@ export function TodayView({ data, inbox, scope, show, page }: {
         </ul>
       )}
 
-      {data.hasMore && (
+      {/* Review N-4: "Show more" stops at the last page the URL accepts (34 pages × 30 cards). */}
+      {data.hasMore && page < MAX_PAGE && (
         <div className="mt-6 text-center">
           <Link href={todayHref(scope, show, page + 1)} scroll={false}
             className="inline-flex rounded-[9px] border border-line-2 bg-panel px-3.5 py-2 font-medium hover:bg-canvas">Show more</Link>

@@ -9,13 +9,16 @@ export const SHOWS = ["overdue", "due_week", "to_review", "ready"] as const;
 export type Scope = (typeof SCOPES)[number];
 export type Show = (typeof SHOWS)[number];
 
+/** Last "Show more" page (pages 0…33, 30 cards each). */
+export const MAX_PAGE = 33;
+
 /** AC-2 / AC-3: scope and filter come from the URL as enums only; anything else falls back to the default. */
 export function parseTodayParams(sp: Record<string, string | string[] | undefined>): { scope: Scope; show: Show | null; page: number } {
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const scope = SCOPES.find((s) => s === one(sp.scope)) ?? "mine";
   const show = SHOWS.find((s) => s === one(sp.show)) ?? null;
   const n = Number.parseInt(one(sp.page) ?? "", 10);
-  return { scope, show, page: Number.isFinite(n) && n > 0 && n < 34 ? n : 0 };
+  return { scope, show, page: Number.isFinite(n) && n > 0 && n <= MAX_PAGE ? n : 0 };
 }
 
 /** The URL for a scope / filter (clicking an active count clears it). */

@@ -108,7 +108,8 @@ function RemindBody({ clientId, close }: { clientId: string; close: () => void }
     window.open(whatsappUrl(data.client.mobile!, preview), "_blank", "noopener,noreferrer");
     start(async () => {
       const r = await recordWhatsApp(clientId, chosen.map((i) => i.id));
-      setWa(r.ok ? { ok: true } : { ok: false, error: r.error });
+      // Review N-7: the chat is already open; if recording failed, say how to keep the record straight.
+      setWa(r.ok ? { ok: true } : { ok: false, error: `WhatsApp opened, but it wasn't recorded: ${r.error} If you send it, use Log call to record it.` });
       router.refresh();
     });
   };

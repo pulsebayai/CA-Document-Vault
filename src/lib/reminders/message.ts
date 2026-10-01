@@ -39,9 +39,10 @@ export function scrub(s: string): string {
   return s
     .replace(/\b(?:https?:\/\/|www\.)\S*/gi, " ")
     .replace(/DOC-FY\d{2}-\d{2}-\d+/gi, " ")
-    .replace(/\d{2}[A-Z]{5}\d{4}[A-Z][0-9A-Z]{3}/g, " ")
-    .replace(/[A-Z]{5}\d{4}[A-Z]/g, " ")
-    .replace(/[A-Z]{4}\d{5}[A-Z]/g, " ")
+    // Review N-5: case-insensitive, so a lower-case PAN/GSTIN/TAN typed into a name is caught too.
+    .replace(/\d{2}[A-Z]{5}\d{4}[A-Z][0-9A-Z]{3}/gi, " ")
+    .replace(/[A-Z]{5}\d{4}[A-Z]/gi, " ")
+    .replace(/[A-Z]{4}\d{5}[A-Z]/gi, " ")
     .replace(/\s+/g, " ")
     .trim();
 }

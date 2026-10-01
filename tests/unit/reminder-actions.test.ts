@@ -70,6 +70,19 @@ describe("sendEmailReminder (AC-8: two-phase)", () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
+  it("retries recording the result once; if it still fails after a real send, says so instead of Sent (review N-2)", async () => {
+    let finishes = 0;
+    rpc.mockImplementation(async (fn: string) => {
+      if (fn === "begin_email_reminder") return { data: { id: "f1", recipient: "abc@client.in" }, error: null };
+      finishes += 1;
+      return { data: null, error: { code: "08006", message: "connection lost" } };
+    });
+    sendMail.mockResolvedValue({ status: "sent", providerId: "m1", errorCode: null });
+    const r = await sendEmailReminder(C, [I1]);
+    expect(finishes).toBe(2);
+    expect(r).toMatchObject({ ok: false, error: expect.stringMatching(/was sent, but the vault couldn't record it .*Don't send it again today/) });
+  });
+
   it("logs a code and request ID only — never the address or text", async () => {
     rpc.mockResolvedValue({ data: null, error: { code: "XX000", message: "boom abc@client.in" } });
     const r = await sendEmailReminder(C, [I1]);

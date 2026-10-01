@@ -52,6 +52,14 @@ describe("buildReminderMessage (AC-10)", () => {
     expect(m.text).toContain("Dear Arun Traders,");
   });
 
+  it("also catches lower-case PAN / GSTIN / TAN (review N-5)", () => {
+    const m = buildReminderMessage({ ...base, clientName: "Arun zzzpz1234z Traders",
+      items: [item({ type: "Invoices 33zzzpz1234z1z5 and zzzz12345z" })] });
+    expect(m.text).not.toMatch(/[a-z]{5}[0-9]{4}[a-z]/i);
+    expect(m.text).not.toMatch(/[a-z]{4}[0-9]{5}[a-z]/i);
+    expect(m.text).toContain("Dear Arun Traders,");
+  });
+
   it("HTML is the same content, escaped, as a simple list", () => {
     const m = buildReminderMessage({ ...base, clientName: "R&D <Labs>", items: [item()] });
     expect(m.html).toContain("Dear R&amp;D &lt;Labs&gt;,");
