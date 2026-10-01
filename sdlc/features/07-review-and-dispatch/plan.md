@@ -1,5 +1,5 @@
 # Plan: Review & dispatch
-Spec: ./spec.md · Status: draft · Date: 2026-10-01
+Spec: ./spec.md · Status: approved (Raja 2026-10-01 17:29 IST) · Date: 2026-10-01
 Holds (from approval): **schema lock** (batch D, Raja 2026-10-01). Architecture lock: 06. 07's four architecture items go to architecture.md on main at merge.
 Base: `feat/07-review-and-dispatch` from main `5e871f3`. **07 merges before 06**; 06 rebases.
 
