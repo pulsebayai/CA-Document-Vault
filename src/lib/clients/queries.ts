@@ -9,19 +9,20 @@ export type StaffOption = { id: string; name: string };
 
 type Row = {
   id: string; code: string; name: string; client_type: ClientType; pan: string | null; incharge_name: string;
-  groups: string[]; paused_groups: string[]; archived: boolean; total: number;
+  groups: string[]; paused_groups: string[]; archived: boolean; overdue: number; due_today: number; total: number;
 };
 
 /**
  * Clients list (spec AC-7, AC-12). Runs as the signed-in user: search_clients is SECURITY INVOKER,
  * so a Limited user only ever gets their own clients. Errors are logged by code only (no search text: PII).
  */
-export async function searchClientsAs(s: ClientSearch): Promise<ClientSearchResult> {
+export async function searchClientsAs(s: ClientSearch, opts: { hasOverdue?: boolean } = {}): Promise<ClientSearchResult> {
   const supabase = await createClient();
   const [found, active] = await Promise.all([
     supabase.rpc("search_clients", {
       p_query: s.query || null, p_client_type: s.clientType, p_incharge_id: s.inchargeId,
       p_include_archived: s.includeArchived, p_limit: PAGE_SIZE, p_offset: (s.page - 1) * PAGE_SIZE,
+      p_has_overdue: opts.hasOverdue === true, // 04 AC-15 "Has overdue" chip (POST body only)
     }),
     supabase.from("client").select("id", { count: "exact", head: true }).is("archived_at", null),
   ]);
@@ -34,6 +35,7 @@ export async function searchClientsAs(s: ClientSearch): Promise<ClientSearchResu
     rows: rows.map((r) => ({
       id: r.id, code: r.code, name: r.name, clientType: r.client_type, pan: r.pan, inchargeName: r.incharge_name,
       groups: r.groups ?? [], pausedGroups: r.paused_groups ?? [], archived: r.archived,
+      overdue: Number(r.overdue ?? 0), dueToday: Number(r.due_today ?? 0),
     })),
     matched: rows.length ? Number(rows[0].total) : 0,
     total: active.count ?? 0,

@@ -23,11 +23,11 @@ export type SearchResult = ({ ok: true } & ClientSearchResult) | { ok: false; er
  * browser history or access logs.
  */
 export async function searchClients(input: {
-  query?: string; clientType?: string | null; inchargeId?: string | null; includeArchived?: boolean; page?: number;
+  query?: string; clientType?: string | null; inchargeId?: string | null; includeArchived?: boolean; hasOverdue?: boolean; page?: number;
 }): Promise<SearchResult> {
   await requireStaff();
   try {
-    return { ok: true, ...(await searchClientsAs(parseClientSearch(input ?? {}))) };
+    return { ok: true, ...(await searchClientsAs(parseClientSearch(input ?? {}), { hasOverdue: input?.hasOverdue === true })) };
   } catch {
     return { ok: false, error: "Could not load clients. Please try again." };
   }

@@ -213,3 +213,27 @@ test("AC-14 + AC-5: a collected group with nothing open and no documents is 'All
   await expect(gstPlan.getByRole("row", { name: /E-way bills/ })).not.toContainText("nothing expected"); // as needed: never expected anyway
 });
 
+
+// ── Step 7: Clients list (AC-15) ─────────────────────────────────────────────────────────────────────────────────
+test("AC-15: Clients list shows 'N overdue · N due today'; the Has overdue chip filters without touching the URL", async ({ page, baseURL }) => {
+  const pending = (await expectedFor(clientId)).filter((e) => e.status === "pending"); // nothing on hold in this office
+  const overdue = pending.filter((e) => e.overdue_from <= TODAY).length;
+  const dueToday = pending.filter((e) => e.overdue_from === "2026-07-05").length;
+  expect(overdue).toBeGreaterThan(0);
+  await signIn(page, u.staff.email, baseURL);
+  await page.goto("/clients");
+  const list = page.getByRole("list", { name: "Clients" });
+  const traders = list.getByRole("listitem", { name: "Expected Traders" });
+  await expect(traders).toContainText(`${overdue} overdue · ${dueToday} due today`);
+  await expect(list.getByRole("listitem", { name: "Caught Up Co" })).not.toContainText(/overdue|due today/);
+
+  const chip = page.getByRole("button", { name: "Has overdue" });
+  await chip.click();
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+  await expect(list.getByRole("listitem", { name: "Caught Up Co" })).toHaveCount(0);
+  await expect(traders).toBeVisible();
+  expect(new URL(page.url()).search).toBe(""); // filters never go in the URL (02 AC-7)
+  expect(await seriousAxe(page)).toEqual([]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
