@@ -218,9 +218,18 @@ export async function updateDocumentAction(input: UpdateDocumentInput): Promise<
 // ── Document page (AC-11): new version, archive / unarchive ──────────────────
 export type SimpleResult = { ok: true } | { ok: false; error: string };
 
-export async function addVersionAction(documentId: string, file: UploadedFile): Promise<SimpleResult> {
+/**
+ * 07 AC-4: `receivedOn` = the corrected file's date, sent only for a Needs-correction document (the database
+ * ignores it otherwise); it replaces received on, so metric 1 uses when the correct file arrived.
+ */
+export async function addVersionAction(documentId: string, file: UploadedFile, receivedOn?: string | null): Promise<SimpleResult> {
   const me = await requireStaff();
   if (!uuid.safeParse(documentId).success) return { ok: false, error: "Document not found." };
+  const on = receivedOn ? String(receivedOn) : null;
+  if (on && (!/^\d{4}-\d{2}-\d{2}$/.test(on) || Number.isNaN(Date.parse(`${on}T00:00:00Z`)) || new Date(`${on}T00:00:00Z`).toISOString().slice(0, 10) !== on)) {
+    return { ok: false, error: "Enter a valid date." };
+  }
+  if (on && on > istDate()) return { ok: false, error: "Received on can't be in the future." };
   const ext = extensionOf(String(file?.path ?? "")) as AllowedExtension;
   const mime = MIME_BY_EXTENSION[ext];
   if (!mime || file.mime !== mime || !ownPath(file.path, me.officeId, documentId)) {
@@ -231,7 +240,7 @@ export async function addVersionAction(documentId: string, file: UploadedFile): 
   const supabase = await createClient();
   const { error } = await supabase.rpc("add_document_version", { p_document_id: documentId, p_file: {
     storage_path: file.path, file_name: sanitiseFileName(String(file.fileName ?? ""), ext),
-  } });
+  }, ...(on ? { p_received_on: on } : {}) });
   if (error) {
     console.error("documents.version_failed", { code: error.code });
     return { ok: false, error: dbError(error.message).error };

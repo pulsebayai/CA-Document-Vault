@@ -26,9 +26,16 @@ export type DocumentHit = {
   status: string;
   fileName: string | null;
   archived: boolean;
+  // 07: what documentState() needs (src/lib/documents/state.ts). Optional so 03b-era fixtures stay valid.
+  docTypeId?: string | null;
+  reviewedAt?: string | null;
+  reviewedByName?: string | null;
+  correctionReason?: string | null;
+  dispatchedOn?: string | null;
+  dispatchMethod?: string | null;
 };
 
-export type FacetName = "group" | "received_as" | "channel" | "received_by" | "status";
+export type FacetName = "group" | "received_as" | "channel" | "received_by" | "status" | "return";
 export type FacetValue = { facet: FacetName; value: string; label: string; n: number };
 export type ClientHit = { id: string; name: string; code: string };
 export type PickerClient = ClientHit & { archived: boolean };
@@ -38,6 +45,8 @@ type Row = {
   type_name: string | null; group_name: string | null; period_code: string | null; period_label: string | null;
   received_as: ReceivedAs; channel: Channel; received_on: string; received_by_name: string | null; status: string;
   file_name: string | null; archived_at: string | null;
+  doc_type_id?: string | null; reviewed_at?: string | null; reviewed_by_name?: string | null; correction_reason?: string | null;
+  dispatched_on?: string | null; dispatch_method?: string | null;
 };
 
 export class SearchError extends Error {
@@ -58,6 +67,8 @@ const toHit = (r: Row): DocumentHit => ({
   typeName: r.type_name, groupName: r.group_name, periodCode: r.period_code, periodLabel: r.period_label,
   receivedAs: r.received_as, channel: r.channel, receivedOn: r.received_on, receivedByName: r.received_by_name,
   status: r.status, fileName: r.file_name, archived: r.archived_at !== null,
+  docTypeId: r.doc_type_id ?? null, reviewedAt: r.reviewed_at ?? null, reviewedByName: r.reviewed_by_name ?? null,
+  correctionReason: r.correction_reason ?? null, dispatchedOn: r.dispatched_on ?? null, dispatchMethod: r.dispatch_method ?? null,
 });
 
 export async function searchDocumentsAs(input: SearchInput): Promise<{ total: number; rows: DocumentHit[] }> {

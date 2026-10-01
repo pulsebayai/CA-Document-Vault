@@ -7,6 +7,7 @@ import {
   mustCreateOriginal, mustDispatch, mustReview, periodId, reviewDocument, reviewHistory, typeId, undoReview, uploadObject,
 } from "../support/documents";
 import { T } from "../support/expected";
+import { documentState, isReadyToDispatch, isToReview } from "@/lib/documents/state";
 
 // Feature 07 — review & dispatch: review per role, Needs correction, undo, resets, history, packets, search,
 // write protection and activity (spec AC-1 … AC-16). Written before the migrations (plan step 1).
@@ -438,7 +439,8 @@ describe("/documents search: Status values and the Return filter (AC-14)", () =>
   let clientS: string;
   const ids = {} as Record<"toReview" | "reviewed" | "fix" | "ready" | "readyFix" | "sent" | "softReviewed", string>;
   type Row = { id: string; status: string; reviewed_at: string | null; reviewed_by_name: string | null; correction_reason: string | null;
-    dispatched_on: string | null; dispatch_method: string | null };
+    dispatched_on: string | null; dispatch_method: string | null; return_state: string | null; client_id: string | null;
+    doc_type_id: string | null; received_as: string; archived_at: string | null };
   const search = async (filters: Record<string, unknown>) => {
     const { data, error } = await as.staff.rpc("search_documents", { p: { filters: { client_id: clientS, ...filters } } });
     if (error) throw new Error(error.message);
@@ -499,5 +501,18 @@ describe("/documents search: Status values and the Return filter (AC-14)", () =>
     const withReturn = await facets({ return: "ready" });
     expect(withReturn.find((x) => x.facet === "status" && x.value === "needs_correction")?.n).toBe(1);
     expect(withReturn.find((x) => x.facet === "return" && x.value === "dispatched")?.n).toBe(1);
+  });
+
+  it("the TS shown state (documentState) selects the same rows as the SQL: to review, ready, dispatched", async () => {
+    const rows = (await search({})).rows;
+    expect(rows.length).toBe(Object.keys(ids).length);
+    for (const r of rows) {
+      const d = { archived: r.archived_at !== null, clientId: r.client_id, docTypeId: r.doc_type_id, receivedAs: r.received_as,
+        status: r.status, reviewedAt: r.reviewed_at, reviewedByName: r.reviewed_by_name, correctionReason: r.correction_reason,
+        dispatchedOn: r.dispatched_on, dispatchMethod: r.dispatch_method };
+      expect(isReadyToDispatch(d), r.id).toBe(r.return_state === "ready");
+      expect(documentState(d, "2026-10-01").kind === "dispatched", r.id).toBe(r.return_state === "dispatched");
+      expect(isToReview(d), r.id).toBe(r.status === "received");
+    }
   });
 });
