@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initials, parseTodayParams, rowDetail, rowLabel, toTodayCard, todayHref, type TodayRowRaw } from "@/lib/today/shape";
+import { initials, parseTodayParams, rowDetail, rowLabel, toDocRow, toTodayCard, todayHref, type TodayRowRaw } from "@/lib/today/shape";
 import { dialogItems, historyOf, historyText, maskEmail, type HistoryEntry } from "@/lib/reminders/shape";
 
 // Feature 06 — Today URL enums and view model (AC-2…AC-5), dialog ticks and row history (AC-7, AC-12).
@@ -68,5 +68,32 @@ describe("dialog and history (AC-7, AC-12)", () => {
 
   it("masks the address", () => {
     expect(maskEmail("abc@client.in")).toBe("a…@…");
+  });
+});
+
+describe("step 9: document rows and badges", () => {
+  const doc = { document_id: "d1", doc_code: "DOC-FY26-27-00087", group: "GST", type: "Invoices", period: "Jul 2026",
+    received_as: "hard_copy", received_on: "2026-08-02", reviewed_on: null, reviewed_by: null, needs_correction: false } as const;
+  it("To review / Ready rows: title, DOC-ID, Original flag, detail text", () => {
+    expect(toDocRow({ ...doc, kind: "to_review" }, "2026-09-16")).toEqual({ id: "d1", kind: "to_review", title: "GST · Invoices · Jul 2026",
+      docCode: "DOC-FY26-27-00087", original: false, label: "To review", detail: "Received 2 Aug · waiting for review" });
+    expect(toDocRow({ ...doc, kind: "ready", received_as: "original", reviewed_on: "2026-09-12", reviewed_by: "Ravi" }, "2026-09-16"))
+      .toMatchObject({ original: true, label: "Ready to dispatch", detail: "Reviewed 12 Sep by Ravi" });
+    expect(toDocRow({ ...doc, kind: "ready", received_as: "original", needs_correction: true, reviewed_by: "Ravi" }, "2026-09-16").detail)
+      .toBe("Needs correction · original still to go back");
+    expect(toDocRow({ ...doc, kind: "to_review", period: null }, "2026-09-16").title).toBe("GST · Invoices");
+  });
+  it("cards split expected and document rows; the badge falls back to documents", () => {
+    const c = toTodayCard({ client_id: "c", name: "A", incharge: null, assignees: [], overdue: 0, due_week: 0, to_review: 2, ready: 1,
+      rows: [{ ...doc, kind: "to_review" }] }, "2026-09-16");
+    expect(c.rows).toEqual([]);
+    expect(c.docs).toHaveLength(1);
+    expect(c).toMatchObject({ badge: "2 to review", badgeTone: "muted" });
+    expect(toTodayCard({ client_id: "c", name: "A", incharge: null, assignees: [], overdue: 0, due_week: 0, to_review: 0, ready: 3, rows: [] }, "2026-09-16").badge)
+      .toBe("3 to dispatch");
+  });
+  it("accepts the new filter enums", () => {
+    expect(parseTodayParams({ show: "to_review" }).show).toBe("to_review");
+    expect(parseTodayParams({ show: "ready" }).show).toBe("ready");
   });
 });

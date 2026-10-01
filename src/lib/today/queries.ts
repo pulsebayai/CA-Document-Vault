@@ -10,7 +10,11 @@ export class TodayError extends Error {
   constructor(readonly requestId: string) { super("TODAY_FAILED"); }
 }
 
-export type TodayData = { today: string; counts: { overdue: number; dueWeek: number }; cards: TodayCard[]; hasMore: boolean };
+export type TodayData = {
+  today: string; counts: { overdue: number; dueWeek: number; toReview: number; ready: number };
+  /** Cards in scope and filter (all pages): "N clients need something". */
+  clients: number; cards: TodayCard[]; hasMore: boolean;
+};
 
 export async function todayDataAs(scope: Scope, show: Show | null, page: number): Promise<TodayData> {
   const supabase = await createClient();
@@ -36,5 +40,9 @@ export async function todayDataAs(scope: Scope, show: Show | null, page: number)
       if (x) r.uploadHref = uploadHref(c.clientId, { typeId: x.doc_type_id, periodId: x.period_id, registrationId: x.registration_id });
     }
   }
-  return { today: last.today, counts: { overdue: last.counts.overdue, dueWeek: last.counts.due_week }, cards, hasMore: last.has_more };
+  return {
+    today: last.today,
+    counts: { overdue: last.counts.overdue, dueWeek: last.counts.due_week, toReview: last.counts.to_review ?? 0, ready: last.counts.ready ?? 0 },
+    clients: last.clients ?? cards.length, cards, hasMore: last.has_more,
+  };
 }

@@ -2,7 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Card } from "@/components/ui";
+import { DispatchDialog } from "../clients/[id]/dispatch-dialog";
+import { ReviewControls } from "../clients/[id]/review-controls";
 import type { TodayData } from "@/lib/today/queries";
 import { LogCallButton, RemindButton } from "../clients/remind-dialog";
 import { todayHref, type Scope, type Show, type TodayCard } from "@/lib/today/shape";
@@ -10,6 +13,8 @@ import { todayHref, type Scope, type Show, type TodayCard } from "@/lib/today/sh
 // Today (mockup 01, spec 06 AC-1…AC-5). Counts are buttons with a pressed state that filter the cards
 // (click again to clear); the scope toggle is a pressed-state pair. Both live in the URL as enums only.
 // Each expected row: Remind (AC-7) · Log call (AC-11) · Upload (04's pre-filled Add document).
+// Document rows (step 9, 07's states): To review → Mark reviewed / Needs correction; Ready to dispatch → Mark
+// dispatched — 07's own controls, so the rules and messages are 07's.
 
 const LONG_DATE = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -18,9 +23,10 @@ export function TodayView({ data, inbox, scope, show, page }: {
 }) {
   const router = useRouter();
   const go = (s: Scope, f: Show | null) => router.push(todayHref(s, f));
-  const clients = `${data.cards.length}${data.hasMore ? "+" : ""}`;
-  const subtitle = `${LONG_DATE.format(new Date(`${data.today}T00:00:00Z`))} · ${data.cards.length === 0 && !show ? "nothing outstanding"
-    : `${clients} ${data.cards.length === 1 && !data.hasMore ? "client needs" : "clients need"} something`}`;
+  // 07's row actions (Mark reviewed / dispatched) report here; this region stays mounted after the refresh.
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const subtitle = `${LONG_DATE.format(new Date(`${data.today}T00:00:00Z`))} · ${data.clients === 0 && !show ? "nothing outstanding"
+    : `${data.clients} ${data.clients === 1 ? "client needs" : "clients need"} something`}`;
 
   return (
     <div>
@@ -44,9 +50,17 @@ export function TodayView({ data, inbox, scope, show, page }: {
           onClick={() => go(scope, show === "overdue" ? null : "overdue")} />
         <Count n={data.counts.dueWeek} label="Due this week" tone="text-warn" pressed={show === "due_week"}
           onClick={() => go(scope, show === "due_week" ? null : "due_week")} />
+        <Count n={data.counts.toReview} label="To review" tone="text-ink" pressed={show === "to_review"}
+          onClick={() => go(scope, show === "to_review" ? null : "to_review")} />
+        <Count n={data.counts.ready} label="Ready to dispatch" tone="text-ink" pressed={show === "ready"}
+          onClick={() => go(scope, show === "ready" ? null : "ready")} />
         <Link href="/inbox" className="flex items-baseline gap-2 rounded-xl bg-panel px-4 py-3 shadow-card hover:bg-canvas">
           <span className="text-[22px] font-semibold">{inbox}</span>{" "}<span className="text-[13.5px] text-ink-2">In inbox</span>
         </Link>
+      </div>
+
+      <div role="status" aria-live="polite" className="empty:hidden">
+        {message && <p className={`mb-4 rounded-lg px-4 py-3 text-[13.5px] ${message.ok ? "bg-ok-soft text-ok" : "bg-bad-soft text-bad"}`}>{message.text}</p>}
       </div>
 
       {data.cards.length === 0 ? (
@@ -56,7 +70,7 @@ export function TodayView({ data, inbox, scope, show, page }: {
         </Card>
       ) : (
         <ul className="grid gap-5 lg:grid-cols-2" aria-label="Clients that need something">
-          {data.cards.map((c) => <ClientCard key={c.clientId} card={c} />)}
+          {data.cards.map((c) => <ClientCard key={c.clientId} card={c} today={data.today} onMessage={setMessage} />)}
         </ul>
       )}
 
@@ -80,7 +94,7 @@ function Count({ n, label, tone, pressed, onClick }: { n: number; label: string;
   );
 }
 
-function ClientCard({ card: c }: { card: TodayCard }) {
+function ClientCard({ card: c, today, onMessage }: { card: TodayCard; today: string; onMessage: (m: { ok: boolean; text: string }) => void }) {
   return (
     <li>
       <Card className="h-full overflow-hidden">
@@ -90,7 +104,7 @@ function ClientCard({ card: c }: { card: TodayCard }) {
             <h2 className="font-semibold"><Link href={`/clients/${c.clientId}`} className="text-accent hover:underline">{c.name}</Link></h2>
             {c.people && <p className="text-[13px] text-ink-3">{c.people}</p>}
           </div>
-          <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${c.badgeTone === "late" ? "bg-bad-soft text-bad" : "bg-warn-soft text-warn"}`}>{c.badge}</span>
+          <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${c.badgeTone === "late" ? "bg-bad-soft text-bad" : c.badgeTone === "due" ? "bg-warn-soft text-warn" : "bg-canvas text-ink-2"}`}>{c.badge}</span>
         </div>
         <ul aria-label={`Open documents for ${c.name}`}>
           {c.rows.map((r) => (
@@ -108,6 +122,23 @@ function ClientCard({ card: c }: { card: TodayCard }) {
                     className="inline-flex h-[30px] items-center rounded-[7px] bg-accent px-2.5 text-[13px] font-medium text-white hover:bg-[#264d8f]">Upload</Link>
                 )}
               </span>
+            </li>
+          ))}
+          {c.docs.map((d) => (
+            <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-5 py-3 last:border-b-0">
+              <div className="min-w-0 flex-1 basis-56">
+                <p className="break-words">
+                  {d.title}{" "}
+                  <span className="rounded bg-canvas px-1.5 py-0.5 font-mono text-[12px] text-ink-2">{d.docCode}</span>
+                  {d.original && <>{" "}<span className="rounded-full bg-bad-soft px-2 py-0.5 text-[12px] font-medium text-bad">Original</span></>}
+                </p>
+                <p className="mt-0.5 text-[13px] text-ink-3">{d.detail}</p>
+              </div>
+              <span className={`text-[13px] ${d.kind === "ready" ? "text-warn" : "text-ink-2"}`}>{d.label}</span>
+              {d.kind === "to_review"
+                ? <ReviewControls documentId={d.id} clientId={c.clientId} label={`${d.docCode} ${d.title}`} onMessage={onMessage} />
+                : <DispatchDialog clientId={c.clientId} clientName={c.name} documentId={d.id} label={`${d.docCode} ${d.title}`} today={today}
+                    onMessage={(text) => onMessage({ ok: true, text })} />}
             </li>
           ))}
         </ul>

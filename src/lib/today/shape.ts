@@ -5,7 +5,7 @@ import { remindedShort } from "@/lib/reminders/shape";
 // Feature 06 — Today (spec AC-2…AC-5): URL enums and the view model from today_items(). Pure; unit-tested.
 
 export const SCOPES = ["mine", "everyone"] as const;
-export const SHOWS = ["overdue", "due_week"] as const;
+export const SHOWS = ["overdue", "due_week", "to_review", "ready"] as const;
 export type Scope = (typeof SCOPES)[number];
 export type Show = (typeof SHOWS)[number];
 
@@ -34,11 +34,19 @@ export type TodayRowRaw = {
   reminders: boolean; reminded: number; last_reminded_on: string | null; last_reminded_by: string | null;
   last_channel: string | null;
 };
+/** Step 9 (07's states): a filed document To review, or an original Ready to dispatch (migration 2). */
+export type TodayDocRowRaw = {
+  document_id: string; kind: "to_review" | "ready"; doc_code: string; group: string; type: string; period: string | null;
+  received_as: string; received_on: string; reviewed_on: string | null; reviewed_by: string | null; needs_correction: boolean;
+};
 export type TodayCardRaw = {
   client_id: string; name: string; incharge: string | null; assignees: Array<{ group: string; name: string }>;
-  overdue: number; due_week: number; rows: TodayRowRaw[];
+  overdue: number; due_week: number; to_review?: number; ready?: number; rows: Array<TodayRowRaw | TodayDocRowRaw>;
 };
-export type TodayRaw = { today: string; counts: { overdue: number; due_week: number }; cards: TodayCardRaw[]; has_more: boolean };
+export type TodayRaw = {
+  today: string; counts: { overdue: number; due_week: number; to_review?: number; ready?: number };
+  clients?: number; cards: TodayCardRaw[]; has_more: boolean;
+};
 
 export type TodayRow = {
   id: string; kind: TodayRowRaw["kind"];
@@ -54,10 +62,41 @@ export type TodayRow = {
   /** Add document pre-filled (04's link: UUIDs only), set by the query; null if the IDs couldn't be read. */
   uploadHref: string | null;
 };
-export type TodayCard = {
-  clientId: string; name: string; initials: string; people: string; badge: string; badgeTone: "late" | "due";
-  rows: TodayRow[];
+/** Mockup 01 document rows: "GST · Invoices · July 2026 [DOC-ID] [Original]", "Received 2 Aug · waiting for review". */
+export type TodayDocRow = {
+  id: string; kind: TodayDocRowRaw["kind"]; title: string; docCode: string; original: boolean;
+  /** "To review" · "Ready to dispatch" */
+  label: string;
+  /** "Received 2 Aug · waiting for review" · "Reviewed 12 Sep by Ravi" · "Needs correction · still to go back" */
+  detail: string;
 };
+export type TodayCard = {
+  clientId: string; name: string; initials: string; people: string; badge: string; badgeTone: "late" | "due" | "muted";
+  /** Expected rows (Overdue → Due), then document rows (To review → Ready). */
+  rows: TodayRow[];
+  docs: TodayDocRow[];
+};
+
+const isDocRow = (r: TodayRowRaw | TodayDocRowRaw): r is TodayDocRowRaw => "document_id" in r;
+
+export function toDocRow(r: TodayDocRowRaw, today: string): TodayDocRow {
+  const detail = r.kind === "to_review"
+    ? `Received ${shortDate(r.received_on, today)} · waiting for review`
+    : r.needs_correction ? "Needs correction · original still to go back"
+    : ["Reviewed", r.reviewed_on ? shortDate(r.reviewed_on, today) : null, r.reviewed_by ? `by ${r.reviewed_by}` : null].filter(Boolean).join(" ");
+  return {
+    id: r.document_id, kind: r.kind, title: [r.group, r.type, r.period].filter(Boolean).join(" · "), docCode: r.doc_code,
+    original: r.received_as === "original", label: r.kind === "to_review" ? "To review" : "Ready to dispatch", detail,
+  };
+}
+
+/** Card badge (mockup 01): "N overdue" · "Due this week" · "N to review" · "N to dispatch". */
+function badgeOf(c: TodayCardRaw): Pick<TodayCard, "badge" | "badgeTone"> {
+  if (c.overdue > 0) return { badge: `${c.overdue} overdue`, badgeTone: "late" };
+  if (c.due_week > 0) return { badge: "Due this week", badgeTone: "due" };
+  if (c.to_review) return { badge: `${c.to_review} to review`, badgeTone: "muted" };
+  return { badge: `${c.ready ?? 0} to dispatch`, badgeTone: "due" };
+}
 
 export function initials(name: string): string {
   const words = name.replace(/[^\p{L}\p{N} ]/gu, " ").split(/\s+/).filter(Boolean);
@@ -94,9 +133,9 @@ export function toTodayCard(c: TodayCardRaw, today: string): TodayCard {
   const people = [c.incharge ? `Incharge ${c.incharge}` : null, ...c.assignees.map((a) => `${a.group} ${a.name}`)]
     .filter(Boolean).join(" · ");
   return {
-    clientId: c.client_id, name: c.name, initials: initials(c.name), people,
-    badge: c.overdue > 0 ? `${c.overdue} overdue` : "Due this week", badgeTone: c.overdue > 0 ? "late" : "due",
-    rows: c.rows.map((r) => ({
+    clientId: c.client_id, name: c.name, initials: initials(c.name), people, ...badgeOf(c),
+    docs: c.rows.filter(isDocRow).map((r) => toDocRow(r, today)),
+    rows: c.rows.filter((r): r is TodayRowRaw => !isDocRow(r)).map((r) => ({
       id: r.expected_doc_id, kind: r.kind, title: `${r.group} · ${r.type}${registration(r)} · ${r.period}`,
       ...(({ label, tone }) => ({ label, labelTone: tone }))(rowLabel(r, today)),
       detail: rowDetail(r), reminders: r.reminders, overdueFrom: r.overdue_from, uploadHref: null,
