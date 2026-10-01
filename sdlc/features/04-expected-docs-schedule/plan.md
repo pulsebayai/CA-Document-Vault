@@ -134,8 +134,8 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - The "Has overdue" state is passed to `searchClientsAs` as a separate option, rather than added to `ClientSearch`, so 02's `parseClientSearch` unit test stays untouched.
 
 - **Pre-PR review (`sdlc-reviewer`, 2026-10-01 12:30): 2 Important, 7 Nits. The security pass is clean, and every edit to a 02/03 test is an approved one.**
-  - **Important 1, frequency change (SQL gate pending):** changing a plan row's frequency left its pending items open forever. For example, monthly → "as needed" kept every month Overdue in the Clients list, metric 1 and the Expected count. Fix: draft migration `20261001120000_expected_review_followups.sql` adds the waiver code `schedule_changed` ("Schedule changed"); changing back restores items that aren't yet overdue. Tests first: `tests/rls/expected-followups.test.ts`, red for the right reason.
-  - **Important 2, earlier FYs (Raja's OK pending):** the Expected tab hid still-open items from earlier FYs (yearly, Q4 and March items are asked in the next FY), while the tab count and the cards included them. Fix: under the current FY, Open/All also list earlier-FY pending items, with "· FY 2025-26" when the period label doesn't show it. This departs from AC-13's literal "FY (default current)". `expected-view` unit test updated + 1 new case.
+  - **Important 1, frequency change (SQL gate: Raja 2026-10-01 12:39; applied as `20261001070941_expected_review_followups`, md5 verified, advisors clean):** changing a plan row's frequency left its pending items open forever. For example, monthly → "as needed" kept every month Overdue in the Clients list, metric 1 and the Expected count. Fix: draft migration `20261001120000_expected_review_followups.sql` adds the waiver code `schedule_changed` ("Schedule changed"); changing back restores items that aren't yet overdue. Tests first: `tests/rls/expected-followups.test.ts`, red for the right reason.
+  - **Important 2, earlier FYs (approved by Raja 2026-10-01 12:39):** the Expected tab hid still-open items from earlier FYs (yearly, Q4 and March items are asked in the next FY), while the tab count and the cards included them. Fix: under the current FY, Open/All also list earlier-FY pending items, with "· FY 2025-26" when the period label doesn't show it. This departs from AC-13's literal "FY (default current)". `expected-view` unit test updated + 1 new case.
   - **Nit 1:** in the same migration, a re-activated GSTIN/TAN restores its `registration_inactive` items, and moving the start period earlier restores `before_start` items. Both follow R1's rule: only items not yet overdue come back.
   - **Nits 2–3:** also in the migration: `recompute_expected` checks the tenant first, and the `earliest_open_period` fallback uses the office clock.
   - **Nit 4:** `listClientExpected` pages through all rows (ordered by id, 1,000 per page), so PostgREST's row cap can't silently cut items.
@@ -266,4 +266,11 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
   - architecture.md + CLAUDE.md committed (1b16c8c).
   - `verifier`: lint 0 · typecheck 0 · unit 237/237 · `test:db` 239 passed / 4 skipped (RUN_SLOW) / 0 failed · build 0.
   - `sdlc-reviewer`: 2 Important (see Deviations). Nits 4–7 fixed. **Waiting:** Raja's SQL gate (Important 1 + Nits 1–3) and OK on Important 2.
+
+
+- 12:39: Raja approved the SQL gate (Important 1 + Nits 1–3) and Important 2. The migration was applied as `20261001070941_expected_review_followups`.
+  - RLS `expected-followups` 6/6; `expected-plan`, `expected-docs` and `plan.test` still green (82/82 across the 4 files).
+  - e2e locally: expected (9), expected-screenshots and collection all green. Unit 238/238.
+  - The earlier-FY listing has unit coverage; there's no e2e fixture with a previous-FY item.
+- Next: final full CI on this push → RUN_SLOW Regression on the branch preview (CLAUDE.md rule) → PR #17 ready for review with the AC table. Raja merges.
 

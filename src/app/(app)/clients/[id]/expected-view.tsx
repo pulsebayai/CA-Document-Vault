@@ -55,7 +55,7 @@ export function ExpectedView({ clientId, items, fys, currentFyId, perms }: Props
   const fyCode = fys.find((f) => f.id === fy)?.code ?? "";
   const groups = [...new Map(items.map((i) => [i.groupId, { id: i.groupId, name: i.groupName }])).values()];
   // Viewing the current FY also lists still-pending items of earlier FYs (yearly items, Q4 and March are asked in
-  // the next FY), so the list agrees with the tab count and the Documents cards (review Important 2; Raja: pending).
+  // the next FY), so the list agrees with the tab count and the Documents cards (review Important 2; Raja approved 2026-10-01 12:39).
   const codeOf = (id: string) => fys.find((f) => f.id === id)?.code ?? "";
   const inFy = (i: ExpectedItem) => !fy || i.fyId === fy
     || (fy === currentFyId && i.status === "pending" && status !== "received" && status !== "not_needed" && codeOf(i.fyId) < fyCode);
