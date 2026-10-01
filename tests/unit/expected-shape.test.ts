@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  expectedErrorMessage, matchesStatus, officeToday, openCount, openForCards, repeatedKinds, sortItems, toItem, type RawExpected,
+  expectedErrorMessage, matchesStatus, officeToday, onTimePct, openCount, openForCards, pctText, repeatedKinds, sortItems, toItem, type RawExpected,
 } from "@/lib/expected/shape";
 
 // Feature 04 step 4 — shaping for the Expected tab / Documents cards (AC-13, AC-14) and the waive / undo / reopen
@@ -175,5 +175,16 @@ describe("openForCards (AC-14: Documents cards)", () => {
 
   it("the current FY also shows still-open items of earlier FYs; a past FY shows only its own", () => {
     expect(openForCards(items, fyCode, "2025-26", "2026-27").map((i) => i.id)).toEqual(["old"]);
+  });
+});
+
+describe("onTimePct / pctText (AC-16)", () => {
+  it("one decimal; null (shown as —) when nothing fell due", () => {
+    expect(onTimePct({ due: 3, on_time: 2 })).toBe(66.7);
+    expect(onTimePct({ due: 2, on_time: 1 })).toBe(50);
+    expect(onTimePct({ due: 0, on_time: 0 })).toBeNull();
+    expect(pctText(66.7)).toBe("66.7%");
+    expect(pctText(100)).toBe("100%");
+    expect(pctText(null)).toBe("—");
   });
 });

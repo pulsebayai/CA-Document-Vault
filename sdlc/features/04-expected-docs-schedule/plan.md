@@ -63,7 +63,7 @@ Base: `feat/04-expected-docs-schedule` from main `b296625`. **The build (step 1 
 - [x] 5. **Client › Expected tab** + Waive modal + Reopen/Undo + Upload → Add document pre-fill (type/period/registration) → linked on save — proof: e2e (staff waives; limited can't; manager undoes; upload links and the item flips to Received) (1.5)
 - [x] 6. **Documents cards** open rows + "All caught up" + Documents default tab + plan-row registration note — proof: e2e (1)
 - [x] 7. **Clients list** overdue text + "Has overdue" chip (not in URL) — proof: e2e + unit (0.5)
-- [ ] 8. **Settings › Collection** (Admin/Manager; Staff/Limited get no item, and Not Found on the URL) — proof: e2e + RLS (0.5)
+- [x] 8. **Settings › Collection** (Admin/Manager; Staff/Limited get no item, and Not Found on the URL) — proof: e2e + RLS (0.5)
 - [ ] 9. **Job check** (the volume part is deferred, Raja 2026-09-29): a `RUN_SLOW` test asserts today's `expected.generated` row on the real dev office (nightly). Proof: a RUN_SLOW dispatch. (0.5)
   - **Deferred to the volume test after all R1 features:** about 180k items, the job < 60 s, screen queries < 1 s, a save adding < 50 ms.
 - [ ] 10. States + a11y (axe on Expected tab, Collection) + ≤ 390 px + screenshots vs mockups 03/10 — proof: e2e evidence (0.5)
@@ -228,6 +228,12 @@ AC-1…18 → test file → result table in the PR. CI green (Unit + RLS + E2E e
     - RLS `expected-clients` 7/7 (incl. archived = 0, Limited, 03b's call shape, waive); 02's `clients-list` still green.
     - Unit `clients-overdue` 3/3; suite 232/232.
     - e2e AC-15 case in `expected.spec.ts` (+ axe, 390 px); `clients.spec` and `screenshots.spec` still green.
-- Next step: step 8 — Settings › Collection (Admin/Manager; metric 1 for the last 30 days).
+- **Step 8 done (local proof; pushed with [skip ci], combined CI after step 10):**
+  - `/settings/collection` (+ loading/error), visible to Admin/Manager only. Staff/Limited get no nav item and Not Found on the URL.
+  - Tiles: On time % · Received on time · Received late · Still missing · Overdue now. Plus a per-group table, a definition note, and "last generated" (in red "never" if the job hasn't run).
+  - Empty state ("Nothing has fallen due yet …") when nothing fell due in the window. This branch has no e2e case (it would need another fixture office); the condition is just `due === 0`.
+  - Tests: unit `onTimePct`/`pctText`; e2e `collection.spec.ts` 4/4 (Manager figures 50% / 1 / 0 / 1 / overdue now 3 + Banking row + axe + 390 px; Admin; Staff and Limited Not Found). `catalogue.spec` and `users.spec` still green. Unit 233/233.
+- Step 9: `expected-perf.test.ts` (RUN_SLOW) passes locally against dev (the real office's 00:15 IST run is present). Proof dispatch pending.
+- **Cadence change (proposed to Raja 11:26):** verify each step locally, back it up with `[skip ci]` pushes, then one full CI run after step 10 and the final CI + RUN_SLOW Regression at step 11. CLAUDE.md requires a full green run only on the last commit before merge.
 - Decisions made (cross-cutting → flag for architecture.md): none new.
 

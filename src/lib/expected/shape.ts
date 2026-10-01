@@ -149,3 +149,11 @@ export function openForCards(items: ExpectedItem[], fyCodeOf: (fyId: string) => 
       || dueBy(a).localeCompare(dueBy(b))
       || a.typeName.localeCompare(b.typeName));
 }
+
+/** Settings › Collection (AC-16): on-time % of one group's due items (one decimal), or null when nothing fell due. */
+export function onTimePct(g: { due: number; on_time: number }): number | null {
+  return g.due > 0 ? Math.round((1000 * g.on_time) / g.due) / 10 : null;
+}
+
+/** "86.5%", or "—" when there is nothing to measure. */
+export const pctText = (p: number | null) => (p === null ? "—" : `${p.toLocaleString("en-IN", { maximumFractionDigits: 1 })}%`);
