@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui";
 import type { TodayData } from "@/lib/today/queries";
+import { LogCallButton, RemindButton } from "../clients/remind-dialog";
 import { todayHref, type Scope, type Show, type TodayCard } from "@/lib/today/shape";
 
 // Today (mockup 01, spec 06 AC-1…AC-5). Counts are buttons with a pressed state that filter the cards
 // (click again to clear); the scope toggle is a pressed-state pair. Both live in the URL as enums only.
-// Remind / Log call on each row arrive with plan step 6.
+// Each expected row: Remind (AC-7) · Log call (AC-11) · Upload (04's pre-filled Add document).
 
 const LONG_DATE = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
@@ -44,7 +45,7 @@ export function TodayView({ data, inbox, scope, show, page }: {
         <Count n={data.counts.dueWeek} label="Due this week" tone="text-warn" pressed={show === "due_week"}
           onClick={() => go(scope, show === "due_week" ? null : "due_week")} />
         <Link href="/inbox" className="flex items-baseline gap-2 rounded-xl bg-panel px-4 py-3 shadow-card hover:bg-canvas">
-          <span className="text-[22px] font-semibold">{inbox}</span><span className="text-[13.5px] text-ink-2">In inbox</span>
+          <span className="text-[22px] font-semibold">{inbox}</span>{" "}<span className="text-[13.5px] text-ink-2">In inbox</span>
         </Link>
       </div>
 
@@ -73,7 +74,7 @@ function Count({ n, label, tone, pressed, onClick }: { n: number; label: string;
   return (
     <button type="button" aria-pressed={pressed} onClick={onClick}
       className={`flex items-baseline gap-2 rounded-xl px-4 py-3 shadow-card ${pressed ? "bg-ink text-white" : "bg-panel hover:bg-canvas"}`}>
-      <span className={`text-[22px] font-semibold ${pressed ? "" : tone}`}>{n}</span>
+      <span className={`text-[22px] font-semibold ${pressed ? "" : tone}`}>{n}</span>{" "}
       <span className={`text-[13.5px] ${pressed ? "" : "text-ink-2"}`}>{label}</span>
     </button>
   );
@@ -99,7 +100,9 @@ function ClientCard({ card: c }: { card: TodayCard }) {
                 <p className="mt-0.5 text-[13px] text-ink-3">{r.detail}</p>
               </div>
               <span className={`text-[13px] ${r.labelTone === "late" ? "text-bad" : r.labelTone === "due" ? "text-warn" : "text-ink-2"}`}>{r.label}</span>
-              <span className="flex gap-2">
+              <span className="flex flex-wrap gap-2">
+                <RemindButton clientId={c.clientId} clientName={c.name} />
+                <LogCallButton clientId={c.clientId} clientName={c.name} />
                 {r.uploadHref && (
                   <Link href={r.uploadHref} aria-label={`Upload ${r.title}`}
                     className="inline-flex h-[30px] items-center rounded-[7px] bg-accent px-2.5 text-[13px] font-medium text-white hover:bg-[#264d8f]">Upload</Link>

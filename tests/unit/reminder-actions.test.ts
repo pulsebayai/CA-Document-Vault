@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Feature 06 step 4 — the server actions' contract (AC-8, AC-9, AC-11) with the database, mailer and queries mocked.
 // The database rules themselves (cap, ceiling, items, visibility) are proven in tests/rls/follow-up.test.ts.
 
+vi.unmock("@/lib/reminders/actions"); // tests the real actions (setup-dom stubs them for view tests)
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 const me = { id: "me", role: "staff", officeId: "o1", officeName: "Kushal Associates", fullName: "Priya Raman", email: "priya@firm.in" };

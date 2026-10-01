@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { todayForOffice } from "@/lib/expected/queries";
 import { buildReminderMessage, type ReminderMessage } from "./message";
 import {
-  STALE_PENDING_MS, dialogItems, maskEmail, type Channel, type DialogItem, type FollowUpStatus, type HistoryEntry,
+  STALE_PENDING_MS, dialogItems, historyOf, historyText, maskEmail, type Channel, type DialogItem, type FollowUpStatus, type HistoryEntry,
   type RawDialogItem,
 } from "./shape";
 
@@ -163,4 +163,23 @@ export async function clientRemindersAs(clientId: string, limit = 50): Promise<R
       items: r.follow_up_item.flatMap((fi) => fi.expected_doc ? [`${fi.expected_doc.doc_type.name} · ${fi.expected_doc.period.label}`] : []),
     };
   });
+}
+
+/** AC-12: "reminded N times · last <date> by <name> (<channel>)" for every expected item of one client. */
+export async function itemHistoryAs(clientId: string, today: string): Promise<Record<string, string>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("follow_up")
+    .select("sent_on, sent_at, channel, status, staff:sent_by (full_name), follow_up_item (expected_doc_id)")
+    .eq("client_id", clientId).limit(2000);
+  if (error) fail("history", error.code);
+  type Row = { sent_on: string; sent_at: string; channel: Channel; status: FollowUpStatus; staff: { full_name: string } | null; follow_up_item: Array<{ expected_doc_id: string }> };
+  const byItem = new Map<string, HistoryEntry[]>();
+  for (const f of (data ?? []) as unknown as Row[]) {
+    for (const fi of f.follow_up_item) {
+      const list = byItem.get(fi.expected_doc_id) ?? [];
+      list.push({ on: f.sent_on, at: f.sent_at, by: f.staff?.full_name ?? "—", channel: f.channel, status: f.status });
+      byItem.set(fi.expected_doc_id, list);
+    }
+  }
+  return Object.fromEntries([...byItem].map(([id, h]) => [id, historyText(historyOf(h), today)]));
 }
