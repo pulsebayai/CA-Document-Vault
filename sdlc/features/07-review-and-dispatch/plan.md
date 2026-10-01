@@ -66,7 +66,7 @@ No migration overlap: 06 adds only its own tables and functions.
 - [x] 6. **Document page**: Review panel (history, undo for Admin/Manager), Dispatch panel (packet, undo), the corrected-file date in the version dialog. Proof: e2e. (1)
 - [x] 7. **`/documents`**: Status values + Return filter (URL round trip, no text in the URL), state on rows. Proof: e2e + unit. **First cut if 07 slips.** (0.5)
 - [x] 8. a11y (axe), ≤ 390 px, screenshots, the ui-reference deviation. Proof: e2e evidence. (0.5)
-- [ ] 9. **RUN_SLOW** (07 changes 03/04 write paths): Regression dispatch on the branch with `base_url` = the preview; record save overhead (< 20 ms). (0.5) [none]
+- [x] 9. **RUN_SLOW** (07 changes 03/04 write paths): Regression dispatch on the branch with `base_url` = the preview; record save overhead (< 20 ms). (0.5) [none]
 - [ ] 10. Merge main → full suite → `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. (0.5) [PR review: 1 h]
 
 **Total ≈ 8 build sessions.** Your review ≈ 2.5 h. **First cut:** step 7's Return filter. Second cut: the Dispatch panel's "Also in this packet" list.
@@ -110,6 +110,11 @@ No migration overlap: 06 adds only its own tables and functions.
   - **Fixed:** the Important finding (packet "N of M removed" / "Cancelled" on earlier packets, AC-10); concurrent-packet race mapped to stale; "Already reviewed by <name>"; the session-ended message; live regions that survive the refresh; unique "Needs correction: <document>" names; server-formatted history times (hydration); the client name in the dispatch heading; "1 day".
   - **Accepted:** double recompute when a reset and a relink happen in one save (idempotent; +0.55 ms measured); choosing "To review" adds a visible Show: Classified chip that the user can remove.
   - **Open for Raja:** see the PR description (lock rows in `update_document` / `add_document_version`; type/client changes of a dispatched original; a corrected file for a dispatched original; a Needs-correction original shows Ready to dispatch).
+- **D9 (Raja 2026-10-01 21:15: "fix those 2")** Migration D `20261001154640_review_dispatch_locks`:
+  - `update_document` and `add_document_version` read the document `for update` (race fix);
+  - `update_document` refuses a client or received-as change while the original is in a live packet (`DISPATCHED`: undo the dispatch first; plain message in `src/lib/documents/actions.ts`).
+
+  Test: "a dispatched original keeps its client…" (red first, then green). The 03, 04 and 07 suites using these functions are green, unedited. Questions 3–4 remain open.
 
 ## Session log
 
@@ -120,4 +125,5 @@ No migration overlap: 06 adds only its own tables and functions.
 - Next step: Raja approves B → apply → md5 check → advisors → step-1 tests green locally → 03/04/03b suites green unedited → push (CI full run).
 - Decisions made (cross-cutting → flag for architecture.md): D2 (status-change trigger for 04 linking), D3 (flag-gated write policies for history/packets). **For 05:** "map to existing" re-points `document.doc_type_id`, which resets reviews under AC-4. 05's spec should decide whether a catalogue merge resets reviews (probably not: bypass with a flag).
 - Update (same session, ~18:00–19:10): Raja approved B → applied as `20261001123125` (md5 = file), advisors: nothing new. Migration C fix (D5). Full `test:db` locally: **338 passed, 4 skipped (RUN_SLOW)** — 03, 04, 03b suites unedited. Steps 3–8 built: unit 338 → 359 passing; e2e `review-dispatch.spec.ts` 5/5 locally; CI run 36865967873 (d3229f1, steps 5–6) **fully green**. Save overhead measured on dev (rolled back): review 5.9 ms, a period change that resets a review +0.55 ms vs one that doesn't (< 20 ms). Step 9 RUN_SLOW Regression dispatched on the branch preview (run 36870727146).
+- Update (~19:45–21:30): CI 36876335647 (9b7552b) green; **RUN_SLOW Regression 36881109553 on the branch preview green** (RLS with RUN_SLOW 17 min, e2e 15 min). sdlc-reviewer run: SQL sound, function bodies verified; fixes in D8. Raja approved fixing questions 1–2 → migration D (D9), applied, md5 = file, advisors unchanged. Next: CI + RUN_SLOW again on D → mark #25 ready → Raja answers Q3–4 → merge.
 

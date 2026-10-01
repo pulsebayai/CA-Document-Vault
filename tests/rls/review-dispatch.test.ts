@@ -384,6 +384,22 @@ describe("undo dispatch (AC-10)", () => {
   });
 });
 
+describe("a dispatched original keeps its client and stays an original (PR #25 review, Raja 2026-10-01)", () => {
+  it("changing client or received as is refused while it is in a live packet; other edits and undo-then-change work", async () => {
+    const base = { client_id: clientA, doc_type_id: t.bank, period_id: p.apr, received_on: "2026-05-02" };
+    const d = (await mustCreateOriginal(as.staff, base, as.staff)).id;
+    await mustDispatch(as.staff, { client_id: clientA, document_ids: [d], dispatched_on: "2026-05-12" });
+    for (const patch of [{ client_id: clientB }, { received_as: "hard_copy" }]) {
+      const r = await as.staff.rpc("update_document", { p_id: d, p: patch });
+      expect(r.error?.message ?? "").toMatch(/DISPATCHED/);
+    }
+    expect(await documentRow(d)).toMatchObject({ client_id: clientA, received_as: "original" });
+    expect((await as.staff.rpc("update_document", { p_id: d, p: { remark: "Sent with covering letter" } })).error).toBeNull();
+    expect((await as.manager.rpc("undo_dispatch_item", { p_document_id: d, p_reason: "Wrong client" })).error).toBeNull();
+    expect((await as.staff.rpc("update_document", { p_id: d, p: { client_id: clientB } })).error).toBeNull();
+  });
+});
+
 describe("packets: visibility and no app write path (AC-15)", () => {
   it("packets and items follow the client's visibility", async () => {
     const b = (await mustCreateOriginal(as.staff, { client_id: clientB, doc_type_id: t.bank, period_id: p.apr, received_on: "2026-05-02" }, as.staff)).id;

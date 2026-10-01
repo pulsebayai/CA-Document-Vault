@@ -88,6 +88,7 @@ const DB_MESSAGES: Array<[RegExp, string, string?]> = [
   [/CLIENT_OFFICE|row-level security/, "You can't add documents for this client.", "clientId"],
   [/RECEIVED_ON_FUTURE/, "Received on can't be in the future.", "receivedOn"],
   [/OBJECT_MISSING|FILE_TYPE|PATH/, "The upload didn't finish. Please add the file again.", "file"],
+  [/DISPATCHED/, "This original is in a dispatch packet. Undo the dispatch on the document page before changing its client or how it was received.", "clientId"], // 07
   [/ARCHIVED/, "Unarchive the document before changing it."],
   [/NOT_FOUND/, "Document not found."],
 ];
