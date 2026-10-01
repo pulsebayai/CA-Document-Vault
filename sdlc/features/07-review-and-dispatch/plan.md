@@ -50,8 +50,8 @@ No migration overlap: 06 adds only its own tables and functions.
    - No back-fill: existing documents are `received` = To review.
 
 ## Steps (estimates = build sessions with Claude; your time in brackets)
-- [ ] 0. Draft PR; CI green (docs only). (—)
-- [ ] 1. **RLS/DB tests first (red)**, proof: `test:db` fails for the right reasons (1.5). Cases:
+- [x] 0. Draft PR; CI green (docs only). (—) — PR #25
+- [x] 1. **RLS/DB tests first (red)**, proof: `test:db` fails for the right reasons (1.5). Cases:
   - review/needs-correction/undo per role (Limited on own vs other client);
   - Inbox/archived refused; direct `update … set status` refused; history rows;
   - resets (new version, dimension change; remark edit doesn't reset);
@@ -86,6 +86,17 @@ No migration overlap: 06 adds only its own tables and functions.
 - No `[skip ci]` on code commits.
 
 ## Deviations from plan
-(filled in during the build)
+- **D1 (step 2) `update_document` is replaced too** (not in "Files that change"). AC-16 needs the save's own activity row to say a review was reset (`review_reset: true`), and only `update_document` writes that row. The body is unchanged except that field.
+- **D2 (step 2) A new trigger `document_after_review_link` (AFTER UPDATE … WHEN status changed) instead of adding `status` to `document_after_link`'s column list.** A new version resets the review inside 03's BEFORE trigger, and that UPDATE statement doesn't name `status`, so `UPDATE OF status` would never fire and the expected item wouldn't recompute. The WHEN clause also means ordinary saves pay nothing extra. 04's trigger and function are unchanged.
+- **D3 (step 2) Write path = policies gated by transaction flags** (`app.doc_review`, `app.dispatch_write`), the same pattern as 04's `expected_doc` and 03's proposed types, rather than tables with literally no write policies. An invoker function needs a policy to insert. Direct inserts and updates through the API are still refused (asserted).
+- **D4 (step 2) Interpretations:** Needs correction may also be set on a Reviewed document by anyone who can see it (it only makes the metric stricter). `p_received_on` is ignored, not refused, when the document no longer Needs correction (a stale dialog). The dispatch date's "not in the future" uses the India date, not the test clock. The Status filter keeps 03b's raw meaning (`received` also matches Inbox documents, which 03b's tests assert); the UI pairs "To review" with filed documents (step 7).
 
 ## Session log
+
+### 2026-10-01 (session 2, ~17:40–)
+- Done: step 0 (draft PR #25); step 1 (tests/rls/review-dispatch.test.ts, review-metric.test.ts, support helpers; 29 red for the right reason: functions/tables missing); migration A applied to dev (20261001122110, Raja OK in chat); migration B written + dry-run on dev (rolled back): review 33 ms, dispatch 15 ms, all paths as specified.
+- In progress: step 2, waiting for the **SQL gate** on B (`supabase/migrations/20261001130000_review_and_dispatch.sql`; renamed to the applied version after apply).
+- Blocked / failing: none.
+- Next step: Raja approves B → apply → md5 check → advisors → step-1 tests green locally → 03/04/03b suites green unedited → push (CI full run).
+- Decisions made (cross-cutting → flag for architecture.md): D2 (status-change trigger for 04 linking), D3 (flag-gated write policies for history/packets). **For 05:** "map to existing" re-points `document.doc_type_id`, which resets reviews under AC-4. 05's spec should decide whether a catalogue merge resets reviews (probably not: bypass with a flag).
+
