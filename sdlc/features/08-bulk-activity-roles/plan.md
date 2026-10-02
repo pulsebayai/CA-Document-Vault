@@ -49,8 +49,8 @@ One migration, `<ts>_bulk_activity`.
 - It changes no existing object except `activity_select`. The diff for that policy is shown at the gate.
 
 ## Steps (estimates = build sessions; your time in brackets)
-- [ ] 0. Draft PR; CI green (docs only). (—)
-- [ ] 1. **Spike:** fetch a signed download URL cross-origin from the preview (CORS); measure a 100 MB, 30-file zip in Chromium. Proof: a note in the session log; stop if blocked. (0.25)
+- [x] 0. Draft PR; CI green (docs only). (—)
+- [x] 1. **Spike:** fetch a signed download URL cross-origin from the preview (CORS); measure a 100 MB, 30-file zip in Chromium. Proof: a note in the session log; stop if blocked. (0.25)
 - [ ] 2. **Tests first (red)** + **matrix audit**. Write `permissions.ts` from the spec. Probe each cell against the code by reading the functions and policies. Report any cell that differs **at a short gate with you (D4)** before writing UI. RLS tests: bulk links, bulk review, feed, visibility (each entity kind × role), role matrix. Proof: `test:db` fails for the right reasons. (1.5) [matrix decisions: 15 min]
 - [ ] 3. **Migration**: written, dry-run, SQL gate, applied, advisors clean. Proof: step-2 DB tests green; **all earlier RLS suites green unedited**. (1) [SQL review: 30 min]
 - [ ] 4. **Bulk on `/documents` + Client › Documents**: selection, zip, Mark reviewed (confirm → chunks → result). Proof: unit + e2e (download event, unzip, entries). (1.5)
@@ -82,3 +82,14 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - Done: intent, spec approved (Raja). Plan drafted.
 - Plan approved; batch E launched (Raja 2026-10-02 11:39 IST).
 - Next step: step 0 (draft PR) in this feature's own session.
+
+### 2026-10-02 (build session 1)
+- Done: step 0, draft PR #29. Step 1 spike: **not blocked.**
+  - **CORS** (dev Storage, a real signed link, `Origin` = a vercel.app preview): GET → 200 with `access-control-allow-origin: *` (both view and `download=` links); OPTIONS preflight → 200, `*`, max-age 3600. A plain `fetch()` with no credentials needs nothing more. CSP `connect-src` already lists the Supabase origin.
+  - **Zip** (`client-zip` 2.5.1, Chromium 1194 headless, 30 × 3.33 MB incompressible files = 100 MB, links consumed in batches of 10, served cross-origin from a local server): `downloadZip(...).blob()` took 1.07–1.21 s over 3 runs, JS heap 39–61 MB (the Blob lives outside the JS heap). The CPU and memory costs are small.
+  - Not measured: real network time. At the 300 MB cap it is bandwidth-bound (≈ 2 min at 20 Mbit/s), so the progress dialog + Cancel matter more than zip speed. Links stay safe: each batch of 10 is requested when it is about to be fetched, and expiry is checked when a request starts.
+  - Not done: a browser `fetch` from the real preview origin (previews aren't reachable from this session). The curl `Origin` check covers the same CORS rule for a credential-less GET; step 4's e2e (download event + unzip) proves it end to end.
+- In progress: —
+- Blocked / failing: —
+- Next step: step 2, tests first (red) + matrix audit → short D4 gate with Raja on any matrix cell that differs from the code.
+- Decisions made: none.
