@@ -1,5 +1,5 @@
 # Plan: Bulk actions, Activity and roles
-Spec: ./spec.md · Status: draft · Date: 2026-10-02
+Spec: ./spec.md · Status: approved (Raja 2026-10-02 11:39 IST) · Date: 2026-10-02
 Holds: **no schema lock**. With approval: the **additive-only exception** (own new functions) plus the **scoped exception** to replace `activity_select` (intent Q3a, Raja 2026-10-02). Architecture lock: 05. 08's three architecture items go to architecture.md on main at merge.
 Base: `feat/08-bulk-activity-roles` from main `6227385`. **05 merges first**; 08 then merges main in (step 9).
 
@@ -80,4 +80,5 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 ## Session log
 ### 2026-10-02
 - Done: intent, spec approved (Raja). Plan drafted.
-- Next step: plan gate → batch E launch.
+- Plan approved; batch E launched (Raja 2026-10-02 11:39 IST).
+- Next step: step 0 (draft PR) in this feature's own session.
