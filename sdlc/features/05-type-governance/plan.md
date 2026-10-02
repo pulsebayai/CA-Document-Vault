@@ -69,7 +69,7 @@ Base: `feat/05-type-governance` from main `6227385`. **05 merges before 08**; 08
 - [x] 3. Server actions + validation + messages. Proof: unit + RLS through the actions. (0.5) — `governance.ts` (preview, approve, edit & approve, merge, reject, merge-target search), `messages.ts`, `validateTypeEdits` / `validateDecisionComment`, `loadProposalQueue`, `notifications/{queries,actions}.ts`; unit 27 new (426 total), lint/typecheck/build green; the SQL they call is covered by type-governance.test.ts (48).
 - [x] 4. **Catalogue queue UI** (panel, 4 dialogs, preview, stale handling). Proof: e2e + unit. (1.5) — `proposal-dialogs.tsx` + the panel in `catalogue-view.tsx`; unit `proposal-queue.test.tsx` (7); e2e `type-governance.spec.ts` 5/5 locally; 03's `proposed-types.spec.ts` AC-16 test updated in its own commit (Raja OK 16:06): "coming with feature 05" → "1 waiting", "no buttons" → the four decisions (Reject disabled), open the client disclosure first; everything else unchanged.
 - [x] 5. **Bell** (header, panel, open = read, layout count). Proof: e2e + unit. (0.5) — `notification-bell.tsx` (disclosure + panel, Esc/outside close, focus return), mounted before the avatar (`app-header.tsx`: 1 import + 1 line + an optional prop); layout fetches the unread count with the Inbox count; unit 3; e2e 6/6 locally (incl. 390 px, axe); header e2e (screens at 390 px, inbox, search, smoke) 16/16.
-- [ ] 6. **Settings › Collection**: metric 3 + queue age. Proof: e2e. (0.25)
+- [x] 6. **Settings › Collection**: metric 3 + queue age. Proof: e2e. (0.25) — "Catalogue" section (figure tile "Filed under approved types", "N of M documents", "N proposals waiting · oldest N days" linking to the queue, how-it\'s-counted note: as of now, not the 30-day window); e2e AC-16 self-contained; type-governance 7/7, collection + chasing e2e green locally.
 - [ ] 7. a11y (axe), ≤ 390 px, screenshots, ui-reference deviations. Proof: e2e evidence. (0.5)
 - [ ] 8. **RUN_SLOW** (05 changes 03's document trigger): Regression on the branch with `base_url` = the preview (full suite); record merge time and document save overhead. (0.5) [none]
 - [ ] 9. architecture.md (3 items, under the lock), merge main → full suite → `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. (0.5) [PR review: 1 h]
@@ -111,4 +111,5 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - Step 3 done (14:35). `loadProposedTypes` stays until the panel switches to `loadProposalQueue` in step 4 (then removed). Edit & approve uses 02's add-type fields only (no registration kind: 02's form has none).
 - Next step: step 4 — catalogue queue UI (panel, 4 dialogs, preview, stale handling).
 - Step 4 + 03 test update pushed (c9945ee, 3817fec). c9945ee's e2e file had a typecheck error (`beforeAll(fn, timeout)`): fixed with step 5 (`test.setTimeout`). Lesson: run `npm run typecheck` after adding e2e files, not only before.
-- Step 5 done. Next: step 6 — Settings › Collection metric 3 + queue age.
+- Step 5 done.
+- Step 6 done. Next: step 7 — a11y, 390 px, screenshots, ui-reference deviation rows.

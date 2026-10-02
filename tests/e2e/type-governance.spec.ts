@@ -143,3 +143,27 @@ test("AC-13: the proposer's bell — count, the decisions' text, opening marks t
   await expect(page.getByRole("region", { name: "Notifications" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
+
+test("AC-16: Settings › Collection shows metric 3 and the queue's age", async ({ page, baseURL }) => {
+  // Self-contained: one new proposal with one document; the expected figures are counted from the database.
+  const asStaff = await signedInClient(staff.email);
+  const { data, error } = await asStaff.rpc("create_proposed_type", { p_client_id: clientId, p_doc_group_id: await groupId(officeId, "Other"), p_name: "Fresh slips" });
+  if (error) throw error;
+  await mustCreateDocument(asStaff, { client_id: clientId, doc_type_id: (data as { doc_type_id: string }).doc_type_id });
+  const { data: docs } = await adminClient().from("document").select("doc_type:doc_type_id (status)")
+    .eq("office_id", officeId).not("classified_at", "is", null).is("archived_at", null);
+  const rows = (docs ?? []) as unknown as Array<{ doc_type: { status: string } }>;
+  const approved = rows.filter((d) => d.doc_type.status === "approved").length;
+  const pct = Math.round((1000 * approved) / rows.length) / 10;
+  const { data: waiting } = await adminClient().from("doc_type").select("id").eq("office_id", officeId).eq("status", "proposed");
+  const items = waiting!.length; // one proposal per name here, so rows = items
+
+  await signIn(page, admin.email, baseURL);
+  await page.goto("/settings/collection");
+  const figures = page.locator('dl[aria-label="Catalogue figures"]');
+  await expect(figures).toContainText("Filed under approved types");
+  await expect(figures).toContainText(`${pct.toLocaleString("en-IN", { maximumFractionDigits: 1 })}%`);
+  await expect(figures).toContainText(`${approved} of ${rows.length} documents`);
+  await expect(page.getByRole("link", { name: `${items} ${items === 1 ? "proposal" : "proposals"} waiting` })).toHaveAttribute("href", "/settings/catalogue");
+  await expect(page.getByText(/oldest 0 days/)).toBeVisible();
+});

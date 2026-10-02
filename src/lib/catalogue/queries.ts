@@ -130,3 +130,17 @@ export async function loadProposalQueue(): Promise<ProposalQueue> {
     })),
   };
 }
+
+// ── Feature 05 AC-16: metric 3 (catalogue convergence) + queue age, for Settings › Collection ──
+export type CatalogueMetric = { approved: number; total: number; approvedPct: number | null; waiting: number; oldestDays: number | null };
+
+export async function catalogueMetricAs(): Promise<CatalogueMetric> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("catalogue_metric");
+  if (error) {
+    console.error("catalogue.metric_failed", { code: error.code ?? "unknown" });
+    throw new Error("Could not load the catalogue figure.");
+  }
+  const m = data as { approved: number; total: number; approved_pct: number | null; waiting: number; oldest_days: number | null };
+  return { approved: m.approved, total: m.total, approvedPct: m.approved_pct, waiting: m.waiting, oldestDays: m.oldest_days };
+}
