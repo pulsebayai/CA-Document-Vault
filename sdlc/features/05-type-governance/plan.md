@@ -51,7 +51,7 @@ Base: `feat/05-type-governance` from main `6227385`. **05 merges before 08**; 08
 
 ## Steps (estimates = build sessions; your time in brackets)
 - [x] 0. Draft PR; CI green (docs only). (—) — PR #28, CI 36972529388.
-- [ ] 1. **RLS/DB tests first (red).** Proof: `test:db` fails for the right reasons (1.5). Cases (spec test table):
+- [x] 1. **RLS/DB tests first (red).** Proof: `test:db` fails for the right reasons (1.5). — 48 tests: 32 fail + 14 skipped (beforeAll needs the new functions) on missing functions/table/columns only; 2 pass vacuously until B exists (CI 36974104192 + local run of the file). Cases (spec test table):
   - grouping;
   - approve / edit & approve / group move / period fit / schedule → expected items for proposing clients only;
   - merge (documents incl. archived, DOC-ID/versions intact, plan rows, alias, retired row, linking, review/dispatch kept, no reset row, normal edit still resets);
@@ -96,3 +96,6 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - Done: intent, spec approved (Raja). Plan drafted.
 - Plan approved; batch E launched (Raja 2026-10-02 11:39 IST).
 - Next step: step 0 (draft PR) in this feature's own session.
+- Step 0: draft PR #28, CI green (36972529388). Step 1: `tests/rls/type-governance.test.ts` (48 tests) + `type-governance-perf.test.ts` (RUN_SLOW) + contract/helpers appended to `tests/support/catalogue.ts`. Red in CI 36974104192 for the right reasons; confirmed by running the file locally (own fixtures only, so no clash with 08).
+- Contract choices beyond the spec, for Raja's OK: (a) `proposal_queue`/`preview_type_decision`/`catalogue_metric` are Admin/Manager only (ROLE_REQUIRED); (b) no one, Admin included, can approve or retire a proposed type by writing `doc_type` directly — migration B needs a status guard on `doc_type` (flag-gated, like 07's `app.doc_review`).
+- Next step: step 2 — migrations A + B, dry run with the 1,000-document timing, then the SQL gate.

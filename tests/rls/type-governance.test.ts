@@ -310,7 +310,7 @@ describe("merge into an approved type (AC-5, AC-6, AC-8)", () => {
     const { error: ae } = await as.manager.rpc("archive_document", { p_id: d.archived.id, p_reason: "duplicate" });
     if (ae) throw new Error(ae.message);
     d.dispatched = await mustCreateOriginal(as.staff2, { client_id: clientB, doc_type_id: rowB, period_id: p.jun }, as.staff);
-    await mustDispatch(as.staff, { client_id: clientB, document_ids: [d.dispatched.id] });
+    await mustDispatch(as.staff, { client_id: clientB, document_ids: [d.dispatched.id], dispatched_on: new Date(Date.now() + 330 * 60_000).toISOString().slice(0, 10) });
     d.soft = await createSoftCopy(as.staff2, officeId, { client_id: clientB, doc_type_id: rowB, remark: "salary for June" });
     for (const [k, v] of Object.entries(d)) before[k] = await documentRow(v.id);
     resetsBefore = Object.fromEntries(await Promise.all(Object.entries(d).map(async ([k, v]) =>
