@@ -6,13 +6,14 @@ import { BrandMark } from "./ui";
 import { AddDocumentLink, NavLink } from "./nav-link";
 import { HeaderSearch } from "./header-search";
 
-/** Mockup header (references/mockup/01-today.jpg). Only shipped screens appear in the nav (Activity arrives with 08). */
+/** Mockup header (references/mockup/01-today.jpg). Only shipped screens appear in the nav. */
 export function AppHeader({ me, inboxCount }: { me: CurrentStaff; inboxCount: number }) {
   // Settings is for everyone from 02: the catalogue is readable by all staff (AC-6); Users stays Admin only.
   const nav = [
     { href: "/today", label: "Today" },
     { href: "/inbox", label: "Inbox", count: inboxCount },
     { href: "/clients", label: "Clients" },
+    { href: "/activity", label: "Activity" }, // 08: every role (Limited sees its own actions and its clients)
     { href: "/settings/catalogue", label: "Settings" },
   ];
 
