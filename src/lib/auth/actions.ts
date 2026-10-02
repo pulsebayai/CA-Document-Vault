@@ -66,7 +66,7 @@ async function verifyCode(prev: LoginState, form: FormData): Promise<LoginState>
   if ((await finishSignIn(supabase, "code")) === "removed") {
     return { step: "email", error: "Your access has been removed. Contact your administrator." };
   }
-  redirect("/clients");
+  redirect("/today"); // spec 06 AC-1: sign-in lands on Today
 }
 
 /** Link sign-in (PKCE): exchange the one-time code from the email link for a session. */
@@ -75,14 +75,14 @@ export async function completeLinkSignIn(code: string): Promise<{ error: string 
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) return { error: LINK_FAILED };
   if ((await finishSignIn(supabase, "link")) === "removed") redirect("/login?reason=removed");
-  redirect("/clients");
+  redirect("/today"); // spec 06 AC-1: sign-in lands on Today
 }
 
 /** Invite link: the browser has stored the session from the URL fragment; finish on the server. */
 export async function completeInviteSignIn(): Promise<{ error: string }> {
   const supabase = await createClient();
   const result = await finishSignIn(supabase, "invite");
-  redirect(result === "removed" ? "/login?reason=removed" : "/clients");
+  redirect(result === "removed" ? "/login?reason=removed" : "/today");
 }
 
 const LINK_FAILED = "This sign-in link has expired, was already used, or was opened in a different browser. Request a new link on this device.";

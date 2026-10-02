@@ -55,11 +55,14 @@ export async function signIn(page: Page, email: string, baseURL: string | undefi
   if (error) throw new Error(`generateLink failed: ${error.message}`);
   await page.goto(data.properties.action_link);
   await Promise.race([
-    page.waitForURL(/\/clients$/, { timeout: 30_000 }),
+    page.waitForURL(/\/today$/, { timeout: 30_000 }), // 06 AC-1 (decision 1a): sign-in lands on Today
     appAlert(page).first().waitFor({ timeout: 30_000 }).then(async () => {
       throw new Error(`Sign-in failed for ${email}: ${await appAlert(page).first().innerText()}`);
     }),
   ]);
+  // Callers start on Clients, exactly as the saved-session path above does (goto /clients).
+  await page.goto(`${base}/clients`);
+  await page.waitForURL(/\/clients$/, { timeout: 30_000 });
   await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
   sessions.set(key, (await context.cookies()).filter((c) => AUTH_COOKIE.test(c.name)));
 }

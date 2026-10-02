@@ -14,6 +14,8 @@ import { ExpectedView } from "./expected-view";
 import { Card } from "@/components/ui";
 import { ArchiveControls } from "./archive-controls";
 import { PlanView } from "./plan-view";
+import { clientRemindersAs, itemHistoryAs } from "@/lib/reminders/queries";
+import { RemindersList } from "./reminders-list";
 
 /**
  * Client page (mockups 10–11; 02 AC-18, 03 AC-10, 04 AC-13/14): header and tabs Documents (default, 04 AC-14) ·
@@ -40,6 +42,13 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
     tab !== "settings" ? listFinancialYears() : [],
     tab === "documents" ? listPlanGroups(c.id) : [],
   ]);
+  // 06 AC-12: each expected row's reminder history; the Expected tab also lists the client's reminders.
+  const [history, reminderList] = await Promise.all([
+    tab !== "settings" ? itemHistoryAs(c.id, expected.today) : {},
+    tab === "expected" ? clientRemindersAs(c.id) : [],
+  ]);
+  // Remind / Log call show only where the row's own actions do (not on an archived client); history always.
+  const reminders = { clientName: c.name, history };
   const gstins = c.registrations.filter((r) => r.kind === "gstin");
   const tans = c.registrations.filter((r) => r.kind === "tan");
   const canEdit = me.role !== "limited" && !c.archived;
@@ -93,14 +102,17 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
         <div>
           <h2 className="sr-only">Documents</h2>
           <DocumentsView clientId={c.id} documents={documents} currentFy={fyCodeOf(expected.today)}
-            expected={expected.items} planGroups={planGroups} fys={fys} canUpload={!c.archived} today={expected.today} clientName={c.name} />
+            expected={expected.items} planGroups={planGroups} fys={fys} canUpload={!c.archived} today={expected.today} clientName={c.name}
+            reminders={reminders} />
         </div>
       ) : tab === "expected" ? (
         <div>
           <h2 className="sr-only">Expected documents</h2>
           <ExpectedView clientId={c.id} items={expected.items} fys={fys}
             currentFyId={fys.find((f) => f.code === fyCodeOf(expected.today))?.id ?? null}
-            perms={{ canAct: !c.archived, canWaive: me.role !== "limited" && !c.archived, canUndo: canManage }} />
+            perms={{ canAct: !c.archived, canWaive: me.role !== "limited" && !c.archived, canUndo: canManage }}
+            reminders={reminders} />
+          <div className="mt-5"><RemindersList entries={reminderList} today={expected.today} /></div>
         </div>
       ) : (
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -125,10 +137,11 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             <Item label="Previous reference">{c.previousReference}</Item>
           </dl>
         </Card>
-        {/* Spec 02 UX: read-only until reminders ship (06). */}
         <Card className="p-5">
           <h2 className="font-semibold">Client reminders</h2>
-          <p className="mt-2 text-[13.5px] text-ink-2">Reminders arrive with feature 06.</p>
+          <p className="mt-2 text-[13.5px] text-ink-2">
+            Reminders go to the client&apos;s email and mobile above. <Link href={`/clients/${c.id}?tab=expected`} className="font-medium text-accent hover:underline">See the reminders sent</Link>.
+          </p>
         </Card>
         </div>
       </div>
