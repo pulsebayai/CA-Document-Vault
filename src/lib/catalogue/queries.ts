@@ -116,3 +116,47 @@ export async function loadProposedTypes(): Promise<ProposedType[]> {
     clientId: r.proposed_for_client_id, clientName: r.client?.name ?? null, documents: counts.get(r.id) ?? 0,
   }));
 }
+
+// ── Feature 05 AC-1: the decision queue — one item per group + name (proposal_queue, Admin/Manager only) ──
+export type ProposalItem = {
+  typeId: string; // the survivor (earliest row); any row of the item resolves it
+  typeIds: string[];
+  name: string;
+  groupId: string;
+  groupName: string;
+  proposedBy: string[]; // staff names
+  proposedAt: string;
+  clientCount: number;
+  clients: Array<{ id: string; name: string }>;
+  documentCount: number;
+};
+export type ProposalQueue = { waiting: number; items: ProposalItem[] };
+
+type QueueRow = {
+  type_id: string; type_ids: string[]; name: string; doc_group_id: string; group_name: string; proposed_by: string[];
+  proposed_at: string; client_count: number; clients: Array<{ id: string; name: string }>; document_count: number;
+};
+
+export async function loadProposalQueue(): Promise<ProposalQueue> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("proposal_queue");
+  if (error) {
+    console.error("catalogue.queue_failed", { code: error.code ?? "unknown" });
+    throw new Error("Could not load proposed types.");
+  }
+  const q = data as { waiting: number; items: QueueRow[] };
+  const staffIds = [...new Set(q.items.flatMap((i) => i.proposed_by))];
+  const names = new Map<string, string>();
+  if (staffIds.length) {
+    const { data: staff } = await supabase.from("staff_user").select("id, full_name").in("id", staffIds);
+    for (const s of staff ?? []) names.set(s.id as string, s.full_name as string);
+  }
+  return {
+    waiting: q.waiting,
+    items: q.items.map((i) => ({
+      typeId: i.type_id, typeIds: i.type_ids, name: i.name, groupId: i.doc_group_id, groupName: i.group_name,
+      proposedBy: i.proposed_by.map((id) => names.get(id) ?? "—"), proposedAt: i.proposed_at,
+      clientCount: i.client_count, clients: i.clients, documentCount: i.document_count,
+    })),
+  };
+}

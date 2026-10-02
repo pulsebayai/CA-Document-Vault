@@ -66,7 +66,7 @@ Base: `feat/05-type-governance` from main `6227385`. **05 merges before 08**; 08
   - metric 3;
   - suggestions via alias.
 - [x] 2. **Migrations A + B**: written, dry-run, **1,000-document merge timed in the dry run** (decides the linking fallback), SQL gate, applied, advisors clean. Proof: step-1 tests green in CI; **03, 03b, 04, 06, 07 RLS suites green unedited**. (2) [SQL review: 45 min] — Done 14:20: dry run 1,244 ms per 1,000-document merge; on dev 48/48 (twice, the second after the new reset) and the 02/03/03b/04/06/07 RLS suites 337/337 unedited (local); security advisors: nothing new. CI confirmation on the push below.
-- [ ] 3. Server actions + validation + messages. Proof: unit + RLS through the actions. (0.5)
+- [x] 3. Server actions + validation + messages. Proof: unit + RLS through the actions. (0.5) — `governance.ts` (preview, approve, edit & approve, merge, reject, merge-target search), `messages.ts`, `validateTypeEdits` / `validateDecisionComment`, `loadProposalQueue`, `notifications/{queries,actions}.ts`; unit 27 new (426 total), lint/typecheck/build green; the SQL they call is covered by type-governance.test.ts (48).
 - [ ] 4. **Catalogue queue UI** (panel, 4 dialogs, preview, stale handling). Proof: e2e + unit. (1.5)
 - [ ] 5. **Bell** (header, panel, open = read, layout count). Proof: e2e + unit. (0.5)
 - [ ] 6. **Settings › Collection**: metric 3 + queue age. Proof: e2e. (0.25)
@@ -105,3 +105,5 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - Next step: step 2 — migrations A + B, dry run with the 1,000-document timing, then the SQL gate.
 - Step 2 done: A + B applied to dev (B in four parts; part 4 via the SQL editor — see Deviations). 05 tests 48/48; earlier RLS suites 337/337 unedited.
 - Next step: step 3 — server actions (`src/lib/catalogue/governance.ts`, messages, validation, notifications).
+- Step 3 done (14:35). `loadProposedTypes` stays until the panel switches to `loadProposalQueue` in step 4 (then removed). Edit & approve uses 02's add-type fields only (no registration kind: 02's form has none).
+- Next step: step 4 — catalogue queue UI (panel, 4 dialogs, preview, stale handling).
