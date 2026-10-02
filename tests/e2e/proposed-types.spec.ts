@@ -6,7 +6,7 @@ import { groupId } from "../support/catalogue";
 import { createDocumentOffice, mustCreateDocument } from "../support/documents";
 import { signIn } from "./helpers";
 
-// Feature 03 step 8 — "Proposed by staff" panel (mockup 05, read-only until 05) and the "Proposed" badge in
+// Feature 03 step 8 — "Proposed by staff" panel (mockup 05; decisions added by 05, AC-1) and the "Proposed" badge in
 // Client › Settings (spec AC-15, AC-16).
 
 let officeId: string;
@@ -30,18 +30,23 @@ test.beforeAll(async () => {
 });
 test.afterAll(async () => { await retireStaff([staff?.id, admin?.id].filter(Boolean) as string[]); });
 
-test("AC-16: an Admin sees the proposal with its group, proposer, client and document count — read-only", async ({ page, baseURL }) => {
+test("AC-16: an Admin sees the proposal with its group, proposer, client and document count — with the decisions", async ({ page, baseURL }) => {
   await signIn(page, admin.email, baseURL);
   await page.goto("/settings/catalogue");
   const panel = page.getByRole("region", { name: /Proposed by staff/ });
-  await expect(panel).toContainText("coming with feature 05");
+  await expect(panel).toContainText("1 waiting"); // 05 AC-1 (was: "coming with feature 05")
   const item = panel.getByRole("list", { name: "Proposed types" }).getByRole("listitem");
   await expect(item).toHaveCount(1);
   await expect(item).toContainText("Locker rent receipt");
   await expect(item).toContainText("Banking · by Test ptypes-staff");
   await expect(item).toContainText("1 document");
+  await item.getByText("Used on 1 client").click(); // 05: the client list sits in a disclosure
   await expect(item.getByRole("link", { name: "Proposal Client" })).toHaveAttribute("href", `/clients/${clientId}`);
-  await expect(panel.getByRole("button")).toHaveCount(0); // no approve/reject in 03
+  // 05 AC-1: the four decisions (was: no buttons in 03)
+  for (const name of ["Approve Locker rent receipt", "Edit and approve Locker rent receipt", "Merge Locker rent receipt into an approved type"]) {
+    await expect(item.getByRole("button", { name, exact: true })).toBeVisible();
+  }
+  await expect(item.getByRole("button", { name: "Reject", exact: true })).toBeDisabled(); // 1 document uses it (05 AC-9)
   // Proposed types never appear in the catalogue's own lists (they aren't approved).
   await expect(page.getByRole("region", { name: "Banking", exact: true }).getByText("Locker rent receipt")).toHaveCount(0);
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
