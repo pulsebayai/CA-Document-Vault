@@ -433,7 +433,7 @@ end $$;
 
 -- Merges proposed rows into an approved target (AC-5, AC-6): plan rows removed and the target added; every
 -- document (archived included) moved with app.type_merge, one document.type_merged row each; the proposed name
--- becomes an alias; the rows are retired. 04's AFTER trigger links each moved document. Callers have locked the
+-- becomes an alias; the rows are retired. private.link_moved links the moved documents. Callers have locked the
 -- rows and checked role, target and period fit. Returns { documents, clients, plan_added, received, plan_removed }.
 create or replace function private.merge_rows(p_rows uuid[], p_target uuid, p_comment text)
 returns jsonb language plpgsql set search_path = '' as $$
