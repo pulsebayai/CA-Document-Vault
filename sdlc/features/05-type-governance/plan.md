@@ -1,5 +1,5 @@
 # Plan: Type governance
-Spec: ./spec.md · Status: draft · Date: 2026-10-02
+Spec: ./spec.md · Status: approved (Raja 2026-10-02 11:39 IST) · Date: 2026-10-02
 Holds (from approval): **schema lock** and **architecture lock** (batch E). 08 runs alongside with an additive-only exception plus its one `activity_select` replacement.
 Base: `feat/05-type-governance` from main `6227385`. **05 merges before 08**; 08 then merges main in.
 
@@ -94,4 +94,5 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 ## Session log
 ### 2026-10-02
 - Done: intent, spec approved (Raja). Plan drafted.
-- Next step: plan gate → batch E launch.
+- Plan approved; batch E launched (Raja 2026-10-02 11:39 IST).
+- Next step: step 0 (draft PR) in this feature's own session.
