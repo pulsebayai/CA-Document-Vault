@@ -16,6 +16,7 @@ let clientId: string;
 const type = {} as Record<"locker" | "cards" | "gate" | "petty", string>;
 
 test.beforeAll(async () => {
+  test.setTimeout(120_000);
   officeId = await createDocumentOffice("governance-ui");
   staff = await createStaff(officeId, "govui-staff", "staff");
   admin = await createStaff(officeId, "govui-admin", "admin");
@@ -33,7 +34,7 @@ test.beforeAll(async () => {
   type.gate = await propose("Other", "Gate passes");
   type.petty = await propose("Accounting", "Petty vouchers");
   await mustCreateDocument(asStaff, { client_id: clientId, doc_type_id: type.locker });
-}, 120_000);
+});
 test.afterAll(async () => { await retireStaff([staff?.id, admin?.id].filter(Boolean) as string[]); });
 
 const panelOf = (page: import("@playwright/test").Page) => page.getByRole("region", { name: /Proposed by staff/ });
@@ -114,4 +115,31 @@ test("AC-10: Staff don't get the queue", async ({ page, baseURL }) => {
   await page.goto("/settings/catalogue");
   await expect(page.getByRole("heading", { name: "Document catalogue" })).toBeVisible();
   await expect(panelOf(page)).toHaveCount(0);
+});
+
+test("AC-13: the proposer's bell — count, the decisions' text, opening marks them read; 390 px; axe", async ({ page, baseURL }) => {
+  // Runs after the decision tests above (serial file): Merge, Reject, Approve and Edit & approve each notified the proposer.
+  await signIn(page, staff.email, baseURL);
+  await page.goto("/settings/catalogue");
+  const bell = page.getByRole("button", { name: "Notifications, 4 unread" });
+  await expect(bell).toBeVisible();
+  await bell.click();
+  const panel = page.getByRole("region", { name: "Notifications" });
+  await expect(panel).toContainText("Locker slips was merged into Bank statement.");
+  await expect(panel).toContainText("Visiting cards was rejected: Not a compliance document");
+  await expect(panel).toContainText("Gate passes (Other) was approved.");
+  await expect(panel).toContainText("Petty cash book (Accounting) was approved.");
+  await expect(panel).not.toContainText("Governance Client"); // a notification never names a client
+  const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
+  expect(axe.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? "")).map((v) => v.id)).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Notifications", exact: true })).toBeFocused();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Notifications", exact: true })).toBeVisible(); // read: no count
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Notifications", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Notifications" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
 });
