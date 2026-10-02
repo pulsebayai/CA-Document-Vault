@@ -63,8 +63,8 @@ Base: `feat/06-today-and-reminders` from main `5e871f3`. **07 merges first**; 06
 - [x] 8. **Real-send check on dev:** set `MAIL_TRANSPORT=brevo` + the dev key + `EMAIL_ALLOWLIST=<your address>` on the preview, then send one reminder to a test client whose email is your address. Proof: you receive it; From / Reply-To / content are checked; the follow-up shows Sent. (0.25) [you: 10 min]
 - [x] 9. **After 07 merges:** merge main; migration 2 (`today_items` + documents); To review / Ready to dispatch rows using 07's `documentState()` and actions. Proof: RLS + e2e. (1)
 - [x] 10. a11y (axe), ≤ 390 px, screenshots, ui-reference deviations. Proof: e2e evidence. (0.5)
-- [ ] 11. **Timed check** (Staff role, preview): sign-in → find overdue → remind one client, ≤ 30 s. [you or a staff member: 10 min]
-- [ ] 12. architecture.md (lock) → full suite → `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. (0.5) [PR review: 1 h]
+- [x] 11. **Timed check** (Staff role, preview): sign-in → find overdue → remind one client, ≤ 30 s. [you or a staff member: 10 min] — **10 s** (Raja, 2026-10-02 08:09 IST; see session log)
+- [x] 12. architecture.md (lock) → full suite → `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. (0.5) [PR review: 1 h]
 
 **Total ≈ 8.25 build sessions.** Your time ≈ 2.5 h. **First cut:** the client page's Reminders list (row history stays). Second cut: count-as-filter on Today (counts stay, filtering dropped).
 **RUN_SLOW:** not required. 06 changes no 02/03 write path; its tables are new and its functions only read 04's.
@@ -108,7 +108,7 @@ Learned in step 8 (2026-10-02): Brevo returns 201 ("Sent" in the vault) **before
 - [ ] **One real send per environment, confirmed in the Brevo log** — not just "Sent" in the vault: Remind → Send email to an allow-listed address on staging, then Brevo → Transactional → Logs shows **Delivered** for that message ID (stored on the follow-up as `provider_message_id`), and the email is in the inbox (not spam) with From = the firm, Reply-To = the sender.
 - [ ] **Review backlog at go-live (step 9 gate, Raja 2026-10-02):** 07 leaves every existing filed document at "To review", so Today shows the whole backlog as To review until it is marked. If the pilot starts with existing documents, bulk-mark them reviewed first (08's bulk action) or accept the long list.
 - [ ] **Weekly bounce check during the pilot** (Brevo → Transactional → Logs: blocked / bounced / spam), since the vault records only Sent / Failed.
-- [ ] Step 11 timing (Staff role: sign-in → find overdue → remind one client ≤ 30 s) re-done on staging.
+- [ ] Step 11 timing (Staff role: sign-in → find overdue → remind one client ≤ 30 s) re-done on staging — **with Send email** (the preview run used WhatsApp; see 2026-10-02 step 11–12 log).
 
 ## Session log
 
@@ -136,3 +136,8 @@ Learned in step 8 (2026-10-02): Brevo returns 201 ("Sent" in the vault) **before
 ### 2026-10-02 (~00:45–01:20 IST) — step 9
 - Done: 07 merged (#25) → main merged into 06 (ff7fa40). Step 9: RLS tests first (today-documents.test.ts, red), migration 2 dry-run, **SQL gate approved**, applied (`20261001192826`, md5 verified, advisors nothing new); Today document rows + To review / Ready to dispatch counts and filters + exact client count; unit 397 green; 22 Today RLS tests green; e2e `today-documents.spec.ts` added.
 - Next step: full CI on this push → step 11 (Raja's timed check on the preview) → step 12 (verifier + sdlc-reviewer, fix Important findings, AC table, PR ready).
+
+### 2026-10-02 (~01:20–08:15 IST) — steps 11–12
+- Done: pre-PR review fixes pushed (3b7b681); CI attempt 1 failed in `test:db` (logs unreachable), full DB suite green locally (386/4 skipped), rerun **green** (run 36915583209) → docs commit acb577e pushed (I-1 accepted, D8). PR #24 description carries the AC → test → result table.
+- **Step 11 passed: 10 s** (target ≤ 30 s). Raja, as a new **Staff**-role user (`+staff` Gmail alias, invited from Settings › Users, made incharge of C0004), on the PR preview: sign-in → Today → C0004's item → Remind → **Open WhatsApp** (message pre-filled). Deviations from the written check: (1) nothing in the office is overdue until 7 Oct, so the item was **Due this week**, not Overdue — same screen and clicks; (2) **WhatsApp**, not email, because C0002–C0004 had all been emailed today (the one-email-per-client-per-day cap refused, as designed). Email path re-timed on staging (R1 checklist).
+- Next step: PR #24 ready for review → Raja merges → roadmap PR on main (06 shipped, architecture lock released, R1 checklist items + I-1 post-pilot fix into roadmap).
