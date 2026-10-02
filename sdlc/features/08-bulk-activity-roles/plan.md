@@ -75,7 +75,10 @@ One migration, `<ts>_bulk_activity`.
 Every spec AC maps to a passing test (table in the PR). The full regression suite is green. 07's single review, 03's file security and 01's user flows are unchanged (their suites unedited and green).
 
 ## Deviations from plan
-(none yet)
+- **D4 matrix rows (Raja 2026-10-02, step 2):** the audit found every spec cell matches the code. Two enforced rules had no row and were added: "Add, edit and import clients" (Yes · Yes · Yes · No) and "Add a financial year" (Yes · No · No · No). The current Users screen's "See and edit clients… Limited: Assigned" was wrong (Limited can't edit clients). "Waive · Reopen" is shown as two rows, so each cell has one meaning (same values).
+- **Zip manifest step:** `zipManifest(documentIds ≤ 100)` lists the selection's current files and checks the 100-file / 300 MB cap on the whole selection. `signLinks(versionIds ≤ 10)` then signs batches. `getFileLinks` alone only sees 10 at a time, so it couldn't check the cap. Core in `src/lib/bulk/links-core.ts`, tested as each role, like 03's `storage-core`.
+- **No change to `src/lib/documents/actions.ts`:** 03's `lookupVersion` (storage-core) already is the shared RLS lookup; `signLinks` reuses it.
+- **Activity module path:** `src/lib/activity-feed/` (not `src/lib/activity/`), because `src/lib/activity.ts` (01's `logActivity`) already exists.
 
 ## Session log
 ### 2026-10-02
@@ -93,3 +96,11 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - Blocked / failing: —
 - Next step: step 2, tests first (red) + matrix audit → short D4 gate with Raja on any matrix cell that differs from the code.
 - Decisions made: none.
+
+### 2026-10-02 (build session 1, cont.)
+- Done: step 2 written (not yet run against dev). D4 gate held: two matrix rows added (Deviations).
+  - `permissions.ts` (17 rows) + unit test green; catalogue/categories (49 actions, every scanned action covered) + unit test green; lint + typecheck clean.
+  - RLS tests: `bulk`, `activity-feed`, `activity-visibility`, `role-matrix` (+ `tests/support/activity.ts`).
+  - Step 3 drafted ahead: migration `20261002120000_bulk_activity.sql` (file only, **not applied, not dry-run**); `src/lib/bulk/links-core.ts`.
+- **Hold (Raja 11:56 / 11:59):** ask before any CI run; **no CI or dev DB runs until 05's CI finishes** (Raja will say). Commits stay local (a push starts CI).
+- Next step: when cleared, run the 4 new DB files (step-2 proof: red for the right reasons), dry-run the migration, then the SQL gate.
