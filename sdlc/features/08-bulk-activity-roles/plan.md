@@ -82,6 +82,7 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - **Document Activity card keeps 03/07's wording** for the document's own events ("uploaded a new version", "marked it reviewed"…). 03's e2e asserts it and tests aren't edited. Dispatch events use the catalogue's sentences. `getDocumentDetail` no longer reads activity itself; the card reads `activity_feed` (20 rows).
 - **Migration applied through the Supabase dashboard SQL editor** (Raja, 2026-10-02 14:22 IST). The connector's write calls kept getting cancelled. So dev's migration history has **no row** for `20261002120000_bulk_activity`. Instead, the live function bodies were checked against the file (md5 equal for all three), along with the policy text, security modes and grants. When staging is created, the file applies normally. If dev's history must be complete, add the row later (owner's call).
 - **No dry run:** Raja approved the SQL directly (12:57) after the dry-run call was cancelled.
+- **Selection count is an `aria-live="polite" aria-atomic="true"` region, not `role="status"`** (spec NFR said role=status). Screen readers announce it the same way. CI 36987085679 showed an always-mounted second `status` on the client page breaks 02's `client-edit.spec.ts` (`getByRole('status')`, strict mode); the fix is in code, and 02's test is untouched.
 - **Activity module path:** `src/lib/activity-feed/` (not `src/lib/activity/`), because `src/lib/activity.ts` (01's `logActivity`) already exists.
 
 ## Session log
@@ -139,3 +140,9 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
   - The 4 files are now green: **99 passed, 2 skipped** (the RUN_SLOW speed tests).
 - Commits backed up to `backup/08-bulk-activity-wip` (no CI on non-PR branches).
 - Next: Raja's OK to push to PR #29 → CI runs the full suite: earlier RLS suites unedited, plus the new e2e for steps 4–8. Then step 9 after 05 merges.
+
+### 2026-10-02 (CI 36987085679 on 78061a3 — Raja: "yes push" 14:28)
+- Green: lint, typecheck, unit, build; the **full RLS suite** (every earlier suite unedited, under the new `activity_select`); all of 08's new e2e. 86 e2e passed.
+- Failed (2):
+  1. `client-edit.spec.ts:74`: two `role=status` on the client page. **Caused by 08**, fixed in code (see Deviations).
+  2. `client-plan.spec.ts:45`: GST region still visible after disabling, on 30 s timeouts. **Not caused by 08 [likely]:** 05's run 36986531535 (no 08 code) marked the same test *flaky*, and here it overlapped 05's CI on the shared dev DB. To watch on the re-run.

@@ -7,7 +7,7 @@ import { ZipDownload } from "@/components/zip-download";
 import { BulkReviewDialog, type ReviewTarget } from "@/components/bulk-review-dialog";
 
 // Feature 08 AC-1 — select documents on a page, then act on them. Selection is per page (D2): it empties when the
-// page's key (filters, page, tab) changes, so what you act on is what you see. The bar is announced (role=status)
+// page's key (filters, page, tab) changes, so what you act on is what you see. The bar is announced (aria-live)
 // and sticks to the bottom of the screen; on phones the buttons wrap under the count.
 
 const EMPTY: ReadonlySet<string> = new Set();
@@ -62,7 +62,9 @@ export function SelectionBar({ items, onClear }: { items: ReviewTarget[]; onClea
     <>
       <div className={n ? "sticky bottom-3 z-30 mt-3" : "sr-only"}>
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-panel px-4 py-2.5 shadow-card">
-          <p role="status" aria-live="polite" className="mr-auto text-[13.5px] font-medium">{n ? `${n} selected` : ""}</p>
+          {/* Live region without role="status": announced the same (polite, atomic), and it doesn't add a second
+              "status" to screens that already have one (02's archived-client notice; CI 36987085679). */}
+          <p aria-live="polite" aria-atomic="true" data-testid="selection-count" className="mr-auto text-[13.5px] font-medium">{n ? `${n} selected` : ""}</p>
           {n > 0 && (
             <>
               <Button size="sm" variant="secondary" disabled={tooMany} aria-describedby={tooMany ? "zip-cap" : undefined} onClick={() => setDialog("zip")}>

@@ -58,8 +58,9 @@ describe("selection (AC-1)", () => {
     const user = userEvent.setup();
     render(<Harness rows={rows} pageKey="a" />);
     expect(screen.queryByRole("button", { name: /Download zip/ })).not.toBeInTheDocument();
+    expect(screen.getByTestId("selection-count")).toHaveAttribute("aria-live", "polite");
     await user.click(screen.getByRole("checkbox", { name: "Select DOC-FY26-27-00002" }));
-    expect(screen.getByRole("status")).toHaveTextContent("1 selected");
+    expect(screen.getByTestId("selection-count")).toHaveTextContent("1 selected");
     for (const name of [/Download zip/, /Mark reviewed/, "Clear"]) expect(screen.getByRole("button", { name })).toBeEnabled();
   });
 
@@ -70,10 +71,10 @@ describe("selection (AC-1)", () => {
     await user.click(screen.getByRole("checkbox", { name: "Select DOC-FY26-27-00001" }));
     expect((all as HTMLInputElement).indeterminate).toBe(true);
     await user.click(all);
-    expect(screen.getByRole("status")).toHaveTextContent("3 selected");
+    expect(screen.getByTestId("selection-count")).toHaveTextContent("3 selected");
     expect(all).toBeChecked();
     await user.click(screen.getByRole("button", { name: "Clear" }));
-    expect(screen.getByRole("status")).toHaveTextContent("");
+    expect(screen.getByTestId("selection-count")).toHaveTextContent("");
     expect(all).not.toBeChecked();
   });
 
@@ -81,9 +82,9 @@ describe("selection (AC-1)", () => {
     const user = userEvent.setup();
     render(<Paged rows={rows} />);
     await user.click(screen.getByRole("checkbox", { name: "Select all on this page" }));
-    expect(screen.getByRole("status")).toHaveTextContent("3 selected");
+    expect(screen.getByTestId("selection-count")).toHaveTextContent("3 selected");
     await user.click(screen.getByRole("button", { name: "Next page" }));
-    expect(screen.getByRole("status")).toHaveTextContent("");
+    expect(screen.getByTestId("selection-count")).toHaveTextContent("");
     expect(screen.getByRole("checkbox", { name: "Select DOC-FY26-27-00001" })).not.toBeChecked();
   });
 
@@ -158,6 +159,6 @@ describe("Mark reviewed (AC-3)", () => {
     await user.click(screen.getByRole("button", { name: /Mark reviewed/ }));
     await user.click(within(screen.getByRole("dialog", { name: "Mark reviewed" })).getByRole("button", { name: "Cancel" }));
     expect(markReviewedBulk).not.toHaveBeenCalled();
-    expect(screen.getByRole("status")).toHaveTextContent("1 selected");
+    expect(screen.getByTestId("selection-count")).toHaveTextContent("1 selected");
   });
 });

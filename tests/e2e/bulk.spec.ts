@@ -60,7 +60,7 @@ test("AC-1, AC-2: select on /documents, download a zip of the files; the selecti
   await page.getByRole("checkbox", { name: `Select ${soft[0].doc_code}` }).check();
   await page.getByRole("checkbox", { name: `Select ${soft[1].doc_code}` }).check();
   await page.getByRole("checkbox", { name: `Select ${hard.doc_code}` }).check(); // no file: listed as missing
-  await expect(page.getByRole("status").filter({ hasText: "selected" })).toHaveText("3 selected");
+  await expect(page.getByTestId("selection-count")).toHaveText("3 selected");
   expect(await seriousAxe(page)).toEqual([]);
   await page.screenshot({ path: `${SHOTS}/08-documents-selected.png`, fullPage: true });
 
@@ -78,7 +78,7 @@ test("AC-1, AC-2: select on /documents, download a zip of the files; the selecti
 
   // Per page (D2): a filter change empties the selection.
   await page.getByRole("checkbox", { name: "Select all on this page" }).check();
-  await expect(page.getByRole("status").filter({ hasText: "selected" })).toHaveText("5 selected");
+  await expect(page.getByTestId("selection-count")).toHaveText("5 selected");
   await page.getByLabel("Received as").selectOption("hard_copy");
   await expect(page.getByRole("checkbox", { name: "Select all on this page" })).not.toBeChecked();
   await expect(page.getByRole("button", { name: /Download zip/ })).toHaveCount(0);
@@ -88,7 +88,7 @@ test("AC-1, AC-3: Client › Documents select all → Mark reviewed → result; 
   await signIn(page, staff.email, baseURL);
   await page.goto(`/clients/${clientId}?tab=documents`);
   await page.getByRole("checkbox", { name: "Select all on this page" }).check();
-  await expect(page.getByRole("status").filter({ hasText: "selected" })).toHaveText("5 selected");
+  await expect(page.getByTestId("selection-count")).toHaveText("5 selected");
   await page.getByRole("button", { name: "Mark reviewed", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Mark reviewed" });
   await expect(dialog).toContainText("Mark 4 documents reviewed? 1 will be skipped (already reviewed).");
