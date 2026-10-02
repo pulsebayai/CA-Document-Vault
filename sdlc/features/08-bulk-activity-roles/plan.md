@@ -53,11 +53,11 @@ One migration, `<ts>_bulk_activity`.
 - [x] 1. **Spike:** fetch a signed download URL cross-origin from the preview (CORS); measure a 100 MB, 30-file zip in Chromium. Proof: a note in the session log; stop if blocked. (0.25)
 - [x] 2. **Tests first (red)** + **matrix audit**. Write `permissions.ts` from the spec. Probe each cell against the code by reading the functions and policies. Report any cell that differs **at a short gate with you (D4)** before writing UI. RLS tests: bulk links, bulk review, feed, visibility (each entity kind × role), role matrix. Proof: `test:db` fails for the right reasons. (1.5) [matrix decisions: 15 min]
 - [x] 3. **Migration**: written, dry-run, SQL gate, applied, advisors clean. Proof: step-2 DB tests green; **all earlier RLS suites green unedited**. (1) [SQL review: 30 min]
-- [ ] 4. **Bulk on `/documents` + Client › Documents**: selection, zip, Mark reviewed (confirm → chunks → result). Proof: unit + e2e (download event, unzip, entries). (1.5)
-- [ ] 5. **Activity screen**: feed, sentences, filters, Load earlier, sign-ins hidden, links. Proof: unit (catalogue coverage) + e2e. (1.5)
-- [ ] 6. **Document Activity card + client link.** Proof: e2e. (0.25)
-- [ ] 7. **Users page matrix** from `permissions.ts`; `role-matrix.test.ts` green for every cell. Proof: RLS + e2e. (0.5)
-- [ ] 8. a11y (axe), ≤ 390 px, screenshots, ui-reference deviations, releases README checklist. Proof: e2e evidence. (0.5)
+- [x] 4. **Bulk on `/documents` + Client › Documents**: selection, zip, Mark reviewed (confirm → chunks → result). Proof: unit + e2e (download event, unzip, entries). (1.5)
+- [x] 5. **Activity screen**: feed, sentences, filters, Load earlier, sign-ins hidden, links. Proof: unit (catalogue coverage) + e2e. (1.5)
+- [x] 6. **Document Activity card + client link.** Proof: e2e. (0.25)
+- [x] 7. **Users page matrix** from `permissions.ts`; `role-matrix.test.ts` green for every cell. Proof: RLS + e2e. (0.5)
+- [x] 8. a11y (axe), ≤ 390 px, screenshots, ui-reference deviations, releases README checklist. Proof: e2e evidence. (0.5)
 - [ ] 9. **Merge main (05 shipped)** → add sentences for 05's 4 actions (the coverage test forces it), the matrix probe for 05's approve function, header conflict → full suite → `verifier` → `sdlc-reviewer` → PR with the AC → test → result table. (0.5) [PR review: 1 h]
 
 **Total ≈ 7.5 build sessions.** Your review ≈ 2 h. **First cut if 08 slips:** the document Activity card (step 6). Second: bulk select on Client › Documents (keep `/documents`).
@@ -146,3 +146,8 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - Failed (2):
   1. `client-edit.spec.ts:74`: two `role=status` on the client page. **Caused by 08**, fixed in code (see Deviations).
   2. `client-plan.spec.ts:45`: GST region still visible after disabling, on 30 s timeouts. **Not caused by 08 [likely]:** 05's run 36986531535 (no 08 code) marked the same test *flaky*, and here it overlapped 05's CI on the shared dev DB. To watch on the re-run.
+
+### 2026-10-02 (CI 36993204343 on 628256a — **green**; Raja: "we will push" 15:31)
+- All jobs green: lint, typecheck, unit, build; full RLS suite; full e2e, including all of 08's new e2e and both 02 tests that failed on 78061a3. Steps 4–8 ticked.
+- 05's CI 36990723961 is also green.
+- Next: step 9 after 05 merges (merge main → sentences for 05's activity actions → matrix probe for 05's approval → header conflict → full suite → verifier → sdlc-reviewer → AC table → ready for review).
