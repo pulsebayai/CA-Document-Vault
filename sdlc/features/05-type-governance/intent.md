@@ -1,5 +1,5 @@
 # Intent: Type governance
-Author: Raja (drafted with Claude) · Status: draft · Date: 2026-10-02
+Author: Raja (drafted with Claude) · Status: approved (Raja 2026-10-02) · Date: 2026-10-02
 Roadmap item: 05-type-governance · Release: R1 · Batch E (with 08; **05 holds the schema lock**) · Moves product metric: 3 (catalogue convergence), and keeps metric 1 honest for documents filed under proposed types
 
 ## Problem
@@ -67,7 +67,7 @@ Every decision is logged in `activity`, and the proposer gets an **in-app notifi
 - Staff email notifications. Notifications for anything other than type decisions. The table is generic, but 05 only writes type decisions.
 - Bulk decisions across different names.
 
-## Decisions for you (recommendations first)
+## Decisions (Raja 2026-10-02, all as recommended)
 - **Q1 Same-name proposals:** proposals with the same name (ignoring case and spacing) in the same group are **one queue item**, and one decision applies to all of them. *Recommended.* The alternative is one item per client: simpler, but the admin decides "Salary register" N times and approving the second clashes with the first's approved name.
 - **Q2 Does a map reset reviews?** 07 resets a document to To review when its type changes. **Recommended: a 05 map keeps each document's review and dispatch state.** The file and its content are unchanged; only the catalogue label moves. The map writes one history note. The alternative is to reset everything mapped, which would put already-checked documents back on everyone's Today list.
 - **Q3 Reject when documents use the type:** **Recommended: Reject only when no documents use it; otherwise the admin must Map** (the UI says why). The alternative is to reject anyway, which leaves documents filed under a dead type.
@@ -75,4 +75,4 @@ Every decision is logged in `activity`, and the proposer gets an **in-app notifi
 - **Q5 Who decides:** **Admin and Manager.** *Recommended*, consistent with catalogue writes and the Users matrix. Alternative: Admin only.
 
 ## Open questions
-Settled at the intent gate.
+None. Settled at the intent gate 2026-10-02 (Q1–Q5 as recommended).
