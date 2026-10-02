@@ -1,5 +1,5 @@
 # Intent: Bulk actions, Activity and roles
-Author: Raja (drafted with Claude) · Status: draft · Date: 2026-10-02
+Author: Raja (drafted with Claude) · Status: approved (Raja 2026-10-02) · Date: 2026-10-02
 Roadmap item: 08-bulk-activity-roles · Release: R1 · Batch E (with 05; **05 holds the schema lock**) · Moves product metric: 5 (adoption: daily work in fewer clicks), plus the audit-trail promise of principle 3 ("every document has … a history")
 
 ## Problem
@@ -66,7 +66,7 @@ Four gaps remain before the pilot:
 - A per-user permissions editor or custom roles: the four roles are fixed (principle 5).
 - Showing staff sign-ins in the Activity screen by default (see Q4).
 
-## Decisions for you (recommendations first)
+## Decisions (Raja 2026-10-02, all as recommended)
 - **Q1 Zip size cap:** **Recommended: ≤ 100 files and ≤ 300 MB per zip, built in the browser.** This is safe for browser memory on office PCs; above it, staff narrow the filter. The alternative is a server-side zip (a separate worker writing to Storage), which costs a new service and isn't needed for the pilot.
 - **Q2 Bulk Mark reviewed:** **Recommended: a new `review_documents(ids[])` function** (additive-only exception). It calls 07's `review_document` per document, skips with a reason instead of failing all, and returns counts: one round trip per chunk. The alternative is a server-action loop over `review_document` (no migration, but about 200 round trips per chunk from Mumbai). Either way each document keeps its own history and activity row.
 - **Q3 Activity visibility for Limited:**
@@ -77,4 +77,4 @@ Four gaps remain before the pilot:
 - **Q5 Where bulk select appears:** **Recommended: `/documents` and Client › Documents.** Alternative: `/documents` only (smaller, but "this client's August" means building a filter first).
 
 ## Open questions
-Settled at the intent gate.
+None. Settled at the intent gate 2026-10-02 (Q1–Q5 as recommended).
