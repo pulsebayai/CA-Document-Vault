@@ -50,7 +50,7 @@ Base: `feat/05-type-governance` from main `6227385`. **05 merges before 08**; 08
    - No back-fill; existing proposed rows stay `proposed`.
 
 ## Steps (estimates = build sessions; your time in brackets)
-- [ ] 0. Draft PR; CI green (docs only). (—)
+- [x] 0. Draft PR; CI green (docs only). (—) — PR #28, CI 36972529388.
 - [ ] 1. **RLS/DB tests first (red).** Proof: `test:db` fails for the right reasons (1.5). Cases (spec test table):
   - grouping;
   - approve / edit & approve / group move / period fit / schedule → expected items for proposing clients only;
