@@ -97,5 +97,5 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - Plan approved; batch E launched (Raja 2026-10-02 11:39 IST).
 - Next step: step 0 (draft PR) in this feature's own session.
 - Step 0: draft PR #28, CI green (36972529388). Step 1: `tests/rls/type-governance.test.ts` (48 tests) + `type-governance-perf.test.ts` (RUN_SLOW) + contract/helpers appended to `tests/support/catalogue.ts`. Red in CI 36974104192 for the right reasons; confirmed by running the file locally (own fixtures only, so no clash with 08).
-- Contract choices beyond the spec, for Raja's OK: (a) `proposal_queue`/`preview_type_decision`/`catalogue_metric` are Admin/Manager only (ROLE_REQUIRED); (b) no one, Admin included, can approve or retire a proposed type by writing `doc_type` directly — migration B needs a status guard on `doc_type` (flag-gated, like 07's `app.doc_review`).
+- Contract choices beyond the spec, **approved by Raja 2026-10-02 12:41 IST**: (a) `proposal_queue`/`preview_type_decision`/`catalogue_metric` are Admin/Manager only (ROLE_REQUIRED); (b) no one, Admin included, can approve or retire a proposed type by writing `doc_type` directly — migration B needs a status guard on `doc_type` (flag-gated, like 07's `app.doc_review`).
 - Next step: step 2 — migrations A + B, dry run with the 1,000-document timing, then the SQL gate.
