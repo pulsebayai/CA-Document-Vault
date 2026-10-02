@@ -78,6 +78,7 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - **D4 matrix rows (Raja 2026-10-02, step 2):** the audit found every spec cell matches the code. Two enforced rules had no row and were added: "Add, edit and import clients" (Yes · Yes · Yes · No) and "Add a financial year" (Yes · No · No · No). The current Users screen's "See and edit clients… Limited: Assigned" was wrong (Limited can't edit clients). "Waive · Reopen" is shown as two rows, so each cell has one meaning (same values).
 - **Zip manifest step:** `zipManifest(documentIds ≤ 100)` lists the selection's current files and checks the 100-file / 300 MB cap on the whole selection. `signLinks(versionIds ≤ 10)` then signs batches. `getFileLinks` alone only sees 10 at a time, so it couldn't check the cap. Core in `src/lib/bulk/links-core.ts`, tested as each role, like 03's `storage-core`.
 - **No change to `src/lib/documents/actions.ts`:** 03's `lookupVersion` (storage-core) already is the shared RLS lookup; `signLinks` reuses it.
+- **`src/components/action-dialog.tsx` (new):** a dialog opened by code for the bulk flows (the shared `Modal` opens only from its own trigger). The zip cap is checked in the browser by count; size comes back from the server's manifest.
 - **Activity module path:** `src/lib/activity-feed/` (not `src/lib/activity/`), because `src/lib/activity.ts` (01's `logActivity`) already exists.
 
 ## Session log
@@ -104,3 +105,14 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
   - Step 3 drafted ahead: migration `20261002120000_bulk_activity.sql` (file only, **not applied, not dry-run**); `src/lib/bulk/links-core.ts`.
 - **Hold (Raja 11:56 / 11:59):** ask before any CI run; **no CI or dev DB runs until 05's CI finishes** (Raja will say). Commits stay local (a push starts CI).
 - Next step: when cleared, run the 4 new DB files (step-2 proof: red for the right reasons), dry-run the migration, then the SQL gate.
+
+### 2026-10-02 (build session 1, step 4 — Raja 12:10: "05's CI still running; go ahead")
+- Done (code, local checks only): step 4.
+  - `client-zip` 2.5.1; server actions `src/lib/bulk/actions.ts`.
+  - Components: `selection-bar`, `zip-download` (injectable `runZip`), `bulk-review-dialog`, `action-dialog`.
+  - Wired into `/documents` and Client › Documents (received rows only). Stubs added in `tests/support/setup-dom.ts`.
+  - New unit tests: `selection-bar.test.tsx` (9), `zip-download.test.ts` (5, real client-zip, unzips entries).
+  - Unit suite 427/427, lint, typecheck and build green locally.
+  - `tests/e2e/bulk.spec.ts` written, **not run**: it needs dev, so it runs in CI.
+- Not yet: step-2 DB proof, migration dry-run + SQL gate, any e2e. All held until Raja clears CI/dev use.
+- Next step: step 5 (Activity screen) code, or the DB steps when cleared.

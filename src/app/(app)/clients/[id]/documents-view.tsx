@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import type { ClientDocument } from "@/lib/documents/queries";
 import { openForCards, type ExpectedItem } from "@/lib/expected/shape";
 import { Badge, Card } from "@/components/ui";
+import { SelectAll, SelectionBar, useSelection } from "@/components/selection-bar";
+import type { ReviewTarget } from "@/components/bulk-review-dialog";
 import { DocumentRow } from "./document-row";
 import { itemLabel, uploadHref } from "./expected-view";
 import { LogCallButton, RemindButton, type ReminderProps } from "../remind-dialog";
@@ -16,6 +18,12 @@ import { LogCallButton, RemindButton, type ReminderProps } from "../remind-dialo
 
 /** Mockup 10 caps a card ("10 more · Show all"); the rest are one click away on the Expected tab. */
 export const CARD_OPEN_LIMIT = 5;
+
+/** 08 AC-3: what Mark reviewed would do with a received document (preview; the database decides). */
+export function clientReviewTarget(d: ClientDocument): ReviewTarget {
+  const skip = d.status === "reviewed" ? "already_reviewed" : d.status === "needs_correction" ? "needs_correction" : null;
+  return { id: d.id, docCode: d.docCode, skip };
+}
 
 type Props = {
   clientId: string;
@@ -66,6 +74,10 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
     // A collected group with nothing open and no documents gets an "All caught up" card — for the current FY only:
     // in a past FY the client may not have been collected for that group at all (review nit 6).
     .filter((g) => g.docs.length || g.open.length || (fy === currentFy && planIds.has(g.id)));
+  // 08 AC-1: received documents only (expected rows aren't selectable); per view — FY or group change starts empty.
+  const selection = useSelection(`${fy}|${group}`);
+  const shownIds = byGroup.flatMap((g) => g.docs.map((d) => d.id));
+  const selectedItems = byGroup.flatMap((g) => g.docs).filter((d) => selection.ids.has(d.id)).map(clientReviewTarget);
 
   return (
     <div className="space-y-4">
@@ -82,6 +94,7 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
           </select>
         </label>
         <span className="text-[13px] text-ink-3">{shown.length} document{shown.length === 1 ? "" : "s"}</span>
+        <SelectAll pageIds={shownIds} selected={selection.ids} onChange={(on) => selection.setAll(shownIds, on)} />
       </div>
 
       {byGroup.length === 0 ? (
@@ -115,7 +128,10 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
                 )}
                 {g.docs.length > 0 && (
                   <ul aria-label={`${g.name} documents`} className="divide-y divide-line">
-                    {g.docs.map((d) => <DocumentRow key={d.id} d={d} clientId={clientId} clientName={clientName} today={today ?? indiaToday()} />)}
+                    {g.docs.map((d) => (
+                      <DocumentRow key={d.id} d={d} clientId={clientId} clientName={clientName} today={today ?? indiaToday()}
+                        selected={selection.ids.has(d.id)} onToggle={() => selection.toggle(d.id)} />
+                    ))}
                   </ul>
                 )}
                 {g.open.length === 0 && g.docs.length === 0 && (
@@ -126,6 +142,7 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
           ))}
         </div>
       )}
+      <SelectionBar items={selectedItems} onClear={selection.clear} />
     </div>
   );
 }

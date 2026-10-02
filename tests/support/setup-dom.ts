@@ -8,3 +8,11 @@ vi.mock("@/lib/reminders/actions", () => ({
   remindDialog: vi.fn(async () => ({ ok: false, error: "not stubbed" })),
   reminderPreview: vi.fn(), sendEmailReminder: vi.fn(), recordWhatsApp: vi.fn(), logCall: vi.fn(), clientReminders: vi.fn(),
 }));
+
+// Feature 08: /documents and Client › Documents render the selection bar, whose dialogs call bulk server actions
+// (server-only imports). Inert stubs here; tests/unit/selection-bar.test.tsx declares its own vi.mock.
+vi.mock("@/lib/bulk/actions", () => ({
+  getZipManifest: vi.fn(async () => ({ ok: false, error: "not stubbed" })),
+  getFileLinks: vi.fn(async () => ({ ok: false, error: "not stubbed" })),
+  markReviewedBulk: vi.fn(async () => ({ ok: false, error: "not stubbed" })),
+}));
