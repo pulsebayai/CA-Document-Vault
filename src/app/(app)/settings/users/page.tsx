@@ -1,21 +1,15 @@
 import { requireAdmin } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
-import { ROLE_LABEL, type Role } from "@/lib/auth/roles";
+import { ROLE_LABEL, ROLES, type Role } from "@/lib/auth/roles";
+import { PERMISSIONS, cellText } from "@/lib/auth/permissions";
 import { Badge, Card } from "@/components/ui";
 import { InviteDialog } from "./invite-dialog";
 import { StaffRowActions } from "./staff-row-actions";
 
 type Row = { id: string; full_name: string; email: string; role: Role; status: "invited" | "active" | "deactivated" };
 
-const MATRIX: [string, string, string, string, string][] = [
-  ["See and edit clients and documents", "All", "All", "All", "Assigned"],
-  ["Change document status, mark dispatched", "Yes", "Yes", "Yes", "Assigned"],
-  ["Archive documents or clients", "Yes", "Yes", "No", "No"],
-  ["Assign incharge and group staff", "Yes", "Yes", "No", "No"],
-  ["Approve proposed types, manage catalogue", "Yes", "Yes", "No", "No"],
-  ["Manage users and roles", "Yes", "No", "No", "No"],
-  ["Reminders, retention, storage, office", "Yes", "No", "No", "No"],
-];
+// 08 AC-12: the matrix comes from src/lib/auth/permissions.ts, the same rows tests/rls/role-matrix.test.ts probes.
+const COLUMN: Record<Role, string> = { admin: "Admin", manager: "Manager", staff: "Staff", limited: "Limited" };
 
 /** Mockup 06-settings-users.jpg. Admin only (others get 404 — spec AC-10). */
 export default async function UsersPage() {
@@ -72,24 +66,30 @@ export default async function UsersPage() {
 
       <h2 className="mb-3 mt-8 font-semibold">What each role can do</h2>
       <Card>
-        <table className="w-full text-left text-[13.5px]">
-          <thead className="text-[13px] text-ink-3">
-            <tr className="border-b border-line">
-              <th scope="col" className="px-5 py-3 font-normal"><span className="sr-only">Permission</span></th>
-              {["Admin", "Manager", "Staff", "Limited"].map((h) => <th key={h} scope="col" className="px-3 py-3 text-center font-normal">{h}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {MATRIX.map(([label, ...cells]) => (
-              <tr key={label} className="border-b border-line last:border-0">
-                <th scope="row" className="px-5 py-2.5 font-normal">{label}</th>
-                {cells.map((c, i) => <td key={i} className={`px-3 py-2.5 text-center ${c === "No" ? "text-ink-3" : "text-ok"}`}>{c}</td>)}
+        {/* Wide on phones: scrolls inside its own box (relative, so sr-only text can't escape — 02). */}
+        <div className="relative overflow-x-auto">
+          <table className="w-full min-w-[560px] text-left text-[13.5px]">
+            <caption className="sr-only">What each role can do</caption>
+            <thead className="text-[13px] text-ink-3">
+              <tr className="border-b border-line">
+                <th scope="col" className="px-5 py-3 font-normal"><span className="sr-only">Permission</span></th>
+                {ROLES.map((r) => <th key={r} scope="col" className="px-3 py-3 text-center font-normal">{COLUMN[r]}</th>)}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {PERMISSIONS.map((row) => (
+                <tr key={row.id} className="border-b border-line last:border-0">
+                  <th scope="row" className="px-5 py-2.5 font-normal">{row.label}</th>
+                  {ROLES.map((r) => (
+                    <td key={r} className={`px-3 py-2.5 text-center ${row.values[r] === "no" ? "text-ink-3" : "text-ok"}`}>{cellText(row, r)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </Card>
-      <p className="mt-2 text-[13px] text-ink-3">Most permissions apply as their features ship. &quot;Delete&quot; in the original design is archive: reversible and logged.</p>
+      <p className="mt-2 text-[13px] text-ink-3">The database enforces every cell, and each one is tested per role. &quot;Delete&quot; in the original design is archive: reversible and logged.</p>
     </div>
   );
 }

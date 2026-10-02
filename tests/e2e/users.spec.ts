@@ -93,3 +93,17 @@ test("AC-5, AC-6, AC-11: admin invites a person, who signs in and becomes Active
   await retireStaff([row!.id]);
   await adminCtx.close(); await inviteeCtx.close();
 });
+
+// Feature 08 AC-12 (addition only): the matrix on screen is permissions.ts, row by row, cell by cell.
+test("08 AC-12: 'What each role can do' shows every row of the permissions matrix", async ({ page, baseURL }) => {
+  const { PERMISSIONS, cellText } = await import("../../src/lib/auth/permissions");
+  const { ROLES } = await import("../../src/lib/auth/roles");
+  await signIn(page, admin.email, baseURL);
+  await page.goto("/settings/users");
+  const table = page.getByRole("table", { name: "What each role can do" });
+  await expect(table.getByRole("row")).toHaveCount(PERMISSIONS.length + 1);
+  for (const row of PERMISSIONS) {
+    const tr = table.getByRole("row", { name: new RegExp(`^${row.label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) });
+    await expect(tr.getByRole("cell")).toHaveText(ROLES.map((r) => cellText(row, r)));
+  }
+});

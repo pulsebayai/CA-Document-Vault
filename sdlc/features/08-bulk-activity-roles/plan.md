@@ -79,6 +79,7 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - **Zip manifest step:** `zipManifest(documentIds ≤ 100)` lists the selection's current files and checks the 100-file / 300 MB cap on the whole selection. `signLinks(versionIds ≤ 10)` then signs batches. `getFileLinks` alone only sees 10 at a time, so it couldn't check the cap. Core in `src/lib/bulk/links-core.ts`, tested as each role, like 03's `storage-core`.
 - **No change to `src/lib/documents/actions.ts`:** 03's `lookupVersion` (storage-core) already is the shared RLS lookup; `signLinks` reuses it.
 - **`src/components/action-dialog.tsx` (new):** a dialog opened by code for the bulk flows (the shared `Modal` opens only from its own trigger). The zip cap is checked in the browser by count; size comes back from the server's manifest.
+- **Document Activity card keeps 03/07's wording** for the document's own events ("uploaded a new version", "marked it reviewed"…). 03's e2e asserts it and tests aren't edited. Dispatch events use the catalogue's sentences. `getDocumentDetail` no longer reads activity itself; the card reads `activity_feed` (20 rows).
 - **Activity module path:** `src/lib/activity-feed/` (not `src/lib/activity/`), because `src/lib/activity.ts` (01's `logActivity`) already exists.
 
 ## Session log
@@ -116,3 +117,14 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
   - `tests/e2e/bulk.spec.ts` written, **not run**: it needs dev, so it runs in CI.
 - Not yet: step-2 DB proof, migration dry-run + SQL gate, any e2e. All held until Raja clears CI/dev use.
 - Next step: step 5 (Activity screen) code, or the DB steps when cleared.
+
+### 2026-10-02 (build session 1, steps 5–8 — code only)
+- Done (local checks only):
+  - Step 5: `/activity` (page, view, loading, error), filters/queries/actions in `src/lib/activity-feed/`, and the "Activity" nav item.
+  - Step 6: document Activity card + "See all in Activity"; client page "Activity" button.
+  - Step 7: Users page matrix from `permissions.ts` (17 rows; scrolls inside its card on phones).
+  - Step 8: `ui-reference.md` deviation rows; `sdlc/releases/README.md` role-matrix staging checklist.
+  - New unit test `activity-view.test.tsx` (8). Unit 435/435, lint, typecheck and build green.
+  - e2e written, **not run**: `activity.spec.ts` (3 tests), `users.spec.ts` (+1 test, addition only).
+- Steps 4–8 stay unticked until their e2e passes in CI.
+- Still held (Raja): step-2 DB proof → migration dry-run → SQL gate → apply; then push (starts CI); step 9 after 05 merges.
