@@ -59,9 +59,11 @@ const docsUnder = async (type: string) => {
   if (error) throw error;
   return data!.map((r) => r.id as string);
 };
-const actionsIn = async (action: string) => {
+// Filtered by entity in the query: activity is never purged, so an office-wide read would hit PostgREST's 1,000-row
+// cap after enough runs and silently miss this run's rows (found in 04's expected-plan test, 2026-10-02).
+const actionsIn = async (action: string, entityId: string) => {
   const { data, error } = await adminClient().from("activity").select("action, actor_id, entity_type, entity_id, data")
-    .eq("office_id", officeId).eq("action", action).order("id");
+    .eq("office_id", officeId).eq("action", action).eq("entity_id", entityId).order("id");
   if (error) throw error;
   return data as Array<{ action: string; actor_id: string; entity_type: string; entity_id: string; data: Record<string, unknown> }>;
 };
@@ -377,7 +379,7 @@ describe("merge into an approved type (AC-5, AC-6, AC-8)", () => {
   });
 
   it("writes one decision row and one type_merged row per document, IDs only (AC-14)", async () => {
-    const rows = (await actionsIn("doc_type.merged")).filter((r) => r.entity_id === rowA);
+    const rows = await actionsIn("doc_type.merged", rowA);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ actor_id: u.admin.id, entity_type: "doc_type" });
     expect(rows[0].data).toMatchObject({ target_id: t.salary, documents: 5, clients: 2 });
@@ -452,7 +454,7 @@ describe("period fit before merge (AC-7)", () => {
     expect((await typeRow(row)).status).toBe("proposed");
     expect((await docsUnder(row)).sort()).toEqual([monthDoc.id, yearDoc.id].sort());
     expect((await typeRow(t.balanceConf)).aliases).toEqual(aliases);
-    expect((await actionsIn("doc_type.merged")).some((r) => r.entity_id === row)).toBe(false);
+    expect((await actionsIn("doc_type.merged", row)).length).toBe(0);
   });
 });
 
@@ -484,7 +486,7 @@ describe("reject (AC-9, AC-12)", () => {
       expect(await typeRow(row)).toMatchObject({ status: "rejected", active: false, mapped_to_id: null, decided_by: u.manager.id, decision_comment: "Not a compliance document" });
       expect((await planRowOf(client, row))!.state).toBe("removed");
     }
-    const rows = (await actionsIn("doc_type.rejected")).filter((r) => r.entity_id === rowA);
+    const rows = await actionsIn("doc_type.rejected", rowA);
     expect(rows).toHaveLength(1);
     expect(JSON.stringify(rows[0].data)).not.toMatch(/compliance|Visiting/);
   });
@@ -593,7 +595,7 @@ describe("comments and notifications (AC-12, AC-13, AC-14)", () => {
   });
 
   it("the decision's activity row holds IDs and counts only", async () => {
-    const rows = (await actionsIn("doc_type.approved")).filter((r) => r.entity_id === rowA);
+    const rows = await actionsIn("doc_type.approved", rowA);
     expect(rows).toHaveLength(1);
     expect([...(rows[0].data.doc_type_ids as string[])]).toEqual(expect.arrayContaining([rowA, rowB]));
     expect(JSON.stringify(rows[0].data)).not.toMatch(new RegExp(`${name}|${comment}`));
