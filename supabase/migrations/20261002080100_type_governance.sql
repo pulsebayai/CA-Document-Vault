@@ -4,10 +4,12 @@
 --   2. notification (+ kind enum, RLS: recipient-only select / update of read_at; no app insert or delete)
 --   3. 03's document_before_write — 07's body copied verbatim, changed only where marked "05":
 --      app.type_merge (merge moves archived documents and keeps review state) + a share lock on a proposed type
---   4. private helpers: type_item, period_conflicts, plan_add_type, merge_rows, notify (definer), decide_* cores
---   5. public: proposal_queue, preview_type_decision, approve_proposed_type, merge_proposed_type,
+--   4. 04's document_after_link skips a merge's rows (app.type_merge); private.link_moved (definer) links them
+--      set-based afterwards — the plan's fallback: per-row linking made a 1,000-document merge take 2.0 s (dry run)
+--   5. private helpers: type_item, period_conflicts, plan_add_type, merge_rows, notify (definer), decide_* cores
+--   6. public: proposal_queue, preview_type_decision, approve_proposed_type, merge_proposed_type,
 --      reject_proposed_type, mark_notifications_read, catalogue_metric (all SECURITY INVOKER)
---   6. reset_test_office purges notifications and decided proposals
+--   7. reset_test_office purges notifications and decided proposals
 -- No back-fill: existing proposed rows stay 'proposed'. No doc_type_proposal table (spec S6).
 
 -- ── 1. doc_type decision columns ─────────────────────────────────────────────
@@ -283,7 +285,64 @@ begin
   return new;
 end $$;
 
--- ── 4. Private helpers (SECURITY INVOKER unless noted: RLS and the caller's role apply) ─────────────────
+-- ── 4. Linking after a merge (04) ─────────────────────────────────────────────
+-- 04's document_after_link (20260930120658) verbatim + the line marked "05": a merge's own document update
+-- (app.type_merge = the moved rows' old type) is linked afterwards, set-based, by private.link_moved.
+create or replace function private.document_after_link()
+returns trigger language plpgsql security definer set search_path = '' as $$
+declare v_item uuid; v_prev text := coalesce(current_setting('app.doc_write', true), '');
+begin
+  if coalesce(current_setting('app.purge_office', true), '') = new.office_id::text then return null; end if;
+  if tg_op = 'UPDATE' and coalesce(current_setting('app.type_merge', true), '') = old.doc_type_id::text then return null; end if; -- 05
+  if (select auth.uid()) is not null and new.office_id is distinct from private.current_office_id() then return null; end if;
+  if new.archived_at is null and new.client_id is not null and new.doc_type_id is not null and new.period_id is not null then
+    v_item := private.match_expected(new.office_id, new.client_id, new.doc_type_id, new.period_id, new.registration_id);
+  end if;
+  if v_item is distinct from new.expected_doc_id then
+    perform set_config('app.doc_write', 'on', true);
+    update public.document set expected_doc_id = v_item where id = new.id;
+    perform set_config('app.doc_write', v_prev, true);
+    if new.expected_doc_id is not null then perform private.recompute_expected(new.expected_doc_id, null); end if;
+    if v_item is not null then perform private.recompute_expected(v_item, new.id); end if;
+  elsif v_item is not null then
+    perform private.recompute_expected(v_item, null);
+  end if;
+  return null;
+end $$;
+
+-- Links documents a merge moved (the same rule as document_after_link: not archived, client, type and period set),
+-- in one statement, then recomputes each expected item touched once. Definer like 04's trigger (authenticated can't
+-- write expected_doc_id); tenant first: only the caller's office's documents.
+create or replace function private.link_moved(p_docs uuid[])
+returns void language plpgsql security definer set search_path = '' as $$
+declare
+  v_office uuid := private.current_office_id();
+  v_prev   text := coalesce(current_setting('app.doc_write', true), '');
+  v_items  uuid[];
+  i uuid;
+begin
+  if v_office is null then raise exception 'OFFICE_DENIED: no office' using errcode = '42501'; end if;
+  perform set_config('app.doc_write', 'on', true);
+  with x as (
+    select d.id, d.expected_doc_id as old_item,
+           case when d.archived_at is null and d.client_id is not null and d.doc_type_id is not null and d.period_id is not null
+                then private.match_expected(d.office_id, d.client_id, d.doc_type_id, d.period_id, d.registration_id) end as item
+      from public.document d where d.id = any (p_docs) and d.office_id = v_office
+  ), upd as (
+    update public.document d set expected_doc_id = x.item
+      from x where d.id = x.id and d.expected_doc_id is distinct from x.item
+    returning x.item, x.old_item)
+  select array_agg(distinct u) into v_items
+    from (select item as u from upd union select old_item from upd) z where u is not null;
+  perform set_config('app.doc_write', v_prev, true);
+  foreach i in array coalesce(v_items, '{}') loop
+    perform private.recompute_expected(i, null);
+  end loop;
+end $$;
+revoke all on function private.link_moved(uuid[]) from public, anon;
+grant execute on function private.link_moved(uuid[]) to authenticated;
+
+-- ── 5. Private helpers (SECURITY INVOKER unless noted: RLS and the caller's role apply) ─────────────────
 -- The pending rows of p_type's item = proposed rows with the same group + name (case-insensitive; spaces were
 -- collapsed by create_proposed_type), earliest first (the survivor). p_lock: lock them, in id order, so two
 -- decisions on one item queue up instead of deadlocking; the second then finds nothing pending.
@@ -386,10 +445,11 @@ declare
   v_before  integer;
   v_after   integer;
   v_docs    integer := 0;
-  v_n       integer;
   v_added   integer := 0;
   v_removed integer;
   v_states  jsonb;
+  v_ids     uuid[] := '{}';
+  v_moved   uuid[];
   r uuid;
   c uuid;
 begin
@@ -424,15 +484,18 @@ begin
     with moved as (
       update public.document set doc_type_id = p_target
        where office_id = v_office and doc_type_id = r
-      returning id, client_id)
-    insert into public.activity (office_id, actor_id, action, entity_type, entity_id, data)
-      select v_office, v_staff, 'document.type_merged', 'document', id::text,
-             jsonb_build_object('client_id', client_id, 'from_type_id', r, 'to_type_id', p_target)
-        from moved;
-    get diagnostics v_n = row_count;
-    v_docs := v_docs + v_n;
+      returning id, client_id),
+    logged as (
+      insert into public.activity (office_id, actor_id, action, entity_type, entity_id, data)
+        select v_office, v_staff, 'document.type_merged', 'document', id::text,
+               jsonb_build_object('client_id', client_id, 'from_type_id', r, 'to_type_id', p_target)
+          from moved)
+    select coalesce(array_agg(id), '{}') into v_moved from moved;
+    v_ids := v_ids || v_moved;
   end loop;
   perform set_config('app.type_merge', '', true);
+  v_docs := cardinality(v_ids);
+  perform private.link_moved(v_ids); -- 04's linking, set-based (the AFTER trigger skipped these rows)
 
   update public.doc_type t set aliases = t.aliases || v_name
    where t.id = p_target and lower(t.name) <> lower(v_name)
@@ -645,7 +708,7 @@ grant execute on function private.type_item(uuid, boolean), private.period_confl
   private.require_decider(), private.merge_target(uuid, uuid[]), private.decide_merge(uuid, uuid, text),
   private.decide_approve(jsonb) to authenticated;
 
--- ── 5. Public functions (SECURITY INVOKER: RLS and column grants apply as the caller) ──────────────────
+-- ── 6. Public functions (SECURITY INVOKER: RLS and column grants apply as the caller) ──────────────────
 
 -- The queue (AC-1): one item per group + name, oldest first. Admin/Manager only (Raja 2026-10-02 12:57).
 create or replace function public.proposal_queue()
@@ -653,7 +716,7 @@ returns jsonb language plpgsql stable security invoker set search_path = '' as $
 declare v_office uuid := private.current_office_id(); v jsonb;
 begin
   perform private.require_decider();
-  with rows as (
+  with prop as (
     select t.id, t.name, t.doc_group_id, t.proposed_by, t.proposed_for_client_id, t.created_at,
            first_value(t.id) over w as survivor, first_value(t.name) over w as item_name
       from public.doc_type t
@@ -665,7 +728,7 @@ begin
            array_agg(distinct r.proposed_by) as proposed_by,
            min(r.created_at) as proposed_at,
            array_agg(distinct r.proposed_for_client_id) as client_ids
-      from rows r group by r.survivor
+      from prop r group by r.survivor
   )
   select jsonb_build_object(
     'waiting', (select count(*) from items),
@@ -814,7 +877,7 @@ grant execute on function public.proposal_queue(), public.preview_type_decision(
   public.merge_proposed_type(uuid, uuid, text), public.reject_proposed_type(uuid, text), public.catalogue_metric()
   to authenticated;
 
--- ── 6. reset_test_office: 07's body + notifications and decided proposals (lines marked "05") ──────────
+-- ── 7. reset_test_office: 07's body + notifications and decided proposals (lines marked "05") ──────────
 create or replace function public.reset_test_office(p_office_id uuid)
 returns void language plpgsql security definer set search_path = '' as $$
 begin

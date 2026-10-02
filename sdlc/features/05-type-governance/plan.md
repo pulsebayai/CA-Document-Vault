@@ -89,7 +89,10 @@ Base: `feat/05-type-governance` from main `6227385`. **05 merges before 08**; 08
 Every spec AC maps to a passing test (table in the PR). The full regression suite is green, plus RUN_SLOW on the preview. 03/04/07's behaviour is unchanged except AC-6's documented exception.
 
 ## Deviations from plan
-(none yet)
+- **Linking fallback used (step 2, planned).** Dry run: a 1,000-document merge took 2,033 ms in the database with 04's per-row linking (> AC-17's 2 s before network). Now 04's `document_after_link` skips a merge's own rows (`app.type_merge`, one added line, body otherwise verbatim) and `private.link_moved` (definer, tenant first — authenticated can't write `expected_doc_id`) links them in one statement and recomputes each touched item once: 1,244 ms (of which ~700 ms is 03's per-row BEFORE trigger).
+- **Approve/merge keep the proposing row's plan state** for the added target row (paused/removed stay so, AC-4); archived proposing clients get no plan row.
+- **Migration B started from a partial draft written by the 08 session** in this working copy (Raja confirmed, 13:01). Reviewed against spec/plan/tests and completed here; the 08 session was stopped.
+- Migration A applied to dev before the SQL gate (Raja OK 13:07; 07 precedent): `20261002073810_doc_type_status_decided`.
 
 ## Session log
 ### 2026-10-02
