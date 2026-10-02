@@ -70,7 +70,7 @@ Base: `feat/05-type-governance` from main `6227385`. **05 merges before 08**; 08
 - [x] 4. **Catalogue queue UI** (panel, 4 dialogs, preview, stale handling). Proof: e2e + unit. (1.5) — `proposal-dialogs.tsx` + the panel in `catalogue-view.tsx`; unit `proposal-queue.test.tsx` (7); e2e `type-governance.spec.ts` 5/5 locally; 03's `proposed-types.spec.ts` AC-16 test updated in its own commit (Raja OK 16:06): "coming with feature 05" → "1 waiting", "no buttons" → the four decisions (Reject disabled), open the client disclosure first; everything else unchanged.
 - [x] 5. **Bell** (header, panel, open = read, layout count). Proof: e2e + unit. (0.5) — `notification-bell.tsx` (disclosure + panel, Esc/outside close, focus return), mounted before the avatar (`app-header.tsx`: 1 import + 1 line + an optional prop); layout fetches the unread count with the Inbox count; unit 3; e2e 6/6 locally (incl. 390 px, axe); header e2e (screens at 390 px, inbox, search, smoke) 16/16.
 - [x] 6. **Settings › Collection**: metric 3 + queue age. Proof: e2e. (0.25) — "Catalogue" section (figure tile "Filed under approved types", "N of M documents", "N proposals waiting · oldest N days" linking to the queue, how-it\'s-counted note: as of now, not the 30-day window); e2e AC-16 self-contained; type-governance 7/7, collection + chasing e2e green locally.
-- [ ] 7. a11y (axe), ≤ 390 px, screenshots, ui-reference deviations. Proof: e2e evidence. (0.5)
+- [x] 7. a11y (axe), ≤ 390 px, screenshots, ui-reference deviations. Proof: e2e evidence. (0.5) — `tests/e2e/governance-screenshots.spec.ts` (own office, so independent of type-governance.spec.ts\'s order): queue + 4 dialogs + Collection at 1280 and 390 px, bell at both; axe serious/critical none; no sideways scroll at 390 px; 14 screenshots in test-results/screenshots/05-*. ui-reference: 3 rows (queue, bell, Collection catalogue).
 - [ ] 8. **RUN_SLOW** (05 changes 03's document trigger): Regression on the branch with `base_url` = the preview (full suite); record merge time and document save overhead. (0.5) [none]
 - [ ] 9. architecture.md (3 items, under the lock), merge main → full suite → `verifier` → `sdlc-reviewer` → fix Important findings → PR with the AC → test → result table. (0.5) [PR review: 1 h]
 
@@ -112,4 +112,6 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - Next step: step 4 — catalogue queue UI (panel, 4 dialogs, preview, stale handling).
 - Step 4 + 03 test update pushed (c9945ee, 3817fec). c9945ee's e2e file had a typecheck error (`beforeAll(fn, timeout)`): fixed with step 5 (`test.setTimeout`). Lesson: run `npm run typecheck` after adding e2e files, not only before.
 - Step 5 done.
-- Step 6 done. Next: step 7 — a11y, 390 px, screenshots, ui-reference deviation rows.
+- Step 6 done.
+- Step 7 done (screenshots reviewed: queue desktop/phone, Merge dialog phone, bell phone). Comment hint reworded ("kept on the type").
+- Next: step 8 — RUN_SLOW Regression on the branch preview (full suite, incl. the 1,000-document merge), then step 9.

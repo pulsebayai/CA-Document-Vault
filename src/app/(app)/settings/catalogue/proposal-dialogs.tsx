@@ -124,7 +124,7 @@ function CommentField({ value, onChange, error, label = "Comment", required = fa
   return (
     <div>
       <label htmlFor={id} className="block text-[13.5px] font-medium">
-        {label} {!required && <span className="font-normal text-ink-3">(optional — stays on the type, shown to the proposer for a rejection)</span>}
+        {label} {!required && <span className="font-normal text-ink-3">(optional — kept on the type)</span>}
       </label>
       <textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} rows={2} maxLength={500} required={required}
         className={inputCls} aria-invalid={!!error} aria-describedby={error ? `${id}-err` : undefined} />
