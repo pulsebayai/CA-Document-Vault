@@ -65,7 +65,7 @@ Base: `feat/05-type-governance` from main `6227385`. **05 merges before 08**; 08
   - notifications recipient-only;
   - metric 3;
   - suggestions via alias.
-- [ ] 2. **Migrations A + B**: written, dry-run, **1,000-document merge timed in the dry run** (decides the linking fallback), SQL gate, applied, advisors clean. Proof: step-1 tests green in CI; **03, 03b, 04, 06, 07 RLS suites green unedited**. (2) [SQL review: 45 min]
+- [x] 2. **Migrations A + B**: written, dry-run, **1,000-document merge timed in the dry run** (decides the linking fallback), SQL gate, applied, advisors clean. Proof: step-1 tests green in CI; **03, 03b, 04, 06, 07 RLS suites green unedited**. (2) [SQL review: 45 min] — Done 14:20: dry run 1,244 ms per 1,000-document merge; on dev 48/48 (twice, the second after the new reset) and the 02/03/03b/04/06/07 RLS suites 337/337 unedited (local); security advisors: nothing new. CI confirmation on the push below.
 - [ ] 3. Server actions + validation + messages. Proof: unit + RLS through the actions. (0.5)
 - [ ] 4. **Catalogue queue UI** (panel, 4 dialogs, preview, stale handling). Proof: e2e + unit. (1.5)
 - [ ] 5. **Bell** (header, panel, open = read, layout count). Proof: e2e + unit. (0.5)
@@ -93,6 +93,7 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - **Approve/merge keep the proposing row's plan state** for the added target row (paused/removed stay so, AC-4); archived proposing clients get no plan row.
 - **Migration B started from a partial draft written by the 08 session** in this working copy (Raja confirmed, 13:01). Reviewed against spec/plan/tests and completed here; the 08 session was stopped.
 - Migration A applied to dev before the SQL gate (Raja OK 13:07; 07 precedent): `20261002073810_doc_type_status_decided`.
+- **Migration B applied in four parts** (same reviewed SQL, split at section boundaries; SQL gate approved 13:30): `20261002081451_type_governance` (schema, notifications, 03/04 trigger changes), `…081553_type_governance_helpers`, `…082118_type_governance_functions` — all md5-matched — and `…083900_type_governance_reset`. The Supabase MCP tool now refuses any statement text containing `DELETE` (07 applied the same kind of `reset_test_office` body through it on 1 Oct), so part 4 was run by Raja in the dashboard SQL editor (14:09) and recorded in `schema_migrations` by version and name only (the statement text is refused too); its function body md5 equals the file's (36b648a…).
 
 ## Session log
 ### 2026-10-02
@@ -102,3 +103,5 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - Step 0: draft PR #28, CI green (36972529388). Step 1: `tests/rls/type-governance.test.ts` (48 tests) + `type-governance-perf.test.ts` (RUN_SLOW) + contract/helpers appended to `tests/support/catalogue.ts`. Red in CI 36974104192 for the right reasons; confirmed by running the file locally (own fixtures only, so no clash with 08).
 - Contract choices beyond the spec, **approved by Raja 2026-10-02 12:41 IST**: (a) `proposal_queue`/`preview_type_decision`/`catalogue_metric` are Admin/Manager only (ROLE_REQUIRED); (b) no one, Admin included, can approve or retire a proposed type by writing `doc_type` directly — migration B needs a status guard on `doc_type` (flag-gated, like 07's `app.doc_review`).
 - Next step: step 2 — migrations A + B, dry run with the 1,000-document timing, then the SQL gate.
+- Step 2 done: A + B applied to dev (B in four parts; part 4 via the SQL editor — see Deviations). 05 tests 48/48; earlier RLS suites 337/337 unedited.
+- Next step: step 3 — server actions (`src/lib/catalogue/governance.ts`, messages, validation, notifications).
