@@ -1,5 +1,5 @@
 # Spec: Type governance
-Intent: ./intent.md · Status: draft · Date: 2026-10-02
+Intent: ./intent.md · Status: approved (Raja 2026-10-02, all spec decisions as recommended) · Date: 2026-10-02
 Screens: mockup 05 (Settings › Document catalogue, "Proposed by staff" panel), header (bell: no mockup), Settings › Collection (04, no mockup).
 
 ## Where we start (verified in code, 2026-10-02)
@@ -147,7 +147,7 @@ Server actions in `src/lib/catalogue/governance.ts`; notifications in `src/lib/n
 
 These are applied in 05's PR (05 holds the schema lock; the architecture lock is requested with it, since 08 needs none).
 
-## Spec decisions for you (recommendations first)
+## Spec decisions (Raja 2026-10-02, all as recommended)
 - **S1 Merge adds the target to the client's plan** with its default schedule, if absent. *Recommended*: the staff member proposed it because the firm needs it from that client, and it matches Q4. The alternative is to only remove the proposed row, so the client's plan loses the type until someone adds it.
 - **S2 One activity row per moved document** plus one per decision. *Recommended*: each document's history (08's document activity card) shows "type merged". The alternative is one row per decision, cheaper but invisible from the document.
 - **S3 Archived documents are merged too.** *Recommended*: the catalogue fully converges and nothing is left on a dead type. The alternative leaves archived documents under the retired type.
