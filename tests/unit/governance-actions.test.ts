@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // Feature 05 step 3: the governance server actions' contract with the database, with Supabase mocked.
 // The rules themselves (roles, merge, period fit, decided once…) are proven in tests/rls/type-governance.test.ts.
 
+vi.unmock("@/lib/catalogue/governance"); // tests the real actions (setup-dom stubs them for view tests)
 vi.mock("server-only", () => ({}));
 const revalidatePath = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath: (...a: unknown[]) => revalidatePath(...a) }));
