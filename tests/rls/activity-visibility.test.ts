@@ -35,18 +35,21 @@ beforeAll(async () => {
   u.outsider = await createStaff(other, "av-outsider", "admin");
   for (const k of Object.keys(u) as Who[]) as[k] = await signedInClient(u[k].email);
 
-  await generateAsOf(as.admin, "2026-06-15");
+  await generateAsOf(as.admin, "2026-04-10"); // plans start in April 2026
   const bank = await typeId(officeId, T.bank);
   const apr = await periodId(officeId, "2026-04");
+  // Both clients are created at the April clock (so their plans start in April), then generated once in June.
   for (const side of ["A", "B"] as Side[]) {
     const incharge = side === "A" ? u.limited.id : u.staff.id;
-    const client = await bankOnlyClient(as.staff, officeId, { name: `Visibility ${side}`, incharge_id: incharge });
+    ent[side].client = await bankOnlyClient(as.staff, officeId, { name: `Visibility ${side}`, incharge_id: incharge });
+  }
+  await generateAsOf(as.admin, "2026-06-15");
+  for (const side of ["A", "B"] as Side[]) {
     const e = ent[side];
-    e.client = client;
+    const client = e.client;
     e.document = (await mustCreateDocument(as.staff, { client_id: client, doc_type_id: bank, period_id: apr, received_on: "2026-05-02" })).id;
     const original = await mustCreateOriginal(as.staff, { client_id: client, doc_type_id: bank, period_id: apr, received_on: "2026-05-02" }, as.staff);
-    e.dispatch = (await mustDispatch(as.staff, { client_id: client, document_ids: [original.id] })).id;
-    await generateAsOf(as.admin, "2026-06-15");
+    e.dispatch = (await mustDispatch(as.staff, { client_id: client, document_ids: [original.id], dispatched_on: "2026-09-01" })).id;
     const items = (await expectedOf(client, T.bank)).filter((x) => x.status === "pending");
     if (items.length === 0) throw new Error("setup: no pending expected items");
     e.expected_doc = items[0].id;

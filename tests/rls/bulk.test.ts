@@ -123,7 +123,7 @@ describe("review_documents (AC-3)", () => {
   });
 
   it("a linked expected item stays received after a bulk review (07/04 triggers run as for a single review)", async () => {
-    await generateAsOf(as.admin, "2026-06-15");
+    await generateAsOf(as.admin, "2026-04-10"); // plan starts in April 2026
     const client = await bankOnlyClient(as.staff, officeId, { name: "Bulk linked", incharge_id: u.staff.id });
     await generateAsOf(as.admin, "2026-06-15");
     const item = await expectedItem(client, T.bank, "2026-05");

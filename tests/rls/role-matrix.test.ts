@@ -66,14 +66,14 @@ const PROBES: Record<string, Probe> = {
   review_dispatch: async (who, c) => {
     const review = await rpc(who, "review_document", { p_id: (await fileOn(c)).id, p_outcome: "reviewed", p_reason: null });
     const original = await mustCreateOriginal(as.staff, { client_id: c, doc_type_id: ids.bank, period_id: ids.apr, received_on: "2026-05-02" }, as.staff);
-    const dispatch = await rpc(who, "create_dispatch", { p: { client_id: c, document_ids: [original.id], method: "hand_delivery", recipient_name: "Matrix" } });
+    const dispatch = await rpc(who, "create_dispatch", { p: { client_id: c, document_ids: [original.id], dispatched_on: "2026-09-01", method: "hand_delivery", recipient_name: "Matrix" } });
     return both(ok(review), ok(dispatch), "review_dispatch");
   },
   undo_review_dispatch: async (who, c) => {
     const reviewed = await fileOn(c);
     await mustReview(as.staff, reviewed.id);
     const original = await mustCreateOriginal(as.staff, { client_id: c, doc_type_id: ids.bank, period_id: ids.apr, received_on: "2026-05-02" }, as.staff);
-    await mustDispatch(as.staff, { client_id: c, document_ids: [original.id] });
+    await mustDispatch(as.staff, { client_id: c, document_ids: [original.id], dispatched_on: "2026-09-01" });
     const a = await rpc(who, "undo_review", { p_id: reviewed.id, p_reason: "Matrix" });
     const b = await rpc(who, "undo_dispatch_item", { p_document_id: original.id, p_reason: "Matrix" });
     return both(ok(a), ok(b), "undo_review_dispatch");
@@ -93,7 +93,7 @@ const PROBES: Record<string, Probe> = {
   waive: async (who, c) => ok(await rpc(who, "waive_expected", { p_id: (await pendingItem(c)).id, p_reason: "Matrix" })),
   reopen: async (who, c) => {
     const item = await pendingItem(c);
-    await mustCreateDocument(as.staff, { client_id: c, doc_type_id: ids.bank, period_id: item.period_id, received_on: "2027-01-02" });
+    await mustCreateDocument(as.staff, { client_id: c, doc_type_id: ids.bank, period_id: item.period_id, received_on: "2026-10-01" });
     const now = (await expectedFor(c)).find((e) => e.id === item.id)!;
     if (now.status !== "received") throw new Error("setup: item did not link");
     return ok(await rpc(who, "reopen_expected", { p_id: item.id }));

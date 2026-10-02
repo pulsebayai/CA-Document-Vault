@@ -128,7 +128,7 @@ describe("filters (AC-7, AC-10)", () => {
 
   it("document filter returns the document's own rows and dispatch rows naming it, newest first", async () => {
     const d = await mustCreateOriginal(as.staff, { client_id: clientA, doc_type_id: bank, period_id: apr, received_on: "2026-05-02" }, as.staff);
-    await mustDispatch(as.staff, { client_id: clientA, document_ids: [d.id] });
+    await mustDispatch(as.staff, { client_id: clientA, document_ids: [d.id], dispatched_on: "2026-09-01" });
     const { error } = await as.admin.rpc("undo_dispatch_item", { p_document_id: d.id, p_reason: "Wrong packet" });
     if (error) throw new Error(error.message);
     const page = await mustFeed(as.staff, { document_id: d.id });
