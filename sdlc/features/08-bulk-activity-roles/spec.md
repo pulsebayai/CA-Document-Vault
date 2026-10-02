@@ -1,5 +1,5 @@
 # Spec: Bulk actions, Activity and roles
-Intent: ./intent.md · Status: draft · Date: 2026-10-02
+Intent: ./intent.md · Status: approved (Raja 2026-10-02, all spec decisions as recommended) · Date: 2026-10-02
 Screens: mockup 04 (Activity), 06 (Settings › Users and roles), 10 (Client › Documents, selection: no mockup), `/documents` (03b, no mockup).
 
 ## Where we start (verified in code, 2026-10-02)
@@ -167,7 +167,7 @@ Screens: mockup 04 (Activity), 06 (Settings › Users and roles), 10 (Client ›
 
 The architecture lock goes to 05. 08's three items are flagged in its session log and applied on main at its merge.
 
-## Spec decisions for you (recommendations first)
+## Spec decisions (Raja 2026-10-02, all as recommended)
 - **D1 Mark reviewed asks for confirmation** ("Mark 48 documents reviewed?"). *Recommended*: undo is Admin/Manager only and per document, so a mis-click on 200 rows is expensive. Cost: one extra click.
 - **D2 Selection is per page** (cleared on page or filter change). *Recommended*: what you see is what you act on. The alternative, selection kept across pages, is easy to forget and riskier.
 - **D3 Zip without compression** (store only). *Recommended*: PDFs/JPGs don't shrink, and it's faster and lighter on old PCs.
