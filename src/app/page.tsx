@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// Root sends everyone to the Clients screen; auth redirects are added in step 6.
+// Root sends everyone to Today, the landing page (spec 06 AC-1).
 export default function Home() {
-  redirect("/clients");
+  redirect("/today");
 }

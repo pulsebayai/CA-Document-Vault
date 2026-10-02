@@ -7,6 +7,7 @@ import { openForCards, type ExpectedItem } from "@/lib/expected/shape";
 import { Badge, Card } from "@/components/ui";
 import { DocumentRow } from "./document-row";
 import { itemLabel, uploadHref } from "./expected-view";
+import { LogCallButton, RemindButton, type ReminderProps } from "../remind-dialog";
 
 // Client › Documents (mockup 10; 03 spec AC-10, 04 AC-14). Grouped group → type → period (newest period first).
 // Filters: FY (default the current one) and group. 04: each group card lists its open expected items first
@@ -30,9 +31,11 @@ type Props = {
   today?: string;
   /** 07: shown in the dispatch dialog's heading. */
   clientName?: string;
+  /** 06 (expected rows only): Remind / Log call and "reminded N times …" (AC-7, AC-11, AC-12). */
+  reminders?: ReminderProps;
 };
 
-export function DocumentsView({ clientId, documents, currentFy, expected = [], planGroups = [], fys = [], canUpload = false, today, clientName }: Props) {
+export function DocumentsView({ clientId, documents, currentFy, expected = [], planGroups = [], fys = [], canUpload = false, today, clientName, reminders }: Props) {
   const fyCode = useMemo(() => new Map(fys.map((f) => [f.id, f.code])), [fys]);
   const codeOf = (id: string) => fyCode.get(id) ?? "";
   const fyList = useMemo(
@@ -100,7 +103,7 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
                 {g.open.length > 0 && (
                   <div className="border-b border-line">
                     <ul aria-label={`${g.name} outstanding`} className="divide-y divide-line">
-                      {g.open.slice(0, CARD_OPEN_LIMIT).map((i) => <OpenRow key={i.id} clientId={clientId} item={i} canUpload={canUpload} />)}
+                      {g.open.slice(0, CARD_OPEN_LIMIT).map((i) => <OpenRow key={i.id} clientId={clientId} item={i} canUpload={canUpload} reminders={reminders} />)}
                     </ul>
                     {g.open.length > CARD_OPEN_LIMIT && (
                       <p className="border-t border-line px-5 py-2.5 text-[13.5px] text-ink-2">
@@ -128,7 +131,7 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
 }
 
 /** Mockup 10: "Invoices · August 2026 / Not received · 13 days late", red "Overdue", Upload. */
-function OpenRow({ clientId, item: i, canUpload }: { clientId: string; item: ExpectedItem; canUpload: boolean }) {
+function OpenRow({ clientId, item: i, canUpload, reminders }: { clientId: string; item: ExpectedItem; canUpload: boolean; reminders?: ReminderProps }) {
   const label = itemLabel(i);
   const overdue = i.state.kind === "overdue";
   const sub = overdue ? `Not received · ${i.state.text.replace(/^Overdue · /, "")}` : `Not received · ${i.state.text}`;
@@ -137,8 +140,15 @@ function OpenRow({ clientId, item: i, canUpload }: { clientId: string; item: Exp
       <div className="min-w-0 flex-1">
         <p className="break-words font-medium">{label}</p>
         <p className={`mt-0.5 text-[13px] ${overdue ? "text-bad" : i.state.kind === "due_today" ? "text-warn" : "text-ink-2"}`}>{sub}</p>
+        {reminders?.history[i.id] && <p className="mt-0.5 text-[13px] text-ink-3">{reminders.history[i.id]}</p>}
       </div>
       {overdue ? <Badge tone="bad">Overdue</Badge> : <Badge tone={i.state.kind === "due_today" ? "warn" : "muted"}>{i.state.kind === "due_today" ? "Due today" : "Due"}</Badge>}
+      {canUpload && reminders && (
+        <>
+          <RemindButton clientId={clientId} clientName={reminders.clientName} />
+          <LogCallButton clientId={clientId} clientName={reminders.clientName} />
+        </>
+      )}
       {canUpload && (
         <Link href={uploadHref(clientId, i, `/clients/${clientId}`)} aria-label={`Upload ${label}`}
           className="inline-flex h-[30px] items-center rounded-[7px] bg-accent px-2.5 text-[13px] font-medium text-white hover:bg-[#264d8f]">Upload</Link>

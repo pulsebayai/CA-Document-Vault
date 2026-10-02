@@ -51,7 +51,7 @@ export async function updateSession(request: NextRequest) {
   }
   if (signedIn && path === "/login" && !request.nextUrl.searchParams.has("reason")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/clients";
+    url.pathname = "/today"; // 06 AC-1: a signed-in user opening /login lands on Today
     url.search = "";
     return withCsp(NextResponse.redirect(url));
   }

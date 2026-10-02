@@ -65,7 +65,7 @@ test("AC-1 (code): entering the emailed 6-digit code signs in", async ({ page })
   if (error) throw error;
   await page.getByLabel("Sign-in code").fill(data.properties.email_otp);
   await page.getByRole("button", { name: "Verify and sign in" }).click();
-  await expect(page).toHaveURL(/\/clients$/);
+  await expect(page).toHaveURL(/\/today$/);
   await clearLockout(staff.email);
 });
 
@@ -97,7 +97,7 @@ test("AC-1 (link): the emailed sign-in link signs an invited user in and activat
   });
   if (error) throw error;
   await page.goto(data.properties.action_link);
-  await expect(page).toHaveURL(/\/clients$/);
+  await expect(page).toHaveURL(/\/today$/);
   await expect.poll(async () => (await adminClient().from("staff_user").select("status").eq("id", invitee.id).single()).data?.status).toBe("active");
   await retireStaff([invitee.id]);
 });

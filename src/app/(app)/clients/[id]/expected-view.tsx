@@ -8,6 +8,7 @@ import { matchesStatus, type ExpectedItem, type StatusFilter } from "@/lib/expec
 import type { StateKind } from "@/lib/expected/schedule";
 import { Button, Card } from "@/components/ui";
 import { inputCls, Modal } from "@/components/dialog";
+import { LogCallButton, RemindButton, type ReminderProps } from "../remind-dialog";
 
 // Feature 04 step 5 — Client › Expected (spec AC-13, mockup 10's due/overdue rows; AC-8 Upload, AC-9 … AC-11 actions).
 // The server sends every item of the client (all FYs, all statuses); FY, group and status filter here, like 03's
@@ -28,6 +29,8 @@ type Props = {
   fys: Array<{ id: string; code: string }>;
   currentFyId: string | null;
   perms: ExpectedPermissions;
+  /** 06: Remind / Log call on open rows and "reminded N times …" on every reminded row (AC-7, AC-11, AC-12). */
+  reminders?: ReminderProps;
 };
 
 const STATUS_LABEL: Record<StatusFilter, string> = { open: "Open", received: "Received", not_needed: "Not needed", all: "All" };
@@ -46,7 +49,7 @@ export function uploadHref(clientId: string, i: ExpectedItem, from = expectedTab
   return `/documents/new?${q.toString()}`;
 }
 
-export function ExpectedView({ clientId, items, fys, currentFyId, perms }: Props) {
+export function ExpectedView({ clientId, items, fys, currentFyId, perms, reminders }: Props) {
   const [fy, setFy] = useState(currentFyId ?? fys[0]?.id ?? "");
   const [group, setGroup] = useState("");
   const [status, setStatus] = useState<StatusFilter>("open");
@@ -107,7 +110,7 @@ export function ExpectedView({ clientId, items, fys, currentFyId, perms }: Props
               </header>
               <ul aria-label={`${g.name} expected documents`} className="divide-y divide-line">
                 {g.items.map((i) => (
-                  <Row key={i.id} clientId={clientId} item={i} perms={perms} onDone={setNotice}
+                  <Row key={i.id} clientId={clientId} item={i} perms={perms} onDone={setNotice} reminders={reminders}
                     earlierFy={i.fyId !== fy && !i.periodLabel.includes(codeOf(i.fyId)) ? codeOf(i.fyId) : null} />
                 ))}
               </ul>
@@ -119,8 +122,9 @@ export function ExpectedView({ clientId, items, fys, currentFyId, perms }: Props
   );
 }
 
-function Row({ clientId, item: i, perms, onDone, earlierFy = null }: {
+function Row({ clientId, item: i, perms, onDone, earlierFy = null, reminders }: {
   clientId: string; item: ExpectedItem; perms: ExpectedPermissions; onDone: (r: ExpectedActionResult) => void;
+  reminders?: ReminderProps;
   /** Set when an earlier FY's item is listed under the current FY and its period label doesn't say the FY. */
   earlierFy?: string | null;
 }) {
@@ -139,9 +143,16 @@ function Row({ clientId, item: i, perms, onDone, earlierFy = null }: {
           {waived && <span className="text-ink-3">· {i.waivedBy}{i.waivedAt ? `, ${day.format(new Date(i.waivedAt))}` : ""}</span>}
           {i.assignedTo && <span className="text-ink-3">· {i.assignedTo}</span>}
         </p>
+        {reminders?.history[i.id] && <p className="mt-0.5 text-[13px] text-ink-3">{reminders.history[i.id]}</p>}
       </div>
       {perms.canAct && (
         <div className="flex flex-wrap items-center gap-2">
+          {i.open && reminders && (
+            <>
+              <RemindButton clientId={clientId} clientName={reminders.clientName} />
+              <LogCallButton clientId={clientId} clientName={reminders.clientName} />
+            </>
+          )}
           {i.status === "pending" && (
             <Link href={uploadHref(clientId, i)} aria-label={`Upload ${label}`}
               className="inline-flex h-[30px] items-center rounded-[7px] bg-accent px-2.5 text-[13px] font-medium text-white hover:bg-[#264d8f]">Upload</Link>
