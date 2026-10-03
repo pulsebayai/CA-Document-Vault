@@ -18,6 +18,7 @@ describe("governanceErrorMessage", () => {
     ["COMMENT_TOO_LONG: a comment has at most 500 characters", /500 characters/],
     ["ROLE_REQUIRED: only Admin or Manager can decide proposed types", /Admin or Manager/],
     ["new row for relation \"doc_type\" violates check constraint \"doc_type_offsets_complete\"", /schedule/],
+    ["deadlock detected", /try again/], // pre-PR review N-2
   ])("%s", (raw, expected) => {
     expect(governanceErrorMessage(raw)).toMatch(expected);
   });

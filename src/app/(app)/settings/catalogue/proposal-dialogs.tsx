@@ -104,15 +104,26 @@ function Footer({ result, pending, close, submit, label, disabled }: {
   );
 }
 
-function useDecision(close: () => void) {
+/** Refreshes the page once the dialog closes (Close, Esc or Cancel) if it saw a stale decision, so the
+ *  "Already decided by <name>" message stays readable until then (AC-11; pre-PR review I-2). */
+const previewStale = (p: ReturnType<typeof usePreview>) => p.status === "done" && !p.result!.ok && p.result!.stale;
+
+function useRefreshOnClose(stale: boolean) {
+  const router = useRouter();
+  const seen = useRef(false);
+  useEffect(() => { if (stale) seen.current = true; }, [stale]);
+  useEffect(() => () => { if (seen.current) router.refresh(); }, [router]);
+}
+
+function useDecision(close: () => void, previewStale = false) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [result, setResult] = useState<GovernanceResult | null>(null);
+  useRefreshOnClose(previewStale || (!!result && !result.ok && result.stale));
   const run = (fn: () => Promise<GovernanceResult>) => start(async () => {
     const r = await fn();
     setResult(r);
-    if (r.ok) close();
-    if (r.ok || r.stale) router.refresh();
+    if (r.ok) { close(); router.refresh(); }
   });
   return { pending, result, run };
 }
@@ -145,7 +156,7 @@ export function ApproveDialog({ item }: { item: ProposalItem }) {
 function ApproveForm({ item, close }: { item: ProposalItem; close: () => void }) {
   const [comment, setComment] = useState("");
   const preview = usePreview(() => previewDecision({ action: "approve", typeId: item.typeId }), [item.typeId]);
-  const { pending, result, run } = useDecision(close);
+  const { pending, result, run } = useDecision(close, previewStale(preview));
   const fe = result && !result.ok ? result.fieldErrors ?? {} : {};
   return (
     <div className="space-y-4">
@@ -260,8 +271,6 @@ function MergeForm({ item, close }: { item: ProposalItem; close: () => void }) {
   const [targets, setTargets] = useState<MergeTarget[] | null>(null);
   const [target, setTarget] = useState<MergeTarget | null>(null);
   const [comment, setComment] = useState("");
-  const { pending, result, run } = useDecision(close);
-  const fe = result && !result.ok ? result.fieldErrors ?? {} : {};
 
   useEffect(() => {
     let live = true;
@@ -272,6 +281,8 @@ function MergeForm({ item, close }: { item: ProposalItem; close: () => void }) {
   }, [item.typeId, query]);
 
   const preview = usePreview(target ? () => previewDecision({ action: "merge", typeId: item.typeId, targetId: target.id }) : null, [item.typeId, target?.id]);
+  const { pending, result, run } = useDecision(close, previewStale(preview));
+  const fe = result && !result.ok ? result.fieldErrors ?? {} : {};
   const conflicting = preview.status === "done" && preview.result?.ok && preview.result.conflicts.length > 0;
 
   return (

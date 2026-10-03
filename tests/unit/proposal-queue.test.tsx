@@ -98,7 +98,7 @@ describe("dialogs (AC-8, AC-11)", () => {
 
   it("Approve: someone else decided first — the message, Close instead of Approve, and a refresh (AC-11)", async () => {
     previewDecision.mockResolvedValue({ ok: true, counts: { documents: 3, clients: 2, planAdded: 1, received: 0 }, conflicts: [] });
-    approveProposedType.mockResolvedValue({ ok: false, stale: true, error: "Already decided by Raja. The list has been refreshed." });
+    approveProposedType.mockResolvedValue({ ok: false, stale: true, error: "Already decided by Raja. Close to see the updated list." });
     render(<CatalogueView catalogue={catalogue} canEdit canAddFy={false} proposed={queue} />);
     fireEvent.click(screen.getByRole("button", { name: "Approve Salary sheet" }));
     expect(await screen.findByRole("list", { name: "What will happen" })).toHaveTextContent("The proposals for the other 1 client are merged into it.");
@@ -106,7 +106,11 @@ describe("dialogs (AC-8, AC-11)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Already decided by Raja.");
     expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Approve" })).toBeNull();
-    expect(refresh).toHaveBeenCalled();
+    // The page refreshes when the dialog closes, not before: refreshing first unmounted the dialog and its message
+    // (pre-PR review I-2).
+    expect(refresh).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
   });
 });
 

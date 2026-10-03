@@ -2,8 +2,8 @@
 // Pure, so the mapping is unit-tested.
 
 const MESSAGES: Array<[RegExp, string]> = [
-  [/ALREADY_DECIDED/, "Already decided. The list has been refreshed."],
-  [/NOT_PROPOSED/, "This type is no longer waiting for a decision. The list has been refreshed."],
+  [/ALREADY_DECIDED/, "Already decided. Close to see the updated list."],
+  [/NOT_PROPOSED/, "This type is no longer waiting for a decision. Close to see the updated list."],
   [/DUPLICATE_TYPE|doc_type_name_key/, "An approved type with this name already exists in this group. Use Merge into… instead."],
   [/PERIOD_KIND/, "Some documents are filed for periods this type can't hold. See the list below."],
   [/HAS_DOCUMENTS/, "Documents use this type. Merge it into an approved type instead."],
@@ -14,6 +14,7 @@ const MESSAGES: Array<[RegExp, string]> = [
   [/ROLE_REQUIRED/, "Only an Admin or Manager can decide proposed types."],
   [/doc_type_offsets|doc_type_overdue_after_ask|doc_type_scheduled_has_period/, "Check the schedule: a scheduled type needs a period and complete ask/overdue days."],
   [/NOT_FOUND/, "Not found — it may have been decided or removed."],
+  [/deadlock detected|40P01/, "Another decision was saving at the same moment. Please try again."],
 ];
 
 export function governanceErrorMessage(message: string | undefined): string {

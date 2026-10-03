@@ -184,8 +184,9 @@ test("AC-11: a decision another admin already made shows 'Already decided by <na
     const { error: me } = await (await signedInClient(manager.email)).rpc("approve_proposed_type", { p: { type_id: stale } });
     if (me) throw me;
     await dialog.getByRole("button", { name: "Approve", exact: true }).click();
-    await expect(page.getByText("Already decided by Test govui-manager")).toBeVisible();
-    await expect(itemOf(page, "Stale passes")).toHaveCount(0); // the panel refreshed
+    await expect(dialog.getByRole("alert")).toContainText("Already decided by Test govui-manager");
+    await dialog.getByRole("button", { name: "Close" }).click();
+    await expect(itemOf(page, "Stale passes")).toHaveCount(0); // the panel refreshed on close
   } finally {
     await retireStaff([manager.id]);
   }

@@ -758,7 +758,7 @@ describe("the preview says what Approve and Edit & approve then did (AC-8; revie
     expect(await typeRow(a)).toMatchObject({ status: "proposed" }); // the preview changed nothing
     const done = await mustOk(approveType(as.admin, { type_id: a }));
     expect(preview).toMatchObject({ documents: 1, clients: 2, conflicts: [] });
-    const { conflicts: _c, ...counts } = preview as unknown as Record<string, unknown>;
+    const counts = Object.fromEntries(Object.entries(preview as unknown as Record<string, unknown>).filter(([k]) => k !== "conflicts"));
     expect(done).toMatchObject(counts);
   });
 
@@ -770,7 +770,7 @@ describe("the preview says what Approve and Edit & approve then did (AC-8; revie
     const preview = await mustOk(previewDecision(as.admin, { action: "approve", type_id: a, edits }));
     expect(await typeRow(a)).toMatchObject({ status: "proposed", doc_group_id: g.other });
     const done = await mustOk(approveType(as.admin, { type_id: a, edits }));
-    const { conflicts: _c, ...counts } = preview as unknown as Record<string, unknown>;
+    const counts = Object.fromEntries(Object.entries(preview as unknown as Record<string, unknown>).filter(([k]) => k !== "conflicts"));
     expect(done).toMatchObject(counts);
     expect(counts).toMatchObject({ documents: 1, clients: 1 });
   });

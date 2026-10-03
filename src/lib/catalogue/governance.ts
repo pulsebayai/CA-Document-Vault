@@ -42,13 +42,14 @@ const counts = (c: DbCounts): DecisionCounts => ({ documents: c.documents, clien
 /** A refusal: plain message; "Already decided by <name>" when someone else decided first (AC-11). */
 async function failure(op: string, error: { code?: string; message: string }, supabase: Awaited<ReturnType<typeof createClient>>) {
   console.error(`governance.${op}_failed`, { code: error.code ?? "unknown", requestId: randomUUID() });
+  // Stale: no revalidation here. Refreshing now would re-render the queue without this item and unmount the dialog
+  // with the message in it (pre-PR review I-2); the dialog refreshes the page when it closes.
   const stale = isStaleDecision(error.message);
-  if (stale) refresh();
   let message = governanceErrorMessage(error.message);
   const by = decidedBy(error.message);
   if (by) {
     const { data } = await supabase.from("staff_user").select("full_name").eq("id", by).maybeSingle();
-    if (data?.full_name) message = `Already decided by ${data.full_name}. The list has been refreshed.`;
+    if (data?.full_name) message = `Already decided by ${data.full_name}. Close to see the updated list.`;
   }
   return bad(message, { stale });
 }

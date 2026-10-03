@@ -53,4 +53,14 @@ describe("NotificationBell (AC-13)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Gate passes (Other) was approved.")).toBeInTheDocument();
   });
+
+  it("follows the layout's count after it mounted: a later decision shows the badge without a reload (review I-3)", async () => {
+    openNotifications.mockResolvedValue({ ok: true, list: { unread: 0, items: [] } });
+    const { rerender } = render(<NotificationBell unread={0} />);
+    fireEvent.click(screen.getByRole("button", { name: "Notifications" }));
+    expect(await screen.findByText("No notifications")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    rerender(<NotificationBell unread={1} />); // a server action re-rendered the layout after a new decision
+    expect(screen.getByRole("button", { name: "Notifications, 1 unread" })).toBeInTheDocument();
+  });
 });

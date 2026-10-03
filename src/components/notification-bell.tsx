@@ -12,6 +12,13 @@ const when = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", 
 export function NotificationBell({ unread: initialUnread }: { unread: number }) {
   const [open, setOpen] = useState(false);
   const [unread, setUnread] = useState(initialUnread);
+  // The bell lives in the persistent layout and mounts once: follow the server's count whenever it changes
+  // (a later decision after the panel was opened, or after loading with 0; pre-PR review I-3).
+  const [serverUnread, setServerUnread] = useState(initialUnread);
+  if (initialUnread !== serverUnread) {
+    setServerUnread(initialUnread);
+    setUnread(initialUnread);
+  }
   const [list, setList] = useState<NotificationList | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();

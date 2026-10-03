@@ -97,10 +97,12 @@ describe("decided once (AC-11) and logging", () => {
   it("someone else decided first: 'Already decided by <name>', marked stale, logged as a code only", async () => {
     rpc.mockResolvedValue({ data: null, error: { code: "P0001", message: `ALREADY_DECIDED: ${RAJA}` } });
     const r = await mergeProposedType({ typeId: T, targetId: X, comment: "Salary for Acme Traders" });
-    expect(r).toEqual({ ok: false, stale: true, error: "Already decided by Raja. The list has been refreshed." });
+    expect(r).toEqual({ ok: false, stale: true, error: "Already decided by Raja. Close to see the updated list." });
     expect(errorLog).toHaveBeenCalledWith("governance.merge_failed", { code: "P0001", requestId: expect.any(String) });
     expect(JSON.stringify(errorLog.mock.calls)).not.toContain("Acme");
-    expect(revalidatePath).toHaveBeenCalledWith("/settings/catalogue");
+    // No revalidation on a stale decision: it would unmount the dialog holding the message; the dialog refreshes
+    // the page when it closes (pre-PR review I-2).
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 
   it("the preview returns the database's counts and conflicts", async () => {
