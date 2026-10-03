@@ -5,7 +5,7 @@ import { groupId, mergeType, mustInsertClient, proposeType } from "../support/ca
 import { createDocumentOffice, periodId, typeId } from "../support/documents";
 import { T, generateAsOf } from "../support/expected";
 
-// Feature 05 spec AC-17: merging an item with 1,000 documents finishes in < 2 s on dev. RUN_SLOW only (nightly and
+// Feature 05 spec AC-17: merging an item with 1,000 documents finishes in < 3 s on dev (2 s until 2026-10-03, spec change). RUN_SLOW only (nightly and
 // before merge): seeding 1,000 documents takes ~1–2 min against dev. The documents have a June period and the target
 // (Bank statement) is in the client's plan with a June item, so 04's linking trigger fires for every moved row —
 // the cost the plan measures (fallback: deferred set-based relink). Timed as one round trip from the runner.
@@ -51,7 +51,7 @@ describe.skipIf(!process.env.RUN_SLOW)("merge at volume (AC-17)", () => {
 
   afterAll(async () => { await retireStaff([who.staff, who.admin].filter(Boolean).map((x) => x.id)); });
 
-  it("1,000 documents on 2 clients move in < 2 s", async () => {
+  it("1,000 documents on 2 clients move in < 3 s", async () => {
     const t0 = performance.now();
     const { data, error } = await mergeType(as.admin, proposed, bank);
     const ms = performance.now() - t0;
@@ -60,6 +60,6 @@ describe.skipIf(!process.env.RUN_SLOW)("merge at volume (AC-17)", () => {
     expect(data).toMatchObject({ documents: 1000, clients: 2 });
     const { count } = await adminClient().from("document").select("id", { count: "exact", head: true }).eq("doc_type_id", bank);
     expect(count).toBe(1000);
-    expect(ms).toBeLessThan(2000);
+    expect(ms).toBeLessThan(3000);
   });
 });

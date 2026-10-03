@@ -71,7 +71,7 @@ Screens: mockup 05 (Settings › Document catalogue, "Proposed by staff" panel),
   - Typing the old proposed name in Add document suggests the target, through its alias.
 - **AC-16 Metric 3.** Settings › Collection (Admin/Manager) shows **"Filed under approved types: N%"** = classified, non-archived documents whose type is approved ÷ all classified, non-archived documents. Beside it: "N proposals waiting · oldest N days" (intent metric 1).
 - **AC-17 Speed.**
-  - A merge of an item with 1,000 documents finishes in < 2 s on dev (RUN_SLOW test).
+  - A merge of an item with 1,000 documents finishes in < 3 s on dev, measured as one round trip at the end of the full RUN_SLOW suite. *(Changed 2026-10-03, Raja: was < 2 s. Measured 1.23 s run on its own, 2.22–2.24 s at the end of the ~24 min suite on the Nano dev database (Regression 37007423599, 37097106116). The pre-pilot volume test re-times it on staging against the same 3 s target.)*
   - The queue loads in < 1 s with 50 items.
   - 03's document save time is unchanged (documents-perf stays green).
 
@@ -133,7 +133,7 @@ Server actions in `src/lib/catalogue/governance.ts`; notifications in `src/lib/n
 | 13 | bell count, open marks read, keyboard, 390 px, axe | e2e |
 | 15 | suggestions find target by old name; retired types absent from filters/catalogue; `/documents` finds moved documents | RLS + e2e |
 | 16 | metric 3 arithmetic and queue age | RLS + e2e |
-| 17 | merge of 1,000 documents < 2 s; documents-perf unchanged | RLS (RUN_SLOW) |
+| 17 | merge of 1,000 documents < 3 s (was 2 s; changed 2026-10-03); documents-perf unchanged | RLS (RUN_SLOW) |
 
 - All new tests join the regression suite.
 - None is smoke-safe (all write data).
@@ -157,7 +157,7 @@ These are applied in 05's PR (05 holds the schema lock; the architecture lock is
 
 ## Risks & areas of concern
 - **Changing 03's document trigger** (the most-used write path). Mitigation: the flag is checked only when `doc_type_id` alone changed and only for the flagged type; RUN_SLOW plus the full 03/07 suites.
-- **Set-based update of up to 1,000 documents fires 04's AFTER linking trigger per row.** It must stay < 2 s (AC-17). If it fails, defer linking set-based like 04's `app.expected_defer`.
+- **Set-based update of up to 1,000 documents fires 04's AFTER linking trigger per row.** It must stay < 3 s (AC-17; < 2 s until 2026-10-03). If it fails, defer linking set-based like 04's `app.expected_defer`.
 - **Group move on Edit & approve** creates or re-enables client group rows. That touches Limited visibility (assignment); the group row takes the client's incharge, as 03 does today.
 - **08 runs in parallel** and adds the Activity nav item to the same header file. A small merge conflict is expected (merge order in the plan).
 
