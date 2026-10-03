@@ -9,6 +9,10 @@ import { T, generateAsOf } from "../support/expected";
 // before merge): seeding 1,000 documents takes ~1–2 min against dev. The documents have a June period and the target
 // (Bank statement) is in the client's plan with a June item, so 04's linking trigger fires for every moved row —
 // the cost the plan measures (fallback: deferred set-based relink). Timed as one round trip from the runner.
+// Seeding files 4 documents at a time: every filing in an office queues on 03's DOC-ID counter row, so 20 at once
+// let one slow transaction push the back of the queue past the 8 s statement timeout (Regression 37046419999).
+
+const SEED_AT_ONCE = 4;
 
 describe.skipIf(!process.env.RUN_SLOW)("merge at volume (AC-17)", () => {
   const who = {} as Record<"admin" | "staff", { id: string; email: string }>;
@@ -38,8 +42,8 @@ describe.skipIf(!process.env.RUN_SLOW)("merge at volume (AC-17)", () => {
     const jobs = Array.from({ length: 1000 }, (_, i) => ({
       received_as: "hard_copy", channel: "courier", client_id: clients[i % 2], doc_type_id: i % 2 ? second : proposed, period_id: jun,
     }));
-    for (let i = 0; i < jobs.length; i += 20) {
-      const results = await Promise.all(jobs.slice(i, i + 20).map((p) => as.staff.rpc("create_document", { p })));
+    for (let i = 0; i < jobs.length; i += SEED_AT_ONCE) {
+      const results = await Promise.all(jobs.slice(i, i + SEED_AT_ONCE).map((p) => as.staff.rpc("create_document", { p })));
       const failed = results.find((r) => r.error);
       if (failed) throw new Error(failed.error!.message);
     }
