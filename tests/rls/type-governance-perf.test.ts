@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
-import { groupId, mergeType, mustInsertClient, proposeType } from "../support/catalogue";
+import { groupId, mergeType, mustInsertClient, proposalQueue, proposeType } from "../support/catalogue";
 import { createDocumentOffice, periodId, typeId } from "../support/documents";
 import { T, generateAsOf } from "../support/expected";
 
@@ -61,5 +61,49 @@ describe.skipIf(!process.env.RUN_SLOW)("merge at volume (AC-17)", () => {
     const { count } = await adminClient().from("document").select("id", { count: "exact", head: true }).eq("doc_type_id", bank);
     expect(count).toBe(1000);
     expect(ms).toBeLessThan(3000);
+  });
+});
+
+// Spec AC-17 (second bullet; review I-6): the decision queue loads in < 1 s with 50 items. One round trip, best of 3
+// (like 02's clients-list timing). RUN_SLOW only, with the merge above.
+describe.skipIf(!process.env.RUN_SLOW)("queue at volume (AC-17)", () => {
+  let admin: { id: string; email: string };
+  let staff: { id: string; email: string };
+  let asAdmin: SupabaseClient;
+
+  beforeAll(async () => {
+    const officeId = await createDocumentOffice("governance-queue");
+    admin = await createStaff(officeId, "govq-admin", "admin");
+    staff = await createStaff(officeId, "govq-staff", "staff");
+    asAdmin = await signedInClient(admin.email);
+    const asStaff = await signedInClient(staff.email);
+    const groups = await Promise.all(["Banking", "Other", "Accounting", "Payroll", "GST"].map((g) => groupId(officeId, g)));
+    const clients: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      clients.push((await mustInsertClient(asStaff, officeId, { name: `Queue volume ${i}`, client_type: "individual", incharge_id: staff.id })).id);
+    }
+    // 50 items: 10 names × 5 groups, each proposed by 2 clients (100 rows), so grouping does real work.
+    for (let n = 0; n < 10; n++) {
+      for (const [gi, grp] of groups.entries()) {
+        for (const c of [clients[(n + gi) % 5], clients[(n + gi + 1) % 5]]) await proposeType(asStaff, c, grp, `Queue type ${n}`);
+      }
+    }
+  }, 600_000);
+
+  afterAll(async () => { await retireStaff([staff, admin].filter(Boolean).map((x) => x.id)); });
+
+  it("50 items in < 1 s", async () => {
+    const times: number[] = [];
+    let waiting = 0;
+    for (let i = 0; i < 3; i++) {
+      const t0 = performance.now();
+      const { data, error } = await proposalQueue(asAdmin);
+      times.push(performance.now() - t0);
+      expect(error).toBeNull();
+      waiting = data!.waiting;
+    }
+    console.log("proposal_queue 50 items (ms)", times.map(Math.round));
+    expect(waiting).toBe(50);
+    expect(Math.min(...times)).toBeLessThan(1000);
   });
 });

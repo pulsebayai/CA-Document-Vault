@@ -167,3 +167,37 @@ test("AC-16: Settings › Collection shows metric 3 and the queue's age", async 
   await expect(page.getByRole("link", { name: `${items} ${items === 1 ? "proposal" : "proposals"} waiting` })).toHaveAttribute("href", "/settings/catalogue");
   await expect(page.getByText(/oldest 0 days/)).toBeVisible();
 });
+
+test("AC-11: a decision another admin already made shows 'Already decided by <name>' (review I-2)", async ({ page, baseURL }) => {
+  const manager = await createStaff(officeId, "govui-manager", "manager");
+  try {
+    const asStaff = await signedInClient(staff.email);
+    const { data, error } = await asStaff.rpc("create_proposed_type", { p_client_id: clientId, p_doc_group_id: await groupId(officeId, "Other"), p_name: "Stale passes" });
+    if (error) throw error;
+    const stale = (data as { doc_type_id: string }).doc_type_id;
+    await signIn(page, admin.email, baseURL);
+    await page.goto("/settings/catalogue");
+    await itemOf(page, "Stale passes").getByRole("button", { name: "Approve Stale passes", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: /Approve “Stale passes”/ });
+    await expect(dialog.getByRole("list", { name: "What will happen" })).toBeVisible();
+    // Meanwhile another admin decides it (another tab or person).
+    const { error: me } = await (await signedInClient(manager.email)).rpc("approve_proposed_type", { p: { type_id: stale } });
+    if (me) throw me;
+    await dialog.getByRole("button", { name: "Approve", exact: true }).click();
+    await expect(page.getByText("Already decided by Test govui-manager")).toBeVisible();
+    await expect(itemOf(page, "Stale passes")).toHaveCount(0); // the panel refreshed
+  } finally {
+    await retireStaff([manager.id]);
+  }
+});
+
+test("AC-15: a merged type is gone from the /documents type filter and the catalogue lists (review I-6)", async ({ page, baseURL }) => {
+  // "Locker slips" was merged into Bank statement above (serial file).
+  await signIn(page, admin.email, baseURL);
+  await page.goto("/documents");
+  const typeFilter = page.getByRole("combobox", { name: "Type" });
+  await expect(typeFilter.locator("option", { hasText: "Bank statement" }).first()).toBeAttached();
+  await expect(typeFilter.locator("option", { hasText: "Locker slips" })).toHaveCount(0);
+  await page.goto("/settings/catalogue");
+  await expect(page.getByRole("region", { name: "Banking", exact: true }).getByRole("row", { name: /Locker slips/ })).toHaveCount(0);
+});

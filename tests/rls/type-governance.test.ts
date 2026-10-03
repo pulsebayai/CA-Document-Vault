@@ -674,6 +674,108 @@ describe("suggestions and search after a merge (AC-15)", () => {
   });
 });
 
+// ── Pre-PR review I-1 / I-4 (Raja 2026-10-03 14:08): retired types stay out of plans; re-proposing a retired name ──
+const planRowRaw = async (client: string, type: string) => {
+  const { data, error } = await adminClient().from("client_doc_type").select("id, state, state_before_disable")
+    .eq("client_id", client).eq("doc_type_id", type).single();
+  if (error) throw error;
+  return data as { id: string; state: string; state_before_disable: string | null };
+};
+
+describe("retired types stay out of plans (AC-15; review I-1)", () => {
+  const merged = uniq("Wage slips");
+  const rejected = uniq("Greeting cards");
+  let mergedRow: string; // clientC, Payroll → merged into the salary register
+  let rejectedRow: string; // clientD, Other → rejected
+
+  beforeAll(async () => {
+    mergedRow = await proposeType(as.staff, clientC, g.payroll, merged);
+    await mustOk(mergeType(as.admin, mergedRow, t.salary));
+    rejectedRow = await proposeType(as.staff, clientD, g.other, rejected);
+    expect((await rejectType(as.admin, rejectedRow, "Not a compliance document")).error).toBeNull();
+  });
+
+  it("Staff can't switch a merged or rejected type back on for the client (Client › Settings toggle)", async () => {
+    for (const [client, row] of [[clientC, mergedRow], [clientD, rejectedRow]] as const) {
+      const plan = await planRowRaw(client, row);
+      const { error } = await as.staff.from("client_doc_type").update({ state: "active" }).eq("id", plan.id);
+      expect(error?.message ?? "").toMatch(/TYPE_RETIRED/);
+      expect((await planRowRaw(client, row)).state).toBe("removed");
+    }
+  });
+
+  it("Admin can't either (pause or activate)", async () => {
+    const plan = await planRowRaw(clientC, mergedRow);
+    for (const state of ["paused", "active"]) {
+      expect((await as.admin.from("client_doc_type").update({ state }).eq("id", plan.id)).error?.message ?? "").toMatch(/TYPE_RETIRED/);
+    }
+    expect((await planRowRaw(clientC, mergedRow)).state).toBe("removed");
+  });
+
+  it("a group switched off before the merge doesn't bring the retired type back when it is switched on again", async () => {
+    const name = uniq("Overtime sheets");
+    const row = await proposeType(as.staff, clientD, g.payroll, name);
+    expect((await as.staff.rpc("disable_client_group", { p_client_id: clientD, p_doc_group_id: g.payroll })).error).toBeNull();
+    expect(await planRowRaw(clientD, row)).toMatchObject({ state: "removed", state_before_disable: "active" });
+    await mustOk(mergeType(as.admin, row, t.salary));
+    expect((await planRowRaw(clientD, row)).state_before_disable).toBeNull(); // nothing left to restore
+    // Off and on again: the retired row stays removed (before the fix, re-enabling restored it to active).
+    await as.staff.rpc("disable_client_group", { p_client_id: clientD, p_doc_group_id: g.payroll });
+    expect((await as.staff.rpc("enable_client_group", { p_client_id: clientD, p_doc_group_id: g.payroll })).error).toBeNull();
+    expect((await planRowRaw(clientD, row)).state).toBe("removed");
+  });
+});
+
+describe("re-proposing a retired name for the same client (review I-4, Raja 2026-10-03)", () => {
+  it("a merged name is refused with a pointer to the type it was merged into", async () => {
+    const name = uniq("Pay slips");
+    const row = await proposeType(as.staff, clientB, g.payroll, name);
+    await mustOk(mergeType(as.admin, row, t.salary));
+    const { error } = await as.staff.rpc("create_proposed_type", { p_client_id: clientB, p_doc_group_id: g.payroll, p_name: name.toUpperCase() });
+    expect(error?.message ?? "").toMatch(/MERGED_INTO/);
+    expect(error?.message ?? "").toContain(SALARY);
+  });
+
+  it("a rejected name may be proposed again: a new queue item; the rejection stays in history", async () => {
+    const name = uniq("Festival cards");
+    const old = await proposeType(as.staff, clientB, g.other, name);
+    expect((await rejectType(as.admin, old, "Not needed")).error).toBeNull();
+    const again = await proposeType(as.staff, clientB, g.other, name);
+    expect(again).not.toBe(old);
+    expect(await typeRow(again)).toMatchObject({ status: "proposed", proposed_for_client_id: clientB });
+    expect(await typeRow(old)).toMatchObject({ status: "rejected", decision_comment: "Not needed" });
+    expect((await queueOf("admin")).items.find((i) => i.type_ids.includes(again))?.type_ids).toEqual([again]);
+  });
+});
+
+describe("the preview says what Approve and Edit & approve then did (AC-8; review I-6)", () => {
+  it("approve as proposed: two clients, one document", async () => {
+    const name = uniq("Stamp papers");
+    const a = await proposeType(as.staff, clientA, g.other, name);
+    const b = await proposeType(as.staff2, clientB, g.other, name);
+    await file("staff2", clientB, b, { period_id: null });
+    const preview = await mustOk(previewDecision(as.admin, { action: "approve", type_id: a }));
+    expect(await typeRow(a)).toMatchObject({ status: "proposed" }); // the preview changed nothing
+    const done = await mustOk(approveType(as.admin, { type_id: a }));
+    expect(preview).toMatchObject({ documents: 1, clients: 2, conflicts: [] });
+    const { conflicts: _c, ...counts } = preview as unknown as Record<string, unknown>;
+    expect(done).toMatchObject(counts);
+  });
+
+  it("edit & approve with a group change", async () => {
+    const name = uniq("Cash memos");
+    const a = await proposeType(as.staff, clientC, g.other, name);
+    await file("staff", clientC, a, { period_id: null });
+    const edits = { name: `${name} (accounts)`, doc_group_id: g.accounting };
+    const preview = await mustOk(previewDecision(as.admin, { action: "approve", type_id: a, edits }));
+    expect(await typeRow(a)).toMatchObject({ status: "proposed", doc_group_id: g.other });
+    const done = await mustOk(approveType(as.admin, { type_id: a, edits }));
+    const { conflicts: _c, ...counts } = preview as unknown as Record<string, unknown>;
+    expect(done).toMatchObject(counts);
+    expect(counts).toMatchObject({ documents: 1, clients: 1 });
+  });
+});
+
 // ── Metric 3 (AC-16) — own office, so other tests' documents don't count ──────
 describe("metric 3: filed under approved types (AC-16)", () => {
   let mOffice: string;
