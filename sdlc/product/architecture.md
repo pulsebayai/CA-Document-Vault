@@ -1,5 +1,5 @@
 # Architecture: CA Document Vault
-Status: approved · Updated: 2026-10-02 (05 type governance, notifications) · earlier: 2026-10-02 (07 review & dispatch) · earlier: 2026-10-01 (06 mailer, follow-ups, Today) · earlier: 2026-10-01 (03b search decisions) · earlier: 2026-10-01 (04 expected docs: 5 approved changes + build decisions)
+Status: approved · Updated: 2026-10-06 (08 activity visibility, bulk files, permissions matrix) · earlier: 2026-10-02 (05 type governance, notifications) · earlier: 2026-10-02 (07 review & dispatch) · earlier: 2026-10-01 (06 mailer, follow-ups, Today) · earlier: 2026-10-01 (03b search decisions) · earlier: 2026-10-01 (04 expected docs: 5 approved changes + build decisions)
 
 ## Stack
 - **Next.js (App Router) + TypeScript** — one codebase for UI and server actions/API routes.
@@ -73,12 +73,21 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 ## Auth & permissions model
 - **Staff only.** Admin creates/invites each staff user; no self sign-up. Sign-in by **email one-time code** (Supabase Auth OTP). Deactivating a user revokes access immediately.
 - Roles enforced in **Postgres RLS**, not only in UI. Matrix (from mockup): Admin/Manager/Staff see all clients; Limited sees only assigned clients/groups. Manage users → Admin only. Catalogue approvals, incharge changes, pausing → Admin/Manager.
+- **Permissions matrix is code (08):** `src/lib/auth/permissions.ts` (17 rows × 4 roles) is the one source for Settings › Users and for `tests/rls/role-matrix.test.ts`, which runs a probe for every row × role against the database. A row without a probe fails the test, so the screen can't drift from what is enforced. New role rules add a row and a probe.
+- **Activity visibility (08):** Admin/Manager/Staff read all of the office's activity. **Limited** read a row only when they are its actor or can see its client (`activity_select`).
+  - The client comes from `data.client_id`, else from the row's entity (client · document · expected_doc · follow_up · dispatch · client_group · client_doc_type), via `private.activity_client` (definer, tenant first, regex-checked IDs, no exception blocks).
+  - Rows with no client (catalogue, users, sign-ins, system jobs) are visible to Limited only as the actor.
+  - A document's past events follow its **current** client (IDs only; names stay behind RLS).
+  - The feed is `activity_feed(p jsonb)` (SECURITY INVOKER): names are joined under the viewer's RLS; sign-ins appear only on request. Sentences are built in TS (`src/lib/activity-feed/catalogue.ts`); a unit test requires one for every action written in `src/` or the migrations.
 - "Delete" in the mockup = **archive** (reversible, logged). No hard delete from the app.
 - **Assignment decides what Limited users see**, so assigning staff (group or type), changing the incharge, pausing/resuming and switching off a paused group are Admin/Manager only (DB triggers). A group follows the incharge: when the incharge changes, groups still assigned to the old incharge move to the new one (logged) (02).
 - Settings is visible to all staff; each item is role-gated (catalogue writes Admin/Manager, users Admin) (02).
 - The service role cannot write `client` rows (CHECK helpers are `authenticated`-only); tests and tools create clients as a signed-in user (02).
 - **Documents (03):** visible if the user can see the client (`can_see_client`), or unclassified and (Staff+ or added it). Limited users add/edit only for clients they can see or into the Inbox. Archive/unarchive Admin/Manager (reason required); archived documents are read-only.
 - **Files (03):** bucket `documents` private (25 MB, MIME allow-list), **no `storage.objects` policies for app roles**. Upload: server issues a signed upload URL for `office/<office>/doc/<document>/<version>.<ext>` (IDs only) → the browser PUTs the raw file with our canonical Content-Type → the DB registers it, **reading size and type from `storage.objects` itself** (the RPCs are callable directly). View/download: a ≤ 60 s signed URL issued server-side after an RLS lookup; only `src/lib/documents/storage.ts` signs (service role, ESLint allow-list).
+- **Bulk files (08):** the zip is built **in the browser** (`client-zip`, store-only); no document bytes pass through our servers.
+  - The server lists the selection's current files (≤ 100 files / 300 MB of stored sizes; RLS as the user), then signs ≤ 10 links per call just before the browser fetches them. Each link lives ≤ 60 s, comes after 03's RLS lookup, and is signed by `storage.ts`. Storage answers cross-origin GETs with `*`.
+  - Files that fail are left out and listed. Bulk Mark reviewed = `review_documents` (≤ 200 IDs): 07's `review_document` per ID in its own sub-transaction, with skip reasons.
 
 ## Cross-cutting rules
 - **Privacy:** PAN, mobile, email are personal data (DPDP Act). No PII in URLs, logs or analytics.
@@ -180,3 +189,6 @@ Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature b
 | 2026-10-02 | **Merge, not re-point:** plan rows are retired and the target added (plan rows are immutable); documents move with `app.type_merge`, keeping review and dispatch; per-document activity rows; set-based linking per (client, period, registration) | 02's immutability and 07's reset rule; each document's history shows the merge (S2); 1,000-document merge < 3 s (AC-17; RUN_SLOW; target raised from 2 s by Raja 2026-10-03 — 1.23 s alone, 2.24 s at the end of the full suite on Nano dev) | 05 |
 | 2026-10-02 | **`notification` table** (recipient-only RLS, IDs only, definer writer); bell opens = all read | Proposers learn decisions without a blocking popup; nothing in a notification can reveal a client the recipient can't see (AC-13, S4) | 05 |
 | 2026-10-02 | Status/decision columns of `doc_type` change only through the decision functions, Admin included; the queue, preview and metric 3 are Admin/Manager only | A direct update would skip the merge of other clients' rows, the notifications and the audit row (Raja 2026-10-02 12:57) | 05 |
+| 2026-10-02 | **Limited activity visibility:** `activity_select` replaced (scoped exception, Raja; intent Q3a): own actions + events of clients the user can see, resolved from the row's entity; Staff+ unchanged | Limited users could read every activity row of the office, including clients they can't see (batch E checkpoint) | 08 |
+| 2026-10-02 | **Bulk zip in the browser** from just-in-time ≤ 60 s signed links (≤ 10 per call), capped at 100 files / 300 MB | No bytes through Vercel functions; one authorisation point (RLS on `document`) as for single downloads; storage CORS verified in the step-1 spike | 08 |
+| 2026-10-02 | **Permissions matrix as code**, every cell probed per role in RLS tests; D4 added rows "Add, edit and import clients" and "Add a financial year" (Raja) | The Users screen had drifted from the code (Limited "edit clients"); one source makes drift fail a test | 08 |
