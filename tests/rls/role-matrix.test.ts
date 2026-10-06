@@ -124,11 +124,18 @@ const PROBES: Record<string, Probe> = {
     }
     return allowed;
   },
-  manage_catalogue: async (who) => {
+  manage_catalogue: async (who, c) => {
     const { data: g } = await adminClient().from("doc_group").select("name").eq("id", ids.banking).single();
     const edit = await who.from("doc_group").update({ name: g!.name }).eq("id", ids.banking).select("id");
     const metric = await rpc(who, "collection_metric", { p_from: "2026-04-01", p_to: "2027-03-31" });
-    return both(changed(edit), ok(metric), "manage_catalogue");
+    // 05 (plan step 9): approving a proposed type. Staff proposes one on the client; the role approves it.
+    const { data: proposed, error } = await rpc(as.staff, "create_proposed_type",
+      { p_client_id: c, p_doc_group_id: ids.banking, p_name: `Matrix approve ${randomUUID().slice(0, 8)}` });
+    if (error) throw new Error(error.message);
+    const typeId = (proposed as { doc_type_id: string } | null)?.doc_type_id;
+    if (!typeId) throw new Error("setup: create_proposed_type returned no doc_type_id");
+    const approve = await rpc(who, "approve_proposed_type", { p: { type_id: typeId } });
+    return both(both(changed(edit), ok(metric), "manage_catalogue (edit · metric)"), ok(approve), "manage_catalogue (approve)");
   },
   add_financial_year: async (who) => ok(await rpc(who, "add_financial_year", {})),
   see_activity: async (who, c) => (await visibleActivity(who, [activityOn[c]])).length === 1,

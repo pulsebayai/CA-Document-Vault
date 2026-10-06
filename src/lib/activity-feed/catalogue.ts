@@ -30,6 +30,7 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   "document.version_added": { category: "documents", text: (r) => `added a new file to ${doc(r)}` },
   "document.archived": { category: "documents", text: (r) => `archived ${doc(r)}` },
   "document.unarchived": { category: "documents", text: (r) => `unarchived ${doc(r)}` },
+  "document.type_merged": { category: "documents", text: (r) => `re-filed ${r.doc_type_name ? `a document under ${r.doc_type_name}` : "a document"} (type merged)` }, // 05
   // Review & dispatch (07)
   "document.reviewed": { category: "review_dispatch", text: (r) => `reviewed ${doc(r)}` },
   "document.needs_correction": { category: "review_dispatch", text: (r) => `marked ${doc(r)} as needs correction` },
@@ -69,6 +70,9 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   "client_doc_type.resumed": fixed("clients_plans", "resumed a type"),
   // Catalogue (02, 03)
   "doc_type.proposed": fixed("catalogue", "proposed a new type"),
+  "doc_type.approved": fixed("catalogue", "approved a proposed type"), // 05
+  "doc_type.merged": fixed("catalogue", "merged a proposed type into an existing type"), // 05
+  "doc_type.rejected": fixed("catalogue", "rejected a proposed type"), // 05
   "doc_type.created": fixed("catalogue", "added a type to the catalogue"),
   "doc_type.updated": fixed("catalogue", "edited a catalogue type"),
   "doc_group.created": fixed("catalogue", "added a document group"),
