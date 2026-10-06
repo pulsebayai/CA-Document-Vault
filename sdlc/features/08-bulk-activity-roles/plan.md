@@ -61,7 +61,7 @@ One migration, `<ts>_bulk_activity`.
 - [x] 6. **Document Activity card + client link.** Proof: e2e. (0.25)
 - [x] 7. **Users page matrix** from `permissions.ts`; `role-matrix.test.ts` green for every cell. Proof: RLS + e2e. (0.5)
 - [x] 8. a11y (axe), ≤ 390 px, screenshots, ui-reference deviations, releases README checklist. Proof: e2e evidence. (0.5)
-- [ ] 9. **Merge main (05 shipped)** → add sentences for 05's 4 actions (the coverage test forces it), the matrix probe for 05's approve function, header conflict → full suite → `verifier` → `sdlc-reviewer` → PR with the AC → test → result table. (0.5) [PR review: 1 h]
+- [x] 9. **Merge main (05 shipped)** → add sentences for 05's 4 actions (the coverage test forces it), the matrix probe for 05's approve function, header conflict → full suite → `verifier` → `sdlc-reviewer` → PR with the AC → test → result table. (0.5) [PR review: 1 h]
 
 **Total ≈ 7.5 build sessions.** Your review ≈ 2 h. **First cut if 08 slips:** the document Activity card (step 6). Second: bulk select on Client › Documents (keep `/documents`).
 
@@ -181,3 +181,8 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
   4. Raja reviews + merges.
 - At merge (on main): the spec's 3 architecture items, plus the "activity follows the document's current client" note. Add `/activity?client=`, the document Activity card and Limited's first page to the pre-pilot volume test (review nit 3). Dev's migration history has no row for `20261002120000` (applied via the dashboard).
 - Decisions made: none new.
+
+### 2026-10-06 (CI 37479928148 on c88e239 — **green**; Raja: "CI is completed. Let us do next steps" 20:02)
+- Full suite green on the merged head (05 + 08): lint, typecheck, unit, build, full RLS, full e2e. Step 9 ticked; all plan steps done.
+- PR #29: the AC → test → result table is in the description; marked ready for review. This docs commit is pushed with `[skip ci]` (draft, result known; CLAUDE.md), so c88e239 remains the last code commit with a full green run.
+- At merge, on main: mark 08 shipped in the roadmap; add 08's 3 architecture items plus the "activity follows the document's current client" note; Before pilot: Activity timings in the volume test, and replay `20261002120000_bulk_activity` from its file on staging (dev has no history row).
