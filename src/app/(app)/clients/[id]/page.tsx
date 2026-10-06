@@ -65,7 +65,9 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
               `Incharge ${c.inchargeName}`, c.email, c.mobile].filter(Boolean).join(" · ")}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* 08 AC-10: this client's history in Activity (the client ID is the only thing in the URL). */}
+          <Link href={`/activity?client=${c.id}`} className="inline-flex items-center rounded-[9px] border border-line-2 bg-panel px-3.5 py-2 font-medium hover:bg-canvas">Activity</Link>
           {!c.archived && (
             <Link href={`/documents/new?client=${c.id}&from=/clients/${c.id}`} className="inline-flex items-center rounded-[9px] bg-accent px-3.5 py-2 font-medium text-white hover:bg-[#264d8f]">Add document</Link>
           )}

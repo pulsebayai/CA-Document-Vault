@@ -236,14 +236,13 @@ export type DocumentDetail = DocumentForForm & {
   // 07: review state (the history and packets load separately: src/lib/review, src/lib/dispatch).
   status: string; reviewedAt: string | null; reviewedByName: string | null; correctionReason: string | null;
   versions: { id: string; versionNo: number; fileName: string; mimeType: string; sizeBytes: number; uploadedAt: string; uploadedBy: string }[];
-  activity: { action: string; actor: string; at: string }[];
 };
 
 export async function getDocumentDetail(id: string): Promise<DocumentDetail | null> {
   const base = await getDocumentForForm(id);
   if (!base) return null;
   const supabase = await createClient();
-  const [doc, versions, activity] = await Promise.all([
+  const [doc, versions] = await Promise.all([
     supabase.from("document").select(`created_at, archived_at, archive_reason, current_version_id,
         status, reviewed_at, correction_reason, reviewer:reviewed_by (full_name),
         receiver:received_by (full_name), creator:created_by (full_name),
@@ -251,9 +250,7 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
       .eq("id", id).single(),
     supabase.from("document_version").select("id, version_no, file_name, mime_type, size_bytes, uploaded_at, uploader:uploaded_by (full_name)")
       .eq("document_id", id).order("version_no", { ascending: false }),
-    supabase.from("activity").select("action, created_at, actor:actor_id (full_name)")
-      .eq("entity_type", "document").eq("entity_id", id).order("created_at", { ascending: false }).limit(50),
-  ]);
+  ]); // 08: the Activity card reads activity_feed (documents/[id]/activity-card.tsx)
   if (doc.error || versions.error) throw new Error("Could not load the document.");
   const d = doc.data as unknown as {
     created_at: string; archived_at: string | null; archive_reason: string | null; current_version_id: string | null;
@@ -270,7 +267,5 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
     status: d.status, reviewedAt: d.reviewed_at, reviewedByName: d.reviewer?.full_name ?? null, correctionReason: d.correction_reason,
     versions: ((versions.data ?? []) as unknown as Array<{ id: string; version_no: number; file_name: string; mime_type: string; size_bytes: number; uploaded_at: string; uploader: { full_name: string } | null }>)
       .map((v) => ({ id: v.id, versionNo: v.version_no, fileName: v.file_name, mimeType: v.mime_type, sizeBytes: v.size_bytes, uploadedAt: v.uploaded_at, uploadedBy: v.uploader?.full_name ?? "—" })),
-    activity: ((activity.data ?? []) as unknown as Array<{ action: string; created_at: string; actor: { full_name: string } | null }>)
-      .map((a) => ({ action: a.action, actor: a.actor?.full_name ?? "—", at: a.created_at })),
   };
 }

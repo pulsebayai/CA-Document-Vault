@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Badge, Button, Card, PageHeader } from "@/components/ui";
 import { LoadingState, Block } from "@/components/states";
+import { RowCheckbox, SelectAll, SelectionBar, useSelection } from "@/components/selection-bar";
+import type { ReviewTarget } from "@/components/bulk-review-dialog";
 import { SEARCH_TEXT_EVENT, handOffSearchText } from "@/components/header-search";
 import { documentFacets, findClients, searchDocuments } from "@/lib/search/actions";
 import type { ClientHit, DocumentHit, FacetName, FacetValue, FilterOptions, PickerClient } from "@/lib/search/queries";
@@ -94,6 +96,16 @@ export function rowText(d: DocumentHit) {
   return { what, who, how };
 }
 
+/** 08 AC-3: what Mark reviewed would do with this row (preview; the database decides). */
+export function reviewTarget(d: DocumentHit): ReviewTarget {
+  const skip = d.archived ? "archived"
+    : !d.clientId || !(d.docTypeId ?? d.typeName) ? "in_inbox"
+    : d.status === "reviewed" ? "already_reviewed"
+    : d.status === "needs_correction" ? "needs_correction"
+    : null;
+  return { id: d.id, docCode: d.docCode, skip };
+}
+
 // ── View ──────────────────────────────────────────────────────────────────────────────────────────────────────
 type Answer = { key: string; total: number; rows: DocumentHit[]; facets: FacetValue[] } | { key: string; error: string };
 
@@ -133,6 +145,10 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
   const chips = useMemo(() => activeChips(filters, options, facets), [filters, options, facets]);
   const filtered = isFiltered(filters);
   const pages = ok ? Math.max(1, Math.ceil(ok.total / PAGE_SIZE)) : 1;
+  // 08 AC-1: selection is per page — a new filter, page or search text starts empty (D2).
+  const selection = useSelection(key);
+  const pageRows = ok?.rows ?? [];
+  const selectedItems = pageRows.filter((d) => selection.ids.has(d.id)).map(reviewTarget);
 
   const go = (next: DocumentFilters) => {
     const q = filtersToQuery(next);
@@ -252,10 +268,14 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
       ) : (
         <div aria-busy={loading}>
           <Card className={loading ? "opacity-60" : undefined}>
+            <div className="border-b border-line px-5 py-2.5">
+              <SelectAll pageIds={pageRows.map((d) => d.id)} selected={selection.ids} onChange={(on) => selection.setAll(pageRows.map((d) => d.id), on)} />
+            </div>
             <ul aria-label="Documents" className="divide-y divide-line">
-              {ok.rows.map((d) => <ResultRow key={d.id} d={d} />)}
+              {ok.rows.map((d) => <ResultRow key={d.id} d={d} selected={selection.ids.has(d.id)} onToggle={() => selection.toggle(d.id)} />)}
             </ul>
           </Card>
+          <SelectionBar items={selectedItems} onClear={selection.clear} />
           {pages > 1 && (
             <nav aria-label="Pages" className="mt-4 flex items-center justify-end gap-2 text-[13.5px]">
               <Button type="button" size="sm" variant="secondary" disabled={filters.page <= 1} onClick={() => go({ ...filters, page: filters.page - 1 })}>Previous</Button>
@@ -283,11 +303,12 @@ export function rowState(d: DocumentHit, today: string) {
   }, today);
 }
 
-function ResultRow({ d }: { d: DocumentHit }) {
+function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolean; onToggle: () => void }) {
   const { what, who, how } = rowText(d);
   const state = rowState(d, istDate());
   return (
     <li className="relative flex flex-wrap items-center gap-3 px-5 py-3.5 hover:bg-canvas">
+      <RowCheckbox docCode={d.docCode} checked={selected} onChange={onToggle} />
       <div className="min-w-0 flex-1">
         <p className="break-words font-medium">
           <Link href={`/documents/${d.id}`} className="after:absolute after:inset-0 focus-visible:outline-2 focus-visible:outline-accent">

@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { ClientDocument } from "@/lib/documents/queries";
 import { documentState, heldDays, nextAction, type ShownStateKind } from "@/lib/documents/state";
 import { Badge } from "@/components/ui";
+import { RowCheckbox } from "@/components/selection-bar";
 import { FileButtons } from "../../documents/file-buttons";
 import { ReviewControls, type RowMessage } from "./review-controls";
 import { DispatchDialog } from "./dispatch-dialog";
@@ -20,7 +21,11 @@ const TONE: Record<ShownStateKind, string> = {
   needs_correction: "text-bad", reviewed: "text-ok", to_review: "text-warn",
 };
 
-export function DocumentRow({ d, clientId, clientName, today }: { d: ClientDocument; clientId: string; clientName?: string | null; today: string }) {
+export function DocumentRow({ d, clientId, clientName, today, selected, onToggle }: {
+  d: ClientDocument; clientId: string; clientName?: string | null; today: string;
+  /** 08 AC-1: bulk selection (absent = no checkbox). */
+  selected?: boolean; onToggle?: () => void;
+}) {
   const [msg, setMsg] = useState<RowMessage | null>(null);
   const input = { archived: false, clientId, docTypeId: d.typeName ? "filed" : null, receivedAs: d.receivedAs, status: d.status,
     reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
@@ -31,6 +36,7 @@ export function DocumentRow({ d, clientId, clientName, today }: { d: ClientDocum
   const label = `${d.typeName}${d.periodLabel ? ` · ${d.periodLabel}` : ""} (${d.docCode})`;
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
+      {onToggle && <RowCheckbox docCode={d.docCode} checked={!!selected} onChange={onToggle} />}
       {/* min width: on a half-width card the actions wrap below instead of squeezing the text column */}
       <div className="min-w-[min(100%,15rem)] flex-1">
         <Link href={`/documents/${d.id}`} className="break-words font-medium hover:underline">
