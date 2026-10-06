@@ -24,6 +24,10 @@ jobs:
     timeout-minutes: 5
     outputs:
       code: ${{ steps.diff.outputs.code }}
+      # Chore test-feedback (Raja 2026-10-06): the PR's new or changed test files, run first (space-separated paths).
+      unit_tests: ${{ steps.diff.outputs.unit_tests }}
+      db_tests: ${{ steps.diff.outputs.db_tests }}
+      e2e_tests: ${{ steps.diff.outputs.e2e_tests }}
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -50,6 +54,10 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - name: Changed unit tests first
+        if: needs.changes.outputs.unit_tests != ''
+        env: { CHANGED: "${{ needs.changes.outputs.unit_tests }}" }
+        run: npx vitest run --project unit $CHANGED # paths validated by scripts/ci-changes.mjs; unquoted to split
       - run: npm run test:ci
       - name: Evidence summary (unit)
         if: always()
@@ -85,8 +93,18 @@ jobs:
           if [ "$code" != "200" ]; then echo "::error::Dev Supabase project is paused or unreachable (HTTP $code). Resume it in the dashboard."; exit 1; fi
       - name: Take a test lane
         run: node scripts/test-lane.mjs acquire
-      - run: npm run test:db:ci
+      # Chore test-feedback (Raja 2026-10-06): the PR's new or changed RLS and e2e files run first, so a failing new
+      # test stops the job in minutes instead of after the ~25 min full suites. The full suites below still run them.
+      - name: Changed RLS tests first
+        if: needs.changes.outputs.db_tests != ''
+        env: { CHANGED: "${{ needs.changes.outputs.db_tests }}" }
+        run: npx vitest run --project db $CHANGED # paths validated by scripts/ci-changes.mjs; unquoted to split
       - run: npx playwright install --with-deps chromium
+      - name: Changed e2e tests first
+        if: needs.changes.outputs.e2e_tests != ''
+        env: { CHANGED: "${{ needs.changes.outputs.e2e_tests }}" }
+        run: npx playwright test $CHANGED # builds and starts the app once more (~2 min)
+      - run: npm run test:db:ci
       - run: npm run test:e2e
       - name: Evidence summary
         if: always()
