@@ -174,8 +174,8 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
     - Nits fixed: impossible URL dates broke the feed; repeated Esc could close a busy dialog; no "Try again" on the zip cap; "Retry failed" says it saves a second zip; this plan's file table.
     - Others recorded in Deviations / below.
   - Unit (all, incl. 05's), lint, typecheck and build green.
+- Local run of the changed DB test (CLAUDE.md 2026-10-06; Raja 19:31): `role-matrix.test.ts` **69/69 green**, including 05's `approve_proposed_type` (Admin/Manager allowed; Staff/Limited refused).
 - Pending before merge:
-  1. Local run of the changed DB test (`role-matrix.test.ts`, per CLAUDE.md 2026-10-06).
   2. Push → full CI green on the merged head.
   3. AC → test → result table in PR #29; ready for review.
   4. Raja reviews + merges.
