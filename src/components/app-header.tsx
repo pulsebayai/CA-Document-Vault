@@ -5,9 +5,10 @@ import type { CurrentStaff } from "@/lib/auth/staff";
 import { BrandMark } from "./ui";
 import { AddDocumentLink, NavLink } from "./nav-link";
 import { HeaderSearch } from "./header-search";
+import { NotificationBell } from "./notification-bell";
 
 /** Mockup header (references/mockup/01-today.jpg). Only shipped screens appear in the nav. */
-export function AppHeader({ me, inboxCount }: { me: CurrentStaff; inboxCount: number }) {
+export function AppHeader({ me, inboxCount, unreadNotifications = 0 }: { me: CurrentStaff; inboxCount: number; unreadNotifications?: number }) {
   // Settings is for everyone from 02: the catalogue is readable by all staff (AC-6); Users stays Admin only.
   const nav = [
     { href: "/today", label: "Today" },
@@ -41,6 +42,7 @@ export function AppHeader({ me, inboxCount }: { me: CurrentStaff; inboxCount: nu
         <HeaderSearch />
         <AddDocumentLink />
       </div>
+      <NotificationBell unread={unreadNotifications} /> {/* 05 AC-13: before the avatar */}
       <details className="relative shrink-0">
         <summary aria-label={`Account menu for ${me.fullName}`} className="grid h-8 w-8 cursor-pointer list-none place-items-center rounded-full bg-accent-soft text-xs font-semibold text-accent [&::-webkit-details-marker]:hidden">
           {initials(me.fullName)}

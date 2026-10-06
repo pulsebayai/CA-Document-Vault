@@ -9,6 +9,14 @@ vi.mock("@/lib/reminders/actions", () => ({
   reminderPreview: vi.fn(), sendEmailReminder: vi.fn(), recordWhatsApp: vi.fn(), logCall: vi.fn(), clientReminders: vi.fn(),
 }));
 
+// Feature 05: Settings › Catalogue renders the decision dialogs, whose server actions import server-only modules.
+// Inert stubs here; tests/unit/proposal-queue.test.tsx declares its own.
+vi.mock("@/lib/catalogue/governance", () => ({
+  previewDecision: vi.fn(async () => ({ ok: false, error: "not stubbed", stale: false })),
+  approveProposedType: vi.fn(), editAndApproveType: vi.fn(), mergeProposedType: vi.fn(), rejectProposedType: vi.fn(),
+  searchMergeTargets: vi.fn(async () => []),
+}));
+
 // Feature 08: /documents and Client › Documents render the selection bar, whose dialogs call bulk server actions
 // (server-only imports). Inert stubs here; tests/unit/selection-bar.test.tsx declares its own vi.mock.
 vi.mock("@/lib/bulk/actions", () => ({

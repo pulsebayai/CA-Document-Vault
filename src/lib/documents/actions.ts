@@ -177,6 +177,10 @@ export async function proposeType(clientId: string, group: { id: string; name: s
   const { data, error } = await supabase.rpc("create_proposed_type", { p_client_id: clientId, p_doc_group_id: group.id, p_name: clean });
   if (error) {
     if (/DUPLICATE_TYPE/.test(error.message)) return { ok: false, error: "A type with this name already exists in this group. Pick it from the list." };
+    // 05 (review I-4): a name merged for this client points to its target. The target's name follows the code (a
+    // catalogue name, never personal data).
+    const merged = /MERGED_INTO:\s*(.+)$/.exec(error.message);
+    if (merged) return { ok: false, error: `“${clean}” was merged into ${merged[1].trim()}. Pick ${merged[1].trim()} from the list.` };
     console.error("documents.propose_failed", { code: error.code });
     return { ok: false, error: "Couldn't add the type. Please try again." };
   }

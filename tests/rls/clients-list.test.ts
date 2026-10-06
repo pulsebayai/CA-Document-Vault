@@ -129,16 +129,19 @@ describe("list performance with 1,000 clients (spec NFR)", () => {
 
   afterAll(async () => { if (perfStaff) await retireStaff([perfStaff.id]); });
 
-  it("first page and a search each return in under 1 s (round trip, best of 3)", async () => {
+  // Chore (Raja 2026-10-06): one warm-up call, then the median of 5 — "best of 3" still failed when the database
+  // stalled on the first calls (1,173 ms, Regression 37103627059); the 1 s budget is unchanged.
+  it("first page and a search each return in under 1 s (round trip, median of 5 warm calls)", async () => {
     const time = async (args: Record<string, unknown>) => {
-      let best = Infinity;
-      for (let i = 0; i < 3; i++) {
+      await search(c, args); // warm-up, not timed
+      const runs: number[] = [];
+      for (let i = 0; i < 5; i++) {
         const t0 = performance.now();
         const rows = await search(c, args);
-        best = Math.min(best, performance.now() - t0);
+        runs.push(performance.now() - t0);
         expect(rows.length).toBeGreaterThan(0);
       }
-      return best;
+      return runs.sort((x, y) => x - y)[2];
     };
     const first = await time({});
     const byName = await time({ p_query: "client 09" });

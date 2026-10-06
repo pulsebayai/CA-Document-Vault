@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireStaff } from "@/lib/auth/staff";
 import { canManageCatalogue } from "@/lib/auth/roles";
@@ -6,11 +7,13 @@ import { addDays, shortDate } from "@/lib/expected/schedule";
 import { onTimePct, pctText } from "@/lib/expected/shape";
 import { Card } from "@/components/ui";
 import { chasingMetricAs } from "@/lib/reminders/queries";
+import { catalogueMetricAs } from "@/lib/catalogue/queries";
 
 // Feature 04 step 8 — Settings › Collection (spec AC-16, architecture change 5): product metric 1 (on-time
 // completeness) for the last 30 days, per group, plus "Overdue now" and when the daily job last ran.
 // Admin/Manager only: others get no Settings item and Not Found here; collection_metric re-checks the role.
 // Feature 06 (AC-15): product metric 2, chasing load, for the same window (chasing_metric re-checks the role too).
+// Feature 05 (AC-16): product metric 3, catalogue convergence, as of now, plus the proposal queue's age.
 
 const WINDOW_DAYS = 30;
 const stamp = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
@@ -20,7 +23,7 @@ export default async function CollectionPage() {
   if (!canManageCatalogue(me.role)) notFound();
   const today = await todayForOffice(me.officeId);
   const from = addDays(today, -(WINDOW_DAYS - 1));
-  const [m, chase] = await Promise.all([collectionMetricAs(from, today), chasingMetricAs(from, today)]);
+  const [m, chase, cat] = await Promise.all([collectionMetricAs(from, today), chasingMetricAs(from, today), catalogueMetricAs()]);
   const tiles: Array<[string, string, string?]> = [
     ["On time", pctText(m.on_time_pct), m.due ? `of ${m.due} due` : undefined],
     ["Received on time", String(m.on_time)],
@@ -112,6 +115,25 @@ export default async function CollectionPage() {
         )}
       </section>
 
+      <section aria-labelledby="catalogue-h" className="space-y-3">
+        <h3 id="catalogue-h" className="font-semibold">Catalogue</h3>
+        <dl aria-label="Catalogue figures" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <Card className="px-4 py-3">
+            <dt className="text-[13px] text-ink-3">Filed under approved types</dt>
+            <dd className="mt-1 text-[22px] font-semibold leading-tight">{pctText(cat.approvedPct)}</dd>
+            <dd className="text-[12.5px] text-ink-3">{cat.total ? `${cat.approved} of ${cat.total} documents` : "no filed documents yet"}</dd>
+          </Card>
+        </dl>
+        <p className="text-[13.5px] text-ink-2">
+          {cat.waiting === 0 ? "No proposals waiting." : (
+            <>
+              <Link href="/settings/catalogue" className="text-accent hover:underline">{cat.waiting} {cat.waiting === 1 ? "proposal" : "proposals"} waiting</Link>
+              {cat.oldestDays !== null && <> · oldest {cat.oldestDays} {cat.oldestDays === 1 ? "day" : "days"}</>}
+            </>
+          )}
+        </p>
+      </section>
+
       <div role="note" className="space-y-1 text-[13.5px] text-ink-2">
         <p>
           <strong className="font-medium text-ink">How it&apos;s counted.</strong> Expected documents whose overdue date fell in the
@@ -123,6 +145,11 @@ export default async function CollectionPage() {
           A reminder counts for a document when it included that document and was sent, opened in WhatsApp or logged as a call
           on or before the day it was received. Failed emails don&apos;t count; a WhatsApp chat counts when opened (the vault
           can&apos;t see whether it was sent).
+        </p>
+        <p>
+          <strong className="font-medium text-ink">Catalogue.</strong> Filed, non-archived documents whose type is approved,
+          out of all filed, non-archived documents, as of now (not the last {WINDOW_DAYS} days). Proposed types count until
+          they are approved or merged.
         </p>
         <p>
           Expected documents last generated:{" "}
