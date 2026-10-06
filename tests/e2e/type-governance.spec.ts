@@ -60,7 +60,7 @@ test("AC-1: Admin sees the queue with the four decisions; Reject is disabled whi
 test("AC-5, AC-8: Merge into… shows what will happen, then moves the document", async ({ page, baseURL }) => {
   await signIn(page, admin.email, baseURL);
   await page.goto("/settings/catalogue");
-  await itemOf(page, "Locker slips").getByRole("button", { name: "Merge Locker slips into an approved type" }).click();
+  await itemOf(page, "Locker slips").getByRole("button", { name: "Merge into… Locker slips" }).click();
   const dialog = page.getByRole("dialog", { name: /Merge “Locker slips”/ });
   await dialog.getByRole("searchbox", { name: "Find the approved type" }).fill("bank statement");
   await dialog.getByRole("radio", { name: /^Bank statement/ }).check();
@@ -100,7 +100,7 @@ test("AC-2, AC-3: Approve as proposed, and Edit & approve with a new name", asyn
   // Approved types join the catalogue list of their group.
   await expect(page.getByRole("region", { name: "Other", exact: true }).getByRole("row", { name: /Gate passes/ })).toBeVisible();
 
-  await itemOf(page, "Petty vouchers").getByRole("button", { name: "Edit and approve Petty vouchers" }).click();
+  await itemOf(page, "Petty vouchers").getByRole("button", { name: "Edit & approve Petty vouchers" }).click();
   const edit = page.getByRole("dialog", { name: /Edit & approve “Petty vouchers”/ });
   await edit.getByRole("textbox", { name: "Name" }).fill("Petty cash book");
   await edit.getByRole("button", { name: "Approve", exact: true }).click();

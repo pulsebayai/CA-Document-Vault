@@ -43,7 +43,7 @@ test("AC-16: an Admin sees the proposal with its group, proposer, client and doc
   await item.getByText("Used on 1 client").click(); // 05: the client list sits in a disclosure
   await expect(item.getByRole("link", { name: "Proposal Client" })).toHaveAttribute("href", `/clients/${clientId}`);
   // 05 AC-1: the four decisions (was: no buttons in 03)
-  for (const name of ["Approve Locker rent receipt", "Edit and approve Locker rent receipt", "Merge Locker rent receipt into an approved type"]) {
+  for (const name of ["Approve Locker rent receipt", "Edit & approve Locker rent receipt", "Merge into… Locker rent receipt"]) {
     await expect(item.getByRole("button", { name, exact: true })).toBeVisible();
   }
   await expect(item.getByRole("button", { name: "Reject", exact: true })).toBeDisabled(); // 1 document uses it (05 AC-9)

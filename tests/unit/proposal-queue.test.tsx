@@ -50,7 +50,7 @@ describe("the queue (AC-1)", () => {
     expect(within(rows[0]).getByText("Used on 2 clients")).toBeInTheDocument();
     expect(within(rows[0]).getByRole("link", { name: "Bharat" })).toHaveAttribute("href", "/clients/c2");
     const names = within(rows[0]).getAllByRole("button").map((b) => b.getAttribute("aria-label") ?? b.textContent);
-    expect(names).toEqual(["Approve Salary sheet", "Edit and approve Salary sheet", "Merge Salary sheet into an approved type", "Reject"]);
+    expect(names).toEqual(["Approve Salary sheet", "Edit & approve Salary sheet", "Merge into… Salary sheet", "Reject"]);
   });
 
   it("Reject is disabled with the reason when the item has documents (AC-9); enabled without", () => {
@@ -76,7 +76,7 @@ describe("dialogs (AC-8, AC-11)", () => {
     previewDecision.mockResolvedValue({ ok: true, counts: { documents: 3, clients: 2, planAdded: 1, received: 1 }, conflicts: [] });
     mergeProposedType.mockResolvedValue({ ok: true, message: "Merged: 3 documents moved." });
     render(<CatalogueView catalogue={catalogue} canEdit canAddFy={false} proposed={queue} />);
-    fireEvent.click(screen.getByRole("button", { name: "Merge Salary sheet into an approved type" }));
+    fireEvent.click(screen.getByRole("button", { name: "Merge into… Salary sheet" }));
     fireEvent.click(await screen.findByRole("radio", { name: /Salary register/ }));
     const list = await screen.findByRole("list", { name: "What will happen" });
     expect(list).toHaveTextContent("3 documents on 2 clients move to Salary register / attendance.");
@@ -90,7 +90,7 @@ describe("dialogs (AC-8, AC-11)", () => {
     searchMergeTargets.mockResolvedValue([{ id: "y", name: "Bank balance confirmation", groupName: "Banking" }]);
     previewDecision.mockResolvedValue({ ok: true, counts: { documents: 3, clients: 2, planAdded: 0, received: 0 }, conflicts: [{ documentId: "d1", docCode: "DOC-FY26-27-00004" }] });
     render(<CatalogueView catalogue={catalogue} canEdit canAddFy={false} proposed={queue} />);
-    fireEvent.click(screen.getByRole("button", { name: "Merge Salary sheet into an approved type" }));
+    fireEvent.click(screen.getByRole("button", { name: "Merge into… Salary sheet" }));
     fireEvent.click(await screen.findByRole("radio", { name: /Bank balance/ }));
     expect(await screen.findByRole("link", { name: "DOC-FY26-27-00004" })).toHaveAttribute("href", "/documents/d1");
     expect(screen.getByRole("button", { name: "Merge" })).toBeDisabled();

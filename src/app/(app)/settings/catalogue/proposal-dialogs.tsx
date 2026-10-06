@@ -173,7 +173,7 @@ function ApproveForm({ item, close }: { item: ProposalItem; close: () => void })
 // ── Edit & approve (AC-3, AC-4): 02's add-type fields, pre-filled ─────────────
 export function EditApproveDialog({ item, groups }: { item: ProposalItem; groups: GroupOption[] }) {
   return (
-    <Modal trigger="Edit & approve" triggerVariant="link" title={`Edit & approve “${item.name}”`} triggerLabel={`Edit and approve ${item.name}`}>
+    <Modal trigger="Edit & approve" triggerVariant="link" title={`Edit & approve “${item.name}”`} triggerLabel={`Edit & approve ${item.name}`}>
       {(close) => <EditApproveForm item={item} groups={groups} close={close} />}
     </Modal>
   );
@@ -259,7 +259,7 @@ function EditApproveForm({ item, groups, close }: { item: ProposalItem; groups: 
 // ── Merge into… (AC-5 … AC-8) ────────────────────────────────────────────────
 export function MergeDialog({ item }: { item: ProposalItem }) {
   return (
-    <Modal trigger="Merge into…" triggerVariant="button" title={`Merge “${item.name}” into an approved type`} triggerLabel={`Merge ${item.name} into an approved type`}>
+    <Modal trigger="Merge into…" triggerVariant="button" title={`Merge “${item.name}” into an approved type`} triggerLabel={`Merge into… ${item.name}`}>
       {(close) => <MergeForm item={item} close={close} />}
     </Modal>
   );

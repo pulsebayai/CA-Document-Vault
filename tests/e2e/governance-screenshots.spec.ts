@@ -72,12 +72,12 @@ for (const [label, width, height] of [["desktop", 1280, 860], ["phone", 390, 844
     await shoot(page, `05-approve-dialog-${label}`);
     await page.keyboard.press("Escape");
 
-    await item(page, "Salary sheet").getByRole("button", { name: "Edit and approve Salary sheet" }).click();
+    await item(page, "Salary sheet").getByRole("button", { name: "Edit & approve Salary sheet" }).click();
     await expect(page.getByRole("dialog", { name: /Edit & approve “Salary sheet”/ })).toBeVisible();
     await shoot(page, `05-edit-approve-dialog-${label}`);
     await page.keyboard.press("Escape");
 
-    await item(page, "Salary sheet").getByRole("button", { name: "Merge Salary sheet into an approved type" }).click();
+    await item(page, "Salary sheet").getByRole("button", { name: "Merge into… Salary sheet" }).click();
     const merge = page.getByRole("dialog", { name: /Merge “Salary sheet”/ });
     await merge.getByRole("searchbox", { name: "Find the approved type" }).fill("salary register");
     await merge.getByRole("radio", { name: /Salary register/ }).first().check();
