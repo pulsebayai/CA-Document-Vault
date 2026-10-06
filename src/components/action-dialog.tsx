@@ -19,7 +19,10 @@ export function ActionDialog({ open, title, onClose, children, busy = false }: {
   }, [open]);
   const onCancel = useCallback((e: React.SyntheticEvent) => { if (busy) e.preventDefault(); }, [busy]);
   return (
-    <dialog ref={ref} aria-labelledby={titleId} onClose={onClose} onCancel={onCancel}
+    <dialog ref={ref} aria-labelledby={titleId} onCancel={onCancel}
+      // A repeated Esc can get past preventDefault on "cancel" (Chrome): while busy, re-open instead of closing,
+      // so the dialog never disappears while its work is still running.
+      onClose={() => { if (busy && open) ref.current?.showModal(); else onClose(); }}
       className="m-auto w-full max-w-lg rounded-xl p-0 text-left shadow-card backdrop:bg-ink/30">
       <div className="p-6">
         <h2 id={titleId} className="mb-4 text-lg font-semibold">{title}</h2>

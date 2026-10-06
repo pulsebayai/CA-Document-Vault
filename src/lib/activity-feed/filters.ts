@@ -19,7 +19,12 @@ const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? null;
 const uuidOrNull = (v: string | null) => (v && UUID.test(v) ? v.toLowerCase() : null);
-const dateOrNull = (v: string | null) => (v && DATE.test(v) && !Number.isNaN(Date.parse(`${v}T00:00:00Z`)) ? v : null);
+/** A real calendar day only: "2026-02-31" is rejected (Date would roll it over; Postgres would refuse it). */
+const dateOrNull = (v: string | null) => {
+  if (!v || !DATE.test(v)) return null;
+  const d = new Date(`${v}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v ? v : null;
+};
 
 /** Unknown or malformed values are dropped (a hand-edited URL never errors). */
 export function parseActivityParams(sp: Record<string, string | string[] | undefined>): ActivityFilters {

@@ -151,9 +151,12 @@ export function ZipDownload({ targets, open, onClose }: { targets: ZipTarget[]; 
               {phase.failed.map((f) => <li key={f.documentId}>{f.docCode || "A document"} — {WHY[f.why]}</li>)}
             </ul>
           )}
+          {phase.failed.some((f) => f.why === "failed") && (
+            <p id="zip-retry-note" className="mt-2 text-[13px] text-ink-2">Retry saves the failed files as a second zip.</p>
+          )}
           <div className="mt-5 flex justify-end gap-2">
             {phase.failed.some((f) => f.why === "failed") && (
-              <Button variant="secondary" onClick={() => retry(phase.failed.filter((f) => f.why === "failed"))}>Retry failed</Button>
+              <Button variant="secondary" aria-describedby="zip-retry-note" onClick={() => retry(phase.failed.filter((f) => f.why === "failed"))}>Retry failed</Button>
             )}
             <Button onClick={close}>Done</Button>
           </div>
@@ -169,7 +172,10 @@ export function ZipDownload({ targets, open, onClose }: { targets: ZipTarget[]; 
         <div>
           <p role="alert" className="text-bad">{phase.message}</p>
           <div className="mt-5 flex justify-end gap-2">
-            <Button variant="secondary" onClick={() => setRun({ targets: current?.targets ?? targets, n: (current?.n ?? 0) + 1 })}>Try again</Button>
+            {/* The cap can't change on a retry: narrowing the selection is the only way forward. */}
+            {!/^Up to 100 files/.test(phase.message) && (
+              <Button variant="secondary" onClick={() => setRun({ targets: current?.targets ?? targets, n: (current?.n ?? 0) + 1 })}>Try again</Button>
+            )}
             <Button onClick={close}>Close</Button>
           </div>
         </div>

@@ -23,19 +23,22 @@ Base: `feat/08-bulk-activity-roles` from main `6227385`. **05 merges first**; 08
 | supabase/migrations/<ts>_bulk_activity.sql | new | `review_documents`, `activity_feed`, `private.activity_client`; **replace `activity_select`** (scoped exception) |
 | package.json, package-lock.json | mod | + `client-zip` |
 | src/lib/bulk/actions.ts | new | `getFileLinks`, `markReviewedBulk` |
-| src/lib/documents/actions.ts | mod | extract `getFileLink`'s RLS lookup into a shared helper used by both (no behaviour change) |
-| src/lib/activity-feed/{catalogue,queries,actions,categories}.ts | new | sentences, load page, filters |
+| src/lib/bulk/links-core.ts | new | zip manifest + batch signing (reuses 03's `lookupVersion`; `documents/actions.ts` unchanged — Deviations) |
+| src/lib/documents/queries.ts | mod | `getDocumentDetail` no longer reads activity (the card reads `activity_feed`) |
+| src/components/action-dialog.tsx | new | a dialog opened by code (bulk flows) |
+| src/lib/activity-feed/{catalogue,queries,actions,categories,filters}.ts | new | sentences, load page, URL filters |
 | src/lib/auth/permissions.ts | new | the matrix (one source) |
 | src/components/selection-bar.tsx, zip-download.tsx, bulk-review-dialog.tsx | new | selection bar, zip progress dialog, confirm/progress/result |
 | src/app/(app)/documents/(search)/search-view.tsx | mod | row checkboxes, select-all, bar |
 | src/app/(app)/clients/[id]/documents-view.tsx, document-row.tsx | mod | checkboxes on received-document rows, bar |
 | src/app/(app)/clients/[id]/page.tsx | mod | "Activity" link |
 | src/app/(app)/documents/[id]/page.tsx, activity-card.tsx | mod / new | document Activity card |
-| src/app/(app)/activity/{page,activity-view,filters,loading,error}.tsx | new | the Activity screen (mockup 04) |
+| src/app/(app)/clients/[id]/page.tsx | mod | "Activity" button (AC-10) |
+| src/app/(app)/activity/{page,activity-view,loading,error}.tsx | new | the Activity screen (mockup 04); filters live in activity-view |
 | src/app/(app)/settings/users/page.tsx | mod | matrix from `permissions.ts` |
 | src/components/app-header.tsx | mod | Activity nav item (**shared with 05**) |
 | tests/rls/bulk.test.ts, activity-feed.test.ts, activity-visibility.test.ts, role-matrix.test.ts | new | step 2 (red first) |
-| tests/unit/activity-catalogue.test.ts, permissions.test.ts, selection-bar.test.tsx, zip-download.test.tsx | new | |
+| tests/unit/activity-catalogue.test.ts, permissions.test.ts, selection-bar.test.tsx, zip-download.test.ts, activity-view.test.tsx | new | |
 | tests/e2e/bulk.spec.ts, activity.spec.ts | new | |
 | tests/e2e/users.spec.ts | mod | **additions only**: the matrix rows from `permissions.ts` (existing assertions untouched) |
 | tests/support/* | mod | helpers **additions only** (fixture activity, many documents) |
@@ -83,6 +86,12 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - **Migration applied through the Supabase dashboard SQL editor** (Raja, 2026-10-02 14:22 IST). The connector's write calls kept getting cancelled. So dev's migration history has **no row** for `20261002120000_bulk_activity`. Instead, the live function bodies were checked against the file (md5 equal for all three), along with the policy text, security modes and grants. When staging is created, the file applies normally. If dev's history must be complete, add the row later (owner's call).
 - **No dry run:** Raja approved the SQL directly (12:57) after the dry-run call was cancelled.
 - **Selection count is an `aria-live="polite" aria-atomic="true"` region, not `role="status"`** (spec NFR said role=status). Screen readers announce it the same way. CI 36987085679 showed an always-mounted second `status` on the client page breaks 02's `client-edit.spec.ts` (`getByRole('status')`, strict mode); the fix is in code, and 02's test is untouched.
+- **Activity client filter is a text box + list of buttons**, not an ARIA combobox (spec AC-7 says "combobox"). Usable by keyboard (Tab) and screen readers; same pattern as 03b's `/documents` client picker. A full combobox is a later polish item.
+- **Dispatch sentence** reads "Ravi dispatched 2 originals", not the spec example "Ravi dispatched Original Form 16": a packet row names several documents, and activity rows hold IDs only. The document card and `/activity?document=` show the packet against each document.
+- **Activity follows a document's current client:** the client of a document's past events is the document's client now. If a document moves from client A to B, a Limited user on B sees its earlier events and one on A no longer does (IDs only; names stay behind RLS). This follows AC-11's wording; noted for architecture.md.
+- **Accepted for the pilot (pre-PR review nits 4–5):**
+  - A document marked Needs correction by someone else in the moment between `review_documents`' check and 07's `review_document` can still end up Reviewed (07 allows needs_correction → reviewed). The window is tiny; the review history shows both.
+  - 200 sub-transactions per call is fine at office scale. Drop to 50 if RUN_SLOW or the volume test shows contention.
 - **Activity module path:** `src/lib/activity-feed/` (not `src/lib/activity/`), because `src/lib/activity.ts` (01's `logActivity`) already exists.
 
 ## Session log
@@ -151,3 +160,24 @@ Every spec AC maps to a passing test (table in the PR). The full regression suit
 - All jobs green: lint, typecheck, unit, build; full RLS suite; full e2e, including all of 08's new e2e and both 02 tests that failed on 78061a3. Steps 4–8 ticked.
 - 05's CI 36990723961 is also green.
 - Next: step 9 after 05 merges (merge main → sentences for 05's activity actions → matrix probe for 05's approval → header conflict → full suite → verifier → sdlc-reviewer → AC table → ready for review).
+
+### 2026-10-06 (step 9 — 05 merged as PR #28; Raja: "don't run any CI or regression", another CI is running)
+- Done (local only; no CI, no Regression, no dev-DB test runs):
+  - Merged origin/main (`d8dcfad`). Conflicts in three shared files, each resolved keeping both sides:
+    - `app-header.tsx`: 05's bell count + 08's Activity item;
+    - `setup-dom.ts`: both stubs;
+    - `ui-reference.md`: 05's rows, then 08's.
+  - 05's 7 migrations touch nothing 08 relies on (`activity_select`, `review_document`, the access helpers); no name clashes.
+  - The catalogue test caught 4 new 05 actions (`doc_type.approved` / `merged` / `rejected`, `document.type_merged`). Sentences added.
+  - The role-matrix "Manage catalogue, approve proposed types" probe now also calls 05's `approve_proposed_type`.
+  - `sdlc-reviewer`: **no Important findings in 08's code**; its one Important item is the missing CI run on the merged head.
+    - Nits fixed: impossible URL dates broke the feed; repeated Esc could close a busy dialog; no "Try again" on the zip cap; "Retry failed" says it saves a second zip; this plan's file table.
+    - Others recorded in Deviations / below.
+  - Unit (all, incl. 05's), lint, typecheck and build green.
+- Pending before merge:
+  1. Local run of the changed DB test (`role-matrix.test.ts`, per CLAUDE.md 2026-10-06).
+  2. Push → full CI green on the merged head.
+  3. AC → test → result table in PR #29; ready for review.
+  4. Raja reviews + merges.
+- At merge (on main): the spec's 3 architecture items, plus the "activity follows the document's current client" note. Add `/activity?client=`, the document Activity card and Limited's first page to the pre-pilot volume test (review nit 3). Dev's migration history has no row for `20261002120000` (applied via the dashboard).
+- Decisions made: none new.

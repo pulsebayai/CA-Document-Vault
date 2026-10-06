@@ -101,3 +101,10 @@ describe("ActivityView (AC-5)", () => {
     expect(push).toHaveBeenLastCalledWith("/activity", { scroll: false });
   });
 });
+
+describe("URL dates (pre-PR review nit 6)", () => {
+  it("drops impossible calendar days instead of sending them to the feed", () => {
+    expect(parseActivityParams({ from: "2026-02-31", to: "2026-13-01" })).toEqual(NO_FILTERS);
+    expect(parseActivityParams({ from: "2028-02-29" }).from).toBe("2028-02-29");
+  });
+});
