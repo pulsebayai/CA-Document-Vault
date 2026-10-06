@@ -10,7 +10,7 @@ export const inputCls = "mt-1 w-full rounded-[9px] border border-line-2 bg-panel
 export const numCls = "mt-1 w-20 rounded-[9px] border border-line-2 bg-panel px-2 py-1.5 text-[14px] outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft aria-[invalid=true]:border-bad";
 
 export function Modal({ trigger, title, triggerVariant, triggerLabel, children }: {
-  trigger: string; title: string; triggerVariant: "link" | "button"; children: (close: () => void) => ReactNode;
+  trigger: string; title: string; triggerVariant: "link" | "button" | "primary"; children: (close: () => void) => ReactNode;
   /** Accessible name of the trigger button when the title alone isn't a good one (default: the title). */
   triggerLabel?: string;
 }) {
@@ -29,7 +29,7 @@ export function Modal({ trigger, title, triggerVariant, triggerLabel, children }
       {triggerVariant === "link" ? (
         <button type="button" aria-label={triggerLabel} className="text-[13.5px] font-medium text-accent hover:underline" onClick={() => setOpen(true)}>{trigger}</button>
       ) : (
-        <Button size="sm" variant="secondary" aria-label={triggerLabel ?? title} onClick={() => setOpen(true)}>{trigger}</Button>
+        <Button size="sm" variant={triggerVariant === "primary" ? "primary" : "secondary"} aria-label={triggerLabel ?? title} onClick={() => setOpen(true)}>{trigger}</Button>
       )}
       <dialog ref={ref} aria-labelledby={titleId} onClose={close} className="m-auto w-full max-w-lg rounded-xl p-0 text-left shadow-card backdrop:bg-ink/30">
         <div className="p-6">

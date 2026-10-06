@@ -42,8 +42,10 @@ type TypeRow = {
   ask_after_months: number | null; ask_day: number | null; overdue_after_months: number | null; overdue_day: number | null;
   reminders: boolean; assigned_staff_id: string | null; start_period_id: string | null; state: PlanState;
   remark: string | null; paused_at: string | null;
-  doc_type: { name: string; period_kind: PeriodKind; created_at: string; status: "approved" | "proposed"; registration_kind: "gstin" | "tan" | null } | null;
+  doc_type: { name: string; period_kind: PeriodKind; created_at: string; status: "approved" | "proposed" | "mapped" | "rejected"; registration_kind: "gstin" | "tan" | null } | null;
 };
+
+const RETIRED = new Set(["mapped", "rejected"]);
 
 export async function getClientPlan(clientId: string): Promise<ClientPlan> {
   const supabase = await createClient();
@@ -77,7 +79,8 @@ export async function getClientPlan(clientId: string): Promise<ClientPlan> {
     groups: live.map((g) => ({
       id: g.id, docGroupId: g.doc_group_id, name: g.doc_group!.name, state: g.state as PlanGroup["state"],
       assignedStaffId: g.assigned_staff_id, remark: g.remark, pausedAt: g.paused_at,
-      types: typeRows.filter((t) => t.client_group_id === g.id && t.doc_type)
+      // 05 (pre-PR review I-1): merged and rejected types are retired; their removed rows aren't shown.
+      types: typeRows.filter((t) => t.client_group_id === g.id && t.doc_type && !RETIRED.has(t.doc_type.status))
         .sort((a, b) => a.doc_type!.created_at.localeCompare(b.doc_type!.created_at) || a.doc_type!.name.localeCompare(b.doc_type!.name))
         .map((t) => ({
           id: t.id, docTypeId: t.doc_type_id, name: t.doc_type!.name, proposed: t.doc_type!.status === "proposed", periodKind: t.doc_type!.period_kind, frequency: t.frequency,

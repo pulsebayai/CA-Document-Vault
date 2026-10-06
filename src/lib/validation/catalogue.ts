@@ -154,3 +154,43 @@ export function codeFromName(name: string, suffix: string): string {
   const slug = name.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 34) || "item";
   return `${slug}_${suffix}`.replace(/_+/g, "_");
 }
+
+// ── Feature 05: Edit & approve (AC-3) and decision comments (AC-12) ─────────────
+// Edit & approve takes 02's add-type form (name, aliases, group, period, frequency, schedule, reminders), so it uses
+// the same validator. The result is shaped as the `edits` the database function takes.
+
+export type TypeEditsInput = DocTypeInput & { groupId?: unknown; periodKind?: unknown };
+export type TypeEdits = {
+  name: string; aliases: string[]; doc_group_id: string; period_kind: PeriodKind; default_frequency: Frequency;
+  ask_after_months: number | null; ask_day: number | null; overdue_after_months: number | null; overdue_day: number | null;
+  reminders: boolean;
+};
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function validateTypeEdits(input: TypeEditsInput): { data: TypeEdits | null; errors: FieldIssue[] } {
+  const errors: FieldIssue[] = [];
+  const groupId = str(input.groupId);
+  if (!UUID.test(groupId)) errors.push({ field: "groupId", message: "Choose a group." });
+  const periodKind = str(input.periodKind) as PeriodKind;
+  if (!PERIOD_KINDS.includes(periodKind)) errors.push({ field: "periodKind", message: "Choose a period." });
+  const v = validateDocType({ ...input, active: "on" }, { source: "client", periodKind: PERIOD_KINDS.includes(periodKind) ? periodKind : "none" });
+  errors.push(...v.errors);
+  if (errors.length || !v.data) return { data: null, errors };
+  return {
+    data: {
+      name: v.data.name, aliases: v.data.aliases, doc_group_id: groupId.toLowerCase(), period_kind: periodKind,
+      default_frequency: v.data.defaultFrequency, ask_after_months: v.data.askAfterMonths, ask_day: v.data.askDay,
+      overdue_after_months: v.data.overdueAfterMonths, overdue_day: v.data.overdueDay, reminders: v.data.reminders,
+    },
+    errors: [],
+  };
+}
+
+/** Optional comment on a decision (AC-12): trimmed, ≤ 500. Required (1–500) for Reject (AC-9). */
+export function validateDecisionComment(v: unknown, required: boolean): { data: string | null; error: string | null } {
+  const s = str(v);
+  if (!s) return required ? { data: null, error: "Give a reason (up to 500 characters)." } : { data: null, error: null };
+  if (s.length > 500) return { data: null, error: required ? "Give a reason (up to 500 characters)." : "The comment can be 500 characters at most." };
+  return { data: s, error: null };
+}

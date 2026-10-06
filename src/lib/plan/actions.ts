@@ -32,6 +32,7 @@ function friendly(message: string | undefined): string {
   if (/GROUP_NOT_ENABLED/.test(m)) return "Enable the group first.";
   if (/FIRM_RECORD/.test(m)) return "Firm records are never part of a client's plan.";
   if (/INACTIVE_TYPE/.test(m)) return "This type is no longer offered in the catalogue.";
+  if (/TYPE_RETIRED/.test(m)) return "This type was merged or rejected, so it can't be collected. Use the type it was merged into.";
   if (/ASSIGNEE/.test(m)) return "Choose an active staff member.";
   if (/NOT_FOUND/.test(m)) return "This client or group is no longer available. Reload the page.";
   if (/offsets|overdue_after_ask/.test(m)) return "Please check the schedule.";

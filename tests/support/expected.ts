@@ -70,13 +70,22 @@ export async function periodCode(periodId: string | null) {
 }
 
 /** Activity rows written by 04 for an office (optionally one entity), oldest first. */
+// Pages through every row (Raja OK 2026-10-02, 05 step 8): activity is never purged, so a test office's rows grow with
+// each run, and a single read stops at PostgREST's 1,000-row cap — lane 1's exp-plan office reached 1,006 and the
+// newest rows (this run's) were silently dropped. Same rows, same order; assertions unchanged.
 export async function expectedActivity(officeId: string, entityId?: string) {
-  let q = adminClient().from("activity").select("action, actor_id, entity_type, entity_id, data, created_at")
-    .eq("office_id", officeId).like("action", "expected.%");
-  if (entityId) q = q.eq("entity_id", entityId);
-  const { data, error } = await q.order("id");
-  if (error) throw error;
-  return data as Array<{ action: string; actor_id: string | null; entity_type: string; entity_id: string; data: Record<string, unknown>; created_at: string }>;
+  type Row = { action: string; actor_id: string | null; entity_type: string; entity_id: string; data: Record<string, unknown>; created_at: string };
+  const PAGE = 1000;
+  const rows: Row[] = [];
+  for (let from = 0; ; from += PAGE) {
+    let q = adminClient().from("activity").select("action, actor_id, entity_type, entity_id, data, created_at")
+      .eq("office_id", officeId).like("action", "expected.%");
+    if (entityId) q = q.eq("entity_id", entityId);
+    const { data, error } = await q.order("id").range(from, from + PAGE - 1);
+    if (error) throw error;
+    rows.push(...((data ?? []) as Row[]));
+    if (!data || data.length < PAGE) return rows;
+  }
 }
 
 /** Names of the plan types 04 schedules in the seeded catalogue (as used by the tests). */

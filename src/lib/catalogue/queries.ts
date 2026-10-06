@@ -87,32 +87,60 @@ export async function loadCatalogue(): Promise<Catalogue> {
   };
 }
 
-// ── Feature 03 AC-16: "Proposed by staff" panel (read-only; approve / edit / map / reject arrive with 05) ──
-export type ProposedType = {
-  id: string; name: string; groupName: string; proposedBy: string; proposedAt: string;
-  clientId: string; clientName: string | null; documents: number;
+// ── Feature 05 AC-1: the decision queue — one item per group + name (proposal_queue, Admin/Manager only) ──
+export type ProposalItem = {
+  typeId: string; // the survivor (earliest row); any row of the item resolves it
+  typeIds: string[];
+  name: string;
+  groupId: string;
+  groupName: string;
+  proposedBy: string[]; // staff names
+  proposedAt: string;
+  clientCount: number;
+  clients: Array<{ id: string; name: string }>;
+  documentCount: number;
+};
+export type ProposalQueue = { waiting: number; items: ProposalItem[] };
+
+type QueueRow = {
+  type_id: string; type_ids: string[]; name: string; doc_group_id: string; group_name: string; proposed_by: string[];
+  proposed_at: string; client_count: number; clients: Array<{ id: string; name: string }>; document_count: number;
 };
 
-export async function loadProposedTypes(): Promise<ProposedType[]> {
+export async function loadProposalQueue(): Promise<ProposalQueue> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("doc_type")
-    .select("id, name, created_at, proposed_for_client_id, doc_group:doc_group_id (name), proposer:proposed_by (full_name), client:proposed_for_client_id (id, name)")
-    .eq("status", "proposed").order("created_at", { ascending: false });
+  const { data, error } = await supabase.rpc("proposal_queue");
   if (error) {
-    console.error("catalogue.proposed_failed", { code: error.code });
+    console.error("catalogue.queue_failed", { code: error.code ?? "unknown" });
     throw new Error("Could not load proposed types.");
   }
-  const rows = (data ?? []) as unknown as Array<{
-    id: string; name: string; created_at: string; proposed_for_client_id: string; doc_group: { name: string } | null;
-    proposer: { full_name: string } | null; client: { id: string; name: string } | null;
-  }>;
-  const counts = new Map<string, number>();
-  if (rows.length) {
-    const { data: docs } = await supabase.from("document").select("doc_type_id").in("doc_type_id", rows.map((r) => r.id)).is("archived_at", null);
-    for (const d of docs ?? []) counts.set(d.doc_type_id as string, (counts.get(d.doc_type_id as string) ?? 0) + 1);
+  const q = data as { waiting: number; items: QueueRow[] };
+  const staffIds = [...new Set(q.items.flatMap((i) => i.proposed_by))];
+  const names = new Map<string, string>();
+  if (staffIds.length) {
+    const { data: staff } = await supabase.from("staff_user").select("id, full_name").in("id", staffIds);
+    for (const s of staff ?? []) names.set(s.id as string, s.full_name as string);
   }
-  return rows.map((r) => ({
-    id: r.id, name: r.name, groupName: r.doc_group?.name ?? "", proposedBy: r.proposer?.full_name ?? "—", proposedAt: r.created_at,
-    clientId: r.proposed_for_client_id, clientName: r.client?.name ?? null, documents: counts.get(r.id) ?? 0,
-  }));
+  return {
+    waiting: q.waiting,
+    items: q.items.map((i) => ({
+      typeId: i.type_id, typeIds: i.type_ids, name: i.name, groupId: i.doc_group_id, groupName: i.group_name,
+      proposedBy: i.proposed_by.map((id) => names.get(id) ?? "—"), proposedAt: i.proposed_at,
+      clientCount: i.client_count, clients: i.clients, documentCount: i.document_count,
+    })),
+  };
+}
+
+// ── Feature 05 AC-16: metric 3 (catalogue convergence) + queue age, for Settings › Collection ──
+export type CatalogueMetric = { approved: number; total: number; approvedPct: number | null; waiting: number; oldestDays: number | null };
+
+export async function catalogueMetricAs(): Promise<CatalogueMetric> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("catalogue_metric");
+  if (error) {
+    console.error("catalogue.metric_failed", { code: error.code ?? "unknown" });
+    throw new Error("Could not load the catalogue figure.");
+  }
+  const m = data as { approved: number; total: number; approved_pct: number | null; waiting: number; oldest_days: number | null };
+  return { approved: m.approved, total: m.total, approvedPct: m.approved_pct, waiting: m.waiting, oldestDays: m.oldest_days };
 }
