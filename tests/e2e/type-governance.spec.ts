@@ -200,5 +200,7 @@ test("AC-15: a merged type is gone from the /documents type filter and the catal
   await expect(typeFilter.locator("option", { hasText: "Bank statement" }).first()).toBeAttached();
   await expect(typeFilter.locator("option", { hasText: "Locker slips" })).toHaveCount(0);
   await page.goto("/settings/catalogue");
-  await expect(page.getByRole("region", { name: "Banking", exact: true }).getByRole("row", { name: /Locker slips/ })).toHaveCount(0);
+  const banking = page.getByRole("region", { name: "Banking", exact: true });
+  await expect(banking.getByRole("row", { name: /^Locker slips/ })).toHaveCount(0); // no row of its own
+  await expect(banking.getByRole("row", { name: /^Bank statement/ })).toContainText("Locker slips"); // kept as the target's alias (AC-5)
 });
