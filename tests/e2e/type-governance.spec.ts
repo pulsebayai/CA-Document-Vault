@@ -195,7 +195,7 @@ test("AC-11: a decision another admin already made shows 'Already decided by <na
 test("AC-15: a merged type is gone from the /documents type filter and the catalogue lists (review I-6)", async ({ page, baseURL }) => {
   // "Locker slips" was merged into Bank statement above (serial file).
   await signIn(page, admin.email, baseURL);
-  await page.goto("/documents");
+  await page.goto(`/documents?group=${await groupId(officeId, "Banking")}`); // the Type filter appears once a group is chosen
   const typeFilter = page.getByRole("combobox", { name: "Type" });
   await expect(typeFilter.locator("option", { hasText: "Bank statement" }).first()).toBeAttached();
   await expect(typeFilter.locator("option", { hasText: "Locker slips" })).toHaveCount(0);
