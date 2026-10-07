@@ -34,7 +34,7 @@ Every release passes the *Release & regression policy* (architecture.md); record
 - **Known performance issues (09 volume test, dev, 2026-10-07; recorded, not fixed — Raja).** Measured at 1,000 clients × 1 year (183k expected items, 10k documents, 200k activity rows); "timeout" = over the 8 s statement limit, so the screen shows an error.
   - **K1** CSV import of 200 rows with 3+ groups times out (3 groups 8.8 s, 6 groups 16.9 s). Workaround: files of ≤ 40 rows (6 groups) / ≤ 80 rows (3 groups).
   - **K2** Daily job time grows with all stored items (normal day 26 s, month start 30 s; < 60 s target now, [Likely] ≈ 60 s in 2–3 years).
-  - **K3** Clients list (27–33 s), Today (14–20 s) and Collection metric (16 s) time out. **Blocks rollout to all clients.**
+  - **K3** Clients list (27–33 s), Today (14–20 s), Collection metric (16 s) and **header client suggestions** time out. Suggestions cost ≈ 30 ms per matching client (1,000 matches 33 s · 100 matches 2.7 s · 10 matches 0.29 s) and start at 2 characters, so a common name start often fails at 1,000 clients (pilot, 30 clients: ≈ 1 s). **Blocks rollout to all clients.**
   - **K4** Document page Activity card times out (14 s at 200k activity rows). **Blocks rollout to all clients.**
   - **K5** Limited users' search and Activity are borderline (0.6–1.2 s vs < 1 s).
 - **R2:** none planned — next candidates come from the Later list, prioritised from pilot feedback.
