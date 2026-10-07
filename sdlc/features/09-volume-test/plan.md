@@ -48,7 +48,7 @@ Same as the existing perf tests: real queries the app runs, through PostgREST as
 
 ## Steps
 - [ ] 0. Roadmap PR on main (your OK): row 09 "volume-test (chore, R1 gate)", schema lock → 09. Docs only.
-- [ ] 1. **Spike (no commit):** in rolled-back transactions on dev, time one `create_document` in a loop, a 200-row import chunk and generation for 1,000 clients, to pick chunk sizes under the 8 s statement timeout (03's DOC-ID counter serialises filings: 20 in parallel already timed out once). Proof: numbers in the session log.
+- [x] 1. **Spike (no commit):** in rolled-back transactions on dev, time one `create_document` in a loop, a 200-row import chunk and generation for 1,000 clients, to pick chunk sizes under the 8 s statement timeout (03's DOC-ID counter serialises filings: 20 in parallel already timed out once). Proof: numbers in the session log.
 - [ ] 2. Migration draft + `volume-seed.test.ts` red → **SQL gate (you)** → apply (MCP; fallback: you run it in the SQL editor, I verify by md5) → green.
 - [ ] 3. `tests/support/volume.ts` + one local seed of the office. Proof: the count check passes and seeding time is logged.
 - [ ] 4. `volume.test.ts` V1–V10, run locally (`VOLUME=1 npx vitest run --project db tests/rls/volume.test.ts`). Proof: timings table.
@@ -73,8 +73,18 @@ V1–V10 measured in one dispatched run with stored evidence (pass, or a recorde
 About 3 build sessions. Your review: one SQL gate (seeding migration) and the PR.
 
 ## Deviations from plan
+- **`seed_test_documents(p_docs jsonb)`** takes an array of ≤ 1,000 `create_document` payloads, not `(p_count, p_template)` (03b plan wording): the caller spreads clients/types/periods/files, the function only loops. Same guards (Admin, `is_test`).
+- **`seed_test_activity` capped at 20,000 rows per call** (dry run: 50,000 took 7.9 s, too close to the 8 s timeout; 20,000 ≈ 3 s).
+- **Seeding order (from the spike):** clients imported at a clock of 2026-04-02 in chunks of **40** (6 groups ≈ 3.4 s); then generation stepped month by month to 2027-04-15 (≈ 14k items, ≈ 4 s per call), because one call for 1,000 clients would take ≈ 49 s through an 8 s API.
 
 ## Session log
 ### 2026-10-07
 - Done: plan approved (Raja 08:04–08:05): row 09 + schema lock; activity top-up (`seed_test_activity`); on demand + R1 gate, not nightly; missed targets recorded, no fixes.
-- Next step: roadmap PR (row 09, schema lock) → step 1 spike.
+- Roadmap PR #33 (row 09, schema lock → 09).
+- Step 1 spike (dev, rolled back, `e2e office docs-perf`, nothing kept):
+  - `create_document` in a loop: **3.8 ms** each (200 in 762 ms) → 10k ≈ 40 s in chunks.
+  - Generation: 200 clients × 6 groups (GST, TDS/TCS, Banking, Payroll, Income Tax, Accounting) + GSTIN + TAN, clock 2026-04-02 → 2027-04-15: **33.8k items in 9.8 s** (183 per client, 29 active plan rows) → 1,000 clients ≈ 183k items, matching the 180k target.
+  - **Finding K1 (outside V1–V10): CSV import times out with several groups.** `import_clients`, 200 rows, GSTIN + TAN each: **0 groups 0.8 s · 3 groups 8.8 s · 6 groups 16.9 s** in the database, against the 8 s `authenticated` statement timeout. The app imports 200-row chunks and sends the chosen groups on every row (`src/lib/csv/parse.ts`), so a 200-row chunk with 3+ groups fails (the chunk rolls back; the UI says "may not have been imported"). 02's nightly AC-17 imports with **one** group, so it never showed. ~1.4 s per group per 100 clients. **Pilot (20–30 clients): fine** (30 rows × 6 groups ≈ 2.5 s). Rollout to all clients: import in files of **≤ 40 rows** with 6 groups (≈ 3.4 s), or ≤ 80 with 3. Recorded as a known issue, not fixed (Raja 2026-10-07).
+  - Migration dry run (rolled back): 1,000 documents 3.0 s; 50,000 activity rows 7.9 s → capped at 20,000; both refuse a non-test office (`NOT_TEST_OFFICE`).
+- `tests/rls/volume-seed.test.ts` red locally (4/4: functions not in the schema cache).
+- Next step: **SQL gate (Raja)** on `supabase/migrations/20261007030000_volume_seed.sql` → apply → seed test green → step 3.
