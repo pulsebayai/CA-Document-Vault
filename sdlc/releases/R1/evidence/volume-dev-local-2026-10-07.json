@@ -1,0 +1,140 @@
+{
+  "pingMs": 291,
+  "seed": null,
+  "timings": [
+    {
+      "id": "V1",
+      "what": "Header suggestions (\"bank\")",
+      "targetMs": 300,
+      "roundTripMs": 451,
+      "serverMs": 160,
+      "pass": true
+    },
+    {
+      "id": "V2",
+      "what": "/documents page 1 + facets (Staff, no text)",
+      "targetMs": 1000,
+      "roundTripMs": 541,
+      "serverMs": 250,
+      "pass": true
+    },
+    {
+      "id": "V2",
+      "what": "/documents page 1 + facets (Staff, \"bank\")",
+      "targetMs": 1000,
+      "roundTripMs": 440,
+      "serverMs": 150,
+      "pass": true
+    },
+    {
+      "id": "V3",
+      "what": "/documents page 1 + facets (Limited, \"bank\")",
+      "targetMs": 1000,
+      "roundTripMs": 1489,
+      "serverMs": 1198,
+      "pass": false
+    },
+    {
+      "id": "V5a",
+      "what": "Clients list, page 1 with overdue counts",
+      "targetMs": 1000,
+      "roundTripMs": -1,
+      "serverMs": -1,
+      "pass": false,
+      "note": "TIMEOUT: over the 8 s statement limit (the screen errors)"
+    },
+    {
+      "id": "V5a",
+      "what": "Clients list, \"Has overdue\"",
+      "targetMs": 1000,
+      "roundTripMs": -1,
+      "serverMs": -1,
+      "pass": false,
+      "note": "TIMEOUT: over the 8 s statement limit (the screen errors)"
+    },
+    {
+      "id": "V5b",
+      "what": "Client › Expected (busiest Staff client)",
+      "targetMs": 1000,
+      "roundTripMs": 859,
+      "serverMs": 568,
+      "pass": true
+    },
+    {
+      "id": "V5c",
+      "what": "Client › Documents (list + open-item cards)",
+      "targetMs": 1000,
+      "roundTripMs": 845,
+      "serverMs": 554,
+      "pass": true
+    },
+    {
+      "id": "V6",
+      "what": "Collection metric, FY 2026-27",
+      "targetMs": 2000,
+      "roundTripMs": -1,
+      "serverMs": -1,
+      "pass": false,
+      "note": "TIMEOUT: over the 8 s statement limit (the screen errors)"
+    },
+    {
+      "id": "V7",
+      "what": "Document save (linking trigger), volume office − empty office",
+      "targetMs": 50,
+      "roundTripMs": 241,
+      "serverMs": 0,
+      "pass": true,
+      "note": "volume 290 ms, empty 340 ms round trip"
+    },
+    {
+      "id": "V8",
+      "what": "Today, \"Mine\" (150 clients)",
+      "targetMs": 1000,
+      "roundTripMs": -1,
+      "serverMs": -1,
+      "pass": false,
+      "note": "TIMEOUT: over the 8 s statement limit (the screen errors)"
+    },
+    {
+      "id": "V9a",
+      "what": "Activity first page (Staff)",
+      "targetMs": 1000,
+      "roundTripMs": 401,
+      "serverMs": 110,
+      "pass": true
+    },
+    {
+      "id": "V9b",
+      "what": "Activity first page (Limited)",
+      "targetMs": 1000,
+      "roundTripMs": 1494,
+      "serverMs": 1204,
+      "pass": false
+    },
+    {
+      "id": "V9c",
+      "what": "/activity?client= (busiest client)",
+      "targetMs": 1000,
+      "roundTripMs": 316,
+      "serverMs": 25,
+      "pass": true
+    },
+    {
+      "id": "V9d",
+      "what": "Document page Activity card (20 rows)",
+      "targetMs": 1000,
+      "roundTripMs": -1,
+      "serverMs": -1,
+      "pass": false,
+      "note": "TIMEOUT: over the 8 s statement limit (the screen errors)"
+    },
+    {
+      "id": "V10",
+      "what": "Bulk Mark reviewed, 200 documents (one call)",
+      "targetMs": 5000,
+      "roundTripMs": 2084,
+      "serverMs": 1793,
+      "pass": true
+    }
+  ]
+}

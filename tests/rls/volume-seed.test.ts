@@ -31,16 +31,19 @@ describe("test-only seeding helpers (09)", () => {
     const { data, error } = await as.admin.rpc("seed_test_documents", { p_docs: [doc, doc, doc] });
     expect(error).toBeNull();
     expect(data).toBe(3);
-    const { data: rows } = await adminClient().from("document").select("doc_code").eq("office_id", officeId);
+    // This run's client only: activity is append-only, so reset_test_office keeps earlier runs' rows.
+    const { data: rows } = await adminClient().from("document").select("id, doc_code").eq("client_id", doc.client_id as string);
     expect(rows).toHaveLength(3);
     expect(new Set(rows!.map((r) => r.doc_code)).size).toBe(3);
     const { count } = await adminClient().from("activity").select("id", { count: "exact", head: true })
-      .eq("office_id", officeId).eq("action", "document.added");
+      .eq("office_id", officeId).eq("action", "document.added").in("entity_id", rows!.map((r) => r.id));
     expect(count).toBe(3);
   });
 
   it("an Admin copies existing activity rows, actor = the caller, dates in range", async () => {
-    const from = "2025-10-01T00:00:00Z"; const to = "2026-10-01T00:00:00Z";
+    // A one-minute window unique to this run (activity is append-only and survives the office reset).
+    const start = new Date(Date.UTC(2020, 0, 1) + Math.floor(Math.random() * 5e6) * 60_000);
+    const from = start.toISOString(); const to = new Date(start.getTime() + 60_000).toISOString();
     const before = (await adminClient().from("activity").select("id", { count: "exact", head: true }).eq("office_id", officeId)).count!;
     const { data, error } = await as.admin.rpc("seed_test_activity", { p_count: 25, p_from: from, p_to: to });
     expect(error).toBeNull();

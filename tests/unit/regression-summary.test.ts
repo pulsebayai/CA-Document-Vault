@@ -45,6 +45,18 @@ describe("regression evidence summary", () => {
     expect(buildSummary({ dir, expect: ["db"] }).markdown).toContain("| RLS (DB security) | 8 | 2 | 0 |");
   });
 
+  it("adds the volume timings table (09) with missed targets marked, only when the file exists", () => {
+    const volume = JSON.stringify({ pingMs: 230, timings: [
+      { id: "V1", what: "Header suggestions", targetMs: 300, serverMs: 120, roundTripMs: 350, pass: true },
+      { id: "V9b", what: "Activity first page (Limited)", targetMs: 1000, serverMs: 1400, roundTripMs: 1630, pass: false, note: "per-row helper" },
+    ] });
+    const md = buildSummary({ dir: resultsDir({ "junit-db.xml": junit(1), "volume-timings.json": volume }), expect: ["db"] }).markdown;
+    expect(md).toContain("### Volume timings (server ≈ round trip − ping 230 ms)");
+    expect(md).toContain("| V1 | Header suggestions | < 300 ms | 120 | 350 | pass |");
+    expect(md).toContain("| V9b | Activity first page (Limited) (per-row helper) | < 1000 ms | 1400 | 1630 | **MISSED** |");
+    expect(buildSummary({ dir: resultsDir({ "junit-db.xml": junit(1) }), expect: ["db"] }).markdown).not.toContain("Volume timings");
+  });
+
   it("Playwright's outputDir is not the shared test-results/ folder it would empty", () => {
     const out = resolve(playwrightConfig.outputDir ?? "test-results");
     expect(out).not.toBe(resolve("test-results"));

@@ -42,16 +42,19 @@ Same as the existing perf tests: real queries the app runs, through PostgREST as
 | tests/rls/volume.test.ts | new | V1–V10, `describe.skipIf(!process.env.VOLUME)` |
 | tests/rls/volume-seed.test.ts | new | the seed functions are refused in a non-test office and for Limited (always runs; fast) |
 | tests/support/search.ts, tests/rls/document-search-perf.test.ts | — | deferred from 03b; **folded into volume.test.ts** instead of created |
+| tests/support/db.ts | mod | `createStaff` optional fixed email (lane-independent volume users) |
+| tests/unit/regression-summary.test.ts | mod | the volume table in the evidence summary |
+| scripts/volume-generate.sql, scripts/volume-v4.sql | new | seeding part 0/B and V4, run as the database owner (see Deviations) |
 | .github/workflows/regression.yml | mod | `volume` input → `VOLUME=1`, concurrency group `volume`, timeout |
 | scripts/regression-summary.mjs | mod | a "Volume timings" table (target, server ms, round trip ms, pass/fail) |
-| sdlc/releases/R1/evidence/volume-dev.md | new | timings table + run URL |
+| sdlc/releases/R1/evidence/volume-dev.md (+ `volume-dev-local-2026-10-07.json`) | new | timings table, known issues K1–K5, run URL |
 
 ## Steps
 - [ ] 0. Roadmap PR on main (your OK): row 09 "volume-test (chore, R1 gate)", schema lock → 09. Docs only.
 - [x] 1. **Spike (no commit):** in rolled-back transactions on dev, time one `create_document` in a loop, a 200-row import chunk and generation for 1,000 clients, to pick chunk sizes under the 8 s statement timeout (03's DOC-ID counter serialises filings: 20 in parallel already timed out once). Proof: numbers in the session log.
 - [x] 2. Migration draft + `volume-seed.test.ts` red → **SQL gate (you)** → apply (MCP; fallback: you run it in the SQL editor, I verify by md5) → green.
-- [ ] 3. `tests/support/volume.ts` + one local seed of the office. Proof: the count check passes and seeding time is logged.
-- [ ] 4. `volume.test.ts` V1–V10, run locally (`VOLUME=1 npx vitest run --project db tests/rls/volume.test.ts`). Proof: timings table.
+- [x] 3. `tests/support/volume.ts` + one local seed of the office. Proof: the count check passes and seeding time is logged.
+- [x] 4. `volume.test.ts` V1–V10, run locally (`VOLUME=1 npx vitest run --project db tests/rls/volume.test.ts`). Proof: timings table.
 - [ ] 5. `regression.yml` input + summary table; one dispatched volume run on main's deployment (your OK for the CI run). Proof: run URL + evidence file.
 - [ ] 6. **Record, don't fix:** for each missed target, capture `EXPLAIN ANALYZE` (read-only, on dev) and the likely fix; add one known-issue line per target to roadmap › Later and to the evidence file. No migration or app change.
 - [ ] 7. sdlc-reviewer → PR (AC table = V1–V10) → CI green → you merge → roadmap: volume ✓, lock released → **staging setup next**.
@@ -77,6 +80,15 @@ About 3 build sessions. Your review: one SQL gate (seeding migration) and the PR
 - **`seed_test_activity` capped at 20,000 rows per call** (dry run: 50,000 took 7.9 s, too close to the 8 s timeout; 20,000 ≈ 3 s).
 - **Seeding order (from the spike):** clients imported at a clock of 2026-04-02 in chunks of **40** (6 groups ≈ 3.4 s); then generation stepped month by month to 2027-04-15 (≈ 14k items, ≈ 4 s per call), because one call for 1,000 clients would take ≈ 49 s through an 8 s API.
 
+- **Seeding in three parts (local runs 2026-10-07):** at this size two office-wide calls exceed the API's 8 s statement timeout even as the service role: the daily job (5.5 s with nothing to create at 400 clients) and `reset_test_office` (> 8 s at 53.6k items). So:
+  - **A (API, VOLUME=1 on an empty office):** import the 1,000 clients at the start clock (import-time generation is client-scoped: 108 s total), then stop.
+  - **B (SQL as the database owner, like pg_cron):** `scripts/volume-generate.sql`, one month-start step per call (connector or SQL editor). **Part 0** there resets the office when starting over.
+  - **C (API, VOLUME=1):** documents, reviews, activity, then V1–V10.
+  The first idea, cohorts of 200 through the API, failed because each step's cost grows with the whole office, not just with the new cohort.
+- **V4 is timed in SQL** (`scripts/volume-v4.sql`, rolled back), not in `volume.test.ts`: the job runs in pg_cron with no statement timeout, and through the API it is cut off at 8 s.
+- **Missed targets don't fail `volume.test.ts`** (logged MISSED and written to the evidence table); errors do. `VOLUME_STRICT=1` fails on misses too. This implements "record, don't fix" (Raja 2026-10-07).
+- `createStaff` takes an optional fixed email (the volume office's users are lane-independent).
+
 ## Session log
 ### 2026-10-07
 - Done: plan approved (Raja 08:04–08:05): row 09 + schema lock; activity top-up (`seed_test_activity`); on demand + R1 gate, not nightly; missed targets recorded, no fixes.
@@ -90,4 +102,31 @@ About 3 build sessions. Your review: one SQL gate (seeding migration) and the PR
 - SQL gate → see below.
 - **Step 2 done (Raja "apply" 10:07):** applied through the Supabase connector (`apply_migration` worked this time); history row `20261007043837 volume_seed`; file renamed to that version. Live bodies = file (md5 `44b69dd8…` documents, `4490539b…` activity); SECURITY INVOKER; EXECUTE authenticated + service_role, not anon. Security advisors: nothing new (4 pre-existing). `volume-seed.test.ts` green locally (4/4).
 - Month-end load (Raja 09:24): in practice at most ~200 clients file monthly, so a real month-end run generates ≈ 5k items (≈ 1.5 s at 0.29 ms/item). The seed keeps 04's worst case (all 1,000 clients monthly ≈ 20k items on the month-end day, ≈ 6 s); V4 records both figures. The 49 s full-year generation is a seeding artefact only, never a production run.
-- Next step: step 3 (`tests/support/volume.ts`, first seed of `e2e office volume`).
+- Step 3 (seeding): part A ✓ (1,000 clients, 108 s) · part B ✓ (connector, sequential; ≈ 183k items, clock 2027-04-15) · part C running.
+- **Part B step times = month-start daily runs at a growing office (finding K2):**
+
+  | as of | items before | created | ms |
+  |---|---|---|---|
+  | 2026-05-01 | ~17k | 17,000 | 7,687 |
+  | 2026-06-01 | ~34k | 14,000 | 8,022 |
+  | 2026-09-01 | ~75k | 13,000 | 15,381 |
+  | 2026-10-01 | ~88k | 13,000 | 11,017 |
+  | 2026-11-01 | ~101k | 14,000 | 12,382 |
+  | 2026-12-01 | ~115k | 13,000 | 12,343 |
+  | 2027-01-01 | ~128k | 13,000 | 16,217 |
+  | 2027-02-01 | ~141k | 14,000 | 21,048 |
+  | 2027-03-01 | ~155k | 13,000 | 19,162 |
+  | 2027-04-01 | ~168k | 17,000 | 25,737 |
+  | 2027-04-15 | ~181k | 1,000 | 17,368 |
+
+  (07-01 and 08-01 ran concurrently by mistake: 8,558 / 16,692 ms, not comparable.) **The job's time grows with all stored items, not with the new ones** (17 s to create 1,000 items at 181k). Under the 60 s target now; [Likely] near 60 s after 2–3 years at 1,000 clients. **K2, recorded, not fixed.** Likely fix later: generate only from each plan row's latest generated period (or a "generated through" mark), instead of re-checking every past period every night.
+- Step 3 done: part C ✓ (746 s: uploads 288 s, documents 133 s, reviews 28 s, activity 77 s). Counts: 1,000 clients · 183k items · 10k filed + 100 Inbox · 7k versions · 200k activity.
+- Step 4 done (local run, session → Mumbai; ping 291 ms). Results and DB-side timings in `sdlc/releases/R1/evidence/volume-dev.md`:
+  - **pass:** V1 160 ms · V2 150–250 ms · V4a 26.3 s / V4b 30.0 s (DB) · V5b 568 ms · V5c 554 ms · V7 no measurable cost · V9a 110 ms · V9c 25 ms · V10 1.8 s.
+  - **TIMEOUT (screen errors):** V5a Clients list (DB 26.6–32.6 s) · V6 Collection metric (15.6 s) · V8 Today (13.5–19.8 s) · V9d document Activity card (14.1 s).
+  - **borderline:** V3 Limited search and V9b Limited Activity (0.6–1.2 s).
+  - Skew check (rolled back): 85% of overdue items marked received on time → still 26.6 s / 13.5 s / 15.7 s. Cost grows with total items, not the overdue share.
+  - Known issues **K1–K5** written to the evidence file. They go to roadmap › Later at merge (main only).
+- `timeIt` records a statement timeout as TIMEOUT and carries on; other errors still fail. Heavy tests get 180 s.
+- `volume-seed.test.ts` fixed for re-runs: activity is append-only and survives `reset_test_office`, so it counts only this run's rows (green twice).
+- Next step: **step 5, one CI dispatch** of `regression.yml` with `volume=true` (needs Raja's OK; ~10 min with the office already seeded). Then step 7 (review → PR).
