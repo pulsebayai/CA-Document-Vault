@@ -1,5 +1,5 @@
 # R1 volume test — dev (09)
-Date: 2026-10-07 · Env: dev (`ysddbwskljzhbjjohool`, Nano compute) · Office: `e2e office volume` (is_test) · Branch: `chore/09-volume-test` · Runner: Claude cloud session (local run; the CI dispatch result is added below when it runs)
+Date: 2026-10-07 · Env: dev (`ysddbwskljzhbjjohool`, Nano compute) · Office: `e2e office volume` (is_test) · Branch: `chore/09-volume-test` · Runners: Claude cloud session (local run, the table below) and **CI run [37579143257](https://github.com/RajaPulsebay/ca-document-vault/actions/runs/37579143257)** on cc11538 (`regression.yml`, `volume=true`, target dev): volume job **green**, artifact `regression-evidence-volume` (90 days). Its own timings table is in that run's summary; this session can't read job logs or artifacts.
 Plan: `sdlc/features/09-volume-test/plan.md`. **Rule (Raja 2026-10-07): measure and record; no fixes in 09.**
 
 ## Volume

@@ -55,8 +55,8 @@ Same as the existing perf tests: real queries the app runs, through PostgREST as
 - [x] 2. Migration draft + `volume-seed.test.ts` red → **SQL gate (you)** → apply (MCP; fallback: you run it in the SQL editor, I verify by md5) → green.
 - [x] 3. `tests/support/volume.ts` + one local seed of the office. Proof: the count check passes and seeding time is logged.
 - [x] 4. `volume.test.ts` V1–V10, run locally (`VOLUME=1 npx vitest run --project db tests/rls/volume.test.ts`). Proof: timings table.
-- [ ] 5. `regression.yml` input + summary table; one dispatched volume run on main's deployment (your OK for the CI run). Proof: run URL + evidence file.
-- [ ] 6. **Record, don't fix:** for each missed target, capture `EXPLAIN ANALYZE` (read-only, on dev) and the likely fix; add one known-issue line per target to roadmap › Later and to the evidence file. No migration or app change.
+- [x] 5. `regression.yml` input + summary table; one dispatched volume run on main's deployment (your OK for the CI run). Proof: run URL + evidence file.
+- [x] 6. **Record, don't fix:** for each missed target, capture `EXPLAIN ANALYZE` (read-only, on dev) and the likely fix; add one known-issue line per target to roadmap › Later and to the evidence file. No migration or app change.
 - [ ] 7. sdlc-reviewer → PR (AC table = V1–V10) → CI green → you merge → roadmap: volume ✓, lock released → **staging setup next**.
 
 ## Risks
@@ -130,3 +130,6 @@ About 3 build sessions. Your review: one SQL gate (seeding migration) and the PR
 - `timeIt` records a statement timeout as TIMEOUT and carries on; other errors still fail. Heavy tests get 180 s.
 - `volume-seed.test.ts` fixed for re-runs: activity is append-only and survives `reset_test_office`, so it counts only this run's rows (green twice).
 - Next step: **step 5, one CI dispatch** of `regression.yml` with `volume=true` (needs Raja's OK; ~10 min with the office already seeded). Then step 7 (review → PR).
+- Step 5 done (Raja OK 11:29): CI run 37579143257 on cc11538, `volume=true`: volume job green (V1–V10 + seeding guards), evidence artifact uploaded; the timings table is in the run summary (not readable from this session).
+- Step 6 done: roadmap PR #34 (K1–K5 under Releases › R1 and Later; rollout to all clients gated on K3 + K4).
+- Next step: step 7 (sdlc-reviewer → PR).
