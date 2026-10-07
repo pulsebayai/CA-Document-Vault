@@ -45,6 +45,18 @@ export function buildSummary({ dir = "test-results", expect = [], env = {} } = {
   const run = env.GITHUB_SERVER_URL
     ? `${env.GITHUB_SERVER_URL}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}`
     : "local";
+  // 09 volume test: timings written by tests/rls/volume.test.ts (VOLUME=1). Missed targets are recorded, not
+  // failures (Raja 2026-10-07), so they appear here as MISSED for the known-issue list.
+  const volumePath = join(dir, "volume-timings.json");
+  const volume = existsSync(volumePath) ? JSON.parse(readFileSync(volumePath, "utf8")) : null;
+  const volumeLines = volume ? [
+    `### Volume timings (server ≈ round trip − ping ${volume.pingMs} ms)`,
+    "",
+    "| # | What | Target | Server ms | Round trip ms | Result |",
+    "|---|---|---|---|---|---|",
+    ...(volume.timings ?? []).map((t) => `| ${t.id} | ${t.what}${t.note ? ` (${t.note})` : ""} | < ${t.targetMs} ms | ${t.serverMs < 0 ? "> 8000" : t.serverMs} | ${t.roundTripMs < 0 ? "timeout" : t.roundTripMs} | ${t.pass ? "pass" : "**MISSED**"} |`),
+    "",
+  ] : [];
   const markdown = [
     `## Regression evidence — ${env.TARGET ?? "ci"}`,
     ...(env.ONLY ? [`**Quick check — only: \`${env.ONLY}\`. Partial run; not release evidence.**`] : []),
@@ -55,6 +67,7 @@ export function buildSummary({ dir = "test-results", expect = [], env = {} } = {
     ...rows.map((r) => `| ${r.join(" | ")} |`),
     "",
     ...(missing.length ? [`**Evidence incomplete — no result file for: ${missing.join(", ")}**`, ""] : []),
+    ...volumeLines,
   ].join("\n");
   return { markdown, missing };
 }

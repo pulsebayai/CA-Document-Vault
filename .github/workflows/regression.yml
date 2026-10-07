@@ -21,12 +21,17 @@ on:
         description: "Quick check: run only test files whose path contains these words (space-separated, e.g. 'inbox add-document'). Empty = full suite. A filtered run is NOT release evidence."
         required: false
         default: ""
+      volume:
+        description: "09 volume test only (dev): V1–V10 timings in the persistent 'e2e office volume' (needs a seeded office: see scripts/volume-generate.sql; ~10 min). Not part of the nightly; run for 09 and at the R1 gate."
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   regression:
+    if: ${{ !inputs.volume }}
     runs-on: ubuntu-latest
     # Full suite ≈ 26 min (RLS incl. RUN_SLOW ≈ 7, e2e ≈ 17); 30 left no headroom (run 36439895456).
     # + up to 30 min waiting for a free test lane (chore test-isolation).
@@ -90,4 +95,48 @@ jobs:
           retention-days: 90
       - name: Release the test lane
         if: always() && env.TARGET != 'prod'
+        run: node scripts/test-lane.mjs release
+
+  # 09 volume test (chore, R1 gate; plan approved by Raja 2026-10-07). Dev only; one volume run at a time
+  # (the office is shared by every lane and overlapping runs would distort the timings). A missed target is
+  # recorded in the evidence ("MISSED"; a statement timeout as TIMEOUT), not failed; any other error fails the run.
+  volume:
+    if: ${{ inputs.volume }}
+    runs-on: ubuntu-latest
+    concurrency: { group: volume, cancel-in-progress: false }
+    # Seeding ≈ 15–25 min the first time + up to 30 min waiting for a lane; below the 90-min lane lease.
+    timeout-minutes: 85
+    env:
+      TARGET: volume-dev
+      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+      SUPABASE_SECRET_KEY: ${{ secrets.DEV_SUPABASE_SECRET_KEY }}
+      TEST_LANE_HOLDER: volume-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Dev only
+        if: inputs.target != 'dev'
+        run: echo "::error::The volume test runs against dev only (target was ${{ inputs.target }})." && exit 1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Take a test lane
+        run: node scripts/test-lane.mjs acquire # the V7 baseline office is per lane
+      - name: Volume (V1–V10) + seeding guards
+        run: npm run test:db:ci -- volume
+        env:
+          VOLUME: "1"
+      - name: Evidence summary
+        if: always()
+        env:
+          EXPECT_SUITES: db
+        run: node scripts/regression-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-evidence-volume
+          path: test-results/
+          retention-days: 90
+      - name: Release the test lane
+        if: always()
         run: node scripts/test-lane.mjs release

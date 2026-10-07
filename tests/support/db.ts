@@ -26,9 +26,10 @@ export async function createTestOffice(label: string): Promise<string> {
 }
 
 /** Get-or-create a reusable fixture user and reset it to the requested role/status (unbanned, no lockout). */
-export async function createStaff(officeId: string, label: string, role: Role, status: Status = "active") {
+export async function createStaff(officeId: string, label: string, role: Role, status: Status = "active", fixedEmail?: string) {
   const admin = adminClient();
-  const email = testEmail(label);
+  // fixedEmail: a lane-independent address (09's persistent volume office is shared by every lane).
+  const email = fixedEmail ?? testEmail(label);
   const { data: existing } = await admin.from("staff_user").select("id").eq("email", email).maybeSingle();
   let id = existing?.id as string | undefined;
   if (!id) {
