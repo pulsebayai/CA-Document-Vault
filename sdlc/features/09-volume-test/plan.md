@@ -1,7 +1,8 @@
 # Plan: R1 volume test
-Status: draft · Date: 2026-10-07 · Branch: `chore/09-volume-test` (from main 8a10ec6; nightly 37548131373 green)
-Kind: **chore, R1 gate** (roadmap › Before pilot). No intent/spec: every target below is already approved in a feature spec; this plan only measures them and fixes what fails.
-Holds: **schema lock** (the seeding migration; any fix migration). No architecture lock: fixes that change an approved pattern (e.g. 03b's count + rank) come back as a gate before they're built.
+Status: approved (Raja 2026-10-07 08:05) · Date: 2026-10-07 · Branch: `chore/09-volume-test` (from main 8a10ec6; nightly 37548131373 green)
+Kind: **chore, R1 gate** (roadmap › Before pilot). No intent/spec: every target below is already approved in a feature spec; this plan **only measures and records** them.
+**No app-code or fix changes (Raja 2026-10-07):** a missed target is recorded as a known performance issue (roadmap › Later, with the measured time, the query plan and the likely fix), to be fixed later. A timing near the 8 s statement timeout is flagged as such in the record (it shows as an error, not slowness).
+Holds: **schema lock** for the test-only seeding migration only. No architecture lock.
 
 ## Targets (all at pilot volume, on dev Nano)
 | # | From | What | Target |
@@ -43,7 +44,6 @@ Same as the existing perf tests: real queries the app runs, through PostgREST as
 | tests/support/search.ts, tests/rls/document-search-perf.test.ts | — | deferred from 03b; **folded into volume.test.ts** instead of created |
 | .github/workflows/regression.yml | mod | `volume` input → `VOLUME=1`, concurrency group `volume`, timeout |
 | scripts/regression-summary.mjs | mod | a "Volume timings" table (target, server ms, round trip ms, pass/fail) |
-| supabase/migrations/<ts>_volume_fix_*.sql | new, **only if a target fails** | indexes; or 03b's count + `LIMIT` rewrite (gate first) |
 | sdlc/releases/R1/evidence/volume-dev.md | new | timings table + run URL |
 
 ## Steps
@@ -53,13 +53,13 @@ Same as the existing perf tests: real queries the app runs, through PostgREST as
 - [ ] 3. `tests/support/volume.ts` + one local seed of the office. Proof: the count check passes and seeding time is logged.
 - [ ] 4. `volume.test.ts` V1–V10, run locally (`VOLUME=1 npx vitest run --project db tests/rls/volume.test.ts`). Proof: timings table.
 - [ ] 5. `regression.yml` input + summary table; one dispatched volume run on main's deployment (your OK for the CI run). Proof: run URL + evidence file.
-- [ ] 6. **If any target fails:** I bring you the measured plan (`EXPLAIN ANALYZE`) and the proposed fix (gate), then build it, re-run that target plus the full suite.
+- [ ] 6. **Record, don't fix:** for each missed target, capture `EXPLAIN ANALYZE` (read-only, on dev) and the likely fix; add one known-issue line per target to roadmap › Later and to the evidence file. No migration or app change.
 - [ ] 7. sdlc-reviewer → PR (AC table = V1–V10) → CI green → you merge → roadmap: volume ✓, lock released → **staging setup next**.
 
 ## Risks
 | Risk | Mitigation |
 |---|---|
-| V1 fails on the 03b design (`count(*) over ()` + `row_number()` on every call): indexes can't fix it | Known since the 03b review. The fix is replacing both search functions (separate count + `LIMIT`), behind a gate. About 1 session |
+| V1 fails on the 03b design (`count(*) over ()` + `row_number()` on every call): indexes can't fix it | Recorded as a known issue (likely fix: separate count + `LIMIT`, replacing both search functions). Pilot scale (20–30 clients) is far below 10k documents |
 | Generation of 180k items exceeds the API's 8 s timeout | Seeding generates per chunk of clients; V4 is timed in the database, where the cron job really runs |
 | Seed functions in a migration reach staging/prod | Refused unless the office `is_test`; staging/prod offices are never `e2e office …` (roadmap rule). Revoked from `anon` |
 | Synthetic activity is unrealistic | Same action mix and entity types as the real rows; Limited's per-row helper sees real entity IDs |
@@ -67,11 +67,14 @@ Same as the existing perf tests: real queries the app runs, through PostgREST as
 | 10k documents is under a year of data (03b estimate 50–100k/yr) | Evidence says "pilot volume". The 10k figure is your 2026-09-29 decision, not changed here |
 
 ## Proof of done
-V1–V10 green in one dispatched run with stored evidence; full suite still green (CI + the next nightly); any fix migration applied from its file with a history row.
+V1–V10 measured in one dispatched run with stored evidence (pass, or a recorded known issue); full suite still green (CI + the next nightly); the seeding migration applied from its file with a history row.
 
 ## Effort
-About 3 build sessions if nothing fails, plus about 1 per failing target. Your review: the plan, one SQL gate, and the PR.
+About 3 build sessions. Your review: one SQL gate (seeding migration) and the PR.
 
 ## Deviations from plan
 
 ## Session log
+### 2026-10-07
+- Done: plan approved (Raja 08:04–08:05): row 09 + schema lock; activity top-up (`seed_test_activity`); on demand + R1 gate, not nightly; missed targets recorded, no fixes.
+- Next step: roadmap PR (row 09, schema lock) → step 1 spike.
