@@ -133,3 +133,12 @@ About 3 build sessions. Your review: one SQL gate (seeding migration) and the PR
 - Step 5 done (Raja OK 11:29): CI run 37579143257 on cc11538, `volume=true`: volume job green (V1–V10 + seeding guards), evidence artifact uploaded; the timings table is in the run summary (not readable from this session).
 - Step 6 done: roadmap PR #34 (K1–K5 under Releases › R1 and Later; rollout to all clients gated on K3 + K4).
 - Next step: step 7 (sdlc-reviewer → PR).
+- **Pre-PR review (sdlc-reviewer, 2026-10-07): no security finding, no app-code change; 5 Important findings, all fixed in test code:**
+  - I-1 V1 now times a text that fills each list.
+  - I-2 every timed call checks its first result is real (rows > 0 / expected counts).
+  - I-3 a reseed retires the office (part 0 renames it) instead of reusing a reset one, whose leftover activity would distort V9. The current office was reset before any documents or activity, so its results stand. Migration comment "reset_test_office purges it" is wrong (activity is kept); the applied file is left unchanged and this note stands instead.
+  - I-4 measured client chosen deterministically; V7/V10 write only to "Volume client 0149".
+  - I-5 the PR's last commit gets a full CI run (no `[skip ci]`).
+  - Nits fixed: ping must be finite; V7 columns; V5b parallel like the app; V8 note; workflow comments. Not fixed (test-only, needs a new migration): `seed_test_documents(null)` returns 0 instead of SEED_FORMAT. Not done: an automated non-test-office refusal probe (proven once in the dry run; flipping `is_test` on a lane office in CI was judged riskier than the gap).
+- Re-run after the fixes: 13/13 green. New: **header suggestions time out when the text matches many clients** (DB: 1,000 matches 33.0 s · 100 matches 2.7 s · 10 matches 0.29 s, ≈ 30 ms per matching client) → added to K3.
+- Next step: open the PR (full CI on the head commit; needs Raja's OK), then Raja merges; roadmap at merge: 09 shipped, schema lock released, K3 wording incl. suggestions.

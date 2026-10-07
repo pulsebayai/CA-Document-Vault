@@ -22,7 +22,7 @@ on:
         required: false
         default: ""
       volume:
-        description: "09 volume test only (dev): V1–V10 timings in the persistent 'e2e office volume' (seeds it first if needed, ~15–25 min). Not part of the nightly; run for 09 and at the R1 gate."
+        description: "09 volume test only (dev): V1–V10 timings in the persistent 'e2e office volume' (needs a seeded office: see scripts/volume-generate.sql; ~10 min). Not part of the nightly; run for 09 and at the R1 gate."
         type: boolean
         default: false
 
@@ -99,7 +99,7 @@ jobs:
 
   # 09 volume test (chore, R1 gate; plan approved by Raja 2026-10-07). Dev only; one volume run at a time
   # (the office is shared by every lane and overlapping runs would distort the timings). A missed target is
-  # recorded in the evidence ("MISSED"), not failed; an error (e.g. a statement timeout) fails the run.
+  # recorded in the evidence ("MISSED"; a statement timeout as TIMEOUT), not failed; any other error fails the run.
   volume:
     if: ${{ inputs.volume }}
     runs-on: ubuntu-latest

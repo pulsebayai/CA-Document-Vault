@@ -4,11 +4,13 @@
 -- SQL editor); each prints its time. Order: after part A (clients imported by VOLUME=1), before part C.
 -- Each step = one month-start daily run for all 1,000 clients (every monthly type asks on the 1st).
 
--- Part 0 (only to start over): empty the office. reset_test_office refuses any office that isn't is_test.
--- Remove its storage objects first if documents were seeded (the VOLUME=1 run does this before importing).
+-- Part 0 (only to start over): retire the old office and let the next VOLUME=1 run create a fresh one.
+-- A reset office is not reused: reset_test_office keeps activity (append-only), and those stale rows would distort
+-- the Activity timings (09 review I-3). Remove its storage objects first (Storage API) if you want the space back.
 -- do $$ declare o uuid; begin
 --   select id into o from public.office where name = 'e2e office volume' and is_test;
 --   perform public.reset_test_office(o);
+--   update public.office set name = 'e2e office volume retired ' || to_char(now(), 'YYYY-MM-DD HH24MI') where id = o;
 -- end $$;
 
 -- Step n (repeat with :as_of = 2026-05-01, 2026-06-01, … 2027-04-01, then 2027-04-15):

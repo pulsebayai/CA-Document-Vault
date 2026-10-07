@@ -1,38 +1,47 @@
 {
-  "pingMs": 291,
+  "pingMs": 667,
   "seed": null,
   "timings": [
     {
       "id": "V1",
-      "what": "Header suggestions (\"bank\")",
+      "what": "Header suggestions, \"bank\" (5 documents)",
       "targetMs": 300,
-      "roundTripMs": 451,
-      "serverMs": 160,
+      "roundTripMs": 720,
+      "serverMs": 53,
       "pass": true
+    },
+    {
+      "id": "V1",
+      "what": "Header suggestions, \"volume\" (5 clients with overdue counts)",
+      "targetMs": 300,
+      "roundTripMs": -1,
+      "serverMs": -1,
+      "pass": false,
+      "note": "TIMEOUT: over the 8 s statement limit (the screen errors)"
     },
     {
       "id": "V2",
       "what": "/documents page 1 + facets (Staff, no text)",
       "targetMs": 1000,
-      "roundTripMs": 541,
-      "serverMs": 250,
+      "roundTripMs": 918,
+      "serverMs": 251,
       "pass": true
     },
     {
       "id": "V2",
       "what": "/documents page 1 + facets (Staff, \"bank\")",
       "targetMs": 1000,
-      "roundTripMs": 440,
-      "serverMs": 150,
+      "roundTripMs": 804,
+      "serverMs": 137,
       "pass": true
     },
     {
       "id": "V3",
       "what": "/documents page 1 + facets (Limited, \"bank\")",
       "targetMs": 1000,
-      "roundTripMs": 1489,
-      "serverMs": 1198,
-      "pass": false
+      "roundTripMs": 1495,
+      "serverMs": 828,
+      "pass": true
     },
     {
       "id": "V5a",
@@ -56,16 +65,16 @@
       "id": "V5b",
       "what": "Client › Expected (busiest Staff client)",
       "targetMs": 1000,
-      "roundTripMs": 859,
-      "serverMs": 568,
+      "roundTripMs": 662,
+      "serverMs": 0,
       "pass": true
     },
     {
       "id": "V5c",
       "what": "Client › Documents (list + open-item cards)",
       "targetMs": 1000,
-      "roundTripMs": 845,
-      "serverMs": 554,
+      "roundTripMs": 988,
+      "serverMs": 321,
       "pass": true
     },
     {
@@ -81,10 +90,10 @@
       "id": "V7",
       "what": "Document save (linking trigger), volume office − empty office",
       "targetMs": 50,
-      "roundTripMs": 241,
+      "roundTripMs": 283,
       "serverMs": 0,
       "pass": true,
-      "note": "volume 290 ms, empty 340 ms round trip"
+      "note": "round trip: volume 283 ms vs empty 346 ms; a 50 ms difference is within the noise of one round trip"
     },
     {
       "id": "V8",
@@ -93,30 +102,30 @@
       "roundTripMs": -1,
       "serverMs": -1,
       "pass": false,
-      "note": "TIMEOUT: over the 8 s statement limit (the screen errors)"
+      "note": "TIMEOUT: over the 8 s statement limit (the screen errors); today_items only; the page also looks up its items in batches of 100"
     },
     {
       "id": "V9a",
       "what": "Activity first page (Staff)",
       "targetMs": 1000,
-      "roundTripMs": 401,
-      "serverMs": 110,
+      "roundTripMs": 650,
+      "serverMs": 0,
       "pass": true
     },
     {
       "id": "V9b",
       "what": "Activity first page (Limited)",
       "targetMs": 1000,
-      "roundTripMs": 1494,
-      "serverMs": 1204,
-      "pass": false
+      "roundTripMs": 1631,
+      "serverMs": 964,
+      "pass": true
     },
     {
       "id": "V9c",
       "what": "/activity?client= (busiest client)",
       "targetMs": 1000,
-      "roundTripMs": 316,
-      "serverMs": 25,
+      "roundTripMs": 323,
+      "serverMs": 0,
       "pass": true
     },
     {
@@ -132,8 +141,8 @@
       "id": "V10",
       "what": "Bulk Mark reviewed, 200 documents (one call)",
       "targetMs": 5000,
-      "roundTripMs": 2084,
-      "serverMs": 1793,
+      "roundTripMs": 2490,
+      "serverMs": 1823,
       "pass": true
     }
   ]

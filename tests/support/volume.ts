@@ -31,7 +31,7 @@ export const CLOCK_END = "2027-04-15"; // twelve months of items have reached th
 
 const IMPORT_CHUNK = 40; // 6 groups: ≈ 3.4 s per chunk (K1: 200 rows take 16.9 s, over the 8 s statement timeout)
 const DOC_CHUNK = 250; // create_document ≈ 3.8 ms (hard copy) — soft copies + linking cost more
-const UPLOAD_PARALLEL = 16;
+const UPLOAD_PARALLEL = 16; // plan said 10; 16 kept uploads at ≈ 290 s for 7k files
 const REVIEW_CHUNK = 200; // review_documents' own limit
 const ACTIVITY_CHUNK = 20_000; // seed_test_activity's cap
 
@@ -42,10 +42,12 @@ export type VolumeCtx = {
   officeId: string;
   users: Record<Role, VolumeUser>;
   as: Record<Role, SupabaseClient>;
-  /** A Staff-incharge client with the most documents (Client › Documents / Expected / activity filter). */
+  /** The Staff client (0000–0148) with the most documents; ties → lowest name (Client › Documents / Expected, ?client=). */
   busyClientId: string;
-  /** A document with the most activity rows (document Activity card). */
+  /** The busy client's first reviewed document (document Activity card). */
   busyDocumentId: string;
+  /** "Volume client 0149": the only client V7/V10 write to, so measured data stays fixed between runs. */
+  writeClientId: string;
   /** Present only when this run seeded documents/activity (part C): step timings. */
   seed?: SeedLog;
 };
@@ -112,9 +114,10 @@ export async function volumeOffice(): Promise<VolumeCtx> {
   const before = await volumeCounts(id);
   console.log("volume: counts before", JSON.stringify(before));
   if (process.env.VOLUME_RESEED === "1" || (before.clients > 0 && before.clients < VOLUME.clients)) {
-    // At volume, reset_test_office runs past the API's 8 s statement timeout (local run 2026-10-07), so a reseed
-    // starts with part 0 in SQL: scripts/volume-generate.sql.
-    throw new Error(`${GENERATE_NEEDED} — reset the office first (scripts/volume-generate.sql, part 0), then re-run with VOLUME=1`);
+    // Start over with a NEW office (scripts/volume-generate.sql, part 0: reset + rename the old one "retired"):
+    // reset_test_office runs past the API's 8 s limit at volume, and it keeps activity (append-only), whose stale
+    // rows would distort the Activity timings (review I-3).
+    throw new Error(`${GENERATE_NEEDED} — retire this office first (scripts/volume-generate.sql, part 0), then re-run with VOLUME=1`);
   } else if (before.clients === 0) {
     await reseed(id, users, as); // part A, then stops: part B is SQL
   } else if (before.expected < VOLUME.minExpected) {
@@ -126,19 +129,28 @@ export async function volumeOffice(): Promise<VolumeCtx> {
   console.log("volume: counts", JSON.stringify(after));
   if (!countsOk(after)) throw new Error(`volume office counts still short after seeding: ${JSON.stringify(after)}`);
 
-  const busy = await must(sb().from("document").select("client_id, client:client_id!inner(incharge_id)")
-    .eq("office_id", id).eq("client.incharge_id", users.staff.id).not("client_id", "is", null).limit(1000), "busy client");
+  // Review I-4: deterministic choices. The Staff user's clients are "Volume client 0000"–"0149". V7 and V10 write to
+  // "Volume client 0149" only (the write client), so the measured client never grows between runs.
+  const staffClients = await must(sb().from("client").select("id, name").eq("office_id", id).eq("incharge_id", users.staff.id)
+    .order("name"), "staff clients") as Array<{ id: string; name: string }>;
+  const writeClientId = staffClients[staffClients.length - 1].id;
   const perClient = new Map<string, number>();
-  for (const d of busy as Array<{ client_id: string }>) perClient.set(d.client_id, (perClient.get(d.client_id) ?? 0) + 1);
-  const busyClientId = [...perClient.entries()].sort((a, b) => b[1] - a[1])[0][0];
-  const doc = await must(sb().from("activity").select("entity_id").eq("office_id", id).eq("entity_type", "document")
-    .eq("action", "document.reviewed").limit(1).maybeSingle(), "busy document");
-  const busyDocumentId = (doc as { entity_id: string } | null)?.entity_id
-    ?? ((await must(sb().from("document").select("id").eq("office_id", id).not("client_id", "is", null).limit(1).single(), "a document")) as { id: string }).id;
-  return { officeId: id, users, as, busyClientId, busyDocumentId, seed };
+  for (let from = 0; ; from += 1000) {
+    const page = await must(sb().from("document").select("client_id").eq("office_id", id).in("client_id", staffClients.slice(0, -1).map((c) => c.id))
+      .order("id").range(from, from + 999), "staff documents") as Array<{ client_id: string }>;
+    for (const d of page) perClient.set(d.client_id, (perClient.get(d.client_id) ?? 0) + 1);
+    if (page.length < 1000) break;
+  }
+  const order = new Map(staffClients.map((c, i) => [c.id, i]));
+  const busyClientId = [...perClient.entries()].sort((a, b) => b[1] - a[1] || order.get(a[0])! - order.get(b[0])!)[0][0];
+  // Review I-3: a document that exists now (not one an old activity row points at): the busy client's first reviewed one.
+  const doc = await must(sb().from("document").select("id").eq("client_id", busyClientId).eq("status", "reviewed")
+    .order("doc_code").limit(1).single(), "busy document") as { id: string };
+  const busyDocumentId = doc.id;
+  return { officeId: id, users, as, busyClientId, busyDocumentId, writeClientId, seed };
 }
 
-/** Part A (API), on an empty office (new, or reset by part 0): storage purged, clients imported; then stops for part B. */
+/** Part A (API), on a new, empty office: clients imported; then stops for part B. */
 async function reseed(id: string, users: Record<Role, VolumeUser>, as: Record<Role, SupabaseClient>): Promise<never> {
   await purgeTestStorage(id);
   const admin = as.admin;
@@ -252,10 +264,13 @@ function errorOf(r: Res): string | null {
  * `authenticated`) returns Infinity at once: the screen errors at this volume, which is recorded as a known issue
  * (Raja 2026-10-07: record, don't fix). Any other error throws.
  */
-export async function timeIt(run: () => PromiseLike<Res>, n = 5): Promise<number> {
-  const first = errorOf(await run());
+export async function timeIt(run: () => PromiseLike<Res>, n = 5, valid?: (r: Res) => boolean): Promise<number> {
+  const r0 = await run();
+  const first = errorOf(r0);
   if (first && TIMEOUT.test(first)) return Infinity;
   if (first) throw new Error(first);
+  // Review I-2: an empty or wrong result is fast too; the first result must show the call did real work.
+  if (valid && !valid(r0)) throw new Error(`timed call returned an unexpected (empty?) result: ${JSON.stringify(r0).slice(0, 300)}`);
   const times: number[] = [];
   for (let i = 0; i < n; i++) {
     const t0 = performance.now();
@@ -269,7 +284,9 @@ export async function timeIt(run: () => PromiseLike<Res>, n = 5): Promise<number
 
 /** The runner → Mumbai round trip for a trivial PostgREST read, to estimate server time (round trip − ping). */
 export async function ping(as: SupabaseClient): Promise<number> {
-  return timeIt(() => as.from("office").select("id").limit(1));
+  const p = await timeIt(() => as.from("office").select("id").limit(1));
+  if (!Number.isFinite(p)) throw new Error("ping timed out"); // review nit: Infinity would make every row "0 ms"
+  return p;
 }
 
 export type VolumeTiming = { id: string; what: string; targetMs: number; roundTripMs: number; serverMs: number; pass: boolean; note?: string };
