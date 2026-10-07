@@ -37,7 +37,7 @@ Same as the existing perf tests: real queries the app runs, through PostgREST as
 ## Files that change
 | Path | New/Mod | Why |
 |---|---|---|
-| supabase/migrations/<ts>_volume_seed.sql | new | `seed_test_documents(p_count int, p_template jsonb)`: SECURITY INVOKER, loops 03's `create_document`, refused unless the caller's office `is_test`. `seed_test_activity(p_count int)`: same guard; synthetic rows that pass `ACTIVITY_PII`. Approved in principle by Raja 2026-09-29 (03b plan); activity top-up is new |
+| supabase/migrations/20261007043837_volume_seed.sql | new | `seed_test_documents(p_count int, p_template jsonb)`: SECURITY INVOKER, loops 03's `create_document`, refused unless the caller's office `is_test`. `seed_test_activity(p_count int)`: same guard; synthetic rows that pass `ACTIVITY_PII`. Approved in principle by Raja 2026-09-29 (03b plan); activity top-up is new |
 | tests/support/volume.ts | new | get-or-seed the office, count check, fixture users, storage uploads (10 parallel), ping, median timer |
 | tests/rls/volume.test.ts | new | V1–V10, `describe.skipIf(!process.env.VOLUME)` |
 | tests/rls/volume-seed.test.ts | new | the seed functions are refused in a non-test office and for Limited (always runs; fast) |
@@ -49,7 +49,7 @@ Same as the existing perf tests: real queries the app runs, through PostgREST as
 ## Steps
 - [ ] 0. Roadmap PR on main (your OK): row 09 "volume-test (chore, R1 gate)", schema lock → 09. Docs only.
 - [x] 1. **Spike (no commit):** in rolled-back transactions on dev, time one `create_document` in a loop, a 200-row import chunk and generation for 1,000 clients, to pick chunk sizes under the 8 s statement timeout (03's DOC-ID counter serialises filings: 20 in parallel already timed out once). Proof: numbers in the session log.
-- [ ] 2. Migration draft + `volume-seed.test.ts` red → **SQL gate (you)** → apply (MCP; fallback: you run it in the SQL editor, I verify by md5) → green.
+- [x] 2. Migration draft + `volume-seed.test.ts` red → **SQL gate (you)** → apply (MCP; fallback: you run it in the SQL editor, I verify by md5) → green.
 - [ ] 3. `tests/support/volume.ts` + one local seed of the office. Proof: the count check passes and seeding time is logged.
 - [ ] 4. `volume.test.ts` V1–V10, run locally (`VOLUME=1 npx vitest run --project db tests/rls/volume.test.ts`). Proof: timings table.
 - [ ] 5. `regression.yml` input + summary table; one dispatched volume run on main's deployment (your OK for the CI run). Proof: run URL + evidence file.
@@ -87,4 +87,7 @@ About 3 build sessions. Your review: one SQL gate (seeding migration) and the PR
   - **Finding K1 (outside V1–V10): CSV import times out with several groups.** `import_clients`, 200 rows, GSTIN + TAN each: **0 groups 0.8 s · 3 groups 8.8 s · 6 groups 16.9 s** in the database, against the 8 s `authenticated` statement timeout. The app imports 200-row chunks and sends the chosen groups on every row (`src/lib/csv/parse.ts`), so a 200-row chunk with 3+ groups fails (the chunk rolls back; the UI says "may not have been imported"). 02's nightly AC-17 imports with **one** group, so it never showed. ~1.4 s per group per 100 clients. **Pilot (20–30 clients): fine** (30 rows × 6 groups ≈ 2.5 s). Rollout to all clients: import in files of **≤ 40 rows** with 6 groups (≈ 3.4 s), or ≤ 80 with 3. Recorded as a known issue, not fixed (Raja 2026-10-07).
   - Migration dry run (rolled back): 1,000 documents 3.0 s; 50,000 activity rows 7.9 s → capped at 20,000; both refuse a non-test office (`NOT_TEST_OFFICE`).
 - `tests/rls/volume-seed.test.ts` red locally (4/4: functions not in the schema cache).
-- Next step: **SQL gate (Raja)** on `supabase/migrations/20261007030000_volume_seed.sql` → apply → seed test green → step 3.
+- SQL gate → see below.
+- **Step 2 done (Raja "apply" 10:07):** applied through the Supabase connector (`apply_migration` worked this time); history row `20261007043837 volume_seed`; file renamed to that version. Live bodies = file (md5 `44b69dd8…` documents, `4490539b…` activity); SECURITY INVOKER; EXECUTE authenticated + service_role, not anon. Security advisors: nothing new (4 pre-existing). `volume-seed.test.ts` green locally (4/4).
+- Month-end load (Raja 09:24): in practice at most ~200 clients file monthly, so a real month-end run generates ≈ 5k items (≈ 1.5 s at 0.29 ms/item). The seed keeps 04's worst case (all 1,000 clients monthly ≈ 20k items on the month-end day, ≈ 6 s); V4 records both figures. The 49 s full-year generation is a seeding artefact only, never a production run.
+- Next step: step 3 (`tests/support/volume.ts`, first seed of `e2e office volume`).
