@@ -54,10 +54,19 @@ export function TodayView({ data, inbox, scope, show, page }: {
           onClick={() => go(scope, show === "to_review" ? null : "to_review")} />
         <Count n={data.counts.ready} label="Ready to dispatch" tone="text-ink" pressed={show === "ready"}
           onClick={() => go(scope, show === "ready" ? null : "ready")} />
+        {/* 10 AC-17: open requested (ad-hoc) documents in scope; dated ones are rows, the rest only counted (D7). */}
+        <Count n={data.counts.requested ?? 0} label="Requested" tone="text-ink" pressed={show === "requested"}
+          onClick={() => go(scope, show === "requested" ? null : "requested")} />
         <Link href="/inbox" className="flex items-baseline gap-2 rounded-xl bg-panel px-4 py-3 shadow-card hover:bg-canvas">
           <span className="text-[22px] font-semibold">{inbox}</span>{" "}<span className="text-[13.5px] text-ink-2">In inbox</span>
         </Link>
       </div>
+
+      {(data.counts.requestedLater ?? 0) > 0 && (show === "requested" || show === null) && (
+        <p className="mb-4 text-[13.5px] text-ink-2">
+          {data.counts.requestedLater} requested {data.counts.requestedLater === 1 ? "document has" : "documents have"} no needed-by date in the next 7 days — see each client&apos;s Requested tab.
+        </p>
+      )}
 
       <div role="status" aria-live="polite" className="empty:hidden">
         {message && <p className={`mb-4 rounded-lg px-4 py-3 text-[13.5px] ${message.ok ? "bg-ok-soft text-ok" : "bg-bad-soft text-bad"}`}>{message.text}</p>}
@@ -120,6 +129,23 @@ function ClientCard({ card: c, today, onMessage }: { card: TodayCard; today: str
                 <LogCallButton clientId={c.clientId} clientName={c.name} />
                 {r.uploadHref && (
                   <Link href={r.uploadHref} aria-label={`Upload ${r.title}`}
+                    className="inline-flex h-[30px] items-center rounded-[7px] bg-accent px-2.5 text-[13px] font-medium text-white hover:bg-[#264d8f]">Upload</Link>
+                )}
+              </span>
+            </li>
+          ))}
+          {(c.asks ?? []).map((a) => (
+            <li key={a.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-5 py-3 last:border-b-0">
+              <div className="min-w-0 flex-1 basis-56">
+                <p className="break-words">{a.title}</p>
+                <p className="mt-0.5 break-words text-[13px] text-ink-3">{a.detail}</p>
+              </div>
+              <span className={`text-[13px] ${a.labelTone === "late" ? "text-bad" : "text-warn"}`}>{a.label}</span>
+              <span className="flex flex-wrap gap-2">
+                <Link href={`/clients/${c.clientId}?tab=requested`} aria-label={`Open requested documents of ${c.name}`}
+                  className="inline-flex h-[30px] items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas">Open</Link>
+                {a.uploadHref && (
+                  <Link href={a.uploadHref} aria-label={`Upload ${a.title}`}
                     className="inline-flex h-[30px] items-center rounded-[7px] bg-accent px-2.5 text-[13px] font-medium text-white hover:bg-[#264d8f]">Upload</Link>
                 )}
               </span>

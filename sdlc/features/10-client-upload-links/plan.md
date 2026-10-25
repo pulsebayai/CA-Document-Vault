@@ -86,7 +86,7 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
   - sdlc-reviewer + a second security-focused review of the `link_*` functions;
   - PR 10a.
 - [x] 9. Requested tab: list, Upload (pre-filled and linked), Cancel, Reopen, Revoke, Send again. Proof: RLS + e2e.
-- [ ] 10. Today: Requested rows and count (D7). Proof: `upload-links-today.test.ts`; **`today.test.ts` / `today-documents.test.ts` / `today.spec.ts` green unedited**; timing on the volume office ≤ the 09 baseline (K3 not worse).
+- [x] 10. Today: Requested rows and count (D7). Proof: `upload-links-today.test.ts`; **`today.test.ts` / `today-documents.test.ts` / `today.spec.ts` green unedited**; timing on the volume office ≤ the 09 baseline (K3 not worse).
 - [ ] 11. Expiry boundary (IST) and expired-link page; `link_attempt` purge in the daily job. Proof: RLS tests with the test clock.
 - [ ] 12. Settings › Collection link figures (AC-23). Proof: RLS fixtures + e2e.
 - [ ] 13. **10b close:** full suite, sdlc-reviewer, PR 10b; release-checklist items confirmed in roadmap (security check, WhatsApp/email real send, phone upload).
@@ -151,8 +151,13 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
 - **Step 9: Upload from Requested** goes through a new `create_document_for_item(p_item, p)` (invoker): 03's unchanged `create_document` + a definer helper that sets `upload_request_item_id` + an `upload_request_item.filed` activity row, in one transaction. Client and type come from the item (period / registration too when the item has them). It also works for a Received item (D4). The staff-filed document keeps the channel staff chose (no "From client link" badge).
 - **Step 9: the client tab row scrolls sideways on phones.** A fourth tab made the row 30 px too wide at 390 px, which failed 03's existing `client-documents.spec.ts` width check; the nav is now a relative, horizontally scrolling row (test unedited, green).
 
+- **Step 10: Today contract (migration G `20261025183853_upload_links_today`, replaces 06's `today_items`, same signature).** Requested rows `{item_id, kind: 'requested', due, …}` on the requester's Mine and on Everyone; `counts.requested` = all open ad-hoc items in scope, `counts.requested_later` = those not shown as rows (no needed-by date in the next 7 days, D7); `p_show = 'requested'`; card `requested` count; card order adds overdue requested rows to the overdue count. Expected counts and rows are unchanged; 06's counts are expected-only, so a requested row is never counted as Overdue. A link upload To review is also on the requester's Mine (AC-13, moved here from step 8). The TS additions (`counts.requested`, `card.asks`) are optional, so 06's view unit tests stay unedited.
+- **Step 10: the volume re-time wasn't done.** The persistent `e2e office volume` on dev is now empty (purged since 09: 0 clients, 0 items), so there was nothing to time against. Re-seeding at 09's scale (1,000 clients, ~183k items) is a long job. Today already times out at that volume (K3: 13.5–20 s). [Likely] 10 adds little: the new `asks` part reads only open ad-hoc items through `upload_request_item_office_open_idx`, and the documents part gains one OR on columns of the rows it already reads. **Raja to decide:** re-seed and re-time now, or re-time with the K3 fix (which must re-seed anyway).
+
 ## Session log
 ### 2026-10-26 (build, 10b)
+- Step 10: Today — Requested count + filter, requested rows (Open / Upload pre-filled for the item), note for undated items, link uploads on the requester's Mine.
+  - Tests: `upload-links-today.test.ts` 5/5 (all failed before migration G); 06's `today.test.ts` + `today-documents.test.ts` green unedited (27/27 together); e2e `upload-link-today.spec.ts` 2/2, 06's `today.spec.ts` 6/6 + `today-documents.spec.ts` 1/1 unedited; unit 494/494; lint + typecheck clean.
 - Step 9: Client › Requested tab (count on the tab; items open first with Upload / Cancel / Reopen; links with Revoke / Send again), `create_document_for_item`, carry on Send again.
   - Tests: `upload-links-requested.test.ts` 4/4 (failed before migration F) + `upload-links-staff` 21/21; e2e `upload-link-requested.spec.ts` 4/4 (axe, 390 px); `client-documents` 4/4 and `add-document` 5/5 unedited; unit 494/494; lint, typecheck, build clean.
 

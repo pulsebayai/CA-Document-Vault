@@ -11,7 +11,9 @@ export class TodayError extends Error {
 }
 
 export type TodayData = {
-  today: string; counts: { overdue: number; dueWeek: number; toReview: number; ready: number };
+  today: string; counts: { overdue: number; dueWeek: number; toReview: number; ready: number;
+    /** 10 — optional so 06's view tests (which build this type) stay unedited. */
+    requested?: number; requestedLater?: number };
   /** Cards in scope and filter (all pages): "N clients need something". */
   clients: number; cards: TodayCard[]; hasMore: boolean;
 };
@@ -48,9 +50,27 @@ export async function todayDataAs(scope: Scope, show: Show | null, page: number)
       if (x) r.uploadHref = uploadHref(c.clientId, { typeId: x.doc_type_id, periodId: x.period_id, registrationId: x.registration_id });
     }
   }
+  // 10: requested rows' Upload = Add document pre-filled and linked to the item (IDs only), back to Requested.
+  const askIds = cards.flatMap((c) => (c.asks ?? []).map((a) => a.id));
+  if (askIds.length > 0) {
+    const { data, error } = await supabase.from("upload_request_item").select("id, doc_type_id, period_id, registration_id").in("id", askIds.slice(0, 300));
+    if (error) console.error("today.ask_refs_failed", { code: error.code ?? "unknown", requestId: randomUUID() });
+    const byId = new Map(((data ?? []) as Array<{ id: string; doc_type_id: string; period_id: string | null; registration_id: string | null }>).map((x) => [x.id, x]));
+    for (const c of cards) for (const a of c.asks ?? []) {
+      const x = byId.get(a.id);
+      if (!x) continue;
+      const q = new URLSearchParams({ client: c.clientId, type: x.doc_type_id });
+      if (x.period_id) q.set("period", x.period_id);
+      if (x.registration_id) q.set("registration", x.registration_id);
+      q.set("item", a.id);
+      q.set("from", `/clients/${c.clientId}?tab=requested`);
+      a.uploadHref = `/documents/new?${q.toString()}`;
+    }
+  }
   return {
     today: last.today,
-    counts: { overdue: last.counts.overdue, dueWeek: last.counts.due_week, toReview: last.counts.to_review ?? 0, ready: last.counts.ready ?? 0 },
+    counts: { overdue: last.counts.overdue, dueWeek: last.counts.due_week, toReview: last.counts.to_review ?? 0, ready: last.counts.ready ?? 0,
+      requested: last.counts.requested ?? 0, requestedLater: last.counts.requested_later ?? 0 },
     clients: last.clients ?? cards.length, cards, hasMore: last.has_more,
   };
 }
