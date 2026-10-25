@@ -101,7 +101,8 @@ describe("Upload from Client › Requested (AC-16)", () => {
 
   it("files the document with the item's client and type, links it, marks the item received and logs it", async () => {
     const link = await mustSend(as.staff, c.a, [adhoc()]);
-    const r = await fileFor(as.staff, link.items[0].id, { client_id: c.b, doc_type_id: crypto.randomUUID() }); // ignored
+    // Step 13 (review I-1): the form sends the item's own client and type; anything else is refused (upload-links-review-10b).
+    const r = await fileFor(as.staff, link.items[0].id, { client_id: c.a, doc_type_id: notice });
     expect(r.error).toBeNull();
     const id = r.data!.id as string;
     const { data: d } = await admin().from("document").select("client_id, doc_type_id, channel, upload_request_item_id, status").eq("id", id).single();

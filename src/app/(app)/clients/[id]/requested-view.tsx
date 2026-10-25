@@ -81,7 +81,7 @@ function ItemRow({ clientId, item: i, today, canAct }: { clientId: string; item:
         <div className="min-w-0">
           <p className="break-words font-medium">{itemTitle(i)}</p>
           <p className="mt-0.5 break-words text-[13px] text-ink-3">
-            {[`Requested by ${i.requester} on ${shortDate(i.createdAt.slice(0, 10), today)}`,
+            {[`Requested by ${i.requester} on ${shortDate(i.createdOn, today)}`,
               i.neededBy && `needed by ${shortDate(i.neededBy, today)}`,
               i.files > 0 && `${i.files} file${i.files > 1 ? "s" : ""}`,
               i.status !== "cancelled" && LINK_STATE[i.linkState]].filter(Boolean).join(" · ")}
@@ -157,7 +157,7 @@ function RequestRow({ clientId, r, today, perms }: { clientId: string; r: Reques
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="break-words">
-            <span className="font-medium">{shortDate(r.createdAt.slice(0, 10), today)}</span>
+            <span className="font-medium">{shortDate(r.createdOn, today)}</span>
             {` · ${r.channel === "email" ? "Email" : r.channel === "whatsapp" ? "WhatsApp" : "Link"} · `}
             <span className="text-ink-3">{r.requester}</span>
           </p>
@@ -169,10 +169,10 @@ function RequestRow({ clientId, r, today, perms }: { clientId: string; r: Reques
         {perms.canAct && mine && (
           <div className="flex flex-wrap items-center gap-2">
             {r.linkState === "active" && (
-              <Button type="button" size="sm" variant="danger" disabled={pending} aria-label={`Revoke the link of ${shortDate(r.createdAt.slice(0, 10), today)}`} onClick={revoke}>Revoke</Button>
+              <Button type="button" size="sm" variant="danger" disabled={pending} aria-label={`Revoke the link of ${shortDate(r.createdOn, today)}`} onClick={revoke}>Revoke</Button>
             )}
             {r.linkState !== "replaced" && r.openItems > 0 && (
-              <Modal trigger="Send again" title="Send the link again" triggerVariant="button" triggerLabel={`Send again the link of ${shortDate(r.createdAt.slice(0, 10), today)}`}>
+              <Modal trigger="Send again" title="Send the link again" triggerVariant="button" triggerLabel={`Send again the link of ${shortDate(r.createdOn, today)}`}>
                 {(close) => <SendAgainBody clientId={clientId} requestId={r.id} perms={perms} close={close} />}
               </Modal>
             )}

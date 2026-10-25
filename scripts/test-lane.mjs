@@ -11,9 +11,10 @@ const minutes = (name, fallback) => {
   return Number.isFinite(v) && v > 0 ? v : fallback;
 };
 const WAIT_MINUTES = minutes("TEST_LANE_WAIT_MINUTES", 30);
-// Must outlast the longest job (ci.yml 55 min, regression.yml 75 min incl. the wait) — else another run could
+// Must outlast the longest job (ci.yml 120 min, regression.yml 110 min incl. the wait) — else another run could
 // take the lane mid-test. Raise it together with any job timeout.
-const LEASE_MINUTES = minutes("TEST_LANE_LEASE_MINUTES", 150); // 10: CI job 120 min, Regression 110 min (both below)
+const LEASE_MINUTES = minutes("TEST_LANE_LEASE_MINUTES", 150); // 10: CI job 120 min, Regression 110 min (both below).
+// A waiting run gives up after WAIT_MINUTES; runs now hold a lane ~75 min, so a third concurrent run may give up — re-run it.
 const POLL_SECONDS = 20;
 
 const holder = process.env.TEST_LANE_HOLDER?.trim();

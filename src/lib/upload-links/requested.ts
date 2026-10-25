@@ -7,7 +7,7 @@ import { GST_STATES } from "@/lib/validation/gst-states";
 
 export type LinkState = "active" | "expired" | "revoked" | "replaced";
 export type RequestedItem = {
-  id: string; requestId: string; createdAt: string;
+  id: string; requestId: string; createdAt: string; /** IST day the item was requested (YYYY-MM-DD). */ createdOn: string;
   group: string; type: string; docTypeId: string; period: string | null; periodId: string | null;
   registration: string | null; registrationId: string | null;
   note: string | null; neededBy: string | null; status: "open" | "received" | "cancelled"; overdue: boolean;
@@ -15,7 +15,7 @@ export type RequestedItem = {
   requester: string; requesterId: string; linkState: LinkState; files: number;
 };
 export type RequestSummary = {
-  id: string; createdAt: string; requester: string; requesterId: string; channel: "email" | "whatsapp" | null;
+  id: string; createdAt: string; createdOn: string; requester: string; requesterId: string; channel: "email" | "whatsapp" | null;
   scheduled: number; adHoc: number; openItems: number; linkState: LinkState; openUntil: string; files: number;
 };
 export type Requested = { items: RequestedItem[]; requests: RequestSummary[]; openCount: number };
@@ -94,7 +94,7 @@ export async function requestedAs(clientId: string, today: string): Promise<Requ
   const adHoc: RequestedItem[] = rows.filter((i) => i.kind === "ad_hoc").map((i) => {
     const r = reqById.get(i.request_id)!;
     return {
-      id: i.id, requestId: i.request_id, createdAt: i.created_at,
+      id: i.id, requestId: i.request_id, createdAt: i.created_at, createdOn: istDay(i.created_at),
       group: i.doc_type?.doc_group.name ?? "", type: i.doc_type?.name ?? "", docTypeId: i.doc_type_id!,
       period: i.period?.label ?? null, periodId: i.period_id, registration: regLabel(i.registration), registrationId: i.registration_id,
       note: i.note, neededBy: i.needed_by, status: i.status,
@@ -109,7 +109,7 @@ export async function requestedAs(clientId: string, today: string): Promise<Requ
     const open = its.filter((i) => (i.kind === "ad_hoc" ? i.status === "open" : i.expected?.status === "pending")).length;
     const ch = r.follow_up_id ? channel.get(r.follow_up_id) : null;
     return {
-      id: r.id, createdAt: r.created_at, requester: names.get(r.created_by) ?? "", requesterId: r.created_by,
+      id: r.id, createdAt: r.created_at, createdOn: istDay(r.created_at), requester: names.get(r.created_by) ?? "", requesterId: r.created_by,
       channel: ch === "email" || ch === "whatsapp" ? ch : null,
       scheduled: its.filter((i) => i.kind === "scheduled").length, adHoc: its.filter((i) => i.kind === "ad_hoc").length,
       openItems: open, linkState: linkStateOf(r, today), openUntil: dayBefore(istDay(r.expires_at)), files: r.files_count,

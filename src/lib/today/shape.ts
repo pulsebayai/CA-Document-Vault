@@ -49,7 +49,7 @@ export type TodayAskRowRaw = {
 };
 export type TodayCardRaw = {
   client_id: string; name: string; incharge: string | null; assignees: Array<{ group: string; name: string }>;
-  overdue: number; due_week: number; to_review?: number; ready?: number; requested?: number;
+  overdue: number; due_week: number; to_review?: number; ready?: number; requested?: number; requested_overdue?: number;
   rows: Array<TodayRowRaw | TodayDocRowRaw | TodayAskRowRaw>;
 };
 export type TodayRaw = {
@@ -122,7 +122,7 @@ export function toDocRow(r: TodayDocRowRaw, today: string): TodayDocRow {
 function badgeOf(c: TodayCardRaw): Pick<TodayCard, "badge" | "badgeTone"> {
   if (c.overdue > 0) return { badge: `${c.overdue} overdue`, badgeTone: "late" };
   if (c.due_week > 0) return { badge: "Due this week", badgeTone: "due" };
-  if (c.requested) return { badge: `${c.requested} requested`, badgeTone: "due" };
+  if (c.requested) return { badge: `${c.requested} requested`, badgeTone: c.requested_overdue ? "late" : "due" };
   if (c.to_review) return { badge: `${c.to_review} to review`, badgeTone: "muted" };
   return { badge: `${c.ready ?? 0} to dispatch`, badgeTone: "due" };
 }

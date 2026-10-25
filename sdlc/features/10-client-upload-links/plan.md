@@ -77,7 +77,7 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
 - [x] 5. Public page + server actions + proxy/headers + ESLint fence. Proof: e2e on 390 px with axe; header assertions; `/u` without a fragment shows "not active"; staff routes still redirect (`auth.spec.ts` unedited).
 - [x] 6. Remind dialog: link toggle, ad-hoc editor, preview, send (email and WhatsApp), failed-email retry with the same link. Proof: e2e staff send → client upload → expected item Received → document To review on the requester's Today; **`reminders.spec.ts` green unedited**.
 - [x] 7. Badge, View hidden until reviewed, channel facet label, activity sentences (coverage test), permission rows + probes. Proof: unit coverage test, role-matrix test, e2e.
-- [ ] 8. **10a close:**
+- [x] 8. **10a close:** (CI and RUN_SLOW folded into step 13: one PR, Raja 2026-10-25)
   - architecture.md items;
   - ui-reference row;
   - smoke check for `/u`;
@@ -157,8 +157,21 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
 - **Step 11: storage sweep = a Vercel Cron route, not SQL.** Supabase refuses SQL deletes on `storage.objects` (`protect_objects_delete`), so `orphan_objects()` (service role, migration H `20261025184731_upload_links_maintenance`) lists files no document version points at, and `/api/cron/storage-sweep` (daily 19:30 UTC in `vercel.json`) removes those older than 24 hours through the Storage API (`storage.ts`, the existing service-role module). It needs a new server env var **`CRON_SECRET`** (≥ 16 chars) on each environment; without it the route refuses (401) and nothing is removed. The sweep also cleans 03's orphans (03 had left this for "before pilot month 2"). Dev holds ≥ 1,000 such files from test runs; the first sweep after `CRON_SECRET` is set on the dev project removes up to 500 a day.
 - **Step 11: `link_attempt` purge** runs in the database (pg_cron `link-attempts-daily`, 19:00 UTC), not in 04's job. **The expired-link page is the generic "no longer active" page** (AC-8: one answer for every unusable link); the IST expiry boundary was already tested in step 4 (AC-19).
 
+- **Step 13: fixes from the pre-PR review of 10b (migration J `20261025190409_upload_links_review_10b`; tests `upload-links-review-10b.test.ts`, 4 failed before it):**
+  - I-1: Upload for a requested item locks client and type (and the item's period / registration) in the form, hides "Save to inbox", and `create_document_for_item` refuses a mismatch (`ITEM_MISMATCH`) instead of overwriting it. **My own step-9 test** (`upload-links-requested.test.ts`, unmerged) asserted the old "ignored" behaviour; it now sends the item's client and type, and the refusal is pinned in the new file.
+  - I-2: a 05 merge of the proposed type an ad-hoc item asks for reopened the received item (its documents moved to the approved type). A `doc_type` trigger now re-points the item to the target and re-checks it.
+  - N-6: Send again re-checks that a carried item's type can still be requested.
+  - N-2/N-3/N-4: 06's card order is restored (AC-17 "order unchanged"); cards carry `requested_overdue`, and the badge is red when a requested row is overdue.
+  - N-1: Requested dates use the IST day. N-8: lane comments updated.
+  - Not changed: N-5 (Send again by an Admin moves the items to the Admin's Today: the person who re-sent chases them, as for a new request); N-7 (archived link uploads stay out of the figures, like every Collection figure); N-10 (one extra RLS read on Today for Upload links); N-11 (Requested lists open items first, then newest; recorded in ui-reference).
+  - Files outside "Files that change" (N-9): `documents/actions.ts`, `documents/new/page.tsx` + `document-form.tsx` (Upload for an item), `upload-links/requested.ts`, `upload-links/queries.ts`, `storage-core.ts` / `storage.ts`, `api/cron/storage-sweep/route.ts`, `vercel.json`, `proxy.ts`, `ci.yml`, `regression.yml`, `scripts/test-lane.mjs`; test files named `upload-link-*.spec.ts` / `upload-links-*.test.ts`.
+- **Step 13: CI limits** — `ci.yml` job 120 min, `regression.yml` 110 min, test-lane lease 150 min (the nightly took 65 of 75 min on 2026-10-22, before 10's tests).
+
 ## Session log
 ### 2026-10-26 (build, 10b)
+- Step 13 (in progress): CI/Regression limits; architecture + ui-reference for 10b; sdlc-reviewer on 10b → fixes above (migration J applied on dev, md5 = file).
+  - Results: affected DB files 137/137 after the fix (upload-links ×6, 06's today ×2, 05's type-governance); unit 494/494; e2e requested + today + add-document + 06's today 18/18; lint, typecheck, build clean.
+  - Left: Raja's decision on the K3 re-time; one full CI run on PR #3; RUN_SLOW Regression on the branch preview; `CRON_SECRET` on Vercel; PR ready.
 - Step 12: `link_metric(from, to)` (Admin/Manager, invoker; migration I `20261025185138_upload_links_metrics`) and an "Upload links" section on Settings › Collection: received through links, hours to first review, needed correcting (Needs correction or re-filed), days to receive a request, received by needed-by.
   - Tests: `upload-links-metrics.test.ts` 3/3 (failed before migration I); e2e Collection section 1/1; 04's `collection.spec.ts` 4/4 unedited (axe, 390 px).
 - Step 11: `link_attempt` 7-day purge (pg_cron), `orphan_objects()`, storage sweep route + Vercel Cron, smoke check that the route refuses without the secret.

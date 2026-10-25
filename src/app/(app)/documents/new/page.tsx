@@ -26,7 +26,8 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
     <div className="mx-auto max-w-[815px]">
       <PageHeader title="Add document" />
       <DocumentForm initialClient={client} initialTypes={types} periods={periods} groups={groups} today={istDate()}
-        canPropose={me.role !== "limited"} returnTo={safeReturn(sp.from, client?.id)} prefill={prefill} requestItemId={item} />
+        canPropose={me.role !== "limited"} returnTo={safeReturn(sp.from, client?.id)} prefill={prefill} requestItemId={item}
+        itemLocks={item ? { period: typeof sp.period === "string", registration: typeof sp.registration === "string" } : undefined} />
     </div>
   );
 }

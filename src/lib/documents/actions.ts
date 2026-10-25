@@ -89,6 +89,7 @@ export type SaveDocumentResult =
 const DB_MESSAGES: Array<[RegExp, string, string?]> = [
   [/SOFT_COPY_NEEDS_FILE/, "Add the file — a soft copy needs one.", "file"],
   [/ITEM_STATE/, "This requested document was cancelled. Go back to Requested and check it."], // 10
+  [/ITEM_MISMATCH/, "A requested document is filed with the client, type and period that were requested. Go back to Requested and check it."], // 10
   [/DECLASSIFY/, "A filed document keeps a client and a type. Change them instead of clearing them.", "clientId"],
   [/CLIENT_ARCHIVED/, "This client is archived. Choose another client.", "clientId"],
   [/PERIOD_KIND/, "This period doesn't suit the document type. Choose another period.", "periodId"],
