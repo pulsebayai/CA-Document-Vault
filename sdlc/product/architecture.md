@@ -1,5 +1,5 @@
 # Architecture: CA Document Vault
-Status: approved · Updated: 2026-10-06 (08 activity visibility, bulk files, permissions matrix) · earlier: 2026-10-02 (05 type governance, notifications) · earlier: 2026-10-02 (07 review & dispatch) · earlier: 2026-10-01 (06 mailer, follow-ups, Today) · earlier: 2026-10-01 (03b search decisions) · earlier: 2026-10-01 (04 expected docs: 5 approved changes + build decisions)
+Status: approved · Updated: 2026-10-25 (10 client upload links: direction + decision reversal) · earlier: 2026-10-06 (08 activity visibility, bulk files, permissions matrix) · earlier: 2026-10-02 (05 type governance, notifications) · earlier: 2026-10-02 (07 review & dispatch) · earlier: 2026-10-01 (06 mailer, follow-ups, Today) · earlier: 2026-10-01 (03b search decisions) · earlier: 2026-10-01 (04 expected docs: 5 approved changes + build decisions)
 
 ## Stack
 - **Next.js (App Router) + TypeScript** — one codebase for UI and server actions/API routes.
@@ -53,6 +53,14 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
   - **Metric 1** = received before the overdue date ÷ items whose overdue date passed (waived, on-hold and archived-client items excluded): `collection_metric`, shown on Settings › Collection (Admin/Manager).
 - **Today = derived view (06):** `today_items(scope, show, page)`, one SECURITY INVOKER call: pending items, not on hold, overdue or overdue within 7 days (office date), cards per client. **Effective assignee** = plan row's staff → its group's staff → the client's incharge (the same columns as `can_see_client`) defines "Mine". Not stored.
 
+**Upload requests (10; direction approved 2026-10-25, details in 10's spec)**
+- `upload_request` (client, token hash, expiry, revoked, caps, created_by, sent via email|whatsapp) → `upload_request_item`, one or more per request, of two kinds:
+  - **scheduled** → a pending `expected_doc`;
+  - **ad-hoc** → doc_type (required: approved, as-needed or proposed), optional period, optional needed-by date, public note ≤ 200 chars, status.
+- **Ad-hoc items are not expected docs.** They never create `expected_doc` rows and never count in metric 1, and they never appear in the Clients list counts or "Has overdue".
+- An open ad-hoc item shows on Client › Requested and on **Today of the staff member who created the request**. This is a deliberate exception to 06's effective assignee: the person who asked chases it. It is overdue after its needed-by date.
+- An upload creates a classified `document` via 03's path. Client, type and period [+ registration] come from the item. The document is received at once and flagged for mandatory staff review ("from client link"). Scheduled items link through 04's trigger.
+
 **Operational**
 - `office` (one row: Kushal Associates, branch Pondicherry; name, FY start, DOC-ID prefix/counter, retention, file-size limit, reminder timings)
 - `staff_user` (role admin|manager|staff|limited, active)
@@ -71,7 +79,13 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 - **`notification` (05)**, the first per-user inbox: recipient, kind (`type_decision`), entity, `data` = IDs and the decision only (no names, no comments, never a client), `read_at`. RLS: each staff member selects and marks read only their own; no insert/delete policies. Written only by the decision functions through a SECURITY DEFINER helper (`private.notify`, tenant first). Shown by the header bell; opening the panel marks all read (S4). Text is built at display time from the type rows.
 
 ## Auth & permissions model
-- **Staff only.** Admin creates/invites each staff user; no self sign-up. Sign-in by **email one-time code** (Supabase Auth OTP). Deactivating a user revokes access immediately.
+- **Staff only sign in.** Admin creates/invites each staff user; no self sign-up. Sign-in by **email one-time code** (Supabase Auth OTP). Deactivating a user revokes access immediately.
+- **Client upload links (10):** the one route outside staff auth.
+  - The bearer token in the link is ≥ 128-bit random, stored hashed and never logged. There is no client login and no one-time code (Raja + Kushal 2026-10-25).
+  - The page is upload-only. It shows the firm name, item names, ad-hoc notes, needed-by dates and masked registration labels, and never existing documents, PAN, full GSTIN or contact details.
+  - An upload is accepted only for an item on that link, before expiry, unrevoked, within caps and rate limits.
+  - Writes go through a dedicated definer path that checks the token, tenant and item first. Storage stays policy-less for app roles (signed upload URL, as in 03).
+  - Building or sending a request uses the same roles as Remind. Limited users can do it only for clients they can see.
 - Roles enforced in **Postgres RLS**, not only in UI. Matrix (from mockup): Admin/Manager/Staff see all clients; Limited sees only assigned clients/groups. Manage users → Admin only. Catalogue approvals, incharge changes, pausing → Admin/Manager.
 - **Permissions matrix is code (08):** `src/lib/auth/permissions.ts` (17 rows × 4 roles) is the one source for Settings › Users and for `tests/rls/role-matrix.test.ts`, which runs a probe for every row × role against the database. A row without a probe fails the test, so the screen can't drift from what is enforced. New role rules add a row and a probe.
 - **Activity visibility (08):** Admin/Manager/Staff read all of the office's activity. **Limited** read a row only when they are its actor or can see its client (`activity_select`).
@@ -92,7 +106,7 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
 ## Cross-cutting rules
 - **Privacy:** PAN, mobile, email are personal data (DPDP Act). No PII in URLs, logs or analytics.
 - **No hard delete;** every mutation writes `activity`.
-- **Uploads:** allow-list PDF, JPG/JPEG, PNG, HEIC (download-only), XLSX, XLS, CSV, DOCX, ZIP by extension (declared type checked when present); ≤ 25 MB; each extension stored as one canonical MIME type (`src/lib/validation/document.ts` = `private.mime_for_extension` = bucket allow-list); file names sanitised (no separators/control chars/leading dots, ≤ 180). No malware scan or content sniffing in v1 (accepted risk) (03).
+- **Uploads:** allow-list PDF, JPG/JPEG, PNG, HEIC (download-only), XLSX, XLS, CSV, DOCX, ZIP by extension (declared type checked when present); ≤ 25 MB; each extension stored as one canonical MIME type (`src/lib/validation/document.ts` = `private.mime_for_extension` = bucket allow-list); file names sanitised (no separators/control chars/leading dots, ≤ 180). No malware scan or content sniffing in v1 (accepted risk for staff uploads) (03); **re-decided in 10's spec for client-link uploads**.
 - **Dates:** stored UTC, shown IST; periods follow Indian FY.
 - **UI:** the mockup is the UI source of truth — see `references/ui-reference.md` (tokens, components, agreed deviations, screenshots). Each feature spec cites its screens.
 - **Accessibility:** WCAG 2.1 AA (wins over pixel fidelity).
@@ -109,21 +123,21 @@ Reference: sdlc/product/references/data-model-v3.md. **No folder hierarchy.** A 
   - **Two-phase external send (06):** record the attempt in the database first (a `pending` row, cap enforced by a unique partial index), then call the provider, then record the result. A double click or second tab can't send twice; a pending row older than 10 minutes counts as failed (closed as `TIMEOUT` by the next attempt). Writes go through SECURITY DEFINER private helpers called from SECURITY INVOKER public functions (checks run as the caller; no app write policies); `app.follow_up_write` lets only those helpers move pending → result.
   - **PII snapshot on an entity (06):** a follow-up stores the address/mobile it went to (the "did we send it?" audit), RLS-protected like its client, shown masked in the UI (`a…@…`), never in activity, logs or URLs.
   - **Test clock (04):** `office.test_today` (is_test offices only, set by `run_expected_generation`, cleared by `reset_test_office`) is "today" for every 04 rule in that office (`private.office_today`); real offices always use the date in India.
-- **Activity:** field names and IDs only; free text (e.g. archive reason) lives on the entity. A DB trigger (`ACTIVITY_PII`) rejects PAN/GSTIN/email/mobile keys or values in `activity.data` (02).
+- **Activity:** field names and IDs only; free text (e.g. archive reason) lives on the entity. A DB trigger (`ACTIVITY_PII`) rejects PAN/GSTIN/email/mobile keys or values in `activity.data` (02). Ad-hoc request notes (shown on the public upload page) are checked against the same patterns before they are saved (10).
 - **Bulk work** (CSV import): the browser drives bounded chunks (≤ 200 rows per server action); the server re-validates every chunk against the DB as it is now. Server-action body limit 3 MB. CSV files we generate neutralise formula-looking cells (02).
-- **Client page tabs (04):** Documents (default) · Expected N · Settings (`?tab=settings`). Add/Edit client land on Settings.
+- **Client page tabs (04):** Documents (default) · Expected N · Settings (`?tab=settings`). Add/Edit client land on Settings. 10 adds **Requested** (ad-hoc items).
 - **Screens:** every screen has its own loading (`role="status"`) and error (alert + retry) state (`src/components/states.tsx`); dialogs use the shared native-`<dialog>` Modal; horizontal-scroll wrappers are `position: relative` (sr-only content escapes otherwise); key screens are asserted ≤ 390 px wide in e2e (02).
 
 ## External integrations
-- **Brevo (transactional email):** client reminder emails triggered by staff "Remind" (HTTP API `POST /v3/smtp/email`). **No webhook in the pilot:** a follow-up is Sent (201 + message ID) or Failed (error/timeout, with Retry); bounces are checked weekly in the Brevo dashboard (pilot checklist). One email per client per office day (database cap) and an office ceiling `EMAIL_DAILY_MAX` (default 200; sent + in-flight emails) protect the quota sign-in codes need. Content: which documents are pending for which period; **no attachments, no links into the app, no PAN/GSTIN in the body**. Rate-limited per client; every send logged in `follow_up` + `activity`.
-- **WhatsApp (click-to-chat, no API):** "WhatsApp" button opens `https://wa.me/<client mobile>?text=<pending list>` in the staff member's browser (WhatsApp Web/app); the staff member presses Send. Same content rules as email. Logged as `follow_up` channel=whatsapp, status=opened (the vault cannot confirm delivery). Documented exception to the no-PII-in-URLs rule: the client's own mobile number is sent only to WhatsApp, by the staff member's browser, never to our servers/logs.
+- **Brevo (transactional email):** client reminder emails triggered by staff "Remind" (HTTP API `POST /v3/smtp/email`). **No webhook in the pilot:** a follow-up is Sent (201 + message ID) or Failed (error/timeout, with Retry); bounces are checked weekly in the Brevo dashboard (pilot checklist). One email per client per office day (database cap) and an office ceiling `EMAIL_DAILY_MAX` (default 200; sent + in-flight emails) protect the quota sign-in codes need. Content: which documents are pending for which period; optionally **one per-request upload link (10)**; **no attachments, no other links into the app, no PAN/GSTIN in the body**. Rate-limited per client; every send logged in `follow_up` + `activity`.
+- **WhatsApp (click-to-chat, no API):** "WhatsApp" button opens `https://wa.me/<client mobile>?text=<pending list [+ upload link]>` in the staff member's browser (WhatsApp Web/app); the staff member presses Send. Same content rules as email. Logged as `follow_up` channel=whatsapp, status=opened (the vault cannot confirm delivery). Documented exception to the no-PII-in-URLs rule: the client's own mobile number is sent only to WhatsApp, by the staff member's browser, never to our servers/logs.
 
 ## Release & regression policy (every release)
 Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature by feature and are never edited to pass.
 1. **Every PR:** full suite in CI against dev (`ci.yml`). Merge only when green. Each PR description carries the AC → test → result table.
 2. **Nightly:** `regression.yml` runs the full suite against dev at 01:30 IST; failure emails the owner. Catches drift (settings, paused DB, expired secrets).
 3. **Every release (R1, R2 …) — gate before prod:**
-   a. `main` green · b. `regression.yml` (manual run) **passes against staging's deployed URL** · c. manual checklist signed off on staging (key screens vs mockup + one real end-to-end path) · d. owner approval in chat.
+   a. `main` green · b. `regression.yml` (manual run) **passes against staging's deployed URL** · c. manual checklist signed off on staging (key screens vs mockup + one real end-to-end path; R1 also the public upload-route security check from 10) · d. owner approval in chat.
    Prod after deploy: **smoke only** (`smoke.spec.ts`: login page, CSP, redirects) — no data-writing tests ever run against prod.
 4. **Evidence (kept):** every CI/regression run uploads machine-readable results (JUnit XML + Playwright JSON/HTML) as artifacts (90-day retention). For each release, a record `sdlc/releases/<Rn>.md` is committed with: commit SHA, environment, run URLs, pass/fail/skipped counts per suite, AC coverage, manual checklist results, sign-off (name, date) — plus the result summaries copied to `sdlc/releases/<Rn>/evidence/` so evidence outlives artifact retention.
 
@@ -139,7 +153,7 @@ Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature b
 ## Decision log
 | Date | Decision | Reason | Feature |
 |---|---|---|---|
-| 2026-09-25 | v1 is staff-only; no client login or upload links | Owner decision: scope v1 to the CA office | — |
+| 2026-09-25 | v1 is staff-only; no client login or upload links (**upload links reversed 2026-10-25**, see the last row) | Owner decision: scope v1 to the CA office | — |
 | 2026-09-25 | WhatsApp reminders via click-to-chat (wa.me), not WhatsApp Business API | Zero cost/approval; staff send from own WhatsApp; API deferred | 06 |
 | 2026-09-25 | Only manual reminders in v1; automatic scheduled reminders later | Avoid mass mis-sends before schedule logic is proven | 06 |
 | 2026-09-25 | "Remind" sends an email to the client via SES Mumbai; replies go to assigned staff | Owner decision; matches mockup; keeps data in India | 06 |
@@ -192,3 +206,4 @@ Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature b
 | 2026-10-02 | **Limited activity visibility:** `activity_select` replaced (scoped exception, Raja; intent Q3a): own actions + events of clients the user can see, resolved from the row's entity; Staff+ unchanged | Limited users could read every activity row of the office, including clients they can't see (batch E checkpoint) | 08 |
 | 2026-10-02 | **Bulk zip in the browser** from just-in-time ≤ 60 s signed links (≤ 10 per call), capped at 100 files / 300 MB | No bytes through Vercel functions; one authorisation point (RLS on `document`) as for single downloads; storage CORS verified in the step-1 spike | 08 |
 | 2026-10-02 | **Permissions matrix as code**, every cell probed per role in RLS tests; D4 added rows "Add, edit and import clients" and "Add a financial year" (Raja) | The Users screen had drifted from the code (Limited "edit clients"); one source makes drift fail a test | 08 |
+| 2026-10-25 | **Client upload links in R1 (reverses 2026-09-25 "no upload links"; client login stays out).** One link per request listing scheduled (expected) and ad-hoc items. Ad-hoc items need a type, have an optional needed-by date, and are tracked on Client › Requested + the creator's Today. Listed items only. Link-only security (hashed ≥ 128-bit token, expiry, revoke, caps, rate limits, upload-only page). Uploads are received at once and flagged for mandatory staff review. Ad-hoc items never count in metric 1. Reminders (email/WhatsApp) may carry the link. Single R1: staging/prod and the pilot wait for 10. | Kushal Associates via Raja: clients' files should arrive classified without passing through staff phones/inboxes. Accepted cost: the pilot slips ≥ 1 GST cycle. | 10 |
