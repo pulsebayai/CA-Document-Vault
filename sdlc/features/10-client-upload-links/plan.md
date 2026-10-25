@@ -85,7 +85,7 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
   - **RUN_SLOW Regression on the branch preview** (02/03 write paths are exercised, not changed; it's run anyway because the filing path is reused);
   - sdlc-reviewer + a second security-focused review of the `link_*` functions;
   - PR 10a.
-- [ ] 9. Requested tab: list, Upload (pre-filled and linked), Cancel, Reopen, Revoke, Send again. Proof: RLS + e2e.
+- [x] 9. Requested tab: list, Upload (pre-filled and linked), Cancel, Reopen, Revoke, Send again. Proof: RLS + e2e.
 - [ ] 10. Today: Requested rows and count (D7). Proof: `upload-links-today.test.ts`; **`today.test.ts` / `today-documents.test.ts` / `today.spec.ts` green unedited**; timing on the volume office ≤ the 09 baseline (K3 not worse).
 - [ ] 11. Expiry boundary (IST) and expired-link page; `link_attempt` purge in the daily job. Proof: RLS tests with the test clock.
 - [ ] 12. Settings › Collection link figures (AC-23). Proof: RLS fixtures + e2e.
@@ -146,7 +146,16 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
 - **Step 8: files not delivered as planned:** `src/lib/upload-links/rate.ts` (the IP hash lives in `public.ts`), `src/app/u/loading.tsx` / `error.tsx` (the page has its own loading `role="status"` and error alert), `tests/rls/upload-links-adhoc.test.ts` (cases in `upload-links-public` / `-review`). Extra small files: `clients/link-section.tsx`, `inbox-view.tsx` / `search/queries.ts` / `validation/document-search.ts` (shared channel labels), `documents/selects.ts` (channel for the badge), `document-form.tsx` (read-only channel).
 - **Step 8: pre-existing flaky test, not 10:** `follow-up.test.ts` (06) "never address…" fails when a random client UUID contains ten digits starting 6–9 (`…37992939867b` on 2026-10-25). Fixing it means editing an 06 test → separate chore (Raja approved 2026-10-25; after 10a).
 
+- **One PR for 10a + 10b (Raja 2026-10-25, replaces P2's two PRs).** PR #3's first CI run (40215776683) passed lint, unit, build and the full DB suite, then hit the RLS + e2e job's 55-minute limit during e2e (the previous PR already used 51 min). Raja: build 10b on the same branch and run CI once at the end. The job's limit is raised in step 13 (it would time out again).
+- **Step 9: Send again moves the old request's open ad-hoc items to the new request** (item kind `carry`; same item ID, its documents stay linked) instead of copying them, so an item is never tracked twice. Received and cancelled items stay on the old request. Migration F `20261025182148_upload_links_requested`.
+- **Step 9: Upload from Requested** goes through a new `create_document_for_item(p_item, p)` (invoker): 03's unchanged `create_document` + a definer helper that sets `upload_request_item_id` + an `upload_request_item.filed` activity row, in one transaction. Client and type come from the item (period / registration too when the item has them). It also works for a Received item (D4). The staff-filed document keeps the channel staff chose (no "From client link" badge).
+- **Step 9: the client tab row scrolls sideways on phones.** A fourth tab made the row 30 px too wide at 390 px, which failed 03's existing `client-documents.spec.ts` width check; the nav is now a relative, horizontally scrolling row (test unedited, green).
+
 ## Session log
+### 2026-10-26 (build, 10b)
+- Step 9: Client › Requested tab (count on the tab; items open first with Upload / Cancel / Reopen; links with Revoke / Send again), `create_document_for_item`, carry on Send again.
+  - Tests: `upload-links-requested.test.ts` 4/4 (failed before migration F) + `upload-links-staff` 21/21; e2e `upload-link-requested.spec.ts` 4/4 (axe, 390 px); `client-documents` 4/4 and `add-document` 5/5 unedited; unit 494/494; lint, typecheck, build clean.
+
 ### 2026-10-25 (build)
 - Step 8 (in progress): architecture.md items (public route pattern; RLS-not-applied note; channel lock; caps), ui-reference rows, `/u` smoke test.
   - Reviews: sdlc-reviewer + security review → fixes above; migration E applied on dev 2026-10-25 (md5 = file).

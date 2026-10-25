@@ -61,6 +61,7 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   "upload_request.revoked": fixed("reminders", "revoked an upload link"),
   "upload_request_item.cancelled": fixed("reminders", "cancelled a requested document"),
   "upload_request_item.reopened": fixed("reminders", "reopened a requested document"),
+  "upload_request_item.filed": fixed("documents", "filed a requested document"),
   // Clients & plans (02, 04)
   "client.created": fixed("clients_plans", "added a client"),
   "client.imported": { category: "clients_plans", text: (r) => `imported ${plural(num(r.data.count), "client")}` },

@@ -95,16 +95,16 @@ export async function adHocLinesAs(items: AdHocInput[]): Promise<AdHocItem[] | n
   }));
 }
 
-/** For Retry: the request's still-open items (scheduled: pending; ad-hoc: open). */
+/** For Retry and Send again: the request's still-open items (scheduled: pending; ad-hoc: open, with their IDs). */
 export async function retryContentAs(requestId: string): Promise<{
-  clientId: string; scheduledIds: string[]; adHoc: AdHocInput[];
+  clientId: string; scheduledIds: string[]; adHoc: AdHocInput[]; adHocIds: string[];
 } | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("upload_request")
-    .select("id, client_id, upload_request_item (kind, status, expected_doc_id, doc_type_id, period_id, registration_id, needed_by, note, expected:expected_doc_id (status))")
+    .select("id, client_id, upload_request_item (id, kind, status, expected_doc_id, doc_type_id, period_id, registration_id, needed_by, note, expected:expected_doc_id (status))")
     .eq("id", requestId).maybeSingle();
   if (error || !data) return null;
-  type I = { kind: "scheduled" | "ad_hoc"; status: string; expected_doc_id: string | null; doc_type_id: string | null; period_id: string | null;
+  type I = { id: string; kind: "scheduled" | "ad_hoc"; status: string; expected_doc_id: string | null; doc_type_id: string | null; period_id: string | null;
     registration_id: string | null; needed_by: string | null; note: string | null; expected: { status: string } | null };
   const items = (data as unknown as { client_id: string; upload_request_item: I[] }).upload_request_item;
   return {
@@ -112,5 +112,6 @@ export async function retryContentAs(requestId: string): Promise<{
     scheduledIds: items.filter((i) => i.kind === "scheduled" && i.expected?.status === "pending").map((i) => i.expected_doc_id!),
     adHoc: items.filter((i) => i.kind === "ad_hoc" && i.status === "open").map((i) => ({
       docTypeId: i.doc_type_id!, periodId: i.period_id, registrationId: i.registration_id, neededBy: i.needed_by, note: i.note })),
+    adHocIds: items.filter((i) => i.kind === "ad_hoc" && i.status === "open").map((i) => i.id),
   };
 }

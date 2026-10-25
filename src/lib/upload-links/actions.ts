@@ -40,7 +40,12 @@ const input = z.object({
   itemIds: z.array(z.uuid()).max(50),
   adHoc: z.array(adHocSchema).max(50),
   replaces: z.uuid().nullable().optional(),
-}).refine((v) => v.itemIds.length + v.adHoc.length > 0 && v.itemIds.length + v.adHoc.length <= 50);
+  /** Step 9 (Send again): open ad-hoc items of `replaces` that move to the new request (the database checks). */
+  carry: z.array(z.uuid()).max(50).optional(),
+}).refine((v) => {
+  const n = v.itemIds.length + v.adHoc.length + (v.carry?.length ?? 0);
+  return n > 0 && n <= 50 && (!v.carry?.length || !!v.replaces);
+});
 export type LinkSendInput = z.infer<typeof input>;
 
 const LINK_MESSAGES: Record<string, string> = {
@@ -54,6 +59,10 @@ const LINK_MESSAGES: Record<string, string> = {
   NOT_SENDER: "Only the person who sent the link can retry it.",
   NOT_FAILED: "Only a link whose email failed can be retried.",
   NOT_ACTIVE: "This link is no longer active.",
+  ITEM_STATE: "A requested document changed meanwhile. Refresh and try again.",
+  ALREADY_REVOKED: "This link was already revoked.",
+  REASON_REQUIRED: "Say why it's no longer needed.",
+  REASON_TOO_LONG: "Keep the reason to 300 characters.",
 };
 function failure(op: string, err: { code?: string; message?: string }): Failure {
   const code = /^([A-Z_]+):/.exec(err.message ?? "")?.[1];
@@ -66,6 +75,7 @@ function failure(op: string, err: { code?: string; message?: string }): Failure 
 const touch = (clientId: string) => { revalidatePath(`/clients/${clientId}`); revalidatePath("/today"); };
 const items = (v: LinkSendInput) => [
   ...v.itemIds.map((id) => ({ kind: "scheduled", expected_doc_id: id })),
+  ...(v.carry ?? []).map((id) => ({ kind: "carry", item_id: id })),
   ...v.adHoc.map((a) => ({ kind: "ad_hoc", doc_type_id: a.docTypeId, period_id: a.periodId, registration_id: a.registrationId,
     needed_by: a.neededBy, note: a.note?.trim() || null })),
 ];
@@ -87,7 +97,7 @@ export async function linkOptions(clientId: string): Promise<{ ok: true; data: L
 /** Review N6: say what is wrong with the input instead of always "choose a document". */
 function inputError(raw: unknown): string {
   const r = (raw ?? {}) as Partial<LinkSendInput>;
-  const n = (r.itemIds?.length ?? 0) + (r.adHoc?.length ?? 0);
+  const n = (r.itemIds?.length ?? 0) + (r.adHoc?.length ?? 0) + (r.carry?.length ?? 0);
   if (n === 0) return reminderErrorMessage("NO_ITEMS");
   if (n > 50) return LINK_MESSAGES.TOO_MANY_ITEMS;
   if (r.adHoc?.some((a) => (a?.note ?? "").length > NOTE_MAX)) return LINK_MESSAGES.NOTE_TOO_LONG;
@@ -143,7 +153,8 @@ export async function sendLinkEmail(raw: LinkSendInput): Promise<LinkEmailResult
   } });
   if (begun.error) return failure("begin", begun.error);
   const b = begun.data as { request_id: string; follow_up_id: string; recipient: string; expires_at: string };
-  return deliver(me, p.data.clientId, name, p.data.itemIds, p.data.adHoc, b.request_id, b.follow_up_id, b.recipient, b.expires_at, buildLink(base, token));
+  const adHoc = [...p.data.adHoc, ...(await carriedAdHoc(b.request_id, p.data.carry))];
+  return deliver(me, p.data.clientId, name, p.data.itemIds, adHoc, b.request_id, b.follow_up_id, b.recipient, b.expires_at, buildLink(base, token));
 }
 
 async function deliver(
@@ -217,10 +228,65 @@ export async function recordLinkWhatsApp(raw: LinkSendInput): Promise<LinkWhatsA
   if (r.error) return failure("whatsapp", r.error);
   const d = r.data as { request_id: string; expires_at: string };
   const openUntil = openUntilOf(d.expires_at);
-  const message = await buildLinkMessage(me, p.data.clientId, name, p.data.itemIds, p.data.adHoc, { url: buildLink(base, token), openUntil });
+  const adHoc = [...p.data.adHoc, ...(await carriedAdHoc(d.request_id, p.data.carry))];
+  const message = await buildLinkMessage(me, p.data.clientId, name, p.data.itemIds, adHoc, { url: buildLink(base, token), openUntil });
   touch(p.data.clientId);
   if (!message) return { ok: false, error: "The link was created but the message couldn't be built. Revoke it and try again." };
   return { ok: true, requestId: d.request_id, text: message.text, openUntil };
+}
+
+/** Step 9: the carried items' message lines, read from the new request they now belong to (never from the browser). */
+async function carriedAdHoc(requestId: string, carry: string[] | undefined): Promise<AdHocInput[]> {
+  if (!carry?.length) return [];
+  const { retryContentAs } = await deps();
+  const content = await retryContentAs(requestId);
+  if (!content) return [];
+  return content.adHocIds.flatMap((id, n) => (carry.includes(id) ? [content.adHoc[n]] : []));
+}
+
+export type SendAgainPlan = { scheduledIds: string[]; carryIds: string[]; lines: string[] } | null;
+
+/** AC-18 Send again: what the new link will carry — the request's still-open items. */
+export async function sendAgainPlan(requestId: string): Promise<{ ok: true; plan: SendAgainPlan } | Failure> {
+  const { requireStaff, retryContentAs, adHocLinesAs } = await deps();
+  await requireStaff();
+  if (!uuid.safeParse(requestId).success) return { ok: false, error: "Invalid request." };
+  const content = await retryContentAs(requestId);
+  if (!content) return { ok: true, plan: null };
+  const lines = await adHocLinesAs(content.adHoc);
+  return { ok: true, plan: {
+    scheduledIds: content.scheduledIds, carryIds: content.adHocIds,
+    lines: [
+      ...(content.scheduledIds.length ? [`${content.scheduledIds.length} expected document${content.scheduledIds.length > 1 ? "s" : ""} still due`] : []),
+      ...(lines ?? []).map((l) => [l.group, l.type, l.period].filter(Boolean).join(" · ")),
+    ],
+  } };
+}
+
+/** AC-16: Cancel an open requested document (reason ≤ 300) / Reopen a received one. */
+export async function cancelRequestItem(itemId: string, clientId: string, reason: string): Promise<{ ok: true } | Failure> {
+  const { requireStaff, createClient } = await deps();
+  await requireStaff();
+  if (!uuid.safeParse(itemId).success || !uuid.safeParse(clientId).success) return { ok: false, error: "Invalid request." };
+  const text = String(reason ?? "").trim();
+  if (!text) return { ok: false, error: "Say why it's no longer needed." };
+  if (text.length > 300) return { ok: false, error: "Keep the reason to 300 characters." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cancel_request_item", { p_id: itemId, p_reason: text });
+  if (error) return failure("cancel", error);
+  touch(clientId);
+  return { ok: true };
+}
+
+export async function reopenRequestItem(itemId: string, clientId: string): Promise<{ ok: true } | Failure> {
+  const { requireStaff, createClient } = await deps();
+  await requireStaff();
+  if (!uuid.safeParse(itemId).success || !uuid.safeParse(clientId).success) return { ok: false, error: "Invalid request." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("reopen_request_item", { p_id: itemId });
+  if (error) return failure("reopen", error);
+  touch(clientId);
+  return { ok: true };
 }
 
 /** AC-18: Revoke (requester or Admin/Manager; the database checks). */

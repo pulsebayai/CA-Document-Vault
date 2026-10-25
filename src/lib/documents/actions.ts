@@ -76,7 +76,11 @@ export async function getFileLink(versionId: string, mode: "view" | "download"):
 
 // ── Save (AC-1, AC-4) ────────────────────────────────────────────────────────
 export type UploadedFile = { path: string; size: number; mime: string; fileName: string };
-export type SaveDocumentInput = DocumentMetaInput & { target: "vault" | "inbox"; file?: UploadedFile | null };
+export type SaveDocumentInput = DocumentMetaInput & {
+  target: "vault" | "inbox"; file?: UploadedFile | null;
+  /** 10 (Client › Requested "Upload"): file it for this ad-hoc item — client and type come from the item. */
+  requestItemId?: string | null;
+};
 export type SaveDocumentResult =
   | { ok: true; id: string; docCode: string }
   | { ok: false; error: string; fieldErrors: Record<string, string> };
@@ -84,6 +88,7 @@ export type SaveDocumentResult =
 /** DB rule codes → plain messages (never the DB text: it can echo values). */
 const DB_MESSAGES: Array<[RegExp, string, string?]> = [
   [/SOFT_COPY_NEEDS_FILE/, "Add the file — a soft copy needs one.", "file"],
+  [/ITEM_STATE/, "This requested document was cancelled. Go back to Requested and check it."], // 10
   [/DECLASSIFY/, "A filed document keeps a client and a type. Change them instead of clearing them.", "clientId"],
   [/CLIENT_ARCHIVED/, "This client is archived. Choose another client.", "clientId"],
   [/PERIOD_KIND/, "This period doesn't suit the document type. Choose another period.", "periodId"],
@@ -127,11 +132,15 @@ export async function saveDocument(input: SaveDocumentInput): Promise<SaveDocume
   }
   const d = v.data;
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_document", { p: {
+  const p = {
     received_as: d.receivedAs, channel: d.channel, received_on: d.receivedOn, remark: d.remark,
     client_id: d.clientId, doc_type_id: d.docTypeId, period_id: d.periodId, registration_id: d.registrationId,
     file: filePayload,
-  } });
+  };
+  const itemId = input?.requestItemId && uuid.safeParse(input.requestItemId).success ? input.requestItemId : null;
+  const { data, error } = itemId
+    ? await supabase.rpc("create_document_for_item", { p_item: itemId, p })  // 10: one transaction, item linked
+    : await supabase.rpc("create_document", { p });
   if (error) {
     console.error("documents.save_failed", { code: error.code });
     return { ok: false, ...dbError(error.message) };

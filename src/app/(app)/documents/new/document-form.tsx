@@ -31,6 +31,8 @@ type Props = {
   existing?: DocumentForForm;
   /** From an expected row's "Upload" (04 AC-8): type, period and registration chosen already (validated server-side). */
   prefill?: Prefill | null;
+  /** 10 (Client › Requested "Upload"): the document is filed for this ad-hoc item (client and type are the item's). */
+  requestItemId?: string | null;
 };
 
 type Upload =
@@ -47,7 +49,7 @@ const control = "w-full rounded-[9px] border border-line-2 bg-panel px-3 py-2 ou
 const noSubscribe = () => () => {};
 const kb = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
-export function DocumentForm({ initialClient, initialTypes, periods, groups, today, canPropose, returnTo, existing, prefill }: Props) {
+export function DocumentForm({ initialClient, initialTypes, periods, groups, today, canPropose, returnTo, existing, prefill, requestItemId }: Props) {
   const router = useRouter();
   const uid = useId();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -243,7 +245,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
       periodId: periodChoice === "none" ? "" : periodId, registrationId,
     };
     const r = existing ? await updateDocumentAction({ id: existing.id, ...fields }) : await saveDocument({
-      ...fields,
+      ...fields, requestItemId: requestItemId ?? null,
       file: file && upload.status === "done"
         ? { path: upload.path, size: file.valid.size, mime: file.valid.mime, fileName: file.valid.fileName } : null,
     });
