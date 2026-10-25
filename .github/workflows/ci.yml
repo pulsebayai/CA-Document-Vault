@@ -80,6 +80,8 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SECRET_KEY: ${{ secrets.DEV_SUPABASE_SECRET_KEY }} # dev only — never prod
+      # Feature 10: upload links in e2e point at CI's own build.
+      APP_PUBLIC_URL: http://localhost:3000
       # Test lanes (chore test-isolation): up to 2 runs share dev, each with its own fixture offices/users.
       TEST_LANE_HOLDER: ci-${{ github.run_id }}-${{ github.run_attempt }}
     steps:

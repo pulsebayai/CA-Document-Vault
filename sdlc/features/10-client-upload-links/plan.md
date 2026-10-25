@@ -75,7 +75,7 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
 - [x] 3. Token + message builder (link line, ad-hoc lines; still no PAN/GSTIN/DOC-ID). Proof: unit tests, including the logger spy that shows the token is never logged.
 - [x] 4. Public functions + throttle + ad-hoc status trigger + notification. Proof: `upload-links-public.test.ts` (every refusal in AC-7–9 and AC-20, the same error for unknown/expired/revoked); `upload-links-adhoc.test.ts` (received / needs-correction reopen); **03/04/07 suites green unedited**.
 - [x] 5. Public page + server actions + proxy/headers + ESLint fence. Proof: e2e on 390 px with axe; header assertions; `/u` without a fragment shows "not active"; staff routes still redirect (`auth.spec.ts` unedited).
-- [ ] 6. Remind dialog: link toggle, ad-hoc editor, preview, send (email and WhatsApp), failed-email retry with the same link. Proof: e2e staff send → client upload → expected item Received → document To review on the requester's Today; **`reminders.spec.ts` green unedited**.
+- [x] 6. Remind dialog: link toggle, ad-hoc editor, preview, send (email and WhatsApp), failed-email retry with the same link. Proof: e2e staff send → client upload → expected item Received → document To review on the requester's Today; **`reminders.spec.ts` green unedited**.
 - [ ] 7. Badge, View hidden until reviewed, channel facet label, activity sentences (coverage test), permission rows + probes. Proof: unit coverage test, role-matrix test, e2e.
 - [ ] 8. **10a close:**
   - architecture.md items;
@@ -121,10 +121,18 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
 - **Step 4: the link-upload feed sentence is "Vault received <type> through the client's upload link"** (actor null renders as "Vault"; `describeActivity` is unchanged), not "Client uploaded … via Priya's link".
 - **Step 4: `test_set_link_caps`** is a service-role helper, refused outside `is_test` offices, so cap tests don't need 30 real uploads.
 - **Step 4: DPDP contact.** `office` has no email column, so the page's notice will point to the requester's message ("reply to the message that brought you this link") instead of "the firm's email from settings".
+- **Step 6: no inline "propose a new type" in the Remind dialog.** Ad-hoc items use approved types and the client's existing proposed types. A brand-new type is proposed first through 03's Add document flow. This is a change from spec AC-1; R2 can add it if pilot staff need it.
+- **Step 6: WhatsApp with a link** opens a blank tab on the click (popup blockers), creates the link on the server, then sends that tab to wa.me (`opener` cleared).
+- **Step 6: the link origin** = `APP_PUBLIC_URL`, else on Vercel the deployment's own address (production → `VERCEL_PROJECT_PRODUCTION_URL`, previews → `VERCEL_URL`). CI sets `APP_PUBLIC_URL=http://localhost:3000` (ci.yml). Staging/prod set it explicitly (R1 env checklist).
+- **Step 6: `src/lib/upload-links/actions.ts` loads its server-only dependencies lazily**, so 06's dialog unit tests (which mock only 06's actions) keep running unedited.
+- **Step 6: 06's `src/lib/reminders/queries.ts` gains one exported function, `chosenItemsAs`** (additive). Its other code is unchanged.
 - **Step 2: expiry follows the office day.** `expires_at` = the start of the 15th office day (IST) after creation, so a link is open through day 14. Migration B drops migration A's real-time check, because test offices run on a past clock.
 
 ## Session log
 ### 2026-10-25 (build)
+- Step 6: Remind dialog: "Include upload link" switch, ad-hoc rows (type, period, registration, needed-by, note with a live PII check), preview with "‹secure upload link›", Send email (two-phase, Retry with a new token), Open WhatsApp, Revoke.
+  - e2e `upload-link-send.spec.ts` 3/3; 06's `reminders.spec` + `today.spec` + step 5 `upload-link.spec` 13/13 unedited.
+  - Unit 494/494 (06's dialog unit tests unedited); lint + typecheck clean.
 - Step 5: `/u` page (client component reads the fragment, POSTs it), `src/app/u/actions.ts`, `src/lib/upload-links/public.ts` (server-only, ESLint allow-list), proxy (`/u` public + Referrer-Policy no-referrer, X-Robots-Tag noindex, Cache-Control no-store), `.env.example` (`APP_PUBLIC_URL`, `LINK_IP_SALT`).
   - e2e `upload-link.spec.ts` 5/5 on a local production build: headers; inactive page; 390 px + axe; nothing about the client on the page; a real browser PUT → filed To review for the requester → expected item received; ZIP refused; staff routes still redirect.
   - `auth.spec` + `smoke.spec` unedited 10/10; lint, typecheck and unit clean.
