@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { Badge, Card, PageHeader } from "@/components/ui";
 import type { InboxItem } from "@/lib/documents/queries";
-import { CHANNELS, RECEIVED_AS } from "@/lib/validation/document";
+import { CHANNEL_LABELS, RECEIVED_AS } from "@/lib/validation/document";
 
 // Inbox (mockup 02, spec AC-7): documents that still need a client or a type, newest first.
 
 const RECEIVED_LABEL = Object.fromEntries(RECEIVED_AS.map((r) => [r.value, r.label]));
-const CHANNEL_LABEL = Object.fromEntries(CHANNELS.map((c) => [c.value, c.label]));
+const CHANNEL_LABEL = CHANNEL_LABELS; // 10: includes "Upload link"
 const day = new Intl.DateTimeFormat("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
 
 /** "waiting 3 h" / "waiting 2 days" (AC-7: how long it has waited). */

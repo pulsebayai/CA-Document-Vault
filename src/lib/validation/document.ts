@@ -103,6 +103,12 @@ export const CHANNELS = [
   { value: "other", label: "Other" },
 ] as const;
 export type Channel = (typeof CHANNELS)[number]["value"];
+/** Every channel a document can have. Staff choose from CHANNELS; "upload_link" is set only by client upload links (10). */
+export const DOCUMENT_CHANNELS = [...CHANNELS, { value: "upload_link", label: "Upload link" }] as const;
+export type DocumentChannel = (typeof DOCUMENT_CHANNELS)[number]["value"];
+export const CHANNEL_LABELS: Readonly<Record<string, string>> = Object.fromEntries(DOCUMENT_CHANNELS.map((c) => [c.value, c.label]));
+/** 10 (D3): a file a client sent by link opens only as a download until someone has reviewed it. */
+export const viewBlockedForLink = (d: { channel: string; status: string }) => d.channel === "upload_link" && d.status !== "reviewed";
 
 export type DocumentMetaInput = {
   receivedAs?: unknown; channel?: unknown; receivedOn?: unknown; remark?: unknown;

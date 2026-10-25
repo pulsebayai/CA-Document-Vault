@@ -6,7 +6,7 @@ import { z } from "zod";
 import { requireStaff } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
 import {
-  MIME_BY_EXTENSION, canView, extensionOf, sanitiseFileName, validateDocumentMeta, validateFile,
+  MIME_BY_EXTENSION, canView, extensionOf, sanitiseFileName, validateDocumentMeta, validateFile, viewBlockedForLink,
   type AllowedExtension, type DocumentMetaInput,
 } from "@/lib/validation/document";
 import { istDate } from "./period";
@@ -62,6 +62,11 @@ export async function getFileLink(versionId: string, mode: "view" | "download"):
   const v = await lookupVersion(await createClient(), versionId);
   if (!v || !v.isCurrent) return { ok: false, error: "File not found." };
   if (mode === "view" && !canView(v.mimeType)) return { ok: false, error: "This file can't be shown in the browser. Download it instead." };
+  if (mode === "view") {
+    // 10 (D3): a file a client sent by link isn't opened in the browser until someone has reviewed it.
+    const { data: doc } = await (await createClient()).from("document").select("channel, status").eq("id", v.documentId).maybeSingle();
+    if (!doc || viewBlockedForLink(doc)) return { ok: false, error: "Sent by the client — review it before opening it in the browser, or download it." };
+  }
   try {
     return { ok: true, url: await signFileLink(v.storagePath, v.fileName, mode) };
   } catch {

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireStaff } from "@/lib/auth/staff";
 import { canManageCatalogue } from "@/lib/auth/roles";
 import { getDocumentDetail } from "@/lib/documents/queries";
-import { CHANNELS, RECEIVED_AS } from "@/lib/validation/document";
+import { CHANNEL_LABELS, RECEIVED_AS, viewBlockedForLink } from "@/lib/validation/document";
 import { Badge, Card } from "@/components/ui";
 import { FileButtons } from "../file-buttons";
 import { ArchiveDocument, NewVersion } from "./document-controls";
@@ -21,7 +21,7 @@ import { ActivityCard, CARD_LIMIT } from "./activity-card";
 // archive (Admin/Manager). RLS: a document the user can't see is Not Found (AC-12).
 
 const RECEIVED_LABEL = Object.fromEntries(RECEIVED_AS.map((r) => [r.value, r.label]));
-const CHANNEL_LABEL = Object.fromEntries(CHANNELS.map((c) => [c.value, c.label]));
+const CHANNEL_LABEL = CHANNEL_LABELS; // 10: includes "Upload link"
 const when = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const date = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 const size = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
@@ -65,6 +65,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
             <span>{d.docCode}</span>
             {d.receivedAs !== "soft_copy" && <Badge tone={d.receivedAs === "original" ? "bad" : "warn"}>{RECEIVED_LABEL[d.receivedAs]}</Badge>}
             {!d.classified && <Badge tone="warn">In Inbox</Badge>}
+            {d.channel === "upload_link" && <Badge tone="accent">From client link</Badge>}
             {archived && <Badge tone="muted">Archived</Badge>}
           </p>
         </div>
@@ -89,7 +90,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
             {current ? (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="min-w-0 break-words">{current.fileName} <span className="text-[13px] text-ink-3">· {size(current.sizeBytes)} · version {current.versionNo}</span></p>
-                <FileButtons versionId={current.id} mimeType={current.mimeType} docCode={d.docCode} />
+                <FileButtons versionId={current.id} mimeType={current.mimeType} docCode={d.docCode} viewBlocked={viewBlockedForLink(d)} />
               </div>
             ) : (
               <p className="mt-2 text-[13.5px] text-ink-2">No file yet — {RECEIVED_LABEL[d.receivedAs].toLowerCase()} only.</p>

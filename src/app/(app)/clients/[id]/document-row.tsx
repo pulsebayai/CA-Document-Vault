@@ -49,6 +49,7 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
           {d.receivedAs === "original" && <Badge tone="bad">Original</Badge>}
           {d.versionCount > 1 && <Badge tone="muted">{d.versionCount} versions</Badge>}
           {d.proposed && <Badge tone="accent">Proposed type</Badge>}
+          {d.fromLink && <Badge tone="accent">From client link</Badge>}
           {held !== null && <span className="text-ink-3">· Held {held} day{held === 1 ? "" : "s"}</span>}
         </p>
         <p className={`mt-0.5 break-words text-[13px] font-medium ${TONE[state.kind]}`} data-testid="doc-state">{state.text}</p>
@@ -57,7 +58,8 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
       {action === "dispatch" && (
         <DispatchDialog clientId={clientId} clientName={clientName} documentId={d.id} label={label} today={today} onMessage={(text) => setMsg({ ok: true, text })} />
       )}
-      {d.current && <FileButtons versionId={d.current.id} mimeType={d.current.mimeType} docCode={d.docCode} />}
+      {d.current && <FileButtons versionId={d.current.id} mimeType={d.current.mimeType} docCode={d.docCode}
+        viewBlocked={Boolean(d.fromLink) && d.status !== "reviewed"} />}
       {/* Always mounted, so the result is announced even though the action that produced it has gone. */}
       <p role="status" aria-live="polite" className={`basis-full text-[13px] empty:hidden ${msg?.ok === false ? "text-bad" : "text-ok"}`}>{msg?.text ?? ""}</p>
     </li>
