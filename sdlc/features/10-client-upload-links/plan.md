@@ -74,7 +74,7 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
 - [x] 2. Staff functions + note guard (SQL + TS, same vectors) + 06 send functions taking `p_request_id`. Proof: RLS tests AC-1–5; **06's `follow-up.test.ts` and `chasing-metric.test.ts` green unedited**.
 - [x] 3. Token + message builder (link line, ad-hoc lines; still no PAN/GSTIN/DOC-ID). Proof: unit tests, including the logger spy that shows the token is never logged.
 - [x] 4. Public functions + throttle + ad-hoc status trigger + notification. Proof: `upload-links-public.test.ts` (every refusal in AC-7–9 and AC-20, the same error for unknown/expired/revoked); `upload-links-adhoc.test.ts` (received / needs-correction reopen); **03/04/07 suites green unedited**.
-- [ ] 5. Public page + server actions + proxy/headers + ESLint fence. Proof: e2e on 390 px with axe; header assertions; `/u` without a fragment shows "not active"; staff routes still redirect (`auth.spec.ts` unedited).
+- [x] 5. Public page + server actions + proxy/headers + ESLint fence. Proof: e2e on 390 px with axe; header assertions; `/u` without a fragment shows "not active"; staff routes still redirect (`auth.spec.ts` unedited).
 - [ ] 6. Remind dialog: link toggle, ad-hoc editor, preview, send (email and WhatsApp), failed-email retry with the same link. Proof: e2e staff send → client upload → expected item Received → document To review on the requester's Today; **`reminders.spec.ts` green unedited**.
 - [ ] 7. Badge, View hidden until reviewed, channel facet label, activity sentences (coverage test), permission rows + probes. Proof: unit coverage test, role-matrix test, e2e.
 - [ ] 8. **10a close:**
@@ -125,6 +125,11 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
 
 ## Session log
 ### 2026-10-25 (build)
+- Step 5: `/u` page (client component reads the fragment, POSTs it), `src/app/u/actions.ts`, `src/lib/upload-links/public.ts` (server-only, ESLint allow-list), proxy (`/u` public + Referrer-Policy no-referrer, X-Robots-Tag noindex, Cache-Control no-store), `.env.example` (`APP_PUBLIC_URL`, `LINK_IP_SALT`).
+  - e2e `upload-link.spec.ts` 5/5 on a local production build: headers; inactive page; 390 px + axe; nothing about the client on the page; a real browser PUT → filed To review for the requester → expected item received; ZIP refused; staff routes still redirect.
+  - `auth.spec` + `smoke.spec` unedited 10/10; lint, typecheck and unit clean.
+  - No firm-email setting (Raja 2026-10-25: go ahead without it). The DPDP notice says "reply to the message that brought you this link".
+  - The DOC-ID is not returned to the client page (AC-6).
 - Step 4: migrations `20261025134153_upload_links_public` (C) + `20261025134332_upload_links_notification_kind` (D) applied to dev (md5 = files).
   - `upload-links-public.test.ts` 17/17: service-role only; page data has no client name/code/email/mobile; the same "not active" for unknown/revoked/expired/requester left; IP + per-link throttles; ZIP/empty/oversize; foreign items (other link, other office, made-up); caps; requester-owned To review doc via 03; 04 link; document.link_upload actor null; one notification a day; idempotent register; foreign path refused; Limited can't see it; ad-hoc status with needs-correction and reopen; expiry day 14/15.
   - Regression unedited: documents, document-storage, review-dispatch, expected-docs 139/139; type-governance, expected-plan, activity-feed, upload-links, upload-links-staff 119 + 1 skipped (pre-existing RUN_SLOW skip).
