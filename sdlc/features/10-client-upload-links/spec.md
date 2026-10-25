@@ -1,5 +1,5 @@
 # Spec: Client upload links
-Intent: ./intent.md · Status: draft · Date: 2026-10-25
+Intent: ./intent.md · Status: **approved (Raja 2026-10-25: D1–D8 as recommended)** · Date: 2026-10-25
 Screens:
 - No mockup exists for the client page or the request flow. The new screens follow `references/ui-reference.md` tokens and components; an agreed deviation row is added there.
 - Staff screens extended: `01-today.jpg` (Today rows), `10-client-documents.jpg` (Remind on expected rows), Client › Expected / new **Requested** tab.
@@ -216,7 +216,7 @@ All new tests join the regression suite. **Smoke-safe for prod:** one read-only 
 ## Out of scope
 Client login or portal; clients viewing or downloading; "Other" uploads; automatic or scheduled link sends; reminders for ad-hoc items; a malware scanner; CAPTCHA; the WhatsApp Business API; links covering more than one client; multi-language pages.
 
-## Decisions for Raja (recommendation first)
+## Decisions (Raja 2026-10-25: all eight approved as recommended)
 - **D1. Who owns a link upload?** The **requester** becomes `received_by` / `uploaded_by` and gets it on Today (recommended: the schema needs a staff owner, and the requester chases it). Alternative: the client's incharge.
 - **D2. Link expiry:** **14 days** (recommended) · 7 · 30.
 - **D3. Malware stance:** **no scanner in R1; ZIP refused for links; link uploads download-only until reviewed** (recommended). [Likely] An India-resident scanning service would add a new provider and cost. Alternative: also refuse XLS/DOCX (macros). That's safer, but clients often send Excel.
