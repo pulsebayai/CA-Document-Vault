@@ -3,7 +3,8 @@ import { GST_STATES } from "@/lib/validation/gst-states";
 
 // Feature 06 — AC-10: the reminder text (pure; unit-tested in tests/unit/reminder-message.test.ts).
 // One text for email (plain + simple HTML) and WhatsApp. English only.
-// Never: PAN, GSTIN/TAN numbers, links, attachments, DOC-IDs or internal remarks. Every value that comes from the
+// Never: PAN, GSTIN/TAN numbers, links, attachments, DOC-IDs or internal remarks. Feature 10: the per-request upload
+// link is the only link allowed; it is validated to be exactly <origin>/u#<token>, never taken from data. Every value that comes from the
 // database is scrubbed of those patterns, so a client or proposed-type name can't smuggle one in.
 
 export type ReminderItem = {
@@ -18,9 +19,25 @@ export type ReminderItem = {
   overdueFrom: string;
 };
 
+/** Feature 10: a document asked for once ("as needed" or one-off), with an optional needed-by date and a note. */
+export type AdHocItem = {
+  group: string;
+  type: string;
+  /** period.label, or null for undated types. */
+  period: string | null;
+  /** YYYY-MM-DD or null. */
+  neededBy: string | null;
+  /** Shown publicly; already PII-checked on save, scrubbed again here. */
+  note: string | null;
+};
+
 export type ReminderInput = {
   clientName: string;
   items: ReminderItem[];
+  /** Feature 10: ad-hoc items on an upload request. */
+  adHoc?: AdHocItem[];
+  /** Feature 10: the per-request upload link (the only link a reminder may carry) and its last open day. */
+  uploadLink?: { url: string; openUntil: string } | null;
   senderName: string;
   firmName: string;
   /** Office date (YYYY-MM-DD), for "overdue since" / "due by" wording. */
@@ -71,24 +88,42 @@ export function itemLine(item: ReminderItem, today: string): string {
   return `${scrub(item.group)} · ${scrub(item.type)}${registrationText(item)} · ${scrub(periodText(item.period))} — ${stateText(item.overdueFrom, today)}`;
 }
 
+/** Feature 10: "Other · Rent agreement — for the new office lease — needed by 5 Nov" */
+export function adHocLine(item: AdHocItem, today: string): string {
+  const period = item.period ? ` · ${scrub(periodText(item.period))}` : "";
+  const note = item.note ? ` — ${scrub(item.note)}` : "";
+  const need = item.neededBy ? ` — needed by ${shortDate(item.neededBy, today)}` : "";
+  return `${scrub(item.group)} · ${scrub(item.type)}${period}${note}${need}`;
+}
+
+/** The upload link is ours, never data: it must be exactly an https origin + /u#<43-char token>. */
+const LINK = /^https:\/\/[a-z0-9.-]+(?::\d+)?\/u#[A-Za-z0-9_-]{43}$/i;
+const LOCAL_LINK = /^http:\/\/localhost(?::\d+)?\/u#[A-Za-z0-9_-]{43}$/;
+
 const escapeHtml = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 
 export function buildReminderMessage(input: ReminderInput): ReminderMessage {
-  if (input.items.length === 0) throw new Error("NO_ITEMS");
+  const adHoc = input.adHoc ?? [];
+  if (input.items.length === 0 && adHoc.length === 0) throw new Error("NO_ITEMS");
+  const link = input.uploadLink ?? null;
+  if (link && !LINK.test(link.url) && !LOCAL_LINK.test(link.url)) throw new Error("BAD_LINK");
   const client = scrub(input.clientName);
   const sender = scrub(input.senderName);
   const firm = scrub(input.firmName);
-  const lines = input.items.map((i) => itemLine(i, input.today));
-  const intro = "The following documents are pending from you:";
-  const ask = "Please send them at the earliest. If you have already sent them, please ignore this message.";
+  const lines = [...input.items.map((i) => itemLine(i, input.today)), ...adHoc.map((i) => adHocLine(i, input.today))];
+  const intro = input.items.length > 0 ? "The following documents are pending from you:" : "Please send us the following documents:";
+  const ask = link
+    ? `You can upload them securely here (open until ${shortDate(link.openUntil, input.today)}):`
+    : "Please send them at the earliest. If you have already sent them, please ignore this message.";
 
-  const text = [`Dear ${client},`, "", intro, ...lines.map((l) => `- ${l}`), "", ask, "", "Regards,", sender, firm].join("\n");
+  const text = [`Dear ${client},`, "", intro, ...lines.map((l) => `- ${l}`), "", ask, ...(link ? [link.url] : []),
+    "", "Regards,", sender, firm].join("\n");
   const html = [
     `<p>Dear ${escapeHtml(client)},</p>`,
     `<p>${escapeHtml(intro)}</p>`,
     `<ul>${lines.map((l) => `<li>${escapeHtml(l)}</li>`).join("")}</ul>`,
-    `<p>${escapeHtml(ask)}</p>`,
+    `<p>${escapeHtml(ask)}${link ? `<br><a href="${escapeHtml(link.url)}">${escapeHtml(link.url)}</a>` : ""}</p>`,
     `<p>Regards,<br>${escapeHtml(sender)}<br>${escapeHtml(firm)}</p>`,
   ].join("\n");
   return { subject: `Documents pending — ${firm}`, text, html };

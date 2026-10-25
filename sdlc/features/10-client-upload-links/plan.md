@@ -72,7 +72,7 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
   If (b) fails, stop and re-decide (fallback: the token in the path plus Vercel log redaction). Proof: notes in the session log.
 - [x] 1. Schema migration + RLS tests (visibility per role; no app writes; reset purges the new tables). Proof: `upload-links.test.ts` (schema part); existing `reset_test_office` test green unedited.
 - [x] 2. Staff functions + note guard (SQL + TS, same vectors) + 06 send functions taking `p_request_id`. Proof: RLS tests AC-1–5; **06's `follow-up.test.ts` and `chasing-metric.test.ts` green unedited**.
-- [ ] 3. Token + message builder (link line, ad-hoc lines; still no PAN/GSTIN/DOC-ID). Proof: unit tests, including the logger spy that shows the token is never logged.
+- [x] 3. Token + message builder (link line, ad-hoc lines; still no PAN/GSTIN/DOC-ID). Proof: unit tests, including the logger spy that shows the token is never logged.
 - [ ] 4. Public functions + throttle + ad-hoc status trigger + notification. Proof: `upload-links-public.test.ts` (every refusal in AC-7–9 and AC-20, the same error for unknown/expired/revoked); `upload-links-adhoc.test.ts` (received / needs-correction reopen); **03/04/07 suites green unedited**.
 - [ ] 5. Public page + server actions + proxy/headers + ESLint fence. Proof: e2e on 390 px with axe; header assertions; `/u` without a fragment shows "not active"; staff routes still redirect (`auth.spec.ts` unedited).
 - [ ] 6. Remind dialog: link toggle, ad-hoc editor, preview, send (email and WhatsApp), failed-email retry with the same link. Proof: e2e staff send → client upload → expected item Received → document To review on the requester's Today; **`reminders.spec.ts` green unedited**.
@@ -120,6 +120,7 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
 
 ## Session log
 ### 2026-10-25 (build)
+- Step 3: `src/lib/upload-links/{token,note}.ts` and the message builder (`adHocLine`, upload link exactly `<origin>/u#<43-char token>`, else `BAD_LINK`). New unit tests 3 files; 06's `reminder-message.test.ts` unedited; full unit suite 494/494; lint + typecheck clean.
 - Step 2: migration `20261025132625_upload_links_staff` applied to dev (md5 of the applied text = the file, for A and B). `upload-links-staff.test.ts` 21/21; 06/08 regression (follow-up, chasing-metric, activity-visibility) + step 1: 40/40 unedited; activity-catalogue coverage 12/12 (5 new sentences); lint + typecheck clean.
 - Step 0a: JWT-claims switch proven on dev in a rolled-back DO block: create_document as the requester → DOC-ID issued, received_by = actor = requester; an unknown/inactive sub → `ROLE_REQUIRED`. P1 holds.
 - Step 0b: WhatsApp keeps the URL fragment. Raja tapped `en.wikipedia.org/wiki/India#Etymology` from WhatsApp and the page landed on the heading (a Vercel share link wasn't findable, so a public anchor page was used instead). [Uncertain] Confirm the second platform (Android vs iPhone) when convenient.
