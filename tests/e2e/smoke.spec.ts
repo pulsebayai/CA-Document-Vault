@@ -29,3 +29,11 @@ test("the client upload page without a link shows 'no longer active' with privat
   await expect(page).toHaveURL(/\/u$/);
   await expect(page.getByRole("heading", { name: "This link is no longer active" })).toBeVisible();
 });
+
+// Feature 10 step 11: the storage sweep refuses a call without the cron secret (prod-safe: nothing is changed).
+test("the storage sweep route refuses a call without the cron secret", async ({ request }) => {
+  const res = await request.get("/api/cron/storage-sweep", { maxRedirects: 0 });
+  expect(res.status()).toBe(401);
+  const wrong = await request.get("/api/cron/storage-sweep", { headers: { Authorization: "Bearer not-the-secret-123456" }, maxRedirects: 0 });
+  expect(wrong.status()).toBe(401);
+});

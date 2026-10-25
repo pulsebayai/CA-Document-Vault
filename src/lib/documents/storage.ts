@@ -14,3 +14,6 @@ export const verifyUpload = (path: string, expected: { size: number; mime: strin
 
 export const signFileLink = (path: string, fileName: string, mode: "view" | "download") =>
   core.createFileLink(createAdminClient(), path, fileName, mode);
+
+/** 10 step 11: the daily storage sweep (unregistered uploads older than 24 hours). Called only by the cron route. */
+export const sweepOrphanObjects = () => core.removeOrphanObjects(createAdminClient());

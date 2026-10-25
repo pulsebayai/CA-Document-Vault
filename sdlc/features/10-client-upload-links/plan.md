@@ -87,7 +87,7 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
   - PR 10a.
 - [x] 9. Requested tab: list, Upload (pre-filled and linked), Cancel, Reopen, Revoke, Send again. Proof: RLS + e2e.
 - [x] 10. Today: Requested rows and count (D7). Proof: `upload-links-today.test.ts`; **`today.test.ts` / `today-documents.test.ts` / `today.spec.ts` green unedited**; timing on the volume office ≤ the 09 baseline (K3 not worse).
-- [ ] 11. Expiry boundary (IST) and expired-link page; `link_attempt` purge in the daily job. Proof: RLS tests with the test clock.
+- [x] 11. Expiry boundary (IST) and expired-link page; `link_attempt` purge in the daily job. Proof: RLS tests with the test clock.
 - [ ] 12. Settings › Collection link figures (AC-23). Proof: RLS fixtures + e2e.
 - [ ] 13. **10b close:** full suite, sdlc-reviewer, PR 10b; release-checklist items confirmed in roadmap (security check, WhatsApp/email real send, phone upload).
 
@@ -154,8 +154,13 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
 - **Step 10: Today contract (migration G `20261025183853_upload_links_today`, replaces 06's `today_items`, same signature).** Requested rows `{item_id, kind: 'requested', due, …}` on the requester's Mine and on Everyone; `counts.requested` = all open ad-hoc items in scope, `counts.requested_later` = those not shown as rows (no needed-by date in the next 7 days, D7); `p_show = 'requested'`; card `requested` count; card order adds overdue requested rows to the overdue count. Expected counts and rows are unchanged; 06's counts are expected-only, so a requested row is never counted as Overdue. A link upload To review is also on the requester's Mine (AC-13, moved here from step 8). The TS additions (`counts.requested`, `card.asks`) are optional, so 06's view unit tests stay unedited.
 - **Step 10: the volume re-time wasn't done.** The persistent `e2e office volume` on dev is now empty (purged since 09: 0 clients, 0 items), so there was nothing to time against. Re-seeding at 09's scale (1,000 clients, ~183k items) is a long job. Today already times out at that volume (K3: 13.5–20 s). [Likely] 10 adds little: the new `asks` part reads only open ad-hoc items through `upload_request_item_office_open_idx`, and the documents part gains one OR on columns of the rows it already reads. **Raja to decide:** re-seed and re-time now, or re-time with the K3 fix (which must re-seed anyway).
 
+- **Step 11: storage sweep = a Vercel Cron route, not SQL.** Supabase refuses SQL deletes on `storage.objects` (`protect_objects_delete`), so `orphan_objects()` (service role, migration H `20261025184731_upload_links_maintenance`) lists files no document version points at, and `/api/cron/storage-sweep` (daily 19:30 UTC in `vercel.json`) removes those older than 24 hours through the Storage API (`storage.ts`, the existing service-role module). It needs a new server env var **`CRON_SECRET`** (≥ 16 chars) on each environment; without it the route refuses (401) and nothing is removed. The sweep also cleans 03's orphans (03 had left this for "before pilot month 2"). Dev holds ≥ 1,000 such files from test runs; the first sweep after `CRON_SECRET` is set on the dev project removes up to 500 a day.
+- **Step 11: `link_attempt` purge** runs in the database (pg_cron `link-attempts-daily`, 19:00 UTC), not in 04's job. **The expired-link page is the generic "no longer active" page** (AC-8: one answer for every unusable link); the IST expiry boundary was already tested in step 4 (AC-19).
+
 ## Session log
 ### 2026-10-26 (build, 10b)
+- Step 11: `link_attempt` 7-day purge (pg_cron), `orphan_objects()`, storage sweep route + Vercel Cron, smoke check that the route refuses without the secret.
+  - Tests: `upload-links-maintenance.test.ts` 3/3 (failed before migration H); smoke 4/4 + `upload-link.spec.ts` 5/5; cron job verified on dev (`0 19 * * *`).
 - Step 10: Today — Requested count + filter, requested rows (Open / Upload pre-filled for the item), note for undated items, link uploads on the requester's Mine.
   - Tests: `upload-links-today.test.ts` 5/5 (all failed before migration G); 06's `today.test.ts` + `today-documents.test.ts` green unedited (27/27 together); e2e `upload-link-today.spec.ts` 2/2, 06's `today.spec.ts` 6/6 + `today-documents.spec.ts` 1/1 unedited; unit 494/494; lint + typecheck clean.
 - Step 9: Client › Requested tab (count on the tab; items open first with Upload / Cancel / Reopen; links with Revoke / Send again), `create_document_for_item`, carry on Send again.

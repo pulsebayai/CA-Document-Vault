@@ -74,3 +74,21 @@ export async function lookupVersion(asUser: SupabaseClient, versionId: string): 
     mimeType: data.mime_type, isCurrent: doc?.current_version_id === data.id,
   };
 }
+
+/**
+ * 10 step 11: removes stored files no document version points at (uploads never registered), oldest first, in
+ * batches of 100. The database lists them (orphan_objects, service role); Storage's API deletes them (SQL can't).
+ * Returns how many were removed. A file younger than `olderThanHours` is never touched: tickets live 2 hours.
+ */
+export async function removeOrphanObjects(admin: SupabaseClient, olderThanHours = 24, limit = 500): Promise<number> {
+  const { data, error } = await admin.rpc("orphan_objects", { p_older_than_hours: Math.max(olderThanHours, 24), p_limit: limit });
+  if (error) throw new Error("ORPHAN_LIST_FAILED");
+  const names = ((data ?? []) as Array<{ name: string }>).map((r) => r.name);
+  let removed = 0;
+  for (let i = 0; i < names.length; i += 100) {
+    const { data: gone, error: e } = await admin.storage.from(BUCKET).remove(names.slice(i, i + 100));
+    if (e) throw new Error("ORPHAN_REMOVE_FAILED");
+    removed += gone?.length ?? 0;
+  }
+  return removed;
+}
