@@ -73,7 +73,7 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
 - [x] 1. Schema migration + RLS tests (visibility per role; no app writes; reset purges the new tables). Proof: `upload-links.test.ts` (schema part); existing `reset_test_office` test green unedited.
 - [x] 2. Staff functions + note guard (SQL + TS, same vectors) + 06 send functions taking `p_request_id`. Proof: RLS tests AC-1–5; **06's `follow-up.test.ts` and `chasing-metric.test.ts` green unedited**.
 - [x] 3. Token + message builder (link line, ad-hoc lines; still no PAN/GSTIN/DOC-ID). Proof: unit tests, including the logger spy that shows the token is never logged.
-- [ ] 4. Public functions + throttle + ad-hoc status trigger + notification. Proof: `upload-links-public.test.ts` (every refusal in AC-7–9 and AC-20, the same error for unknown/expired/revoked); `upload-links-adhoc.test.ts` (received / needs-correction reopen); **03/04/07 suites green unedited**.
+- [x] 4. Public functions + throttle + ad-hoc status trigger + notification. Proof: `upload-links-public.test.ts` (every refusal in AC-7–9 and AC-20, the same error for unknown/expired/revoked); `upload-links-adhoc.test.ts` (received / needs-correction reopen); **03/04/07 suites green unedited**.
 - [ ] 5. Public page + server actions + proxy/headers + ESLint fence. Proof: e2e on 390 px with axe; header assertions; `/u` without a fragment shows "not active"; staff routes still redirect (`auth.spec.ts` unedited).
 - [ ] 6. Remind dialog: link toggle, ad-hoc editor, preview, send (email and WhatsApp), failed-email retry with the same link. Proof: e2e staff send → client upload → expected item Received → document To review on the requester's Today; **`reminders.spec.ts` green unedited**.
 - [ ] 7. Badge, View hidden until reviewed, channel facet label, activity sentences (coverage test), permission rows + probes. Proof: unit coverage test, role-matrix test, e2e.
@@ -116,10 +116,19 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
   - The raw token is never stored, so it can't be re-sent.
   - The old token was never delivered, so replacing it is also safer.
 - **Step 2: "Send again" is `begin_link_email` / `record_link_whatsapp` with `replaces`** (the old link is revoked and `replaced_by` set in the same call). There is no separate `resend_upload_request`.
+- **Step 4: migration D widens 05's `notification_entity_type_check`** (`type_decision`↔`doc_type`, `link_upload`↔`upload_request`). It was missed in the plan's file list and caught by the first test run.
+- **Step 4: ad-hoc reopen uses `upload_request_item.reopened_at`** (04's rule): after a reopen, only documents filed later count.
+- **Step 4: the link-upload feed sentence is "Vault received <type> through the client's upload link"** (actor null renders as "Vault"; `describeActivity` is unchanged), not "Client uploaded … via Priya's link".
+- **Step 4: `test_set_link_caps`** is a service-role helper, refused outside `is_test` offices, so cap tests don't need 30 real uploads.
+- **Step 4: DPDP contact.** `office` has no email column, so the page's notice will point to the requester's message ("reply to the message that brought you this link") instead of "the firm's email from settings".
 - **Step 2: expiry follows the office day.** `expires_at` = the start of the 15th office day (IST) after creation, so a link is open through day 14. Migration B drops migration A's real-time check, because test offices run on a past clock.
 
 ## Session log
 ### 2026-10-25 (build)
+- Step 4: migrations `20261025134153_upload_links_public` (C) + `20261025134332_upload_links_notification_kind` (D) applied to dev (md5 = files).
+  - `upload-links-public.test.ts` 17/17: service-role only; page data has no client name/code/email/mobile; the same "not active" for unknown/revoked/expired/requester left; IP + per-link throttles; ZIP/empty/oversize; foreign items (other link, other office, made-up); caps; requester-owned To review doc via 03; 04 link; document.link_upload actor null; one notification a day; idempotent register; foreign path refused; Limited can't see it; ad-hoc status with needs-correction and reopen; expiry day 14/15.
+  - Regression unedited: documents, document-storage, review-dispatch, expected-docs 139/139; type-governance, expected-plan, activity-feed, upload-links, upload-links-staff 119 + 1 skipped (pre-existing RUN_SLOW skip).
+  - One fix was in my own new test (`received_on` follows the real filing day, as in 03).
 - Step 3: `src/lib/upload-links/{token,note}.ts` and the message builder (`adHocLine`, upload link exactly `<origin>/u#<43-char token>`, else `BAD_LINK`). New unit tests 3 files; 06's `reminder-message.test.ts` unedited; full unit suite 494/494; lint + typecheck clean.
 - Step 2: migration `20261025132625_upload_links_staff` applied to dev (md5 of the applied text = the file, for A and B). `upload-links-staff.test.ts` 21/21; 06/08 regression (follow-up, chasing-metric, activity-visibility) + step 1: 40/40 unedited; activity-catalogue coverage 12/12 (5 new sentences); lint + typecheck clean.
 - Step 0a: JWT-claims switch proven on dev in a rolled-back DO block: create_document as the requester → DOC-ID issued, received_by = actor = requester; an unknown/inactive sub → `ROLE_REQUIRED`. P1 holds.

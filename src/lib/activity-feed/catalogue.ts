@@ -55,6 +55,8 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
     category: "reminders",
     text: (r) => `sent an upload link for ${plural(num(r.data.scheduled) + num(r.data.ad_hoc), "document")}`,
   },
+  // A link upload has no actor (the client did it); the feed's "Vault" reads as "Vault received …".
+  "document.link_upload": { category: "documents", text: (r) => `received ${doc(r)} through the client's upload link` },
   "upload_request.retried": fixed("reminders", "re-sent an upload link after a failed email"),
   "upload_request.revoked": fixed("reminders", "revoked an upload link"),
   "upload_request_item.cancelled": fixed("reminders", "cancelled a requested document"),
