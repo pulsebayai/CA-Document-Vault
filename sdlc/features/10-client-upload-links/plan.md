@@ -140,11 +140,11 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
   - channel `upload_link` set only by `link_register` and never changed (`document_channel_guard`); the Edit form shows it read-only (`validateDocumentMeta` gains an optional `existingChannel`);
   - no storage call before the token check; `LINK_IP_SALT` fail-closed on Vercel production / Brevo; `/u` public as exactly `/u`; error state announced; specific input errors; a failed message build closes the pending email.
 - **Step 8: AC-22 got its test** (`collection_metric` unchanged by ad-hoc send, upload, Needs correction, cancel).
-- **Step 8: "Today of the requester" (AC-13, link uploads To review) moves to step 10**, where Today is changed and re-timed at volume. Today, a link upload appears on the client assignee's Today, not the sender's. (Recommended to Raja 2026-10-25.)
-- **Step 8: unregistered-object sweep moves to step 11** with the `link_attempt` purge (the lifetime ticket cap bounds them meanwhile).
-- **Step 8: the page shows each item's file count and "Received" from any browser**, not only this session's (AC-6 wording): it stops a client uploading twice; nothing else about the documents is shown. (Recommended to Raja; to confirm.)
+- **Step 8: "Today of the requester" (AC-13, link uploads To review) moves to step 10**, where Today is changed and re-timed at volume. Today, a link upload appears on the client assignee's Today, not the sender's. (Raja approved 2026-10-25.)
+- **Step 8: unregistered-object sweep moves to step 11** (Raja approved 2026-10-25) with the `link_attempt` purge (the lifetime ticket cap bounds them meanwhile).
+- **Step 8: the page shows each item's file count and "Received" from any browser**, not only this session's (AC-6 wording): it stops a client uploading twice; nothing else about the documents is shown. (Raja approved 2026-10-25.)
 - **Step 8: files not delivered as planned:** `src/lib/upload-links/rate.ts` (the IP hash lives in `public.ts`), `src/app/u/loading.tsx` / `error.tsx` (the page has its own loading `role="status"` and error alert), `tests/rls/upload-links-adhoc.test.ts` (cases in `upload-links-public` / `-review`). Extra small files: `clients/link-section.tsx`, `inbox-view.tsx` / `search/queries.ts` / `validation/document-search.ts` (shared channel labels), `documents/selects.ts` (channel for the badge), `document-form.tsx` (read-only channel).
-- **Step 8: pre-existing flaky test, not 10:** `follow-up.test.ts` (06) "never address…" fails when a random client UUID contains ten digits starting 6–9 (`…37992939867b` on 2026-10-25). Fixing it means editing an 06 test → separate chore, Raja to approve.
+- **Step 8: pre-existing flaky test, not 10:** `follow-up.test.ts` (06) "never address…" fails when a random client UUID contains ten digits starting 6–9 (`…37992939867b` on 2026-10-25). Fixing it means editing an 06 test → separate chore (Raja approved 2026-10-25; after 10a).
 
 ## Session log
 ### 2026-10-25 (build)
