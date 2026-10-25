@@ -35,8 +35,9 @@ jobs:
     runs-on: ubuntu-latest
     # Full suite ≈ 26 min (RLS incl. RUN_SLOW ≈ 7, e2e ≈ 17); 30 left no headroom (run 36439895456).
     # + up to 30 min waiting for a free test lane (chore test-isolation).
-    # Keep below the 90-min lane lease (scripts/test-lane.mjs LEASE_MINUTES) or a slow run could lose its lane.
-    timeout-minutes: 75
+    # Feature 10: the nightly job already took 65 of 75 min (2026-10-22) before 10's tests; raised to 110.
+    # Keep below the 150-min lane lease (scripts/test-lane.mjs LEASE_MINUTES) or a slow run could lose its lane.
+    timeout-minutes: 110
     env:
       TARGET: ${{ inputs.target || 'dev' }}
       E2E_BASE_URL: ${{ inputs.base_url || 'https://ca-document-vault.vercel.app' }}
@@ -104,7 +105,7 @@ jobs:
     if: ${{ inputs.volume }}
     runs-on: ubuntu-latest
     concurrency: { group: volume, cancel-in-progress: false }
-    # Seeding ≈ 15–25 min the first time + up to 30 min waiting for a lane; below the 90-min lane lease.
+    # Seeding ≈ 15–25 min the first time + up to 30 min waiting for a lane; below the 150-min lane lease.
     timeout-minutes: 85
     env:
       TARGET: volume-dev

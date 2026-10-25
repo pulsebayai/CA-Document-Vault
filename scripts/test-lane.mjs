@@ -13,7 +13,7 @@ const minutes = (name, fallback) => {
 const WAIT_MINUTES = minutes("TEST_LANE_WAIT_MINUTES", 30);
 // Must outlast the longest job (ci.yml 55 min, regression.yml 75 min incl. the wait) — else another run could
 // take the lane mid-test. Raise it together with any job timeout.
-const LEASE_MINUTES = minutes("TEST_LANE_LEASE_MINUTES", 90);
+const LEASE_MINUTES = minutes("TEST_LANE_LEASE_MINUTES", 150); // 10: CI job 120 min, Regression 110 min (both below)
 const POLL_SECONDS = 20;
 
 const holder = process.env.TEST_LANE_HOLDER?.trim();
