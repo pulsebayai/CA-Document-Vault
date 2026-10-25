@@ -6,7 +6,7 @@ import { createDocument, createDocumentOffice, createSoftCopy, mustReview, typeI
 import { T, bankOnlyClient, generateAsOf } from "../support/expected";
 
 // Feature 10 step 8 — the fixes from the pre-PR review and the security review of 10a (migration
-// 20261025170000_upload_links_review_fixes; plan.md Deviations, step 8). Each test fails on the code before the fix.
+// 20261025163857_upload_links_review_fixes; plan.md Deviations, step 8). Each test fails on the code before the fix.
 // Fixture as in upload-links-public: Bank statement only; clock 15 May 2026.
 
 type Who = "admin" | "manager" | "staff" | "staff2";

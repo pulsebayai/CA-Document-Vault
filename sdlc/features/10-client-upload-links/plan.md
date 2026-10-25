@@ -131,8 +131,28 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
 - **Step 7: "View" stays blocked until the document is Reviewed**, including Needs correction, enforced in `getFileLink` on the server as well as in the UI.
 - **Step 2: expiry follows the office day.** `expires_at` = the start of the 15th office day (IST) after creation, so a link is open through day 14. Migration B drops migration A's real-time check, because test offices run on a past clock.
 
+- **Step 8: review fixes (migration E `20261025163857_upload_links_review_fixes`, schema lock).** The pre-PR review (sdlc-reviewer) and a separate security review of the `link_*` functions found 1 blocker and several important issues; all fixed before the PR, each with a test in the new `tests/rls/upload-links-review.test.ts` (8 failed on the old code):
+  - B1 the stored file name always ends in the stored object's extension (the browser chose the name, so a download could save as `.exe`);
+  - I1 "Send again" replaces only your own link unless Admin/Manager (it bypassed the new revoke row);
+  - AC-9 NOT_ACTIVE from `link_ticket` / `link_register` is returned, not raised, so failed lookups through them count towards the IP block;
+  - caps under a row lock; lifetime ticket cap 2 × `max_files` (`upload_request.tickets_count`);
+  - the ad-hoc item trigger uses WHEN (catches 03's review reset on a corrected file) and ignores documents moved to another client or type;
+  - channel `upload_link` set only by `link_register` and never changed (`document_channel_guard`); the Edit form shows it read-only (`validateDocumentMeta` gains an optional `existingChannel`);
+  - no storage call before the token check; `LINK_IP_SALT` fail-closed on Vercel production / Brevo; `/u` public as exactly `/u`; error state announced; specific input errors; a failed message build closes the pending email.
+- **Step 8: AC-22 got its test** (`collection_metric` unchanged by ad-hoc send, upload, Needs correction, cancel).
+- **Step 8: "Today of the requester" (AC-13, link uploads To review) moves to step 10**, where Today is changed and re-timed at volume. Today, a link upload appears on the client assignee's Today, not the sender's. (Recommended to Raja 2026-10-25.)
+- **Step 8: unregistered-object sweep moves to step 11** with the `link_attempt` purge (the lifetime ticket cap bounds them meanwhile).
+- **Step 8: the page shows each item's file count and "Received" from any browser**, not only this session's (AC-6 wording): it stops a client uploading twice; nothing else about the documents is shown. (Recommended to Raja; to confirm.)
+- **Step 8: files not delivered as planned:** `src/lib/upload-links/rate.ts` (the IP hash lives in `public.ts`), `src/app/u/loading.tsx` / `error.tsx` (the page has its own loading `role="status"` and error alert), `tests/rls/upload-links-adhoc.test.ts` (cases in `upload-links-public` / `-review`). Extra small files: `clients/link-section.tsx`, `inbox-view.tsx` / `search/queries.ts` / `validation/document-search.ts` (shared channel labels), `documents/selects.ts` (channel for the badge), `document-form.tsx` (read-only channel).
+- **Step 8: pre-existing flaky test, not 10:** `follow-up.test.ts` (06) "never address…" fails when a random client UUID contains ten digits starting 6–9 (`…37992939867b` on 2026-10-25). Fixing it means editing an 06 test → separate chore, Raja to approve.
+
 ## Session log
 ### 2026-10-25 (build)
+- Step 8 (in progress): architecture.md items (public route pattern; RLS-not-applied note; channel lock; caps), ui-reference rows, `/u` smoke test.
+  - Reviews: sdlc-reviewer + security review → fixes above; migration E applied on dev 2026-10-25 (md5 = file).
+  - Results: upload-links DB 56/56; role-matrix, documents, storage, search, review-dispatch, review-metric, type-governance, bulk 303/303 (+1 skip); unit 494/494; e2e smoke + upload-link ×3 + add-document + inbox 24/24, reminders + client-documents 6/6; lint, typecheck, build clean.
+  - Full DB suite before the fixes: 598/599, the one failure the 06 flake above.
+  - Left for step 8: CI on the PR, RUN_SLOW Regression on the branch preview, PR 10a (ask Raja first).
 - Step 7: "From client link" badge (Client › Documents, /documents, document page); download only until Reviewed (UI + `getFileLink`); channel label "Upload link" (`DOCUMENT_CHANNELS`/`CHANNEL_LABELS`, search filter accepts it); bell text for `link_upload`; permission rows + probes.
   - e2e `upload-link-review.spec.ts` 3/3; role-matrix 77/77; unit 494/494.
   - Unedited e2e: users, search, client-documents, review-dispatch, type-governance, inbox, add-document 41/41; lint + typecheck clean.
