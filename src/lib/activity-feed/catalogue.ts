@@ -50,6 +50,15 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   "reminder.email": fixed("reminders", "emailed a reminder"),
   "reminder.whatsapp": fixed("reminders", "opened a WhatsApp reminder"),
   "reminder.call": fixed("reminders", "logged a call"),
+  // Upload links (10)
+  "upload_request.created": {
+    category: "reminders",
+    text: (r) => `sent an upload link for ${plural(num(r.data.scheduled) + num(r.data.ad_hoc), "document")}`,
+  },
+  "upload_request.retried": fixed("reminders", "re-sent an upload link after a failed email"),
+  "upload_request.revoked": fixed("reminders", "revoked an upload link"),
+  "upload_request_item.cancelled": fixed("reminders", "cancelled a requested document"),
+  "upload_request_item.reopened": fixed("reminders", "reopened a requested document"),
   // Clients & plans (02, 04)
   "client.created": fixed("clients_plans", "added a client"),
   "client.imported": { category: "clients_plans", text: (r) => `imported ${plural(num(r.data.count), "client")}` },

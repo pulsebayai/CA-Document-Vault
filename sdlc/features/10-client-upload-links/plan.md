@@ -71,7 +71,7 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
 
   If (b) fails, stop and re-decide (fallback: the token in the path plus Vercel log redaction). Proof: notes in the session log.
 - [x] 1. Schema migration + RLS tests (visibility per role; no app writes; reset purges the new tables). Proof: `upload-links.test.ts` (schema part); existing `reset_test_office` test green unedited.
-- [ ] 2. Staff functions + note guard (SQL + TS, same vectors) + 06 send functions taking `p_request_id`. Proof: RLS tests AC-1–5; **06's `follow-up.test.ts` and `chasing-metric.test.ts` green unedited**.
+- [x] 2. Staff functions + note guard (SQL + TS, same vectors) + 06 send functions taking `p_request_id`. Proof: RLS tests AC-1–5; **06's `follow-up.test.ts` and `chasing-metric.test.ts` green unedited**.
 - [ ] 3. Token + message builder (link line, ad-hoc lines; still no PAN/GSTIN/DOC-ID). Proof: unit tests, including the logger spy that shows the token is never logged.
 - [ ] 4. Public functions + throttle + ad-hoc status trigger + notification. Proof: `upload-links-public.test.ts` (every refusal in AC-7–9 and AC-20, the same error for unknown/expired/revoked); `upload-links-adhoc.test.ts` (received / needs-correction reopen); **03/04/07 suites green unedited**.
 - [ ] 5. Public page + server actions + proxy/headers + ESLint fence. Proof: e2e on 390 px with axe; header assertions; `/u` without a fragment shows "not active"; staff routes still redirect (`auth.spec.ts` unedited).
@@ -109,10 +109,18 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
 Every AC has a test in the spec's table and the result goes in each PR's AC table. The full regression suite is green, with no existing test edited. RUN_SLOW is green on 10a. The manual items (WhatsApp/email real send, phone upload, security check) are on the R1 staging checklist.
 
 ## Deviations from plan
-(filled during build)
+- **Step 2: 06's `begin_email_reminder` / `record_follow_up` are not changed.** Two new functions, `begin_link_email(p)` and `record_link_whatsapp(p)`, reuse 06's private helpers (client and item checks, stale-email close, the per-client cap, the office ceiling, `insert_follow_up`).
+  - Why: 06's functions require ≥ 1 expected item, but a request can be ad-hoc only, and 06's code and tests stay untouched.
+  - The cap is shared both ways (tested).
+- **Step 2: Retry after a failed email issues a new token for the same request** (`retry_link_email`), rather than re-sending "the same link" as spec AC-2 said.
+  - The raw token is never stored, so it can't be re-sent.
+  - The old token was never delivered, so replacing it is also safer.
+- **Step 2: "Send again" is `begin_link_email` / `record_link_whatsapp` with `replaces`** (the old link is revoked and `replaced_by` set in the same call). There is no separate `resend_upload_request`.
+- **Step 2: expiry follows the office day.** `expires_at` = the start of the 15th office day (IST) after creation, so a link is open through day 14. Migration B drops migration A's real-time check, because test offices run on a past clock.
 
 ## Session log
 ### 2026-10-25 (build)
+- Step 2: migration `20261025132625_upload_links_staff` applied to dev (md5 of the applied text = the file, for A and B). `upload-links-staff.test.ts` 21/21; 06/08 regression (follow-up, chasing-metric, activity-visibility) + step 1: 40/40 unedited; activity-catalogue coverage 12/12 (5 new sentences); lint + typecheck clean.
 - Step 0a: JWT-claims switch proven on dev in a rolled-back DO block: create_document as the requester → DOC-ID issued, received_by = actor = requester; an unknown/inactive sub → `ROLE_REQUIRED`. P1 holds.
 - Step 0b: WhatsApp keeps the URL fragment. Raja tapped `en.wikipedia.org/wiki/India#Etymology` from WhatsApp and the page landed on the heading (a Vercel share link wasn't findable, so a public anchor page was used instead). [Uncertain] Confirm the second platform (Android vs iPhone) when convenient.
 - Spike branch `spike/10-fragment` was not merged; this session can't delete branches (403), so Raja deletes it.
