@@ -115,3 +115,19 @@ export async function retryContentAs(requestId: string): Promise<{
     adHocIds: items.filter((i) => i.kind === "ad_hoc" && i.status === "open").map((i) => i.id),
   };
 }
+
+/** 10 AC-23: link figures for Settings › Collection (Admin/Manager; link_metric re-checks the role). */
+export type LinkMetric = {
+  documents: number; via_link: number; link_pct: number | null; reviewed: number; review_median_hours: number | null;
+  needs_fix: number; needs_fix_pct: number | null; adhoc_received: number; adhoc_median_days: number | null;
+  adhoc_with_date: number; adhoc_on_time: number; adhoc_on_time_pct: number | null;
+};
+export async function linkMetricAs(from: string, to: string): Promise<LinkMetric> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("link_metric", { p_from: from, p_to: to });
+  if (error) {
+    console.error("upload_links.metric_failed", { code: error.code });
+    throw new Error("Could not load the link figures.");
+  }
+  return data as LinkMetric;
+}

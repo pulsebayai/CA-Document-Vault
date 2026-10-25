@@ -107,3 +107,12 @@ test("AC-18: Send again by WhatsApp carries the open items to a new link and the
   const { data: moved } = await adminClient().from("upload_request_item").select("request_id").eq("note", "the second notice");
   expect(moved).toEqual([{ request_id: old!.replaced_by }]);
 });
+
+test("AC-23: Settings › Collection shows the upload-link section to an Admin", async ({ page, baseURL }) => {
+  await signIn(page, u.admin.email, baseURL);
+  await page.goto("/settings/collection");
+  await expect(page.getByRole("heading", { name: "Upload links" })).toBeVisible();
+  // This office's only requested item was filed by staff and then reopened, so nothing counts yet (figures are
+  // pinned in tests/rls/upload-links-metrics.test.ts).
+  await expect(page.getByText(/No documents came through upload links in these 30 days\./)).toBeVisible();
+});

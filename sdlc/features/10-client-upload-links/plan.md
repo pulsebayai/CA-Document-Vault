@@ -88,7 +88,7 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
 - [x] 9. Requested tab: list, Upload (pre-filled and linked), Cancel, Reopen, Revoke, Send again. Proof: RLS + e2e.
 - [x] 10. Today: Requested rows and count (D7). Proof: `upload-links-today.test.ts`; **`today.test.ts` / `today-documents.test.ts` / `today.spec.ts` green unedited**; timing on the volume office ≤ the 09 baseline (K3 not worse).
 - [x] 11. Expiry boundary (IST) and expired-link page; `link_attempt` purge in the daily job. Proof: RLS tests with the test clock.
-- [ ] 12. Settings › Collection link figures (AC-23). Proof: RLS fixtures + e2e.
+- [x] 12. Settings › Collection link figures (AC-23). Proof: RLS fixtures + e2e.
 - [ ] 13. **10b close:** full suite, sdlc-reviewer, PR 10b; release-checklist items confirmed in roadmap (security check, WhatsApp/email real send, phone upload).
 
 ## Risks
@@ -159,6 +159,8 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
 
 ## Session log
 ### 2026-10-26 (build, 10b)
+- Step 12: `link_metric(from, to)` (Admin/Manager, invoker; migration I `20261025185138_upload_links_metrics`) and an "Upload links" section on Settings › Collection: received through links, hours to first review, needed correcting (Needs correction or re-filed), days to receive a request, received by needed-by.
+  - Tests: `upload-links-metrics.test.ts` 3/3 (failed before migration I); e2e Collection section 1/1; 04's `collection.spec.ts` 4/4 unedited (axe, 390 px).
 - Step 11: `link_attempt` 7-day purge (pg_cron), `orphan_objects()`, storage sweep route + Vercel Cron, smoke check that the route refuses without the secret.
   - Tests: `upload-links-maintenance.test.ts` 3/3 (failed before migration H); smoke 4/4 + `upload-link.spec.ts` 5/5; cron job verified on dev (`0 19 * * *`).
 - Step 10: Today — Requested count + filter, requested rows (Open / Upload pre-filled for the item), note for undated items, link uploads on the requester's Mine.
