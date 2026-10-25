@@ -1,9 +1,9 @@
 # Plan: Client upload links
-Spec: ./spec.md · Status: draft · Date: 2026-10-25
+Spec: ./spec.md · Status: **approved (Raja 2026-10-25: P1, P2 as recommended)** · Date: 2026-10-25
 Locks at approval: **schema + architecture → 10** (none held elsewhere). Branch `feat/10-client-upload-links`.
 Delivery: two PRs into main, both before the R1 gate (P2): **10a** = steps 0–8, **10b** = steps 9–13.
 
-## Key build decision (needs approval, P1)
+## Key build decision (P1, approved 2026-10-25)
 **Link uploads go through 03's own `create_document`, run as the requester.**
 - `link_register` (definer, service-role only) checks token → office → link → item → caps → throttle.
 - It then sets the transaction-local JWT claims to the **requester** (`set_config('request.jwt.claims', …, true)`), so `auth.uid()` = the requester.
