@@ -16,3 +16,16 @@ test("pages are served with a nonce-based Content-Security-Policy and no console
   await expect(page.getByRole("status")).toContainText("If this email has access");
   expect(cspErrors).toEqual([]);
 });
+
+// Feature 10 (spec "Smoke-safe for prod"): the public upload page with no token is read-only — it shows only
+// "no longer active" and is served private, unindexed and without a referrer.
+test("the client upload page without a link shows 'no longer active' with private headers", async ({ page }) => {
+  const res = await page.goto("/u");
+  expect(res?.status()).toBe(200);
+  const h = res?.headers() ?? {};
+  expect(h["referrer-policy"]).toBe("no-referrer");
+  expect(h["x-robots-tag"]).toMatch(/noindex/);
+  expect(h["cache-control"]).toMatch(/no-store/);
+  await expect(page).toHaveURL(/\/u$/);
+  await expect(page.getByRole("heading", { name: "This link is no longer active" })).toBeVisible();
+});

@@ -115,7 +115,7 @@ export type DocumentMetaInput = {
   clientId?: unknown; docTypeId?: unknown; periodId?: unknown; registrationId?: unknown;
 };
 export type ValidDocumentMeta = {
-  receivedAs: ReceivedAs; channel: Channel; receivedOn: string; remark: string | null;
+  receivedAs: ReceivedAs; channel: DocumentChannel; receivedOn: string; remark: string | null;
   clientId: string | null; docTypeId: string | null; periodId: string | null; registrationId: string | null;
 };
 
@@ -132,7 +132,7 @@ const isRealDate = (s: string) => {
  */
 export function validateDocumentMeta(
   input: DocumentMetaInput,
-  ctx: { target: "vault" | "inbox"; hasFile: boolean; today: string },
+  ctx: { target: "vault" | "inbox"; hasFile: boolean; today: string; existingChannel?: string },
 ): { data: ValidDocumentMeta | null; errors: FieldIssue[] } {
   const errors: FieldIssue[] = [];
 
@@ -140,8 +140,11 @@ export function validateDocumentMeta(
   if (!RECEIVED_AS.some((r) => r.value === receivedAs)) errors.push({ field: "receivedAs", message: "Choose how it was received." });
   else if (receivedAs === "soft_copy" && !ctx.hasFile) errors.push({ field: "file", message: "Add the file — a soft copy needs one." });
 
-  const channel = str(input.channel) as Channel;
-  if (!CHANNELS.some((c) => c.value === channel)) errors.push({ field: "channel", message: "Choose the channel." });
+  const channel = str(input.channel) as DocumentChannel;
+  // 10: "Upload link" is set only by a client link and never changes; staff choose from CHANNELS otherwise.
+  if (ctx.existingChannel === "upload_link") {
+    if (channel !== "upload_link") errors.push({ field: "channel", message: "A document sent by upload link keeps its channel." });
+  } else if (!CHANNELS.some((c) => c.value === channel)) errors.push({ field: "channel", message: "Choose the channel." });
 
   const receivedOn = str(input.receivedOn) || ctx.today;
   if (!isRealDate(receivedOn)) errors.push({ field: "receivedOn", message: "Enter a valid date." });

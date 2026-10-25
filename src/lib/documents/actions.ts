@@ -203,10 +203,10 @@ export async function updateDocumentAction(input: UpdateDocumentInput): Promise<
   await requireStaff();
   if (!uuid.safeParse(input?.id).success) return { ok: false, error: "Document not found.", fieldErrors: {} };
   const supabase = await createClient();
-  const { data: doc } = await supabase.from("document").select("id, doc_code, version_count, client_id").eq("id", input.id).maybeSingle();
+  const { data: doc } = await supabase.from("document").select("id, doc_code, version_count, client_id, channel").eq("id", input.id).maybeSingle();
   if (!doc) return { ok: false, error: "Document not found.", fieldErrors: {} };
   const target = input.target === "vault" ? "vault" : "inbox";
-  const v = validateDocumentMeta(input, { target, hasFile: doc.version_count > 0, today: istDate() });
+  const v = validateDocumentMeta(input, { target, hasFile: doc.version_count > 0, today: istDate(), existingChannel: doc.channel });
   if (!v.data) {
     return { ok: false, error: "Check the highlighted fields.", fieldErrors: Object.fromEntries(v.errors.map((e) => [e.field, e.message])) };
   }

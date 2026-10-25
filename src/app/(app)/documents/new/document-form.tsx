@@ -74,6 +74,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
   const [periodId, setPeriodId] = useState(initialPeriod?.id ?? "");
   const [registrationId, setRegistrationId] = useState(existing?.registrationId ?? (prefillType ? prefill!.registrationId : ""));
   const [channel, setChannel] = useState<Channel>((existing?.channel as Channel) ?? "whatsapp");
+  const fromLink = existing?.channel === "upload_link";
   const [receivedOn, setReceivedOn] = useState(existing?.receivedOn ?? today);
   const [remark, setRemark] = useState(existing?.remark ?? "");
 
@@ -439,9 +440,14 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor={`${uid}-channel`} className="block text-[13px] text-ink-2">Channel</label>
-              <select id={`${uid}-channel`} value={channel} onChange={(e) => setChannel(e.target.value as Channel)} className={`mt-1 ${control}`} {...described("channel")}>
-                {CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
+              {fromLink ? (
+                // 10: a document sent by upload link keeps its channel (the database refuses a change).
+                <input id={`${uid}-channel`} readOnly value="Upload link" className={`mt-1 ${control} bg-canvas`} {...described("channel")} />
+              ) : (
+                <select id={`${uid}-channel`} value={channel} onChange={(e) => setChannel(e.target.value as Channel)} className={`mt-1 ${control}`} {...described("channel")}>
+                  {CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              )}
             </div>
             <div>
               <label htmlFor={`${uid}-received-on`} className="block text-[13px] text-ink-2">Received on</label>

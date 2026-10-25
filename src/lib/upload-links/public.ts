@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createUploadTicket, verifyStoredObject, type UploadTicket } from "@/lib/documents/storage-core";
+import { createUploadTicket, type UploadTicket } from "@/lib/documents/storage-core";
 import type { ValidFile } from "@/lib/validation/document";
 import { TOKEN_PATTERN, hashToken } from "./token";
 
@@ -39,8 +39,11 @@ function codeOf(message: string | undefined): LinkCode {
 function ipSalt(): string {
   const salt = process.env.LINK_IP_SALT;
   if (salt && salt.length >= 16) return salt;
-  if (process.env.APP_ENV === "production") throw new Error("LINK_IP_SALT is not set");
-  return "dev-only-link-ip-salt"; // non-production only; staging and prod set their own (R1 env checklist)
+  // Review N5: fail closed wherever real clients could arrive (prod, a Vercel production deploy, real email).
+  if (process.env.APP_ENV === "production" || process.env.VERCEL_ENV === "production" || process.env.MAIL_TRANSPORT === "brevo") {
+    throw new Error("LINK_IP_SALT is not set");
+  }
+  return "dev-only-link-ip-salt"; // dev, CI and previews only; staging and prod set their own (R1 env checklist)
 }
 
 /** SHA-256 of the client's IP with a server secret. The IP itself is never stored or logged. */
@@ -71,21 +74,22 @@ export async function linkTicket(token: unknown, itemId: string, file: ValidFile
     p_token_hash: hash, p_item_id: itemId, p_file: { ext: file.ext, size: file.size }, p_ip_hash: await ipHash(),
   });
   if (error) throw new LinkError(codeOf(error.message));
+  if ((data as { error?: string }).error) throw new LinkError("NOT_ACTIVE"); // returned, not raised (AC-9 log kept)
   const t = data as { office_id: string; document_id: string };
   return createUploadTicket(admin, t.office_id, t.document_id, file);
 }
 
 export async function linkRegister(
-  token: unknown, itemId: string, upload: { path: string; fileName: string; size: number; mime: string },
+  token: unknown, itemId: string, upload: { path: string; fileName: string },
 ): Promise<{ docCode: string }> {
   const hash = tokenHashOf(token);
   if (!hash) throw new LinkError("NOT_ACTIVE");
-  const admin = createAdminClient();
-  const problem = await verifyStoredObject(admin, upload.path, { size: upload.size, mime: upload.mime });
-  if (problem) throw new LinkError("OBJECT_MISSING");
-  const { data, error } = await admin.rpc("link_register", {
+  // No storage call before the database has checked the token (review N2): link_register reads the object's size
+  // and type from storage.objects itself, and forces the stored name's extension to the object's (review B1).
+  const { data, error } = await createAdminClient().rpc("link_register", {
     p_token_hash: hash, p_item_id: itemId, p_file: { storage_path: upload.path, file_name: upload.fileName }, p_ip_hash: await ipHash(),
   });
   if (error) throw new LinkError(codeOf(error.message));
+  if ((data as { error?: string }).error) throw new LinkError("NOT_ACTIVE");
   return { docCode: String((data as { doc_code: string }).doc_code) };
 }

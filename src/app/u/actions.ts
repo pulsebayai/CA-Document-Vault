@@ -1,7 +1,8 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import { validateFile } from "@/lib/validation/document";
+import { sanitiseFileName, validateFile } from "@/lib/validation/document";
 import { LinkError, linkRegister, linkTicket, openLink, type LinkCode, type LinkPage } from "@/lib/upload-links/public";
 
 // Feature 10 — public server actions for /u (no session). The token travels in the POST body only (it comes from
@@ -18,7 +19,7 @@ export type FinishResult = { ok: true } | { ok: false; code: LinkCode }; // no D
 
 function fail(where: string, e: unknown): LinkCode {
   const code = e instanceof LinkError ? e.code : "UPLOAD_FAILED";
-  if (!(e instanceof LinkError)) console.error(`upload-link ${where}: ${e instanceof Error ? e.name : "error"}`);
+  if (!(e instanceof LinkError)) console.error(`upload-link ${where}`, { error: e instanceof Error ? e.name : "error", requestId: randomUUID() });
   return code;
 }
 
@@ -49,10 +50,10 @@ export async function finishLinkUpload(
   token: string, itemId: string, upload: { path: string; fileName: string; size: number; contentType: string },
 ): Promise<FinishResult> {
   if (!uuid.safeParse(itemId).success || !PATH.test(String(upload?.path ?? ""))) return { ok: false, code: "UPLOAD_FAILED" };
+  const ext = String(upload.path).slice(String(upload.path).lastIndexOf(".") + 1);
   try {
-    await linkRegister(token, itemId, {
-      path: upload.path, fileName: String(upload.fileName), size: Number(upload.size), mime: String(upload.contentType),
-    });
+    // The browser's name is only a suggestion: cleaned here, and the database forces the object's extension (B1).
+    await linkRegister(token, itemId, { path: upload.path, fileName: sanitiseFileName(String(upload?.fileName ?? ""), ext) });
     return { ok: true };
   } catch (e) {
     return { ok: false, code: fail("register", e) };

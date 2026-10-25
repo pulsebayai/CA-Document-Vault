@@ -84,6 +84,16 @@ export async function linkOptions(clientId: string): Promise<{ ok: true; data: L
   }
 }
 
+/** Review N6: say what is wrong with the input instead of always "choose a document". */
+function inputError(raw: unknown): string {
+  const r = (raw ?? {}) as Partial<LinkSendInput>;
+  const n = (r.itemIds?.length ?? 0) + (r.adHoc?.length ?? 0);
+  if (n === 0) return reminderErrorMessage("NO_ITEMS");
+  if (n > 50) return LINK_MESSAGES.TOO_MANY_ITEMS;
+  if (r.adHoc?.some((a) => (a?.note ?? "").length > NOTE_MAX)) return LINK_MESSAGES.NOTE_TOO_LONG;
+  return "Check the requested documents and try again.";
+}
+
 /** Validates the ad-hoc notes before anything is written (the database checks again). */
 function checkNotes(v: LinkSendInput): Failure | null {
   for (const a of v.adHoc) if (notePii(a.note)) return { ok: false, error: NOTE_PII_MESSAGE };
@@ -117,7 +127,7 @@ export async function sendLinkEmail(raw: LinkSendInput): Promise<LinkEmailResult
   const { requireStaff, linkBase, mailConfig, createClient } = await deps();
   const me = await requireStaff();
   const p = input.safeParse(raw);
-  if (!p.success) return { ok: false, error: reminderErrorMessage("NO_ITEMS") };
+  if (!p.success) return { ok: false, error: inputError(raw) };
   const bad = checkNotes(p.data); if (bad) return bad;
   const base = linkBase();
   if (!base) return { ok: false, error: "Upload links aren't set up in this environment." };
@@ -142,8 +152,10 @@ async function deliver(
 ): Promise<LinkEmailResult> {
   const { createClient, sendMail, mailConfig } = await deps();
   const openUntil = openUntilOf(expiresAt);
-  const message = await buildLinkMessage(me, clientId, name, itemIds, adHoc, { url, openUntil });
   const supabase = await createClient();
+  // Review N5: a message that can't be built (e.g. every item closed meanwhile) closes the pending follow-up as
+  // failed instead of throwing, so it can't hold the client's daily cap until the 10-minute timeout.
+  const message = await buildLinkMessage(me, clientId, name, itemIds, adHoc, { url, openUntil }).catch(() => null);
   const finish = (status: "sent" | "failed" | "suppressed", providerId: string | null, errorCode: string | null) =>
     supabase.rpc("finish_email_reminder", { p_id: followUpId, p_status: status, p_provider_id: providerId, p_error_code: errorCode });
   if (!message) {
@@ -191,7 +203,7 @@ export async function recordLinkWhatsApp(raw: LinkSendInput): Promise<LinkWhatsA
   const { requireStaff, linkBase, createClient } = await deps();
   const me = await requireStaff();
   const p = input.safeParse(raw);
-  if (!p.success) return { ok: false, error: reminderErrorMessage("NO_ITEMS") };
+  if (!p.success) return { ok: false, error: inputError(raw) };
   const bad = checkNotes(p.data); if (bad) return bad;
   const base = linkBase();
   if (!base) return { ok: false, error: "Upload links aren't set up in this environment." };

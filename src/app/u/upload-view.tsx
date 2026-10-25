@@ -100,8 +100,10 @@ export function UploadView() {
       {view.state === "loading" && <p role="status" className="py-10 text-center text-ink-3">Opening your link…</p>}
       {view.state === "error" && (
         <Card className="p-6">
-          <h1 className="text-[20px] font-semibold">Something went wrong</h1>
-          <p className="mt-2 text-ink-2">Please try opening the link again.</p>
+          <div role="alert">
+            <h1 className="text-[20px] font-semibold">Something went wrong</h1>
+            <p className="mt-2 text-ink-2">Please try opening the link again.</p>
+          </div>
           <Button className="mt-4" onClick={() => window.location.reload()}>Try again</Button>
         </Card>
       )}

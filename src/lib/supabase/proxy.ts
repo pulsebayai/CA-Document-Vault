@@ -51,7 +51,8 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const signedIn = Boolean(data?.claims?.sub);
   const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+  // /u is public only as exactly /u (review N6): a future /u/* route is not public by accident.
+  const isPublic = path === "/u" || PUBLIC_PATHS.some((p) => p !== "/u" && (path === p || path.startsWith(`${p}/`)));
 
   if (!signedIn && !isPublic) {
     const url = request.nextUrl.clone();
