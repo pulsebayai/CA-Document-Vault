@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { buildCsp, newNonce } from "@/lib/security/csp";
 
-const PUBLIC_PATHS = ["/login", "/auth"];
+const PUBLIC_PATHS = ["/login", "/auth", "/u-spike"]; // SPIKE ONLY (10 step 0b), never merged
 
 /**
  * Refreshes the Supabase session cookie and does an *optimistic* redirect for signed-out users.
