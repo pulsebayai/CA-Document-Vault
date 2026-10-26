@@ -89,7 +89,7 @@ Guard: link pages and uploads refuse when the requester is no longer active or c
 - [x] 10. Today: Requested rows and count (D7). Proof: `upload-links-today.test.ts`; **`today.test.ts` / `today-documents.test.ts` / `today.spec.ts` green unedited**; timing on the volume office ≤ the 09 baseline (K3 not worse).
 - [x] 11. Expiry boundary (IST) and expired-link page; `link_attempt` purge in the daily job. Proof: RLS tests with the test clock.
 - [x] 12. Settings › Collection link figures (AC-23). Proof: RLS fixtures + e2e.
-- [ ] 13. **10b close:** full suite, sdlc-reviewer, PR 10b; release-checklist items confirmed in roadmap (security check, WhatsApp/email real send, phone upload).
+- [x] 13. **10b close:** full suite, sdlc-reviewer, PR 10b; release-checklist items confirmed in roadmap (security check, WhatsApp/email real send, phone upload).
 
 ## Risks
 - **Public write path (highest).** Mitigation: every refusal has a test (step 4), two reviews, the R1 security checklist, service-role-only functions, generic errors.
@@ -171,6 +171,8 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
 
 ## Session log
 ### 2026-10-26 (build, 10b)
+- **Shipped: PR #3 merged 2026-10-26 (merge 55176e0)** at c80bb92 (CI 40276633056 green). RUN_SLOW: the seven RUN_SLOW database files green in the session before merge (documents-perf 2/2, type-governance-perf 2/2, expected-perf 1/1, import 6/6, bulk 15/15, type-governance 55/55, activity-feed 10/10); the full RUN_SLOW Regression runs on main after the merge (Raja). Roadmap: 10 shipped, locks released, R1 checklist additions (env vars, scheduled jobs), follow-ups in Later.
+- **CI green on PR #3: run 40276633056 on c80bb92** (unit, lint, build; full RLS suite; e2e 120 passed + changed-first 26 passed). One flaky: `upload-link-review.spec.ts` AC-15 (bell "1 unread") passed on retry — to look at before merge. RUN_SLOW Regression on the preview (`ca-document-vault-78txm2ed5-cad-oc-vault.vercel.app`): Raja chose later.
 - Step 13 (in progress): CI/Regression limits; architecture + ui-reference for 10b; sdlc-reviewer on 10b → fixes above (migration J applied on dev, md5 = file).
   - Results: affected DB files 137/137 after the fix (upload-links ×6, 06's today ×2, 05's type-governance); unit 494/494; e2e requested + today + add-document + 06's today 18/18; lint, typecheck, build clean.
   - Left: Raja's decision on the K3 re-time; one full CI run on PR #3; RUN_SLOW Regression on the branch preview; `CRON_SECRET` on Vercel; PR ready.
