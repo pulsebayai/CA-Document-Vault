@@ -43,6 +43,9 @@ const gstSection = (page: Page) => page.getByRole("region", { name: "GST", exact
 test.describe.configure({ mode: "serial" });
 
 test("AC-18, AC-19, AC-21: staff enables GST, edits the plan, disables and re-enables it without duplicates", async ({ page, baseURL }) => {
+  // Time limit only (Raja 2026-10-26): on CI this test took 26–28 s of the 30 s budget before feature 10 (run 40191740304)
+  // and varies ±10 s run to run, so it failed at random (PR #3 run 40267263923). Every check is unchanged.
+  test.slow();
   await signIn(page, staff.email, baseURL);
   await page.goto(`/clients/${clientId}?tab=settings`); // 04 AC-14: Documents is the default client tab; Settings is ?tab=settings (Raja 2026-10-01, option A)
   await expect(page.getByRole("heading", { name: "Plan Target" })).toBeVisible();

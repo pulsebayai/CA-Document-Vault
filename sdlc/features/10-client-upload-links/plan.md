@@ -167,6 +167,8 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
   - Files outside "Files that change" (N-9): `documents/actions.ts`, `documents/new/page.tsx` + `document-form.tsx` (Upload for an item), `upload-links/requested.ts`, `upload-links/queries.ts`, `storage-core.ts` / `storage.ts`, `api/cron/storage-sweep/route.ts`, `vercel.json`, `proxy.ts`, `ci.yml`, `regression.yml`, `scripts/test-lane.mjs`; test files named `upload-link-*.spec.ts` / `upload-links-*.test.ts`.
 - **Step 13: CI limits** — `ci.yml` job 120 min, `regression.yml` 110 min, test-lane lease 150 min (the nightly took 65 of 75 min on 2026-10-22, before 10's tests).
 
+- **Step 13: three existing e2e tests get a longer time limit (`test.slow()`, 30 → 90 s; Raja 2026-10-26).** PR #3's run 40267263923 passed everything except 06's `today-screenshots.spec.ts`, which timed out at 30.8 s on both attempts. Evidence (CI JSON results, same GitHub-runner environment): the 25 Oct PR run with no 10 code (40191740304) took 990 s for the 101 shared browser tests, this run 970 s; `today-screenshots` already took 27.6 s there, `document-screenshots` 28.4 s and `client-plan` AC-18 26.0 s; single tests vary ±10 s between runs. Locally the branch was no slower than main (33–35 s vs 35–38 s). The edit changes only the time limit of `today-screenshots`, `document-screenshots` and `client-plan` AC-18; every check is unchanged. (The nightly isn't a fair baseline: it tests the deployed app in Mumbai, next to the database.)
+
 ## Session log
 ### 2026-10-26 (build, 10b)
 - Step 13 (in progress): CI/Regression limits; architecture + ui-reference for 10b; sdlc-reviewer on 10b → fixes above (migration J applied on dev, md5 = file).
