@@ -146,3 +146,21 @@ export async function catalogueMetricAs(): Promise<CatalogueMetric> {
   const m = data as { approved: number; total: number; approved_pct: number | null; waiting: number; oldest_days: number | null };
   return { approved: m.approved, total: m.total, approvedPct: m.approved_pct, waiting: m.waiting, oldestDays: m.oldest_days };
 }
+
+// ── Feature 11 AC-24: preferred formats, for Settings › Collection (format_metric re-checks Admin/Manager) ──
+export type FormatMetric = {
+  applied: { link: { total: number; preferred: number }; staff: { total: number; preferred: number } };
+  warned: { total: number; switched: number; anyway: number };
+  flagged_review_hours_median: number | null;
+  exceptions: Array<{ type_id: string; type: string; n: number }>;
+};
+
+export async function formatMetricAs(from: string, to: string): Promise<FormatMetric> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("format_metric", { p_from: from, p_to: to });
+  if (error) {
+    console.error("catalogue.format_metric_failed", { code: error.code ?? "unknown" });
+    throw new Error("Could not load the preferred-format figures.");
+  }
+  return data as FormatMetric;
+}

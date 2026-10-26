@@ -7,7 +7,8 @@ import { addDays, shortDate } from "@/lib/expected/schedule";
 import { onTimePct, pctText } from "@/lib/expected/shape";
 import { Card } from "@/components/ui";
 import { chasingMetricAs } from "@/lib/reminders/queries";
-import { catalogueMetricAs } from "@/lib/catalogue/queries";
+import { catalogueMetricAs, formatMetricAs } from "@/lib/catalogue/queries";
+import { sharePct } from "@/lib/validation/formats";
 import { linkMetricAs } from "@/lib/upload-links/queries";
 
 // Feature 04 step 8 — Settings › Collection (spec AC-16, architecture change 5): product metric 1 (on-time
@@ -16,6 +17,7 @@ import { linkMetricAs } from "@/lib/upload-links/queries";
 // Feature 06 (AC-15): product metric 2, chasing load, for the same window (chasing_metric re-checks the role too).
 // Feature 05 (AC-16): product metric 3, catalogue convergence, as of now, plus the proposal queue's age.
 // Feature 10 (AC-23): upload links — share received by link, time to review, corrections, ad-hoc turnaround.
+// Feature 11 (AC-24): preferred formats — share filed in a preferred format, warned link uploads, review time, exceptions.
 
 const WINDOW_DAYS = 30;
 const stamp = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
@@ -25,7 +27,10 @@ export default async function CollectionPage() {
   if (!canManageCatalogue(me.role)) notFound();
   const today = await todayForOffice(me.officeId);
   const from = addDays(today, -(WINDOW_DAYS - 1));
-  const [m, chase, cat, link] = await Promise.all([collectionMetricAs(from, today), chasingMetricAs(from, today), catalogueMetricAs(), linkMetricAs(from, today)]);
+  const [m, chase, cat, link, fmt] = await Promise.all([
+    collectionMetricAs(from, today), chasingMetricAs(from, today), catalogueMetricAs(), linkMetricAs(from, today), formatMetricAs(from, today),
+  ]);
+  const { link: fLink, staff: fStaff } = fmt.applied;
   const tiles: Array<[string, string, string?]> = [
     ["On time", pctText(m.on_time_pct), m.due ? `of ${m.due} due` : undefined],
     ["Received on time", String(m.on_time)],
@@ -159,6 +164,41 @@ export default async function CollectionPage() {
         )}
       </section>
 
+      <section aria-labelledby="formats-h" className="space-y-3">
+        <h3 id="formats-h" className="font-semibold">Preferred formats</h3>
+        {fLink.total === 0 && fStaff.total === 0 ? (
+          <Card className="px-6 py-5"><p className="font-medium">No documents were filed under a preferred format in these {WINDOW_DAYS} days.</p></Card>
+        ) : (
+          <dl aria-label="Preferred format figures" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {([
+              ["Link uploads in a preferred format", pctText(sharePct(fLink.preferred, fLink.total)), fLink.total ? `${fLink.preferred} of ${fLink.total} link uploads` : "no link uploads"],
+              ["Staff filings in a preferred format", pctText(sharePct(fStaff.preferred, fStaff.total)), fStaff.total ? `${fStaff.preferred} of ${fStaff.total} staff filings` : "no staff filings"],
+              ["Warned, then sent a preferred file", pctText(sharePct(fmt.warned.switched, fmt.warned.total)), fmt.warned.total ? `${fmt.warned.switched} of ${fmt.warned.total} warned` : "no warnings shown"],
+              ["Warned, uploaded anyway", String(fmt.warned.anyway)],
+              ["Hours to review a flagged upload", fmt.flagged_review_hours_median === null ? "—" : String(fmt.flagged_review_hours_median), "median, link uploads"],
+            ] as Array<[string, string, string?]>).map(([label, value, note]) => (
+              <Card key={label} className="px-4 py-3">
+                <dt className="text-[13px] text-ink-3">{label}</dt>
+                <dd className="mt-1 text-[22px] font-semibold leading-tight">{value}</dd>
+                {note && <dd className="text-[12.5px] text-ink-3">{note}</dd>}
+              </Card>
+            ))}
+          </dl>
+        )}
+        <div>
+          <h4 className="text-[13.5px] font-medium">Clients allowed any format (top 5 types, as of now)</h4>
+          {fmt.exceptions.length === 0 ? (
+            <p className="mt-1 text-[13.5px] text-ink-2">No client exceptions.</p>
+          ) : (
+            <ul aria-label="Clients allowed any format, by type" className="mt-1 space-y-0.5 text-[13.5px]">
+              {fmt.exceptions.map((e) => (
+                <li key={e.type_id}><span className="font-medium">{e.type}</span> · {e.n} {e.n === 1 ? "client" : "clients"}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+
       <div role="note" className="space-y-1 text-[13.5px] text-ink-2">
         <p>
           <strong className="font-medium text-ink">How it&apos;s counted.</strong> Expected documents whose overdue date fell in the
@@ -181,6 +221,12 @@ export default async function CollectionPage() {
           and requested (ad-hoc) documents received in them. <em>Hours to first review</em> runs from the client&apos;s upload to
           the first Reviewed or Needs correction. <em>Needed correcting</em> = marked Needs correction, or re-filed under another
           client or type. Requested documents never count in the on-time figure above.
+        </p>
+        <p>
+          <strong className="font-medium text-ink">Preferred formats.</strong> Filed documents added in the last {WINDOW_DAYS} days
+          whose type had preferred formats for that client when filed (clients allowed any format are left out).
+          <em> Warned</em> = the upload page showed the client the format warning before the upload. <em>Hours to review</em> runs
+          from a flagged link upload to its first Reviewed or Needs correction. Nothing is ever refused for its format.
         </p>
         <p>
           Expected documents last generated:{" "}

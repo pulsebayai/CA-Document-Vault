@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  FORMAT_CHOICES, formatLabel, isPreferred, isValidPreference, normaliseFormat, preferenceApplies, toStoredPreference,
+  FORMAT_CHOICES, formatLabel, isPreferred, isValidPreference, normaliseFormat, preferenceApplies, sharePct, toStoredPreference,
 } from "@/lib/validation/formats";
 
 // Feature 11 — the format rule in TS (plan step 3). The SQL mirror is compared in tests/rls/format-check.test.ts.
@@ -69,4 +69,13 @@ describe("preferenceApplies and isPreferred", () => {
     expect(isPreferred("statement", applied)).toBe(false);
   });
   it("jpeg counts as jpg", () => expect(isPreferred("scan.jpeg", ["jpg"])).toBe(true));
+});
+
+describe("sharePct (AC-24)", () => {
+  it("gives a one-decimal percentage, and null when there is nothing to divide", () => {
+    expect(sharePct(1, 3)).toBe(33.3);
+    expect(sharePct(2, 2)).toBe(100);
+    expect(sharePct(0, 4)).toBe(0);
+    expect(sharePct(0, 0)).toBeNull();
+  });
 });

@@ -69,3 +69,9 @@ export function isPreferred(fileNameOrExt: string, applied: readonly string[] | 
   const f = normaliseFormat(fileNameOrExt);
   return f !== null && applied.includes(f);
 }
+
+/** 11 (AC-24): share of `part` in `total` as a percentage (one decimal), or null when there is nothing to divide. */
+export function sharePct(part: number, total: number): number | null {
+  if (!total) return null;
+  return Math.round((part / total) * 1000) / 10;
+}

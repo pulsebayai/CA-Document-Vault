@@ -93,3 +93,19 @@ test("AC-5, AC-20: a per-client exception removes the warning; the plan row says
   await addPdf(page);
   await expect(warning(page)).toHaveCount(0);
 });
+
+test("AC-24: Settings › Collection shows the preferred-format figures and the exceptions by type; axe; 390 px", async ({ page, baseURL }) => {
+  await signIn(page, admin.email, baseURL);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/settings/collection");
+  const section = page.getByRole("region", { name: "Preferred formats" });
+  const figures = section.locator('dl[aria-label="Preferred format figures"]');
+  // The staff PDF above was filed under the preference (flagged); the client's exception came later, and the second
+  // Add document was never saved. No link uploads in this office.
+  await expect(figures).toContainText("Staff filings in a preferred format");
+  await expect(figures).toContainText("0 of 1 staff filings");
+  await expect(figures).toContainText("no link uploads");
+  await expect(section.getByRole("list", { name: "Clients allowed any format, by type" })).toContainText(`${T.bank} · 1 client`);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  expect(await seriousAxe(page)).toEqual([]);
+});

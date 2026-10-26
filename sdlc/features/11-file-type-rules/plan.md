@@ -74,7 +74,7 @@ A then B, both additive or `create or replace` with the same signatures. Each dr
 - [x] 4. **Catalogue + Client › Settings:** type dialog and list label; `setPlanTypeAnyFormat`; switch; permission row + probe; activity sentences. Proof: e2e part 1; `role-matrix` + `permissions` (additive); activity coverage test; 02's catalogue and plan e2e unedited. (0.5)
 - [x] 5. **Staff warning + badge:** document form (add, edit/classify, Upload for item), Add version, badge on Client › Documents, `/documents`, document page. Proof: unit form test; e2e part 2; 03 add-document / client-documents / 10 requested e2e unedited. (0.75)
 - [x] 6. **Migration B + `/u` + search:** `link_open` / `link_register`, search filter + facet, `/u` hint + dialog + `warned`, Format chip. Proof: `format-reads` green; `upload-link-formats.spec` (390 px + axe); 03b search + 10 upload-link suites unedited. (0.75) [review SQL: 20 min]
-- [ ] 7. **Collection section:** `format_metric` + page section. Proof: `format-reads` metric cases; e2e part 3; 04's `collection.spec` and 10's link-metric e2e unedited. (0.25)
+- [x] 7. **Collection section:** `format_metric` + page section. Proof: `format-reads` metric cases; e2e part 3; 04's `collection.spec` and 10's link-metric e2e unedited. (0.25)
 - [ ] 8. **Close:** architecture.md + ui-reference rows; verifier (lint, typecheck, unit, full DB suite, build); new/changed e2e locally on a production build; **full CI on the PR**; **RUN_SLOW Regression on the branch preview** (03 filing trigger changed); sdlc-reviewer; PR ready. Timing: one save with the check vs 03's baseline (≤ 5 ms added). (0.5) [PR review 1–2 h; ask before each CI run]
 
 ## Risks
@@ -116,11 +116,22 @@ Every spec AC → test file → result in the PR's AC table (P2/P3 marked as app
 - **Step 5: Add version shows the preference as a hint before choosing and a note after saving** (no blocking dialog), because a new version is saved as soon as the file is chosen.
 - **Step 5/6: the `/documents` badge was built in step 6** with the search reads (it needs B's `format_ok` / `format_preferred` columns in the rows).
 - **Step 6: migration B renamed to the version dev recorded**, `20261026113420_format_reads`.
+- **Step 7: `formatMetricAs` lives in `src/lib/catalogue/queries.ts`** next to 05's `catalogueMetricAs`, and a small `sharePct` helper (+ unit test) is in `formats.ts`. "Clients allowed any format" is **as of now**, not the 30-day window (the exception is a current setting; `format_metric` counts current rows).
 - **Step 6: migration C `20261026114801_format_test_offices` (approved by Raja 2026-10-26)** so 10's existing tests run unedited:
   - B wrote `warned: false` on every link upload, but `upload-links-public` checks the activity row exactly. C writes `warned` **only when true** (absent = not warned; a non-boolean counts as not warned).
   - A had seeded preferences into automated-test offices (its `seed_catalogue` replacement plus the one-time update). 10's e2e PDF bank upload would then hit the new warning. C restores 02's `seed_catalogue` (prosrc md5 = the original's) and clears preferences in `is_test` offices. 11's tests switch them on with `test_seed_preferred_formats` (`tests/support/formats.ts` `seedPreferences`). Real offices keep A's one-time seed; staging/prod get it by replaying A.
 
 ## Session log
+### 2026-10-26 (step 7)
+- Done: Settings › Collection "Preferred formats" section (five figures for the last 30 days + exceptions by type, top 5, as of now; definition paragraph). `formatMetricAs` query, `sharePct` helper + unit test.
+  - e2e: `format-preferences.spec` AC-24 case (figures, exceptions list, 390 px, axe) — file 5/5. Unedited specs that open Collection: collection, chasing, type-governance, upload-link-requested — all green.
+  - `upload-link-requested` AC-18 failed locally at first: "Upload links aren't set up in this environment". The session had no `APP_PUBLIC_URL` (CI sets `http://localhost:3000` in ci.yml). Green with CI's value; added to the local, untracked `playwright.local.config.ts`. Not an 11 change (11 doesn't touch Send again).
+  - Unit 528/528 · lint 0 · typecheck 0 · build 0.
+- In progress: —
+- Blocked / failing: —
+- Next step: step 8 (architecture.md + ui-reference rows, full DB suite, full CI on PR #6, RUN_SLOW Regression on the branch preview, sdlc-reviewer).
+- Not pushed yet: ask Raja before pushing to PR #6 (CI run).
+
 ### 2026-10-26 (steps 4–6)
 - Done: step 4 (catalogue fieldset + row label, Client › Settings switch, permission row `format_exception` + probe, 3 activity sentences), step 5 (staff warning in the document form with a two-step "Allow any format", Add version hint, Not preferred format badge on Client › Documents and the document page), step 6 (migration B applied, `20261026113420`: search filter/facet, `link_open` `preferred`, `link_register` `warned`, `format_metric`; `/documents` Format filter, chip and badge; `/u` hint, warning with "Choose another file" focused and "Upload anyway"). Migration C applied (`20261026114801`; see Deviations). md5 of live functions = files; advisors: no new findings.
   - 11's DB tests: format-preferences, format-check, format-reads all green (format-reads 13/13).
