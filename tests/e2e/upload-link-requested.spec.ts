@@ -104,7 +104,7 @@ test("AC-18: Send again by WhatsApp carries the open items to a new link and the
   await expect(dialog.getByText(/The old link no longer works/)).toBeVisible();
   const { data: old } = await adminClient().from("upload_request").select("replaced_by").eq("id", requestId).single();
   expect(old!.replaced_by).not.toBeNull();
-  const { data: moved } = await adminClient().from("upload_request_item").select("request_id").eq("note", "the second notice");
+  const { data: moved } = await adminClient().from("upload_request_item").select("request_id").eq("note", "the second notice").eq("office_id", officeId); // this office only: other runs (lanes, local) use the same note
   expect(moved).toEqual([{ request_id: old!.replaced_by }]);
 });
 
