@@ -169,9 +169,9 @@ describe("10's paths (AC-11, AC-14)", () => {
   it("a client's PDF through the link is flagged; a CSV is not", async () => {
     const link = await sendLink([{ kind: "scheduled", expected_doc_id: (await expectedItem(c.a, T.bank, "2026-04")).id }]);
     const pdf = await linkUpload(link.hash, link.items[0].id, "pdf");
-    expect(same(await formatCheck(pdf.id as string), EXCEL, false)).toBe(true);
+    expect(same(await formatCheck(pdf.document_id as string), EXCEL, false)).toBe(true);
     const csv = await linkUpload(link.hash, link.items[0].id, "csv");
-    expect(same(await formatCheck(csv.id as string), EXCEL, true)).toBe(true);
+    expect(same(await formatCheck(csv.document_id as string), EXCEL, true)).toBe(true);
   });
 
   it("every format 10 accepted before is still accepted for an item with a preference", async () => {

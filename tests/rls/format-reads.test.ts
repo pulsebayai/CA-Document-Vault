@@ -99,9 +99,9 @@ describe("the upload page (AC-9, AC-12)", () => {
   it("the page's 'warned' answer is kept on the link-upload activity row (AC-13)", async () => {
     const link = await sendLink(c.b, [{ kind: "ad_hoc", doc_type_id: await typeId(officeId, T.bank) }]);
     const warned = await linkUpload(link.hash, link.items[0].id, "pdf", true);
-    expect(await linkActivity(warned.id as string)).toMatchObject({ warned: true });
+    expect(await linkActivity(warned.document_id as string)).toMatchObject({ warned: true });
     const plain = await linkUpload(link.hash, link.items[0].id, "csv");
-    expect(await linkActivity(plain.id as string)).toMatchObject({ warned: false });
+    expect(await linkActivity(plain.document_id as string)).toMatchObject({ warned: false });
   });
 
   it("a 'warned' that isn't a boolean is stored as false", async () => {
@@ -111,7 +111,7 @@ describe("the upload page (AC-9, AC-12)", () => {
     const obj = await uploadAs(t.office_id as string, "pdf", t.document_id as string);
     const reg = await ok(call("link_register", { p_token_hash: link.hash, p_item_id: link.items[0].id,
       p_file: { storage_path: obj.path, file_name: "x.pdf", warned: "<script>" }, p_ip_hash: ipHash }));
-    expect(await linkActivity(reg.id as string)).toMatchObject({ warned: false });
+    expect(await linkActivity(reg.document_id as string)).toMatchObject({ warned: false });
   });
 });
 

@@ -87,6 +87,7 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   "doc_type.rejected": fixed("catalogue", "rejected a proposed type"), // 05
   "doc_type.created": fixed("catalogue", "added a type to the catalogue"),
   "doc_type.updated": fixed("catalogue", "edited a catalogue type"),
+  "doc_type.formats_changed": fixed("catalogue", "changed a type's preferred file formats"), // 11
   "doc_group.created": fixed("catalogue", "added a document group"),
   "doc_group.updated": fixed("catalogue", "edited a document group"),
   "doc_group.reordered": fixed("catalogue", "reordered the document groups"),

@@ -69,8 +69,8 @@ A then B, both additive or `create or replace` with the same signatures. Each dr
 ## Steps (estimates = build sessions with Claude; Raja's time in brackets)
 - [x] 0. **Start (after 10 merges):** roadmap commit on main (11 in progress, locks → 11); branch `feat/11-file-type-rules`; commit intent/spec/plan from the project into `sdlc/features/11-file-type-rules/`; draft PR so CI runs. Proof: CI green on the branch with docs only. [merge roadmap PR]
 - [x] 1. **DB tests first (red):** `format-preferences`, `format-check`, `format-reads` written against the spec's ACs; run locally, fail for the right reasons. Proof: test output (0.5)
-- [ ] 2. **Migration A** (columns, checks, grants, helpers, trigger block, seed). Proof: `format-preferences` + `format-check` green locally; **03 documents/storage, 04 expected, 05 type-governance, 07 review-dispatch, 10 upload-links suites green unedited** (they cover the trigger). (1) [review SQL: 30–45 min]
-- [ ] 3. **Shared rule** `formats.ts` + unit tests; TS↔SQL vectors pass in `format-check`. Proof: unit + DB (0.25)
+- [x] 2. **Migration A** (columns, checks, grants, helpers, trigger block, seed). Proof: `format-preferences` + `format-check` green locally; **03 documents/storage, 04 expected, 05 type-governance, 07 review-dispatch, 10 upload-links suites green unedited** (they cover the trigger). (1) [review SQL: 30–45 min]
+- [x] 3. **Shared rule** `formats.ts` + unit tests; TS↔SQL vectors pass in `format-check`. Proof: unit + DB (0.25)
 - [ ] 4. **Catalogue + Client › Settings:** type dialog and list label; `setPlanTypeAnyFormat`; switch; permission row + probe; activity sentences. Proof: e2e part 1; `role-matrix` + `permissions` (additive); activity coverage test; 02's catalogue and plan e2e unedited. (0.5)
 - [ ] 5. **Staff warning + badge:** document form (add, edit/classify, Upload for item), Add version, badge on Client › Documents, `/documents`, document page. Proof: unit form test; e2e part 2; 03 add-document / client-documents / 10 requested e2e unedited. (0.75)
 - [ ] 6. **Migration B + `/u` + search:** `link_open` / `link_register`, search filter + facet, `/u` hint + dialog + `warned`, Format chip. Proof: `format-reads` green; `upload-link-formats.spec` (390 px + axe); 03b search + 10 upload-link suites unedited. (0.75) [review SQL: 20 min]
@@ -107,8 +107,22 @@ Every spec AC → test file → result in the PR's AC table (P2/P3 marked as app
 - **Step 1: `format_label` / `format_of_path` are `public` with EXECUTE for service_role only** (architecture rule for service-role helpers), so the TS↔SQL equality test can call them.
 - **Step 1: the metric's shape is fixed in the tests** (`applied.link/staff {total, preferred}`, `warned {total, switched, anyway}`, `flagged_review_hours_median`, `exceptions [{type_id, type, n}]`; window = the document's filing day, IST).
 - **Step 1: shared test helpers in a new `tests/support/formats.ts`** (any-format synthetic upload, version, check readers); existing helpers unchanged.
+- **Step 2: migration A2 `20261026084429_format_preferences_check` (approved by Raja 2026-10-26).** A's type check called `private.formats_valid`; a check constraint runs with the writer's privileges and the service role has no usage on schema `private`, so after A every service-role write to `doc_type` failed ("permission denied for schema private"), even a rename. Staff paths were unaffected (signed-in users have usage), and no app code or existing test writes types as the service role. A2 rewrites the same rules with built-ins only (`array_positions` per choice for "distinct") and drops `private.formats_valid`. Caught by the new tests (`setPreferred` / rename via the service role).
+- **Step 2: migration files renamed to the versions dev recorded** (A `20261026082819`, A2 `20261026084429`), as earlier features did. Live function bodies = file (md5, all nine functions of A).
+- **Step 2: `doc_type.formats_changed` activity sentence added now** (not in step 4): the activity coverage unit test requires a sentence for every action written in the migrations.
+- **Step 2: my own step-1 tests read `id` from `link_register`; it returns `document_id`.** Fixed in `format-check` / `format-reads` (unmerged, new files).
 
 ## Session log
+### 2026-10-26 (steps 2–3)
+- Done: migration A applied to dev (Raja approved 13:56), version 20261026082819, md5 of all nine function bodies = file; security advisors: no new findings (all pre-existing). Migration A2 (check fix) approved and applied, version 20261026084429. `src/lib/validation/formats.ts` + `tests/unit/formats.test.ts` (28); feed sentence for `doc_type.formats_changed`.
+  - 11's tests: format-preferences 16/16, format-check 19/19 (incl. TS ↔ SQL labels and path formats).
+  - Existing suites covering the filing trigger, unedited: documents 49/49, document-storage, expected-docs, type-governance, review-dispatch, proposed-types, clients-catalogue, upload-links public / review / review-10b / requested — 222 passed, 49 skipped (pre-existing RUN_SLOW skips). Two timeouts in the combined run (documents setup, 10b merge case) both started in the minute A2's `alter table` held the type table's lock; both files green alone (49/49, 4/4).
+  - Unit 522/522 · lint 0 · typecheck 0.
+- In progress: —
+- Blocked / failing: `format-reads` (needs migration B, step 6).
+- Next step: step 4 (catalogue + Client › Settings + permission row).
+- Not pushed: PR #6's CI would fail on `format-reads` until B; push with step 6 (Raja asked to be asked before each push/CI run).
+
 ### 2026-10-26 (step 1)
 - Done: step 0 (PR #5 roadmap merged 4ce13e5; PR #6 draft, docs-only CI green on fc696c8; main merged into the branch). Step 1: `tests/rls/format-preferences.test.ts` (16), `format-check.test.ts` (17), `format-reads.test.ts` (13), `tests/support/formats.ts`.
   - Red for the right reasons (local run against dev, 2026-10-26 13:5x): format-preferences 16/16 fail on the missing `preferred_formats` / `any_format` columns and `test_seed_preferred_formats`; format-check and format-reads fail in their fixture (`any_format` missing), so their cases run once migration A exists. A first run showed 7 false passes (a case-insensitive error match hit the column name in "column not found"); fixed to match only a check-constraint refusal.
