@@ -48,6 +48,10 @@ export const DOC_RETURNS = [
 ] as const;
 export type DocReturn = (typeof DOC_RETURNS)[number]["value"];
 
+/** 11 (spec AC-21): documents filed outside the preference that applied (search_documents' `format` filter). */
+export const DOC_FORMATS = [{ value: "not_preferred", label: "Not preferred" }] as const;
+export type DocFormat = (typeof DOC_FORMATS)[number]["value"];
+
 export type DocumentFilters = {
   client: string | null;
   group: string | null;
@@ -64,6 +68,8 @@ export type DocumentFilters = {
   state: DocState | null;
   /** 07: optional, so filters written before 07 (and their tests) keep their exact shape. */
   return?: DocReturn;
+  /** 11: optional for the same reason. */
+  format?: DocFormat;
   archived: boolean;
   sort: Sort;
   page: number;
@@ -76,7 +82,7 @@ export const DEFAULT_FILTERS: DocumentFilters = Object.freeze({
 
 /** URL keys in the order they are written. */
 const UUID_KEYS = ["client", "group", "type", "fy", "period", "registration"] as const;
-const URL_ORDER = ["client", "group", "type", "fy", "period", "registration", "as", "channel", "by", "from", "to", "status", "state", "return", "archived", "sort", "page"] as const;
+const URL_ORDER = ["client", "group", "type", "fy", "period", "registration", "as", "channel", "by", "from", "to", "status", "state", "return", "format", "archived", "sort", "page"] as const;
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -104,6 +110,8 @@ export function parseDocumentSearchParams(params: Params): DocumentFilters {
   f.state = oneOf(DOC_STATES, get("state"));
   const ret = oneOf(DOC_RETURNS, get("return"));
   if (ret) f.return = ret;
+  const fmt = oneOf(DOC_FORMATS, get("format"));
+  if (fmt) f.format = fmt;
   f.sort = oneOf(SORTS, get("sort")) ?? "received";
   f.archived = get("archived") === "1";
   const page = get("page");
@@ -152,7 +160,7 @@ export type SearchInput = {
 const RPC_KEYS: Record<Exclude<(typeof URL_ORDER)[number], "archived" | "sort" | "page">, string> = {
   client: "client_id", group: "group_id", type: "doc_type_id", fy: "fy_id", period: "period_id",
   registration: "registration_id", as: "received_as", channel: "channel", by: "received_by",
-  from: "from", to: "to", status: "status", state: "state", return: "return",
+  from: "from", to: "to", status: "status", state: "state", return: "return", format: "format",
 };
 
 /** The `p` argument for search_documents / search_document_facets. */
