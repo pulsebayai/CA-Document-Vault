@@ -29,6 +29,16 @@ export const SEEDED: Record<string, string[]> = {
   "Loans & deposits outstanding at 31 Mar (lender list, amounts)": PDF_OR_EXCEL,
 };
 
+/**
+ * Test offices start with no preferences (migration C: they are fixtures, so 10's tests see 10's behaviour).
+ * 11's tests switch on the real office's seed explicitly. Returns how many types got a list.
+ */
+export async function seedPreferences(officeId: string): Promise<number> {
+  const { data, error } = await adminClient().rpc("test_seed_preferred_formats", { p_office_id: officeId });
+  if (error) throw new Error(error.message);
+  return data as number;
+}
+
 const MIME: Record<string, string> = {
   pdf: "application/pdf",
   jpg: "image/jpeg",

@@ -5,7 +5,7 @@ import { adminClient, createStaff, retireStaff, signedInClient } from "../suppor
 import { createDocumentOffice, mustCreateDocument, mustReview, typeId } from "../support/documents";
 import { groupId, mergeType, mustOk, proposeType } from "../support/catalogue";
 import { T, bankOnlyClient, expectedItem, generateAsOf, planRow } from "../support/expected";
-import { EXCEL, addVersionAs, fileAs, formatCheck, same, setPreferred, uploadAs } from "../support/formats";
+import { EXCEL, addVersionAs, fileAs, formatCheck, same, seedPreferences, setPreferred, uploadAs } from "../support/formats";
 
 // Feature 11 — the format check on every filing path (spec AC-11, AC-14, AC-15, AC-18; plan step 1).
 // The check lives in 03's document_before_write: set on create (via the version update), new version and
@@ -26,6 +26,7 @@ async function ok(p: Promise<Res>) { const r = await p; if (r.error) throw new E
 
 beforeAll(async () => {
   officeId = await createDocumentOffice("formats-check");
+  await seedPreferences(officeId);
   u.admin = await createStaff(officeId, "fc-admin", "admin");
   u.staff = await createStaff(officeId, "fc-staff", "staff");
   u.limited = await createStaff(officeId, "fc-limited", "limited");

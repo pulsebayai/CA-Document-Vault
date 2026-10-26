@@ -71,9 +71,9 @@ A then B, both additive or `create or replace` with the same signatures. Each dr
 - [x] 1. **DB tests first (red):** `format-preferences`, `format-check`, `format-reads` written against the spec's ACs; run locally, fail for the right reasons. Proof: test output (0.5)
 - [x] 2. **Migration A** (columns, checks, grants, helpers, trigger block, seed). Proof: `format-preferences` + `format-check` green locally; **03 documents/storage, 04 expected, 05 type-governance, 07 review-dispatch, 10 upload-links suites green unedited** (they cover the trigger). (1) [review SQL: 30–45 min]
 - [x] 3. **Shared rule** `formats.ts` + unit tests; TS↔SQL vectors pass in `format-check`. Proof: unit + DB (0.25)
-- [ ] 4. **Catalogue + Client › Settings:** type dialog and list label; `setPlanTypeAnyFormat`; switch; permission row + probe; activity sentences. Proof: e2e part 1; `role-matrix` + `permissions` (additive); activity coverage test; 02's catalogue and plan e2e unedited. (0.5)
-- [ ] 5. **Staff warning + badge:** document form (add, edit/classify, Upload for item), Add version, badge on Client › Documents, `/documents`, document page. Proof: unit form test; e2e part 2; 03 add-document / client-documents / 10 requested e2e unedited. (0.75)
-- [ ] 6. **Migration B + `/u` + search:** `link_open` / `link_register`, search filter + facet, `/u` hint + dialog + `warned`, Format chip. Proof: `format-reads` green; `upload-link-formats.spec` (390 px + axe); 03b search + 10 upload-link suites unedited. (0.75) [review SQL: 20 min]
+- [x] 4. **Catalogue + Client › Settings:** type dialog and list label; `setPlanTypeAnyFormat`; switch; permission row + probe; activity sentences. Proof: e2e part 1; `role-matrix` + `permissions` (additive); activity coverage test; 02's catalogue and plan e2e unedited. (0.5)
+- [x] 5. **Staff warning + badge:** document form (add, edit/classify, Upload for item), Add version, badge on Client › Documents, `/documents`, document page. Proof: unit form test; e2e part 2; 03 add-document / client-documents / 10 requested e2e unedited. (0.75)
+- [x] 6. **Migration B + `/u` + search:** `link_open` / `link_register`, search filter + facet, `/u` hint + dialog + `warned`, Format chip. Proof: `format-reads` green; `upload-link-formats.spec` (390 px + axe); 03b search + 10 upload-link suites unedited. (0.75) [review SQL: 20 min]
 - [ ] 7. **Collection section:** `format_metric` + page section. Proof: `format-reads` metric cases; e2e part 3; 04's `collection.spec` and 10's link-metric e2e unedited. (0.25)
 - [ ] 8. **Close:** architecture.md + ui-reference rows; verifier (lint, typecheck, unit, full DB suite, build); new/changed e2e locally on a production build; **full CI on the PR**; **RUN_SLOW Regression on the branch preview** (03 filing trigger changed); sdlc-reviewer; PR ready. Timing: one save with the check vs 03's baseline (≤ 5 ms added). (0.5) [PR review 1–2 h; ask before each CI run]
 
@@ -111,8 +111,27 @@ Every spec AC → test file → result in the PR's AC table (P2/P3 marked as app
 - **Step 2: migration files renamed to the versions dev recorded** (A `20261026082819`, A2 `20261026084429`), as earlier features did. Live function bodies = file (md5, all nine functions of A).
 - **Step 2: `doc_type.formats_changed` activity sentence added now** (not in step 4): the activity coverage unit test requires a sentence for every action written in the migrations.
 - **Step 2: my own step-1 tests read `id` from `link_register`; it returns `document_id`.** Fixed in `format-check` / `format-reads` (unmerged, new files).
+- **Step 5: the form's "Allow any format" goes through a wrapper `allowAnyFormat(planRowId)` in `src/lib/documents/actions.ts`** (calls `setPlanTypeAnyFormat`). The form's hydration unit test mocks `documents/actions`; importing `plan/actions` (server-only) into the client form broke it. Same rule, one more export.
+- **Step 5: the new TS fields are optional** (`TypeOption.preferredFormats/anyFormat/planRowId`, `ClientDocument.notPreferred`, `DocumentDetail.notPreferred/appliedFormats`), so existing tests that build these objects compile unedited.
+- **Step 5: Add version shows the preference as a hint before choosing and a note after saving** (no blocking dialog), because a new version is saved as soon as the file is chosen.
+- **Step 5/6: the `/documents` badge was built in step 6** with the search reads (it needs B's `format_ok` / `format_preferred` columns in the rows).
+- **Step 6: migration B renamed to the version dev recorded**, `20261026113420_format_reads`.
+- **Step 6: migration C `20261026114801_format_test_offices` (approved by Raja 2026-10-26)** so 10's existing tests run unedited:
+  - B wrote `warned: false` on every link upload, but `upload-links-public` checks the activity row exactly. C writes `warned` **only when true** (absent = not warned; a non-boolean counts as not warned).
+  - A had seeded preferences into automated-test offices (its `seed_catalogue` replacement plus the one-time update). 10's e2e PDF bank upload would then hit the new warning. C restores 02's `seed_catalogue` (prosrc md5 = the original's) and clears preferences in `is_test` offices. 11's tests switch them on with `test_seed_preferred_formats` (`tests/support/formats.ts` `seedPreferences`). Real offices keep A's one-time seed; staging/prod get it by replaying A.
 
 ## Session log
+### 2026-10-26 (steps 4–6)
+- Done: step 4 (catalogue fieldset + row label, Client › Settings switch, permission row `format_exception` + probe, 3 activity sentences), step 5 (staff warning in the document form with a two-step "Allow any format", Add version hint, Not preferred format badge on Client › Documents and the document page), step 6 (migration B applied, `20261026113420`: search filter/facet, `link_open` `preferred`, `link_register` `warned`, `format_metric`; `/documents` Format filter, chip and badge; `/u` hint, warning with "Choose another file" focused and "Upload anyway"). Migration C applied (`20261026114801`; see Deviations). md5 of live functions = files; advisors: no new findings.
+  - 11's DB tests: format-preferences, format-check, format-reads all green (format-reads 13/13).
+  - Existing DB suites, unedited: upload-links (all eight files incl. public), document-search, documents, clients-catalogue, catalogue-usage, type-governance, role-matrix, activity-feed — 15 files, 333 passed, 1 skipped.
+  - e2e on a local production build: new `format-preferences.spec` (4) and `upload-link-formats.spec` (2, 390 px + axe), plus unedited upload-link, catalogue, add-document, search, client-plan — 28/28.
+  - Unit 527/527 · lint 0 · typecheck 0 · build 0.
+- In progress: —
+- Blocked / failing: —
+- Next step: step 7 (Settings › Collection section from `format_metric`), then step 8 (close).
+- Not pushed yet: ask Raja before pushing to PR #6 (CI run).
+
 ### 2026-10-26 (steps 2–3)
 - Done: migration A applied to dev (Raja approved 13:56), version 20261026082819, md5 of all nine function bodies = file; security advisors: no new findings (all pre-existing). Migration A2 (check fix) approved and applied, version 20261026084429. `src/lib/validation/formats.ts` + `tests/unit/formats.test.ts` (28); feed sentence for `doc_type.formats_changed`.
   - 11's tests: format-preferences 16/16, format-check 19/19 (incl. TS ↔ SQL labels and path formats).

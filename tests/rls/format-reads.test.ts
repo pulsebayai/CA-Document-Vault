@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import { createDocumentOffice, mustReview, typeId } from "../support/documents";
 import { T, bankOnlyClient, expectedItem, generateAsOf, mustRpc, planRow } from "../support/expected";
-import { EXCEL, fileAs, uploadAs } from "../support/formats";
+import { EXCEL, fileAs, seedPreferences, uploadAs } from "../support/formats";
 
 // Feature 11 — what reads the check (spec AC-12, AC-13, AC-21, AC-22, AC-24; plan step 1).
 //   link_open: each item gains `preferred` (format list) when a preference applies; absent otherwise.
@@ -56,6 +56,7 @@ async function linkActivity(documentId: string) {
 
 beforeAll(async () => {
   officeId = await createDocumentOffice("formats-reads");
+  await seedPreferences(officeId);
   u.admin = await createStaff(officeId, "fr-admin", "admin");
   u.staff = await createStaff(officeId, "fr-staff", "staff");
   u.limited = await createStaff(officeId, "fr-limited", "limited");
@@ -101,17 +102,18 @@ describe("the upload page (AC-9, AC-12)", () => {
     const warned = await linkUpload(link.hash, link.items[0].id, "pdf", true);
     expect(await linkActivity(warned.document_id as string)).toMatchObject({ warned: true });
     const plain = await linkUpload(link.hash, link.items[0].id, "csv");
-    expect(await linkActivity(plain.document_id as string)).toMatchObject({ warned: false });
+    // Not warned = no key at all, so an ordinary upload's row is exactly as 10 wrote it (migration C).
+    expect(await linkActivity(plain.document_id as string)).not.toHaveProperty("warned");
   });
 
-  it("a 'warned' that isn't a boolean is stored as false", async () => {
+  it("a 'warned' that isn't a boolean counts as not warned", async () => {
     const link = await sendLink(c.b, [{ kind: "ad_hoc", doc_type_id: await typeId(officeId, T.bank) }]);
     const ipHash = ip();
     const t = await ok(call("link_ticket", { p_token_hash: link.hash, p_item_id: link.items[0].id, p_file: { ext: "pdf", size: 60 }, p_ip_hash: ipHash }));
     const obj = await uploadAs(t.office_id as string, "pdf", t.document_id as string);
     const reg = await ok(call("link_register", { p_token_hash: link.hash, p_item_id: link.items[0].id,
       p_file: { storage_path: obj.path, file_name: "x.pdf", warned: "<script>" }, p_ip_hash: ipHash }));
-    expect(await linkActivity(reg.document_id as string)).toMatchObject({ warned: false });
+    expect(await linkActivity(reg.document_id as string)).not.toHaveProperty("warned");
   });
 });
 

@@ -4,7 +4,7 @@ import { adminClient, createStaff, retireStaff, signedInClient } from "../suppor
 import { createDocumentOffice, typeId } from "../support/documents";
 import { groupId, proposeType } from "../support/catalogue";
 import { T, bankOnlyClient, planRow } from "../support/expected";
-import { EXCEL, FORMAT_CHOICES, SEEDED, preferredOf, setPreferred } from "../support/formats";
+import { EXCEL, FORMAT_CHOICES, SEEDED, preferredOf, seedPreferences, setPreferred } from "../support/formats";
 
 // Feature 11 — preferences, seed and exceptions (spec AC-1, AC-2, AC-4, AC-5, AC-6, AC-8; plan step 1).
 // Written before migration A: every test here fails until the columns, checks, grants and seed exist.
@@ -14,10 +14,16 @@ let officeId: string;
 const u = {} as Record<Who, { id: string; email: string }>;
 const as = {} as Record<Who, SupabaseClient>;
 let clientId: string;
+let beforeSeed: number;
+let seededCount: number;
 const admin = () => adminClient();
 
 beforeAll(async () => {
   officeId = await createDocumentOffice("formats-prefs");
+  const { count } = await admin().from("doc_type").select("id", { count: "exact", head: true })
+    .eq("office_id", officeId).not("preferred_formats", "is", null);
+  beforeSeed = count ?? -1;
+  seededCount = await seedPreferences(officeId);
   u.admin = await createStaff(officeId, "fp-admin", "admin");
   u.manager = await createStaff(officeId, "fp-manager", "manager");
   u.staff = await createStaff(officeId, "fp-staff", "staff");
@@ -32,6 +38,11 @@ afterAll(async () => {
 });
 
 describe("pre-loaded preferences (AC-4, S1)", () => {
+  it("an automated-test office starts with none (migration C); the seed sets exactly six", () => {
+    expect(beforeSeed).toBe(0);
+    expect(seededCount).toBe(6);
+  });
+
   it("a freshly seeded office has the six preferences and nothing else", async () => {
     for (const [name, formats] of Object.entries(SEEDED)) {
       expect([...(await preferredOf(officeId, name) ?? [])].sort(), name).toEqual([...formats].sort());
