@@ -18,6 +18,7 @@ export type CatalogueType = {
   reminders: boolean;
   active: boolean;
   usedBy: number;
+  preferredFormats?: string[] | null; // 11 (optional: existing callers and tests build types without it)
 };
 
 export type CatalogueGroup = {
@@ -41,6 +42,7 @@ type TypeRow = {
   id: string; doc_group_id: string; name: string; aliases: string[]; period_kind: PeriodKind; default_frequency: Frequency;
   source: DocSource; used_for: string | null; ask_after_months: number | null; ask_day: number | null;
   overdue_after_months: number | null; overdue_day: number | null; reminders: boolean; active: boolean;
+  preferred_formats: string[] | null;
 };
 
 /**
@@ -52,7 +54,7 @@ export async function loadCatalogue(): Promise<Catalogue> {
   const [groups, types, usage, years] = await Promise.all([
     supabase.from("doc_group").select("id, name, sort, active, enabled_for_new_clients").order("sort").order("name"),
     supabase.from("doc_type")
-      .select("id, doc_group_id, name, aliases, period_kind, default_frequency, source, used_for, ask_after_months, ask_day, overdue_after_months, overdue_day, reminders, active")
+      .select("id, doc_group_id, name, aliases, period_kind, default_frequency, source, used_for, ask_after_months, ask_day, overdue_after_months, overdue_day, reminders, active, preferred_formats")
       .eq("status", "approved").order("active", { ascending: false }).order("created_at").order("name"),
     supabase.from("doc_type_usage").select("doc_type_id, clients"),
     supabase.from("financial_year").select("id, code, start_date, end_date").order("start_date"),
@@ -68,7 +70,7 @@ export async function loadCatalogue(): Promise<Catalogue> {
     id: t.id, docGroupId: t.doc_group_id, name: t.name, aliases: t.aliases ?? [], periodKind: t.period_kind,
     defaultFrequency: t.default_frequency, source: t.source, usedFor: t.used_for, askAfterMonths: t.ask_after_months,
     askDay: t.ask_day, overdueAfterMonths: t.overdue_after_months, overdueDay: t.overdue_day, reminders: t.reminders,
-    active: t.active, usedBy: usedBy.get(t.id) ?? 0,
+    active: t.active, usedBy: usedBy.get(t.id) ?? 0, preferredFormats: t.preferred_formats ?? null,
   });
   const all = (types.data as TypeRow[]).map(toType);
   const groupRows = (groups.data ?? []).map((g) => ({

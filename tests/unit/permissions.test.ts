@@ -28,6 +28,8 @@ describe("permissions matrix (AC-12)", () => {
       ["Send upload links to clients", "Yes", "Yes", "Yes", "Assigned"],
       ["Revoke an upload link someone else sent", "Yes", "Yes", "No", "No"],
       ["Change collection plans (add, remove types/groups)", "Yes", "Yes", "Yes", "No"],
+      // 11 spec AC-6 (approved Raja 2026-10-26): one row added; no existing row changed.
+      ["Set a client's format exception", "Yes", "Yes", "Yes", "No"],
       ["Assign incharge and group staff, pause and resume", "Yes", "Yes", "No", "No"],
       ["Manage catalogue, approve proposed types, Settings › Collection", "Yes", "Yes", "No", "No"],
       ["Add a financial year", "Yes", "No", "No", "No"],

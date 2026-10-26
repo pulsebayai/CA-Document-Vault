@@ -136,6 +136,16 @@ const PROBES: Record<string, Probe> = {
     const off = ok(await rpc(who, "disable_client_group", { p_client_id: c, p_doc_group_id: ids.gst }));
     return both(on, off, "change_plans");
   },
+  // 11: the "any format" exception on the client's Bank statement plan row; put back as Admin afterwards.
+  format_exception: async (who, c) => {
+    const row = (await planRow(c, T.bank)).id as string;
+    const allowed = changed(await who.from("client_doc_type").update({ any_format: true }).eq("id", row).select("id"));
+    if (allowed) {
+      const { error } = await as.admin.from("client_doc_type").update({ any_format: false }).eq("id", row);
+      if (error) throw error;
+    }
+    return allowed;
+  },
   assign_pause: async (who, c) => {
     const groupRow = (await planRow(c, T.bank)).client_group_id as string;
     const res = await who.from("client_group").update({ assigned_staff_id: u.staff.id }).eq("id", groupRow).select("id");

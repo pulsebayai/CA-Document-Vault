@@ -10,6 +10,7 @@ import { logActivity } from "@/lib/activity";
 import {
   codeFromName, PERIOD_KINDS, validateDocGroup, validateDocType, type DocSource, type PeriodKind,
 } from "@/lib/validation/catalogue";
+import { FORMAT_CHOICES, toStoredPreference } from "@/lib/validation/formats";
 
 // Settings › Document catalogue (spec 02 AC-2, AC-3, AC-5, AC-6).
 // Every action checks the role itself (server actions are reachable by direct POST) and then writes
@@ -40,10 +41,22 @@ function friendly(message: string | undefined, what: "type" | "group"): string {
 const fieldErrors = (errors: { field: string; message: string }[]) =>
   Object.fromEntries(errors.map((e) => [e.field, e.message]));
 
+/** 11 (spec AC-1, AC-2): the ticked preferred formats. Anything outside the choices (a direct POST) is refused. */
+function preferredFrom(form: FormData): { value: string[] | null; error: string | null } {
+  const picked = form.getAll("preferredFormats").map(String);
+  if (picked.some((f) => !(FORMAT_CHOICES as readonly string[]).includes(f))) {
+    return { value: null, error: "Choose preferred formats from the list." };
+  }
+  return { value: toStoredPreference(picked), error: null };
+}
+const sameList = (a: string[] | null, b: string[] | null) =>
+  JSON.stringify(a ? [...a].sort() : null) === JSON.stringify(b ? [...b].sort() : null);
+
 type TypeRow = {
   id: string; doc_group_id: string; source: DocSource; period_kind: PeriodKind; name: string; aliases: string[];
   default_frequency: string; ask_after_months: number | null; ask_day: number | null; overdue_after_months: number | null;
   overdue_day: number | null; reminders: boolean; used_for: string | null; active: boolean;
+  preferred_formats: string[] | null; status: string;
 };
 
 /** Add or edit a document type or firm record (AC-2). `id` present = edit. */
@@ -57,10 +70,13 @@ export async function saveDocType(_prev: CatalogueResult | null, form: FormData)
       .map((k) => [k, form.get(k) ?? undefined]),
   );
 
+  const preferred = preferredFrom(form);
+  if (preferred.error) return { ok: false, error: preferred.error, fieldErrors: { preferredFormats: preferred.error } };
+
   if (typeId) {
     if (!id.safeParse(typeId).success) return { ok: false, error: "Invalid request." };
     const { data: old } = await supabase.from("doc_type")
-      .select("id, doc_group_id, source, period_kind, name, aliases, default_frequency, ask_after_months, ask_day, overdue_after_months, overdue_day, reminders, used_for, active")
+      .select("id, doc_group_id, source, period_kind, name, aliases, default_frequency, ask_after_months, ask_day, overdue_after_months, overdue_day, reminders, used_for, active, preferred_formats, status")
       .eq("id", typeId).maybeSingle<TypeRow>();
     if (!old) return { ok: false, error: "This type no longer exists." };
     const v = validateDocType(input, { source: old.source, periodKind: old.period_kind });
@@ -72,10 +88,19 @@ export async function saveDocType(_prev: CatalogueResult | null, form: FormData)
     };
     const changed = (Object.keys(next) as (keyof typeof next)[])
       .filter((k) => JSON.stringify(next[k]) !== JSON.stringify(old[k]));
-    if (!changed.length) return { ok: true, message: "No changes." };
-    const { data, error } = await supabase.from("doc_type").update(next).eq("id", typeId).select("id");
+    // 11: only approved types hold a preference (DB check); the preference has its own activity row (AC-3).
+    const formatsChanged = old.status === "approved" && !sameList(preferred.value, old.preferred_formats ?? null);
+    if (!changed.length && !formatsChanged) return { ok: true, message: "No changes." };
+    const update = formatsChanged ? { ...next, preferred_formats: preferred.value } : next;
+    const { data, error } = await supabase.from("doc_type").update(update).eq("id", typeId).select("id");
     if (error || !data?.length) return { ok: false, error: friendly(error?.message ?? "permission denied", "type") };
-    await logActivity({ officeId: me.officeId, actorId: me.id, action: "doc_type.updated", entityType: "doc_type", entityId: typeId, data: { fields: changed } });
+    if (changed.length) {
+      await logActivity({ officeId: me.officeId, actorId: me.id, action: "doc_type.updated", entityType: "doc_type", entityId: typeId, data: { fields: changed } });
+    }
+    if (formatsChanged) {
+      await logActivity({ officeId: me.officeId, actorId: me.id, action: "doc_type.formats_changed", entityType: "doc_type", entityId: typeId,
+        data: { old: old.preferred_formats ?? null, new: preferred.value } });
+    }
     revalidatePath(PATH);
     return { ok: true, message: `Saved “${v.data.name}”.` };
   }
@@ -92,9 +117,14 @@ export async function saveDocType(_prev: CatalogueResult | null, form: FormData)
     aliases: v.data.aliases, period_kind: periodKind, default_frequency: v.data.defaultFrequency, source,
     used_for: v.data.usedFor, ask_after_months: v.data.askAfterMonths, ask_day: v.data.askDay,
     overdue_after_months: v.data.overdueAfterMonths, overdue_day: v.data.overdueDay, reminders: v.data.reminders,
+    preferred_formats: preferred.value,
   }).select("id").single();
   if (error || !data) return { ok: false, error: friendly(error?.message, "type") };
   await logActivity({ officeId: me.officeId, actorId: me.id, action: "doc_type.created", entityType: "doc_type", entityId: data.id, data: { doc_group_id: groupId, source } });
+  if (preferred.value) {
+    await logActivity({ officeId: me.officeId, actorId: me.id, action: "doc_type.formats_changed", entityType: "doc_type", entityId: data.id,
+      data: { old: null, new: preferred.value } });
+  }
   revalidatePath(PATH);
   return { ok: true, message: `Added “${v.data.name}”.` };
 }

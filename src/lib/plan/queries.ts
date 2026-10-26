@@ -16,6 +16,9 @@ export type PlanType = {
   state: PlanState; remark: string | null; pausedAt: string | null;
   /** 04 AC-5: collected per GSTIN/TAN — nothing is expected while the client has no active one of that kind. */
   registrationKind: "gstin" | "tan" | null;
+  /** 11 (spec AC-5): the type's preferred formats, and whether this client may send any format. */
+  preferredFormats?: string[] | null;
+  anyFormat?: boolean; // optional: existing callers and tests build plan types without them
 };
 export type PlanGroup = {
   id: string; docGroupId: string; name: string; state: Exclude<PlanState, "removed">;
@@ -41,8 +44,8 @@ type TypeRow = {
   id: string; doc_type_id: string; client_group_id: string; frequency: Frequency;
   ask_after_months: number | null; ask_day: number | null; overdue_after_months: number | null; overdue_day: number | null;
   reminders: boolean; assigned_staff_id: string | null; start_period_id: string | null; state: PlanState;
-  remark: string | null; paused_at: string | null;
-  doc_type: { name: string; period_kind: PeriodKind; created_at: string; status: "approved" | "proposed" | "mapped" | "rejected"; registration_kind: "gstin" | "tan" | null } | null;
+  remark: string | null; paused_at: string | null; any_format: boolean;
+  doc_type: { name: string; period_kind: PeriodKind; created_at: string; status: "approved" | "proposed" | "mapped" | "rejected"; registration_kind: "gstin" | "tan" | null; preferred_formats: string[] | null } | null;
 };
 
 const RETIRED = new Set(["mapped", "rejected"]);
@@ -54,7 +57,8 @@ export async function getClientPlan(clientId: string): Promise<ClientPlan> {
       .eq("client_id", clientId),
     supabase.from("client_doc_type")
       .select(`id, doc_type_id, client_group_id, frequency, ask_after_months, ask_day, overdue_after_months, overdue_day,
-        reminders, assigned_staff_id, start_period_id, state, remark, paused_at, doc_type(name, period_kind, created_at, status, registration_kind)`)
+        reminders, assigned_staff_id, start_period_id, state, remark, paused_at, any_format,
+        doc_type(name, period_kind, created_at, status, registration_kind, preferred_formats)`)
       .eq("client_id", clientId),
     supabase.from("doc_group").select("id, name").eq("active", true).order("sort").order("name"),
     supabase.from("doc_type").select("id, doc_group_id, name").eq("source", "client").eq("active", true).eq("status", "approved")
@@ -87,6 +91,7 @@ export async function getClientPlan(clientId: string): Promise<ClientPlan> {
           askAfterMonths: t.ask_after_months, askDay: t.ask_day, overdueAfterMonths: t.overdue_after_months, overdueDay: t.overdue_day,
           reminders: t.reminders, assignedStaffId: t.assigned_staff_id, startPeriodId: t.start_period_id,
           state: t.state, remark: t.remark, pausedAt: t.paused_at, registrationKind: t.doc_type!.registration_kind,
+          preferredFormats: t.doc_type!.preferred_formats ?? null, anyFormat: t.any_format,
         })),
       addable: (masterTypes.data ?? []).filter((m) => m.doc_group_id === g.doc_group_id && !onClient.has(m.id as string))
         .map((m) => ({ id: m.id as string, name: m.name as string })),

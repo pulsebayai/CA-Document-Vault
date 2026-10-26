@@ -43,6 +43,8 @@ export const PERMISSIONS: readonly PermissionRow[] = [
   { id: "send_upload_link", label: "Send upload links to clients", values: { ...yesAll, limited: "assigned" } },
   { id: "revoke_upload_link", label: "Revoke an upload link someone else sent", values: managers },
   { id: "change_plans", label: "Change collection plans (add, remove types/groups)", values: { ...yesAll, limited: "no" } },
+  // 11 (spec AC-6): "Any format is fine for this client" on a plan row — Staff+, like plan changes.
+  { id: "format_exception", label: "Set a client's format exception", values: { ...yesAll, limited: "no" } },
   { id: "assign_pause", label: "Assign incharge and group staff, pause and resume", values: managers },
   { id: "manage_catalogue", label: "Manage catalogue, approve proposed types, Settings › Collection", values: managers },
   { id: "add_financial_year", label: "Add a financial year", values: { admin: "yes", manager: "no", staff: "no", limited: "no" } },
