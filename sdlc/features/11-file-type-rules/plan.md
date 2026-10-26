@@ -67,8 +67,8 @@ Read from: `feat/10-client-upload-links` @ c80bb92 (the code 11 builds on). Main
 A then B, both additive or `create or replace` with the same signatures. Each dry-run on dev in a rolled-back block (admin / staff / limited), reviewed by Raja, applied, md5 of applied text = file, advisors clean. Staging/prod at R1 by replay.
 
 ## Steps (estimates = build sessions with Claude; Raja's time in brackets)
-- [ ] 0. **Start (after 10 merges):** roadmap commit on main (11 in progress, locks → 11); branch `feat/11-file-type-rules`; commit intent/spec/plan from the project into `sdlc/features/11-file-type-rules/`; draft PR so CI runs. Proof: CI green on the branch with docs only. [merge roadmap PR]
-- [ ] 1. **DB tests first (red):** `format-preferences`, `format-check`, `format-reads` written against the spec's ACs; run locally, fail for the right reasons. Proof: test output (0.5)
+- [x] 0. **Start (after 10 merges):** roadmap commit on main (11 in progress, locks → 11); branch `feat/11-file-type-rules`; commit intent/spec/plan from the project into `sdlc/features/11-file-type-rules/`; draft PR so CI runs. Proof: CI green on the branch with docs only. [merge roadmap PR]
+- [x] 1. **DB tests first (red):** `format-preferences`, `format-check`, `format-reads` written against the spec's ACs; run locally, fail for the right reasons. Proof: test output (0.5)
 - [ ] 2. **Migration A** (columns, checks, grants, helpers, trigger block, seed). Proof: `format-preferences` + `format-check` green locally; **03 documents/storage, 04 expected, 05 type-governance, 07 review-dispatch, 10 upload-links suites green unedited** (they cover the trigger). (1) [review SQL: 30–45 min]
 - [ ] 3. **Shared rule** `formats.ts` + unit tests; TS↔SQL vectors pass in `format-check`. Proof: unit + DB (0.25)
 - [ ] 4. **Catalogue + Client › Settings:** type dialog and list label; `setPlanTypeAnyFormat`; switch; permission row + probe; activity sentences. Proof: e2e part 1; `role-matrix` + `permissions` (additive); activity coverage test; 02's catalogue and plan e2e unedited. (0.5)
@@ -101,9 +101,22 @@ Every spec AC → test file → result in the PR's AC table (P2/P3 marked as app
 - **P3.** No Inbox badge (Inbox documents can't be flagged).
 
 ## Deviations from plan
-(filled in during build)
+- **Step 1: link_register's argument is `p_file`, not `p_ticket`** (the plan named it wrongly). `warned` travels in `p_file`; a non-boolean value is stored as false.
+- **Step 1: the loans seed name is the real one**, "Loans & deposits outstanding at 31 Mar (lender list, amounts)" (the spec shortened it).
+- **Step 1: one extra service-role helper, `public.test_seed_preferred_formats(p_office_id)`** (is_test offices only, `NOT_TEST_OFFICE` otherwise; returns the number of types it set), so the seed's skip rules (renamed type, list already set) can be tested without re-running the migration. Same pattern as 10's `test_set_link_caps`.
+- **Step 1: `format_label` / `format_of_path` are `public` with EXECUTE for service_role only** (architecture rule for service-role helpers), so the TS↔SQL equality test can call them.
+- **Step 1: the metric's shape is fixed in the tests** (`applied.link/staff {total, preferred}`, `warned {total, switched, anyway}`, `flagged_review_hours_median`, `exceptions [{type_id, type, n}]`; window = the document's filing day, IST).
+- **Step 1: shared test helpers in a new `tests/support/formats.ts`** (any-format synthetic upload, version, check readers); existing helpers unchanged.
 
 ## Session log
+### 2026-10-26 (step 1)
+- Done: step 0 (PR #5 roadmap merged 4ce13e5; PR #6 draft, docs-only CI green on fc696c8; main merged into the branch). Step 1: `tests/rls/format-preferences.test.ts` (16), `format-check.test.ts` (17), `format-reads.test.ts` (13), `tests/support/formats.ts`.
+  - Red for the right reasons (local run against dev, 2026-10-26 13:5x): format-preferences 16/16 fail on the missing `preferred_formats` / `any_format` columns and `test_seed_preferred_formats`; format-check and format-reads fail in their fixture (`any_format` missing), so their cases run once migration A exists. A first run showed 7 false passes (a case-insensitive error match hit the column name in "column not found"); fixed to match only a check-constraint refusal.
+- In progress: —
+- Blocked / failing: the three new files (expected until migrations A/B).
+- Next step: step 2 — migration A written, dry-run on dev in a rolled-back block, **Raja reviews the SQL**, then applied.
+- Not pushed: the test-only commit would make PR #6's CI run the full suite and fail; push with step 2.
+
 ### 2026-10-26 (step 0)
 - Done: 10 confirmed merged (PR #3, main 9869116; no code change since c80bb92, so the plan's reading of `document_before_write`, `link_open` and `link_register` still holds). Roadmap branch `chore/roadmap-start-11` (11 in progress, schema + architecture locks → 11) and this branch with intent/spec/plan copied from the project, both prepared locally.
 - In progress: step 0 — waiting for Raja's OK to push both branches and open the PRs (docs-only; CI runs only "What changed").
