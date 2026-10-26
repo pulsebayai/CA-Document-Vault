@@ -136,6 +136,14 @@ Every spec AC → test file → result in the PR's AC table (P2/P3 marked as app
   - A had seeded preferences into automated-test offices (its `seed_catalogue` replacement plus the one-time update). 10's e2e PDF bank upload would then hit the new warning. C restores 02's `seed_catalogue` (prosrc md5 = the original's) and clears preferences in `is_test` offices. 11's tests switch them on with `test_seed_preferred_formats` (`tests/support/formats.ts` `seedPreferences`). Real offices keep A's one-time seed; staging/prod get it by replaying A.
 
 ## Session log
+### 2026-10-26/27 (step 8: CI + RUN_SLOW)
+- CI 40349457124 green on c148a21 (1 h 8 min). Pre-PR review fixes pushed (9523b70); CI 40362710004 attempt 1 hung on `playwright install` (1 h 36 min, cancelled at the job limit, lane released); **attempt 2 green** (Raja approved the re-run).
+- **RUN_SLOW Regression 40396660735** on the branch preview (9523b70, full suite): Unit ✓ · **RLS incl. RUN_SLOW ✓** (43 min) · **e2e 121 passed, 3 failed, 5 did not run** (serial files after a failure):
+  - `smoke.spec.ts` "storage sweep refuses a call without the cron secret" — 302, not 401. The test uses Playwright's `request` client, which never gets the preview's bypass cookie (`allowPreview` primes the browser context only), so Vercel's protection redirects. 10's test; first time run against a protected preview (10's RUN_SLOW ran after merge).
+  - `upload-link.spec.ts` AC-6 (10, unedited) and `upload-link-formats.spec.ts` AC-9 (11): the active `/u` page never rendered for a valid token. The "not active" cases passed on the same preview, and both files pass locally on 9523b70 against dev, so [Likely] this is about the preview deployment, not 11's code. The cause is unknown: the artifacts and logs are on a host this session can't reach.
+  - No green nightly has yet run 10's `/u` tests against a deployed URL (last nightly 40239687499 was before 10 merged).
+- Next: Raja to look at the failure screenshot in run 40396660735's `regression-evidence-dev` artifact (or the job log); decide the fix route before merge.
+
 ### 2026-10-26 (step 7)
 - Done: Settings › Collection "Preferred formats" section (five figures for the last 30 days + exceptions by type, top 5, as of now; definition paragraph). `formatMetricAs` query, `sharePct` helper + unit test.
   - e2e: `format-preferences.spec` AC-24 case (figures, exceptions list, 390 px, axe) — file 5/5. Unedited specs that open Collection: collection, chasing, type-governance, upload-link-requested — all green.
