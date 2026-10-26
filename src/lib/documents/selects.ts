@@ -10,4 +10,5 @@ export const CLIENT_DOCUMENTS_SELECT = `id, doc_code, received_on, received_as, 
   period:period_id (label, start_date, financial_year:financial_year_id (code)),
   current:current_version_id (id, mime_type),
   status, reviewed_at, correction_reason, reviewer:reviewed_by (full_name),
-  packets:dispatch_item (removed_at, dispatch:dispatch_id (dispatched_on, method))`; // 07: review state + live packet
+  packets:dispatch_item (removed_at, dispatch:dispatch_id (dispatched_on, method)),
+  format_ok, format_preferred`; // 07: review state + live packet · 11: the format check (badge)

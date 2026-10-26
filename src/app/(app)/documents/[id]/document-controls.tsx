@@ -5,6 +5,7 @@ import { useId, useRef, useState, useTransition } from "react";
 import { addVersionAction, archiveDocumentAction, startUpload, unarchiveDocumentAction } from "@/lib/documents/actions";
 import { putFile } from "@/lib/documents/upload-client";
 import { ACCEPT_ATTRIBUTE, validateFile } from "@/lib/validation/document";
+import { formatLabel, isPreferred } from "@/lib/validation/formats";
 import { Button } from "@/components/ui";
 
 /**
@@ -12,12 +13,16 @@ import { Button } from "@/components/ui";
  * 07 AC-4: for a Needs-correction document (`correction`), it also asks when the corrected file arrived (default
  * today, India) — that date replaces received on, so metric 1 counts from when the right file came in.
  */
-export function NewVersion({ documentId, correction }: { documentId: string; correction?: { today: string } }) {
+export function NewVersion({ documentId, correction, preferred }: {
+  documentId: string; correction?: { today: string };
+  /** 11 (spec AC-19): the preference that applies; shown before the upload and checked after it (never blocks). */
+  preferred?: string[] | null;
+}) {
   const router = useRouter();
   const uid = useId();
   const input = useRef<HTMLInputElement>(null);
   const [receivedOn, setReceivedOn] = useState(correction?.today ?? "");
-  const [state, setState] = useState<{ status: "idle" } | { status: "uploading"; progress: number } | { status: "error"; error: string } | { status: "done" }>({ status: "idle" });
+  const [state, setState] = useState<{ status: "idle" } | { status: "uploading"; progress: number } | { status: "error"; error: string } | { status: "done"; preferredOk: boolean }>({ status: "idle" });
 
   async function choose(file: File | undefined) {
     if (!file) return;
@@ -35,7 +40,7 @@ export function NewVersion({ documentId, correction }: { documentId: string; cor
     const r = await addVersionAction(documentId, { path: ticket.path, size: v.data.size, mime: v.data.mime, fileName: v.data.fileName },
       correction ? receivedOn : null);
     if (!r.ok) { setState({ status: "error", error: r.error }); return; }
-    setState({ status: "done" });
+    setState({ status: "done", preferredOk: isPreferred(v.data.fileName, preferred ?? null) });
     if (input.current) input.current.value = "";
     router.refresh();
   }
@@ -53,10 +58,16 @@ export function NewVersion({ documentId, correction }: { documentId: string; cor
       <label htmlFor={`${uid}-v`} className="inline-flex h-[30px] cursor-pointer items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas">
         Upload new version
       </label>
-      <input ref={input} id={`${uid}-v`} type="file" accept={ACCEPT_ATTRIBUTE} className="sr-only" onChange={(e) => void choose(e.target.files?.[0])} />
+      <input ref={input} id={`${uid}-v`} type="file" accept={ACCEPT_ATTRIBUTE} className="sr-only"
+        aria-describedby={preferred ? `${uid}-pref` : undefined} onChange={(e) => void choose(e.target.files?.[0])} />
       </div>
+      {preferred && <p id={`${uid}-pref`} className="mt-1 text-[12.5px] text-ink-3">{formatLabel(preferred)} preferred for this client.</p>}
       {state.status === "uploading" && <p className="mt-1 text-[13px] text-ink-2">Uploading… {state.progress}%<span role="status" className="sr-only">Uploading</span></p>}
-      {state.status === "done" && <p role="status" className="mt-1 text-[13px] text-ok">New version saved.</p>}
+      {state.status === "done" && (
+        <p role="status" className={`mt-1 text-[13px] ${state.preferredOk ? "text-ok" : "text-warn"}`}>
+          New version saved.{state.preferredOk ? "" : ` It isn't in a preferred format (${formatLabel(preferred ?? null)} preferred).`}
+        </p>
+      )}
       {state.status === "error" && <p role="alert" className="mt-1 text-[13px] text-bad">{state.error}</p>}
     </div>
   );

@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { ClientDocument } from "@/lib/documents/queries";
 import { documentState, heldDays, nextAction, type ShownStateKind } from "@/lib/documents/state";
 import { Badge } from "@/components/ui";
+import { FormatBadge } from "@/components/format-badge";
 import { RowCheckbox } from "@/components/selection-bar";
 import { FileButtons } from "../../documents/file-buttons";
 import { ReviewControls, type RowMessage } from "./review-controls";
@@ -50,6 +51,7 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
           {d.versionCount > 1 && <Badge tone="muted">{d.versionCount} versions</Badge>}
           {d.proposed && <Badge tone="accent">Proposed type</Badge>}
           {d.fromLink && <Badge tone="accent">From client link</Badge>}
+          <FormatBadge preferred={d.notPreferred} />
           {held !== null && <span className="text-ink-3">· Held {held} day{held === 1 ? "" : "s"}</span>}
         </p>
         <p className={`mt-0.5 break-words text-[13px] font-medium ${TONE[state.kind]}`} data-testid="doc-state">{state.text}</p>

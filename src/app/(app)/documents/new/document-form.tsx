@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { searchClients } from "@/lib/clients/actions";
 import {
-  loadClientTypes, proposeType, saveDocument, startUpload, suggestTypes, updateDocumentAction, type Suggestion,
+  allowAnyFormat, loadClientTypes, proposeType, saveDocument, startUpload, suggestTypes, updateDocumentAction, type Suggestion,
 } from "@/lib/documents/actions";
 import { allowedPeriodKinds, defaultPeriod } from "@/lib/documents/period";
 import type { ClientOption, ClientTypes, DocumentForForm, PeriodOption, TypeOption } from "@/lib/documents/queries";
@@ -14,6 +14,7 @@ import {
 import { Button, Card } from "@/components/ui";
 import { putFile } from "@/lib/documents/upload-client";
 import type { Prefill } from "@/lib/expected/prefill";
+import { formatLabel, isPreferred, preferenceApplies } from "@/lib/validation/formats";
 
 // Add document (mockup 12, spec AC-1 … AC-5, AC-15). The file uploads straight to private Storage as soon as it
 // is chosen (signed URL from the server), so "Save" is usually instant. ≤ 3 clicks after choosing the file when
@@ -103,6 +104,16 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const allTypes = useMemo(() => [...types.planTypes, ...types.otherTypes], [types]);
+  // 11 (spec AC-19, AC-20, S4): warn — never block — when the file isn't in a format preferred for this client + type.
+  const chosenType = allTypes.find((t) => t.id === docTypeId);
+  const appliedFormats = client ? preferenceApplies(chosenType?.preferredFormats, chosenType?.anyFormat ?? false) : null;
+  const checkedFileName = file?.valid.fileName ?? existing?.fileName ?? null;
+  const formatWarning = appliedFormats && checkedFileName && !isPreferred(checkedFileName, appliedFormats) && chosenType
+    ? { type: chosenType, preferred: appliedFormats } : null;
+  function markAnyFormat(typeId: string) {
+    const mark = (list: TypeOption[]) => list.map((t) => (t.id === typeId ? { ...t, anyFormat: true } : t));
+    setTypes((cur) => ({ ...cur, planTypes: mark(cur.planTypes), otherTypes: mark(cur.otherTypes) }));
+  }
   const type: TypeOption | undefined = allTypes.find((t) => t.id === docTypeId);
   const kinds: PeriodChoice[] = type ? ["none", ...allowedPeriodKinds(type.periodKind)] : ["none", "month", "quarter", "year"];
   const regChoices = type?.registrationKind ? types.registrations.filter((r) => r.kind === type.registrationKind) : [];
@@ -282,7 +293,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
           Drop a file here or <span className="text-accent underline">browse</span>
         </label>
         <input ref={fileInput} id={`${uid}-file`} type="file" accept={ACCEPT_ATTRIBUTE} className="sr-only"
-          aria-describedby={`${uid}-file-hint ${fe("file") || upload.status === "error" ? `${uid}-file-err` : ""}`.trim()}
+          aria-describedby={`${uid}-file-hint ${fe("file") || upload.status === "error" ? `${uid}-file-err` : ""} ${formatWarning ? `${uid}-format-warn` : ""}`.replace(/\s+/g, " ").trim()}
           onChange={(e) => void chooseFile(e.target.files?.[0])} />
         <p id={`${uid}-file-hint`} className="mt-1 text-[13px] text-ink-3">One file per document · optional for hard copies · up to 25 MB</p>
       </div>
@@ -310,6 +321,12 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
       )}
 
       </>)}
+
+      {formatWarning && (
+        <FormatWarning id={`${uid}-format-warn`} typeName={formatWarning.type.name} preferred={formatWarning.preferred}
+          planRowId={canPropose ? formatWarning.type.planRowId ?? null : null}
+          onAllowed={() => markAnyFormat(formatWarning.type.id)} />
+      )}
 
       <Card className="divide-y divide-line">
         {/* Received as */}
@@ -518,6 +535,41 @@ function Segmented({ name, value, onChange, options }: {
           {o.label}
         </label>
       ))}
+    </div>
+  );
+}
+
+/**
+ * 11 (spec AC-19): the staff warning. Saving needs no extra click (S4). Staff+ can allow any format for this client
+ * when the type is on the client's plan (S6) — two steps, no browser dialog.
+ */
+function FormatWarning({ id, typeName, preferred, planRowId, onAllowed }: {
+  id: string; typeName: string; preferred: readonly string[]; planRowId: string | null; onAllowed: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function allow() {
+    if (!planRowId) return;
+    setBusy(true); setError("");
+    const r = await allowAnyFormat(planRowId);
+    setBusy(false);
+    if (r.ok) onAllowed(); else setError(r.error);
+  }
+  return (
+    <div id={id} className="rounded-lg bg-warn-soft px-4 py-3 text-[13.5px] text-warn">
+      <p><span aria-hidden="true">⚠ </span>{typeName} is preferred as {formatLabel(preferred)} for this client. You can still save this file.</p>
+      {planRowId && !confirming && (
+        <button type="button" className="mt-1 font-medium underline" onClick={() => setConfirming(true)}>Allow any format for this client</button>
+      )}
+      {planRowId && confirming && (
+        <p className="mt-2 flex flex-wrap items-center gap-2">
+          <span>Allow any format for {typeName} for this client from now on?</span>
+          <Button type="button" size="sm" disabled={busy} onClick={() => void allow()}>Allow</Button>
+          <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => setConfirming(false)}>Cancel</Button>
+        </p>
+      )}
+      {error && <p role="alert" className="mt-1 text-bad">{error}</p>}
     </div>
   );
 }
