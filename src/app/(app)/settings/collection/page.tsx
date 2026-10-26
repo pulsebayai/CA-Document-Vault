@@ -167,7 +167,7 @@ export default async function CollectionPage() {
       <section aria-labelledby="formats-h" className="space-y-3">
         <h3 id="formats-h" className="font-semibold">Preferred formats</h3>
         {fLink.total === 0 && fStaff.total === 0 ? (
-          <Card className="px-6 py-5"><p className="font-medium">No documents were filed under a preferred format in these {WINDOW_DAYS} days.</p></Card>
+          <Card className="px-6 py-5"><p className="font-medium">No documents were filed where a preferred format applied in these {WINDOW_DAYS} days.</p></Card>
         ) : (
           <dl aria-label="Preferred format figures" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {([

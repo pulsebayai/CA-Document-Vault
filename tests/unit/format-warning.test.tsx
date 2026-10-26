@@ -52,6 +52,15 @@ describe("staff format warning (AC-19)", () => {
     expect(button("Save")?.disabled ?? button("Save to vault")?.disabled ?? false).toBe(false);
   });
 
+  it("is announced: the warning sits in a polite live region that exists before it appears (review I-2)", async () => {
+    await render(bank(), "statement.pdf");
+    const region = warning()?.closest('[aria-live="polite"]');
+    expect(region).not.toBeNull();
+    document.body.innerHTML = "";
+    await render(bank(), "statement.csv"); // no warning yet: the empty region is already there
+    expect(container.querySelector('[aria-live="polite"][data-format-warning]')).not.toBeNull();
+  });
+
   it("says nothing for a preferred file, a type with no preference, or a client with an exception", async () => {
     await render(bank(), "statement.CSV");
     expect(warning()).toBeUndefined();

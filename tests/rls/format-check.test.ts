@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createHash, randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
-import { createDocumentOffice, mustCreateDocument, mustReview, typeId } from "../support/documents";
+import { createDocumentOffice, mustCreateDocument, mustReview, periodId, typeId } from "../support/documents";
 import { groupId, mergeType, mustOk, proposeType } from "../support/catalogue";
 import { T, bankOnlyClient, expectedItem, generateAsOf, planRow } from "../support/expected";
 import { EXCEL, addVersionAs, fileAs, formatCheck, same, seedPreferences, setPreferred, uploadAs } from "../support/formats";
@@ -99,6 +99,19 @@ describe("staff filing (AC-14)", () => {
     } finally {
       await setPreferred(officeId, T.form16, null);
     }
+  });
+});
+
+describe("the flag changes nothing else (AC-17, review I-3)", () => {
+  it("a flagged document is To review, links to its expected item and counts as received", async () => {
+    const before = await expectedItem(c.a, T.bank, "2026-03");
+    expect(before.status).toBe("pending");
+    const d = await fileAs(as.staff, officeId, "pdf", { client_id: c.a, doc_type_id: await bank(), period_id: await periodId(officeId, "2026-03") });
+    expect(same(await formatCheck(d.id), EXCEL, false)).toBe(true);
+    const { data, error } = await admin().from("document").select("status, expected_doc_id").eq("id", d.id).single();
+    if (error) throw error;
+    expect(data).toEqual({ status: "received", expected_doc_id: before.id });
+    expect((await expectedItem(c.a, T.bank, "2026-03")).status).toBe("received");
   });
 });
 

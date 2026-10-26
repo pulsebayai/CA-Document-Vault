@@ -81,3 +81,19 @@ test("AC-10: a preferred file uploads with no warning and no flag", async ({ pag
   const { data: act } = await adminClient().from("activity").select("data").eq("entity_id", docs[1].id).eq("action", "document.link_upload").single();
   expect(act!.data).not.toHaveProperty("warned");
 });
+
+test("AC-10, AC-13 (review I-1, I-2): the warning is announced, and 'Choose another file' opens the picker; the new file counts as switched", async ({ page }) => {
+  await page.goto(`/u#${token}`);
+  const item = card(page);
+  await item.locator('input[type="file"]').setInputFiles({ name: "april.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.4\n%%EOF\n") });
+  const warn = item.getByRole("group", { name: /This document is preferred as Excel or CSV/ });
+  await expect(warn).toBeVisible();
+  await expect(page.locator('p[aria-live="polite"]')).toContainText("preferred as Excel or CSV");
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser", { timeout: 5_000 }), warn.getByRole("button", { name: "Choose another file" }).click()]);
+  await chooser.setFiles({ name: "april.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from("PK\u0003\u0004") });
+  await expect(item.getByText("Uploaded ✓")).toBeVisible(); // a fresh page session lists only this upload
+  const docs = await linkUploads();
+  expect(docs.map((d) => d.format_ok)).toEqual([false, true, true]);
+  const { data: act } = await adminClient().from("activity").select("data").eq("entity_id", docs[2].id).eq("action", "document.link_upload").single();
+  expect(act!.data).toMatchObject({ warned: true }); // warned, then sent a preferred file = "switched"
+});

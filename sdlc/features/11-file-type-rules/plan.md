@@ -116,6 +116,20 @@ Every spec AC → test file → result in the PR's AC table (P2/P3 marked as app
 - **Step 5: Add version shows the preference as a hint before choosing and a note after saving** (no blocking dialog), because a new version is saved as soon as the file is chosen.
 - **Step 5/6: the `/documents` badge was built in step 6** with the search reads (it needs B's `format_ok` / `format_preferred` columns in the rows).
 - **Step 6: migration B renamed to the version dev recorded**, `20261026113420_format_reads`.
+- **Step 8: pre-PR review (sdlc-reviewer, 2026-10-26): no blockers; three Important findings fixed, each with a test that failed first.**
+  - **I-1** On `/u`, "Choose another file" never opened the picker: the input was disabled while the warning was open, and the click came before React re-enabled it. The input now stays enabled; the button focuses and clicks it. e2e `upload-link-formats` waits for the file chooser (failed on the old build: no `filechooser` event).
+  - **I-2** Warnings weren't announced. `/u` sends the warning text, with the number of off-format files, to the page's live region. The staff form wraps the warning in an always-present `aria-live="polite"` region. Unit test + e2e (both failed first).
+  - **I-3** AC-17 had no test. Added to `format-check`: a flagged PDF is To review, links to its expected item and the item is received. It passed at once: the behaviour was already right; only the coverage was missing.
+  - Nit fixed: the Collection empty state now says "filed where a preferred format applied".
+  - Nits not fixed (recorded for Raja):
+    - `warned` counts "switched" too high for mixed selections: a preferred file in an "Upload anyway" batch is sent as warned, as AC-13 words it.
+    - A file name with no extension reads as a format in TS but null in SQL. The outcome is the same (not preferred), and the allow-list refuses such files first.
+    - The list badge detail is in a `title` (hover only); screen readers get the sr-only text.
+    - `setPlanTypeAnyFormat` accepts types with no preference (no effect, AC-8).
+    - The exceptions count includes removed rows and archived clients.
+    - `private.format_choices()` is no longer used.
+    - The "Files that change" list names `validation/catalogue.ts`, which didn't change.
+    - R1 checklist (for main): after replaying the migrations on staging, check that the six seeded types show their preferred formats.
 - **Step 7: `formatMetricAs` lives in `src/lib/catalogue/queries.ts`** next to 05's `catalogueMetricAs`, and a small `sharePct` helper (+ unit test) is in `formats.ts`. "Clients allowed any format" is **as of now**, not the 30-day window (the exception is a current setting; `format_metric` counts current rows).
 - **Step 6: migration C `20261026114801_format_test_offices` (approved by Raja 2026-10-26)** so 10's existing tests run unedited:
   - B wrote `warned: false` on every link upload, but `upload-links-public` checks the activity row exactly. C writes `warned` **only when true** (absent = not warned; a non-boolean counts as not warned).

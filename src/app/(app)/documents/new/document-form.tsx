@@ -322,11 +322,14 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
 
       </>)}
 
-      {formatWarning && (
-        <FormatWarning id={`${uid}-format-warn`} typeName={formatWarning.type.name} preferred={formatWarning.preferred}
-          planRowId={canPropose ? formatWarning.type.planRowId ?? null : null}
-          onAllowed={() => markAnyFormat(formatWarning.type.id)} />
-      )}
+      {/* 11 review I-2: always rendered, so screen readers announce the warning when it appears. */}
+      <div aria-live="polite" data-format-warning="">
+        {formatWarning && (
+          <FormatWarning id={`${uid}-format-warn`} typeName={formatWarning.type.name} preferred={formatWarning.preferred}
+            planRowId={canPropose ? formatWarning.type.planRowId ?? null : null}
+            onAllowed={() => markAnyFormat(formatWarning.type.id)} />
+        )}
+      </div>
 
       <Card className="divide-y divide-line">
         {/* Received as */}
