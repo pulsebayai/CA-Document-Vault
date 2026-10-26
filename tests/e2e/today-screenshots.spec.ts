@@ -53,6 +53,9 @@ async function shoot(page: Page, name: string) {
 const pageWidth = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth);
 
 test("06 screens vs mockups 01 / 10 + dialogs + Reminders list + chasing load, desktop and phone; no serious/critical axe issues", async ({ page, baseURL }) => {
+  // Time limit only (Raja 2026-10-26): on CI this test took 26–28 s of the 30 s budget before feature 10 (run 40191740304)
+  // and varies ±10 s run to run, so it failed at random (PR #3 run 40267263923). Every check is unchanged.
+  test.slow();
   await page.setViewportSize({ width: 1280, height: 860 });
   await signIn(page, staff.email, baseURL);
 

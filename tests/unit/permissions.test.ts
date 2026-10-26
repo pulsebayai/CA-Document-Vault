@@ -24,6 +24,9 @@ describe("permissions matrix (AC-12)", () => {
       ["Reopen an expected document", "Yes", "Yes", "Yes", "Assigned"],
       ["Undo a waive", "Yes", "Yes", "No", "No"],
       ["Remind clients (email, WhatsApp) and log calls", "Yes", "Yes", "Yes", "Assigned"],
+      // 10 spec AC-5 (approved Raja 2026-10-25): two rows added; no existing row changed.
+      ["Send upload links to clients", "Yes", "Yes", "Yes", "Assigned"],
+      ["Revoke an upload link someone else sent", "Yes", "Yes", "No", "No"],
       ["Change collection plans (add, remove types/groups)", "Yes", "Yes", "Yes", "No"],
       ["Assign incharge and group staff, pause and resume", "Yes", "Yes", "No", "No"],
       ["Manage catalogue, approve proposed types, Settings › Collection", "Yes", "Yes", "No", "No"],

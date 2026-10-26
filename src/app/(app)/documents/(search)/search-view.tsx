@@ -10,7 +10,7 @@ import type { ReviewTarget } from "@/components/bulk-review-dialog";
 import { SEARCH_TEXT_EVENT, handOffSearchText } from "@/components/header-search";
 import { documentFacets, findClients, searchDocuments } from "@/lib/search/actions";
 import type { ClientHit, DocumentHit, FacetName, FacetValue, FilterOptions, PickerClient } from "@/lib/search/queries";
-import { CHANNELS, RECEIVED_AS } from "@/lib/validation/document";
+import { CHANNEL_LABELS, RECEIVED_AS } from "@/lib/validation/document";
 import { documentState, type ShownStateKind } from "@/lib/documents/state";
 import { istDate } from "@/lib/documents/period";
 import {
@@ -22,7 +22,7 @@ import {
 // storage (the header writes it, this page reads and writes it). Searches and facet counts are server actions (POST).
 
 const RECEIVED_LABEL: Record<string, string> = Object.fromEntries(RECEIVED_AS.map((r) => [r.value, r.label]));
-const CHANNEL_LABEL: Record<string, string> = Object.fromEntries(CHANNELS.map((c) => [c.value, c.label]));
+const CHANNEL_LABEL = CHANNEL_LABELS; // 10: includes "Upload link"
 const STATUS_LABEL: Record<string, string> = Object.fromEntries(DOC_STATUSES.map((s) => [s.value, s.label]));
 const STATE_LABEL: Record<string, string> = Object.fromEntries(DOC_STATES.map((s) => [s.value, s.label]));
 const RETURN_LABEL: Record<string, string> = Object.fromEntries(DOC_RETURNS.map((s) => [s.value, s.label]));
@@ -324,6 +324,7 @@ function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolea
       <span className="flex shrink-0 gap-1.5">
         {d.receivedAs !== "soft_copy" && <Badge tone={d.receivedAs === "original" ? "bad" : "warn"}>{RECEIVED_LABEL[d.receivedAs]}</Badge>}
         {d.archived && <Badge tone="muted">Archived</Badge>}
+        {d.channel === "upload_link" && <Badge tone="accent">From client link</Badge>}
       </span>
     </li>
   );

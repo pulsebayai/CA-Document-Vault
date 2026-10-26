@@ -7,7 +7,8 @@ import { PageHeader } from "@/components/ui";
 import { DocumentForm } from "./document-form";
 
 /**
- * Add document (mockup 12, spec AC-1 … AC-5). Everyone signed in (Limited too: their clients or the Inbox).
+ * Add document (mockup 12, spec AC-1 … AC-5). 10: ?item= files it for a requested (ad-hoc) item.
+ * Everyone signed in (Limited too: their clients or the Inbox).
  * ?client=<uuid> pre-fills the client (from a client page); ?from= is where to go back to (internal paths only).
  * From an expected row (04 AC-8): ?type=&period=&registration= (UUIDs) pre-fill the rest, kept only if valid for the client.
  */
@@ -18,11 +19,15 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
   const client = clientParam ? await clientOption(clientParam) : null;
   const [types, periods, groups] = await Promise.all([typesForClient(client?.id ?? null), listPeriods(), listGroups()]);
   const prefill = client ? prefillFrom(sp, types, periods) : null;
+  // 10: ?item= (Client › Requested "Upload") files the document for that requested item; kept only with a client and
+  // a pre-filled type (the item's), and the database checks the item again.
+  const item = client && prefill && typeof sp.item === "string" && z.uuid().safeParse(sp.item).success ? sp.item : null;
   return (
     <div className="mx-auto max-w-[815px]">
       <PageHeader title="Add document" />
       <DocumentForm initialClient={client} initialTypes={types} periods={periods} groups={groups} today={istDate()}
-        canPropose={me.role !== "limited"} returnTo={safeReturn(sp.from, client?.id)} prefill={prefill} />
+        canPropose={me.role !== "limited"} returnTo={safeReturn(sp.from, client?.id)} prefill={prefill} requestItemId={item}
+        itemLocks={item ? { period: typeof sp.period === "string", registration: typeof sp.registration === "string" } : undefined} />
     </div>
   );
 }
@@ -30,6 +35,6 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
 /** Only our own list/detail pages; never an arbitrary URL (open redirect). */
 function safeReturn(from: string | string[] | undefined, clientId: string | undefined): string {
   const f = typeof from === "string" ? from : "";
-  if (/^\/clients\/[0-9a-f-]{36}(\?tab=expected)?$/.test(f) || f === "/clients" || f === "/inbox") return f;
+  if (/^\/clients\/[0-9a-f-]{36}(\?tab=(expected|requested))?$/.test(f) || f === "/clients" || f === "/inbox") return f;
   return clientId ? `/clients/${clientId}` : "/clients";
 }

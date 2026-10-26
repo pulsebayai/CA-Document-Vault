@@ -16,10 +16,12 @@ import { ArchiveControls } from "./archive-controls";
 import { PlanView } from "./plan-view";
 import { clientRemindersAs, itemHistoryAs } from "@/lib/reminders/queries";
 import { RemindersList } from "./reminders-list";
+import { openRequestedCount, requestedAs } from "@/lib/upload-links/requested";
+import { RequestedView } from "./requested-view";
 
 /**
  * Client page (mockups 10–11; 02 AC-18, 03 AC-10, 04 AC-13/14): header and tabs Documents (default, 04 AC-14) ·
- * Expected · Settings (the collection plan and the client card). Activity arrives with 08 (no dead tabs).
+ * Expected · Requested (10: ad-hoc items and upload links) · Settings (the collection plan and the client card). Activity arrives with 08 (no dead tabs).
  * RLS returns nothing for a client a Limited user can't see → Not Found (AC-12).
  */
 export default async function ClientPage({ params, searchParams }: PageProps<"/clients/[id]">) {
@@ -33,15 +35,18 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   if (!c) notFound();
   // 04 AC-14: Documents is the default tab (?tab=documents still works for 03's links); Settings is ?tab=settings.
   // 04 AC-13: Expected, with the open count (Due + Overdue, every FY) on the tab, whichever tab is shown.
-  const tab = sp.tab === "settings" ? "settings" : sp.tab === "expected" ? "expected" : "documents";
-  const [plan, docCount, documents, expected, fys, planGroups] = await Promise.all([
+  // 10 AC-16: Requested (ad-hoc items + the client's upload links), with the open count on the tab.
+  const tab = sp.tab === "settings" ? "settings" : sp.tab === "expected" ? "expected" : sp.tab === "requested" ? "requested" : "documents";
+  const [plan, docCount, documents, expected, fys, planGroups, requestedCount] = await Promise.all([
     tab === "settings" ? getClientPlan(c.id) : null,
     countClientDocuments(c.id),
     tab === "documents" ? listClientDocuments(c.id) : [],
     listClientExpected(me.officeId, c.id, { status: "all" }),
     tab !== "settings" ? listFinancialYears() : [],
     tab === "documents" ? listPlanGroups(c.id) : [],
+    openRequestedCount(c.id),
   ]);
+  const requested = tab === "requested" ? await requestedAs(c.id, expected.today) : null;
   // 06 AC-12: each expected row's reminder history; the Expected tab also lists the client's reminders.
   const [history, reminderList] = await Promise.all([
     tab !== "settings" ? itemHistoryAs(c.id, expected.today) : {},
@@ -85,15 +90,18 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
         </p>
       )}
 
-      <nav aria-label="Client sections" className="border-b border-line">
-        <ul className="flex gap-1">
+      {/* 10: four tabs don't fit 390 px — the row scrolls sideways inside itself (relative: 02's sr-only rule). */}
+      <nav aria-label="Client sections" className="relative overflow-x-auto border-b border-line">
+        <ul className="flex gap-1 whitespace-nowrap">
           {([["documents", `Documents`, `/clients/${c.id}`], ["expected", "Expected", `/clients/${c.id}?tab=expected`],
+            ["requested", "Requested", `/clients/${c.id}?tab=requested`],
             ["settings", "Settings", `/clients/${c.id}?tab=settings`]] as const).map(([key, label, href]) => (
             <li key={key}>
               <Link href={href} aria-current={tab === key ? "page" : undefined}
                 className={`-mb-px inline-block border-b-2 px-3 py-2 text-[14px] ${tab === key ? "border-ink font-medium" : "border-transparent text-ink-2 hover:text-ink"}`}>
                 {label}{key === "documents" && <span className="ml-1 text-ink-3">{docCount}</span>}
                 {key === "expected" && <span className="ml-1 text-ink-3">{expected.open}</span>}
+                {key === "requested" && <span className="ml-1 text-ink-3">{requestedCount}</span>}
               </Link>
             </li>
           ))}
@@ -115,6 +123,12 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             perms={{ canAct: !c.archived, canWaive: me.role !== "limited" && !c.archived, canUndo: canManage }}
             reminders={reminders} />
           <div className="mt-5"><RemindersList entries={reminderList} today={expected.today} /></div>
+        </div>
+      ) : tab === "requested" ? (
+        <div>
+          <h2 className="sr-only">Requested documents</h2>
+          <RequestedView clientId={c.id} data={requested!} today={expected.today}
+            perms={{ canAct: !c.archived, meId: me.id, isManager: canManageCatalogue(me.role), mobile: c.mobile, hasEmail: !!c.email }} />
         </div>
       ) : (
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">

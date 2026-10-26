@@ -165,6 +165,8 @@ export type ClientDocument = {
   periodLabel: string | null; periodStart: string | null; fyCode: string; receivedOn: string; receivedBy: string;
   receivedAs: "soft_copy" | "hard_copy" | "original"; versionCount: number;
   current: { id: string; mimeType: string } | null; proposed: boolean;
+  /** 10: the document came through a client upload link ("From client link"). */
+  fromLink?: boolean;
   // 07: review state and the live packet (documentState() in ./state.ts).
   status: string; reviewedAt: string | null; reviewedByName: string | null; correctionReason: string | null;
   dispatchedOn: string | null; dispatchMethod: string | null;
@@ -172,6 +174,7 @@ export type ClientDocument = {
 
 type ClientDocRow = {
   id: string; doc_code: string; received_on: string; received_as: ClientDocument["receivedAs"]; version_count: number;
+  channel: string;
   receiver: { full_name: string } | null;
   doc_type: { name: string; status: string; doc_group: { id: string; name: string; sort: number } | null } | null;
   period: { label: string; start_date: string; financial_year: { code: string } | null } | null;
@@ -201,7 +204,7 @@ export async function listClientDocuments(clientId: string): Promise<ClientDocum
     fyCode: r.period?.financial_year?.code ?? fyOfDate(r.received_on),
     receivedOn: r.received_on, receivedBy: r.receiver?.full_name ?? "—", receivedAs: r.received_as,
     versionCount: r.version_count, current: r.current ? { id: r.current.id, mimeType: r.current.mime_type } : null,
-    proposed: r.doc_type!.status === "proposed",
+    proposed: r.doc_type!.status === "proposed", fromLink: r.channel === "upload_link",
     ...reviewFields(r),
   }));
 }

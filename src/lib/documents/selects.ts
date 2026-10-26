@@ -4,7 +4,7 @@
 export const INBOX_SELECT = `id, doc_code, received_as, channel, remark, created_at,
   creator:created_by (full_name), current:current_version_id (file_name), client:client_id (name), doc_type:doc_type_id (name)`;
 
-export const CLIENT_DOCUMENTS_SELECT = `id, doc_code, received_on, received_as, version_count,
+export const CLIENT_DOCUMENTS_SELECT = `id, doc_code, received_on, received_as, version_count, channel,
   receiver:received_by (full_name),
   doc_type:doc_type_id (name, status, doc_group:doc_group_id (id, name, sort)),
   period:period_id (label, start_date, financial_year:financial_year_id (code)),

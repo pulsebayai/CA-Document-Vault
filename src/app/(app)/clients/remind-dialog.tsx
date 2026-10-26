@@ -3,8 +3,11 @@
 import { useEffect, useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Modal, inputCls } from "@/components/dialog";
-import { Button } from "@/components/ui";
+import { Button, Switch } from "@/components/ui";
+import { addDays } from "@/lib/expected/schedule";
 import { buildReminderMessage, whatsappUrl } from "@/lib/reminders/message";
+import { recordLinkWhatsApp, retryLinkEmail, revokeLink, sendLinkEmail, type LinkEmailResult } from "@/lib/upload-links/actions";
+import { AdHocEditor, adHocPreview, adHocProblems, useLinkOptions, type AdHocRow } from "./link-section";
 import { logCall, recordWhatsApp, remindDialog, sendEmailReminder, type SendEmailResult } from "@/lib/reminders/actions";
 import type { RemindDialogData } from "@/lib/reminders/queries";
 import type { DialogItem } from "@/lib/reminders/shape";
@@ -81,29 +84,87 @@ function RemindBody({ clientId, close }: { clientId: string; close: () => void }
   const [sent, setSent] = useState<SendEmailResult | null>(null);
   const [wa, setWa] = useState<{ ok: boolean; error?: string } | null>(null);
   const previewId = useId();
+  // Feature 10: "Include upload link" (off by default — the dialog is 06's own until it's switched on).
+  const [linkOn, setLinkOn] = useState(false);
+  const [rows, setRows] = useState<AdHocRow[]>([]);
+  const [linkSent, setLinkSent] = useState<LinkEmailResult | null>(null);
+  const [linkWa, setLinkWa] = useState<{ ok: true; openUntil: string; requestId: string } | { ok: false; error: string } | null>(null);
+  const [revoked, setRevoked] = useState<string | null>(null);
+  const link = useLinkOptions(clientId, linkOn);
 
   const chosen = useMemo(() => data?.items.filter((i) => ticked.has(i.id)) ?? [], [data, ticked]);
-  const preview = useMemo(() => (data && chosen.length > 0 ? buildReminderMessage({
-    clientName: data.client.name, items: chosen, senderName: data.sender.name, firmName: data.sender.firm, today: data.today,
-  }).text : ""), [data, chosen]);
+  const adHoc = useMemo(() => (linkOn ? adHocPreview(rows, link.data) : []), [linkOn, rows, link.data]);
+  const preview = useMemo(() => {
+    if (!data || chosen.length + adHoc.length === 0) return "";
+    if (!linkOn || !link.data?.base) {
+      return chosen.length === 0 ? "" : buildReminderMessage({
+        clientName: data.client.name, items: chosen, senderName: data.sender.name, firmName: data.sender.firm, today: data.today,
+      }).text;
+    }
+    // The real link is made at Send; the preview shows where it goes, never a token.
+    const placeholder = `${link.data.base}/u#${"X".repeat(43)}`;
+    return buildReminderMessage({
+      clientName: data.client.name, items: chosen, adHoc, senderName: data.sender.name, firmName: data.sender.firm, today: data.today,
+      uploadLink: { url: placeholder, openUntil: addDays(data.today, 14) },
+    }).text.replace(placeholder, "‹secure upload link›");
+  }, [data, chosen, adHoc, linkOn, link.data]);
 
   if (error) return <><Failed error={error} /><Footer close={close} /></>;
   if (!data) return <Loading />;
+
+  const linkProblem = !linkOn ? null
+    : link.error ? link.error
+    : !link.data ? "Loading document types…"
+    : !link.data.enabled ? "Upload links aren't set up in this environment."
+    : adHocProblems(rows, data.today);
+  const nothingChosen = chosen.length === 0 && !(linkOn && rows.length > 0);
 
   const emailedToday = data.emailedToday ?? (sent?.ok && sent.status !== "failed" ? { at: sent.at, by: data.sender.name } : null);
   const emailBlocked = !data.client.emailMasked ? "No email on file — add one in Settings."
     : emailedToday ? `Emailed today at ${TIME.format(new Date(emailedToday.at))} by ${emailedToday.by}. One email per client per day.`
     : data.dailyLimitReached ? "Daily email limit reached — use WhatsApp or try tomorrow."
-    : chosen.length === 0 ? "Choose at least one document." : null;
+    : nothingChosen ? "Choose at least one document." : linkProblem;
   const waBlocked = !data.client.mobile ? "No mobile number on file — add one in Settings."
-    : chosen.length === 0 ? "Choose at least one document." : null;
+    : nothingChosen ? "Choose at least one document." : linkProblem;
 
+  const linkInput = () => ({
+    clientId, itemIds: chosen.map((i) => i.id),
+    adHoc: rows.map((r) => ({ docTypeId: r.docTypeId, periodId: r.periodId || null, registrationId: r.registrationId || null,
+      neededBy: r.neededBy || null, note: r.note.trim() || null })),
+  });
   const sendEmail = () => start(async () => {
-    const r = await sendEmailReminder(clientId, chosen.map((i) => i.id));
-    setSent(r);
+    if (linkOn) {
+      setLinkSent(await sendLinkEmail(linkInput()));
+    } else {
+      setSent(await sendEmailReminder(clientId, chosen.map((i) => i.id)));
+    }
+    router.refresh();
+  });
+  const retryLink = (requestId: string) => start(async () => { setLinkSent(await retryLinkEmail(requestId)); router.refresh(); });
+  const revoke = (requestId: string) => start(async () => {
+    const r = await revokeLink(requestId, clientId);
+    setRevoked(r.ok ? requestId : null);
+    if (!r.ok) setLinkWa({ ok: false, error: r.error });
     router.refresh();
   });
   const openWhatsApp = () => {
+    if (linkOn) {
+      // The tab opens from the click (popup blockers); the link is made on the server, then the tab goes to wa.me.
+      const tab = window.open("", "_blank");
+      start(async () => {
+        const r = await recordLinkWhatsApp(linkInput());
+        if (r.ok && tab) {
+          tab.opener = null;
+          tab.location.href = whatsappUrl(data.client.mobile!, r.text);
+          setLinkWa({ ok: true, openUntil: r.openUntil, requestId: r.requestId });
+        } else {
+          tab?.close();
+          setLinkWa({ ok: false, error: r.ok ? "Your browser blocked the WhatsApp tab. Allow pop-ups and try again." : r.error });
+        }
+        router.refresh();
+      });
+      return;
+    }
     // Opened from the click itself so popup blockers allow it; the URL is built here, never on our servers.
     window.open(whatsappUrl(data.client.mobile!, preview), "_blank", "noopener,noreferrer");
     start(async () => {
@@ -114,10 +175,25 @@ function RemindBody({ clientId, close }: { clientId: string; close: () => void }
     });
   };
 
+  const linkDone = (linkSent?.ok && linkSent.status !== "failed") || linkWa?.ok;
   return (
     <div className="space-y-4">
       <ItemPicker items={data.items} ticked={ticked} toggle={toggle} />
-      {data.items.length > 0 && (
+      <div className="rounded-lg border border-line p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-medium">Include upload link</p>
+            <p className="text-[12.5px] text-ink-3">The client uploads these documents straight into the vault. Open for 14 days.</p>
+          </div>
+          <Switch checked={linkOn} label="Include upload link" disabled={pending || Boolean(linkDone)} onChange={setLinkOn} />
+        </div>
+        {linkOn && link.data?.enabled && (
+          <div className="mt-3">
+            <AdHocEditor rows={rows} setRows={setRows} options={link.data} today={data.today} disabled={pending || Boolean(linkDone)} />
+          </div>
+        )}
+      </div>
+      {(data.items.length > 0 || (linkOn && rows.length > 0)) && (
         <div>
           <h3 id={previewId} className="mb-1 text-[13px] font-medium text-ink-2">Message preview</h3>
           {/* Scrolls when long: focusable + named, so keyboard users can scroll it (axe scrollable-region-focusable). */}
@@ -130,11 +206,11 @@ function RemindBody({ clientId, close }: { clientId: string; close: () => void }
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <Button type="button" className="w-full" disabled={pending || Boolean(emailBlocked)} onClick={sendEmail}>Send email</Button>
+          <Button type="button" className="w-full" disabled={pending || Boolean(emailBlocked) || Boolean(linkDone)} onClick={sendEmail}>Send email</Button>
           {emailBlocked && <p className="mt-1 text-[12.5px] text-ink-3">{emailBlocked}</p>}
         </div>
         <div>
-          <Button type="button" variant="secondary" className="w-full" disabled={pending || Boolean(waBlocked)} onClick={openWhatsApp}>Open WhatsApp</Button>
+          <Button type="button" variant="secondary" className="w-full" disabled={pending || Boolean(waBlocked) || Boolean(linkDone)} onClick={openWhatsApp}>Open WhatsApp</Button>
           {waBlocked ? <p className="mt-1 text-[12.5px] text-ink-3">{waBlocked}</p>
             : <p className="mt-1 text-[12.5px] text-ink-3">Opens your WhatsApp — press Send there.</p>}
         </div>
@@ -151,8 +227,35 @@ function RemindBody({ clientId, close }: { clientId: string; close: () => void }
         )}
         {wa?.ok && <p role="status" className="mt-2 rounded-lg bg-ok-soft px-3 py-2 text-[13.5px] text-ok">WhatsApp opened and recorded.</p>}
         {wa && !wa.ok && <Failed error={wa.error ?? ""} />}
+        {linkSent && !linkSent.ok && <Failed error={linkSent.error} />}
+        {linkSent?.ok && linkSent.status !== "failed" && (
+          <LinkDone text={linkSent.status === "sent" ? `Link sent to ${linkSent.to}` : "Link recorded, not emailed: this address doesn't receive email in this environment"}
+            openUntil={linkSent.openUntil} revoked={revoked === linkSent.requestId} pending={pending} onRevoke={() => revoke(linkSent.requestId)} />
+        )}
+        {linkSent?.ok && linkSent.status === "failed" && (
+          <div role="alert" className="flex flex-wrap items-center gap-2 rounded-lg bg-bad-soft px-3 py-2 text-[13.5px] text-bad">
+            {linkSent.error}<Button type="button" size="sm" variant="secondary" disabled={pending} onClick={() => retryLink(linkSent.requestId)}>Retry</Button>
+          </div>
+        )}
+        {linkWa?.ok && (
+          <LinkDone text="WhatsApp opened with the link — press Send there" openUntil={linkWa.openUntil}
+            revoked={revoked === linkWa.requestId} pending={pending} onRevoke={() => revoke(linkWa.requestId)} />
+        )}
+        {linkWa && !linkWa.ok && <Failed error={linkWa.error} />}
       </div>
       <Footer close={close} />
+    </div>
+  );
+}
+
+function LinkDone({ text, openUntil, revoked, pending, onRevoke }: {
+  text: string; openUntil: string; revoked: boolean; pending: boolean; onRevoke: () => void;
+}) {
+  const until = new Date(`${openUntil}T00:00:00+05:30`).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
+  return (
+    <div role="status" className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-ok-soft px-3 py-2 text-[13.5px] text-ok">
+      {revoked ? "Link revoked — it no longer works." : <>{text} · open until {until}.
+        <Button type="button" size="sm" variant="danger" disabled={pending} onClick={onRevoke}>Revoke</Button></>}
     </div>
   );
 }

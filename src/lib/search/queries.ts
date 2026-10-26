@@ -1,7 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
-import type { Channel, ReceivedAs } from "@/lib/validation/document";
+import type { DocumentChannel as Channel, ReceivedAs } from "@/lib/validation/document";
 import type { SearchInput } from "@/lib/validation/document-search";
 
 // Spec 03b. Everything runs as the signed-in user: search_documents / search_document_facets / search_clients are

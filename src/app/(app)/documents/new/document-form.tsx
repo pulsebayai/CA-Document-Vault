@@ -31,6 +31,10 @@ type Props = {
   existing?: DocumentForForm;
   /** From an expected row's "Upload" (04 AC-8): type, period and registration chosen already (validated server-side). */
   prefill?: Prefill | null;
+  /** 10 (Client › Requested "Upload"): the document is filed for this ad-hoc item (client and type are the item's). */
+  requestItemId?: string | null;
+  /** 10: which of period / registration the item fixes (they are then shown but can't be changed). */
+  itemLocks?: { period: boolean; registration: boolean };
 };
 
 type Upload =
@@ -47,7 +51,9 @@ const control = "w-full rounded-[9px] border border-line-2 bg-panel px-3 py-2 ou
 const noSubscribe = () => () => {};
 const kb = (n: number) => (n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
-export function DocumentForm({ initialClient, initialTypes, periods, groups, today, canPropose, returnTo, existing, prefill }: Props) {
+export function DocumentForm({ initialClient, initialTypes, periods, groups, today, canPropose, returnTo, existing, prefill, requestItemId, itemLocks }: Props) {
+  // 10 review I-1: filing for a requested item fixes what the item asked for; the database refuses anything else.
+  const forItem = Boolean(requestItemId);
   const router = useRouter();
   const uid = useId();
   const fileInput = useRef<HTMLInputElement>(null);
@@ -74,6 +80,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
   const [periodId, setPeriodId] = useState(initialPeriod?.id ?? "");
   const [registrationId, setRegistrationId] = useState(existing?.registrationId ?? (prefillType ? prefill!.registrationId : ""));
   const [channel, setChannel] = useState<Channel>((existing?.channel as Channel) ?? "whatsapp");
+  const fromLink = existing?.channel === "upload_link";
   const [receivedOn, setReceivedOn] = useState(existing?.receivedOn ?? today);
   const [remark, setRemark] = useState(existing?.remark ?? "");
 
@@ -242,7 +249,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
       periodId: periodChoice === "none" ? "" : periodId, registrationId,
     };
     const r = existing ? await updateDocumentAction({ id: existing.id, ...fields }) : await saveDocument({
-      ...fields,
+      ...fields, requestItemId: requestItemId ?? null,
       file: file && upload.status === "done"
         ? { path: upload.path, size: file.valid.size, mime: file.valid.mime, fileName: file.valid.fileName } : null,
     });
@@ -317,7 +324,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-medium">{client.name}</span>
               <span className="text-[13px] text-ink-3">{client.code}</span>
-              <button type="button" onClick={() => void pickClient(null)} className="text-[13px] text-accent hover:underline">Change</button>
+              {!forItem && <button type="button" onClick={() => void pickClient(null)} className="text-[13px] text-accent hover:underline">Change</button>}
             </div>
           ) : (
             <div className="relative">
@@ -339,15 +346,19 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
             </div>
           )}
           {errText("clientId")}
-          <p id={`${uid}-client-hint`} className="mt-1 text-[13px] text-ink-3">
-            Not sure who this belongs to?{" "}
-            <button type="button" onClick={() => void save("inbox")} disabled={!ready || busy || uploading} className="text-accent hover:underline disabled:opacity-50">Leave it in inbox</button>
-          </p>
+          {forItem ? (
+            <p id={`${uid}-client-hint`} className="mt-1 text-[13px] text-ink-3">Filing for a requested document — the client and type are the ones requested.</p>
+          ) : (
+            <p id={`${uid}-client-hint`} className="mt-1 text-[13px] text-ink-3">
+              Not sure who this belongs to?{" "}
+              <button type="button" onClick={() => void save("inbox")} disabled={!ready || busy || uploading} className="text-accent hover:underline disabled:opacity-50">Leave it in inbox</button>
+            </p>
+          )}
         </Row>
 
         {/* Document type */}
         <Row label="Document type" htmlFor={`${uid}-type`}>
-          <select id={`${uid}-type`} value={docTypeId} onChange={(e) => onTypeChange(e.target.value)} className={control} {...described("docTypeId", `${uid}-type-hint`)}>
+          <select id={`${uid}-type`} value={docTypeId} disabled={forItem} onChange={(e) => onTypeChange(e.target.value)} className={`${control} disabled:bg-canvas`} {...described("docTypeId", `${uid}-type-hint`)}>
             <option value="">Choose a type…</option>
             {types.planTypes.length > 0 && (
               <optgroup label={`Active for ${client?.name ?? "this client"}`}>
@@ -357,7 +368,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
             <optgroup label={client ? "Other types" : "All types"}>
               {types.otherTypes.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.groupName}</option>)}
             </optgroup>
-            {client && canPropose && <option value={NEW_TYPE}>+ New type for this client…</option>}
+            {client && canPropose && !forItem && <option value={NEW_TYPE}>+ New type for this client…</option>}
           </select>
           {errText("docTypeId")}
           <p id={`${uid}-type-hint`} className="mt-1 text-[13px] text-ink-3">
@@ -406,6 +417,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
 
         {/* Period */}
         <Row label="Period" as="fieldset">
+          <fieldset disabled={forItem && itemLocks?.period} className="contents">
           <Segmented name={`${uid}-pk`} value={periodChoice} onChange={(v) => onPeriodChoice(v as PeriodChoice)}
             options={kinds.map((k) => ({ value: k, label: PERIOD_LABEL[k] }))} />
           {periodChoice !== "none" && (
@@ -417,6 +429,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
               {chosenPeriod && <span className="text-[13px] text-ink-3">FY {chosenPeriod.fyCode}</span>}
             </div>
           )}
+          </fieldset>
           {errText("periodId")}
           {type && type.frequency !== "as_needed" && (
             <p className="mt-1 text-[13px] text-ink-3">{type.name} is collected {type.frequency} for this client — the period that just ended is preselected.</p>
@@ -426,7 +439,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
         {/* Registration (GST → GSTIN, TDS → TAN) */}
         {type?.registrationKind && regChoices.length > 0 && (
           <Row label={type.registrationKind === "gstin" ? "GSTIN" : "TAN"} htmlFor={`${uid}-reg`}>
-            <select id={`${uid}-reg`} value={registrationId} onChange={(e) => setRegistrationId(e.target.value)} className={control} {...described("registrationId")}>
+            <select id={`${uid}-reg`} value={registrationId} disabled={forItem && itemLocks?.registration} onChange={(e) => setRegistrationId(e.target.value)} className={`${control} disabled:bg-canvas`} {...described("registrationId")}>
               <option value="">Not specified</option>
               {regChoices.map((r) => <option key={r.id} value={r.id}>{r.number}</option>)}
             </select>
@@ -439,9 +452,14 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <label htmlFor={`${uid}-channel`} className="block text-[13px] text-ink-2">Channel</label>
-              <select id={`${uid}-channel`} value={channel} onChange={(e) => setChannel(e.target.value as Channel)} className={`mt-1 ${control}`} {...described("channel")}>
-                {CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-              </select>
+              {fromLink ? (
+                // 10: a document sent by upload link keeps its channel (the database refuses a change).
+                <input id={`${uid}-channel`} readOnly value="Upload link" className={`mt-1 ${control} bg-canvas`} {...described("channel")} />
+              ) : (
+                <select id={`${uid}-channel`} value={channel} onChange={(e) => setChannel(e.target.value as Channel)} className={`mt-1 ${control}`} {...described("channel")}>
+                  {CHANNELS.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+              )}
             </div>
             <div>
               <label htmlFor={`${uid}-received-on`} className="block text-[13px] text-ink-2">Received on</label>
@@ -461,7 +479,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
 
       <div className="flex flex-wrap items-center gap-2">
         <Button type="submit" disabled={!ready || busy || uploading}>{saving === "vault" ? "Saving…" : existing?.classified ? "Save changes" : "Save to vault"}</Button>
-        {!existing?.classified && (
+        {!existing?.classified && !forItem && (
           <Button type="button" variant="secondary" disabled={!ready || busy || uploading} onClick={() => void save("inbox")}>
             {saving === "inbox" ? "Saving…" : existing ? "Keep in inbox" : "Save to inbox"}
           </Button>

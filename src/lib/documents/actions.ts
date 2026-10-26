@@ -6,7 +6,7 @@ import { z } from "zod";
 import { requireStaff } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
 import {
-  MIME_BY_EXTENSION, canView, extensionOf, sanitiseFileName, validateDocumentMeta, validateFile,
+  MIME_BY_EXTENSION, canView, extensionOf, sanitiseFileName, validateDocumentMeta, validateFile, viewBlockedForLink,
   type AllowedExtension, type DocumentMetaInput,
 } from "@/lib/validation/document";
 import { istDate } from "./period";
@@ -62,6 +62,11 @@ export async function getFileLink(versionId: string, mode: "view" | "download"):
   const v = await lookupVersion(await createClient(), versionId);
   if (!v || !v.isCurrent) return { ok: false, error: "File not found." };
   if (mode === "view" && !canView(v.mimeType)) return { ok: false, error: "This file can't be shown in the browser. Download it instead." };
+  if (mode === "view") {
+    // 10 (D3): a file a client sent by link isn't opened in the browser until someone has reviewed it.
+    const { data: doc } = await (await createClient()).from("document").select("channel, status").eq("id", v.documentId).maybeSingle();
+    if (!doc || viewBlockedForLink(doc)) return { ok: false, error: "Sent by the client — review it before opening it in the browser, or download it." };
+  }
   try {
     return { ok: true, url: await signFileLink(v.storagePath, v.fileName, mode) };
   } catch {
@@ -71,7 +76,11 @@ export async function getFileLink(versionId: string, mode: "view" | "download"):
 
 // ── Save (AC-1, AC-4) ────────────────────────────────────────────────────────
 export type UploadedFile = { path: string; size: number; mime: string; fileName: string };
-export type SaveDocumentInput = DocumentMetaInput & { target: "vault" | "inbox"; file?: UploadedFile | null };
+export type SaveDocumentInput = DocumentMetaInput & {
+  target: "vault" | "inbox"; file?: UploadedFile | null;
+  /** 10 (Client › Requested "Upload"): file it for this ad-hoc item — client and type come from the item. */
+  requestItemId?: string | null;
+};
 export type SaveDocumentResult =
   | { ok: true; id: string; docCode: string }
   | { ok: false; error: string; fieldErrors: Record<string, string> };
@@ -79,6 +88,8 @@ export type SaveDocumentResult =
 /** DB rule codes → plain messages (never the DB text: it can echo values). */
 const DB_MESSAGES: Array<[RegExp, string, string?]> = [
   [/SOFT_COPY_NEEDS_FILE/, "Add the file — a soft copy needs one.", "file"],
+  [/ITEM_STATE/, "This requested document was cancelled. Go back to Requested and check it."], // 10
+  [/ITEM_MISMATCH/, "A requested document is filed with the client, type and period that were requested. Go back to Requested and check it."], // 10
   [/DECLASSIFY/, "A filed document keeps a client and a type. Change them instead of clearing them.", "clientId"],
   [/CLIENT_ARCHIVED/, "This client is archived. Choose another client.", "clientId"],
   [/PERIOD_KIND/, "This period doesn't suit the document type. Choose another period.", "periodId"],
@@ -122,11 +133,15 @@ export async function saveDocument(input: SaveDocumentInput): Promise<SaveDocume
   }
   const d = v.data;
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("create_document", { p: {
+  const p = {
     received_as: d.receivedAs, channel: d.channel, received_on: d.receivedOn, remark: d.remark,
     client_id: d.clientId, doc_type_id: d.docTypeId, period_id: d.periodId, registration_id: d.registrationId,
     file: filePayload,
-  } });
+  };
+  const itemId = input?.requestItemId && uuid.safeParse(input.requestItemId).success ? input.requestItemId : null;
+  const { data, error } = itemId
+    ? await supabase.rpc("create_document_for_item", { p_item: itemId, p })  // 10: one transaction, item linked
+    : await supabase.rpc("create_document", { p });
   if (error) {
     console.error("documents.save_failed", { code: error.code });
     return { ok: false, ...dbError(error.message) };
@@ -198,10 +213,10 @@ export async function updateDocumentAction(input: UpdateDocumentInput): Promise<
   await requireStaff();
   if (!uuid.safeParse(input?.id).success) return { ok: false, error: "Document not found.", fieldErrors: {} };
   const supabase = await createClient();
-  const { data: doc } = await supabase.from("document").select("id, doc_code, version_count, client_id").eq("id", input.id).maybeSingle();
+  const { data: doc } = await supabase.from("document").select("id, doc_code, version_count, client_id, channel").eq("id", input.id).maybeSingle();
   if (!doc) return { ok: false, error: "Document not found.", fieldErrors: {} };
   const target = input.target === "vault" ? "vault" : "inbox";
-  const v = validateDocumentMeta(input, { target, hasFile: doc.version_count > 0, today: istDate() });
+  const v = validateDocumentMeta(input, { target, hasFile: doc.version_count > 0, today: istDate(), existingChannel: doc.channel });
   if (!v.data) {
     return { ok: false, error: "Check the highlighted fields.", fieldErrors: Object.fromEntries(v.errors.map((e) => [e.field, e.message])) };
   }

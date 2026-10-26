@@ -136,6 +136,16 @@ export async function messageFor(
   };
 }
 
+/** Feature 10: the ticked open items as the message builder takes them (null when any is no longer open). */
+export async function chosenItemsAs(clientId: string, itemIds: string[], today: string): Promise<DialogItem[] | null> {
+  if (itemIds.length === 0) return [];
+  const supabase = await createClient();
+  const items = await openItems(supabase, clientId);
+  const wanted = new Set(itemIds);
+  const chosen = dialogItems(items.filter((i) => wanted.has(i.id)), today);
+  return chosen.length === wanted.size ? chosen : null;
+}
+
 export type ReminderListEntry = {
   id: string; on: string; at: string; channel: Channel; status: FollowUpStatus; by: string;
   items: string[]; note: string | null; errorCode: string | null; recipientMasked: string | null;

@@ -39,6 +39,9 @@ export const PERMISSIONS: readonly PermissionRow[] = [
   { id: "reopen", label: "Reopen an expected document", values: { ...yesAll, limited: "assigned" } },
   { id: "undo_waive", label: "Undo a waive", values: managers },
   { id: "remind", label: "Remind clients (email, WhatsApp) and log calls", values: { ...yesAll, limited: "assigned" } },
+  // 10: anyone who can remind a client can send an upload link; the sender can always revoke their own link.
+  { id: "send_upload_link", label: "Send upload links to clients", values: { ...yesAll, limited: "assigned" } },
+  { id: "revoke_upload_link", label: "Revoke an upload link someone else sent", values: managers },
   { id: "change_plans", label: "Change collection plans (add, remove types/groups)", values: { ...yesAll, limited: "no" } },
   { id: "assign_pause", label: "Assign incharge and group staff, pause and resume", values: managers },
   { id: "manage_catalogue", label: "Manage catalogue, approve proposed types, Settings › Collection", values: managers },

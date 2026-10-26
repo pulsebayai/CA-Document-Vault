@@ -5,7 +5,7 @@ import { remindedShort } from "@/lib/reminders/shape";
 // Feature 06 — Today (spec AC-2…AC-5): URL enums and the view model from today_items(). Pure; unit-tested.
 
 export const SCOPES = ["mine", "everyone"] as const;
-export const SHOWS = ["overdue", "due_week", "to_review", "ready"] as const;
+export const SHOWS = ["overdue", "due_week", "to_review", "ready", "requested"] as const;
 export type Scope = (typeof SCOPES)[number];
 export type Show = (typeof SHOWS)[number];
 
@@ -42,12 +42,18 @@ export type TodayDocRowRaw = {
   document_id: string; kind: "to_review" | "ready"; doc_code: string; group: string; type: string; period: string | null;
   received_as: string; received_on: string; reviewed_on: string | null; reviewed_by: string | null; needs_correction: boolean;
 };
+/** 10 (AC-17): an open ad-hoc requested item with a needed-by date that has passed or falls within 7 days. */
+export type TodayAskRowRaw = {
+  item_id: string; kind: "requested"; due: "overdue" | "due_week"; group: string; type: string; period: string | null;
+  needed_by: string; note: string | null;
+};
 export type TodayCardRaw = {
   client_id: string; name: string; incharge: string | null; assignees: Array<{ group: string; name: string }>;
-  overdue: number; due_week: number; to_review?: number; ready?: number; rows: Array<TodayRowRaw | TodayDocRowRaw>;
+  overdue: number; due_week: number; to_review?: number; ready?: number; requested?: number; requested_overdue?: number;
+  rows: Array<TodayRowRaw | TodayDocRowRaw | TodayAskRowRaw>;
 };
 export type TodayRaw = {
-  today: string; counts: { overdue: number; due_week: number; to_review?: number; ready?: number };
+  today: string; counts: { overdue: number; due_week: number; to_review?: number; ready?: number; requested?: number; requested_later?: number };
   clients?: number; cards: TodayCardRaw[]; has_more: boolean;
 };
 
@@ -73,14 +79,33 @@ export type TodayDocRow = {
   /** "Received 2 Aug · waiting for review" · "Reviewed 12 Sep by Ravi" · "Needs correction · still to go back" */
   detail: string;
 };
+/** 10: "Requested · Other · GST notice / order received" · "Needed by 30 May · for the new office lease". */
+export type TodayAskRow = {
+  id: string; title: string; label: string; labelTone: "late" | "due"; detail: string;
+  /** Add document pre-filled and linked to the item, set by the query; null if the IDs couldn't be read. */
+  uploadHref: string | null;
+};
 export type TodayCard = {
   clientId: string; name: string; initials: string; people: string; badge: string; badgeTone: "late" | "due" | "muted";
   /** Expected rows (Overdue → Due), then document rows (To review → Ready). */
   rows: TodayRow[];
   docs: TodayDocRow[];
+  /** 10: requested (ad-hoc) rows, after the expected rows (optional: 06's view tests build cards without it). */
+  asks?: TodayAskRow[];
 };
 
-const isDocRow = (r: TodayRowRaw | TodayDocRowRaw): r is TodayDocRowRaw => "document_id" in r;
+type AnyRowRaw = TodayRowRaw | TodayDocRowRaw | TodayAskRowRaw;
+const isDocRow = (r: AnyRowRaw): r is TodayDocRowRaw => "document_id" in r;
+const isAskRow = (r: AnyRowRaw): r is TodayAskRowRaw => "item_id" in r;
+
+export function toAskRow(r: TodayAskRowRaw, today: string): TodayAskRow {
+  return {
+    id: r.item_id, title: ["Requested", r.group, r.type, r.period].filter(Boolean).join(" · "),
+    label: r.due === "overdue" ? "Overdue" : `Needed by ${shortDate(r.needed_by, today)}`, labelTone: r.due === "overdue" ? "late" : "due",
+    detail: [r.due === "overdue" ? `Needed by ${shortDate(r.needed_by, today)}` : "Not received", r.note].filter(Boolean).join(" · "),
+    uploadHref: null,
+  };
+}
 
 export function toDocRow(r: TodayDocRowRaw, today: string): TodayDocRow {
   const detail = r.kind === "to_review"
@@ -97,6 +122,7 @@ export function toDocRow(r: TodayDocRowRaw, today: string): TodayDocRow {
 function badgeOf(c: TodayCardRaw): Pick<TodayCard, "badge" | "badgeTone"> {
   if (c.overdue > 0) return { badge: `${c.overdue} overdue`, badgeTone: "late" };
   if (c.due_week > 0) return { badge: "Due this week", badgeTone: "due" };
+  if (c.requested) return { badge: `${c.requested} requested`, badgeTone: c.requested_overdue ? "late" : "due" };
   if (c.to_review) return { badge: `${c.to_review} to review`, badgeTone: "muted" };
   return { badge: `${c.ready ?? 0} to dispatch`, badgeTone: "due" };
 }
@@ -138,7 +164,8 @@ export function toTodayCard(c: TodayCardRaw, today: string): TodayCard {
   return {
     clientId: c.client_id, name: c.name, initials: initials(c.name), people, ...badgeOf(c),
     docs: c.rows.filter(isDocRow).map((r) => toDocRow(r, today)),
-    rows: c.rows.filter((r): r is TodayRowRaw => !isDocRow(r)).map((r) => ({
+    asks: c.rows.filter(isAskRow).map((r) => toAskRow(r, today)),
+    rows: c.rows.filter((r): r is TodayRowRaw => !isDocRow(r) && !isAskRow(r)).map((r) => ({
       id: r.expected_doc_id, kind: r.kind, title: `${r.group} · ${r.type}${registration(r)} · ${r.period}`,
       ...(({ label, tone }) => ({ label, labelTone: tone }))(rowLabel(r, today)),
       detail: rowDetail(r), reminders: r.reminders, overdueFrom: r.overdue_from, uploadHref: null,

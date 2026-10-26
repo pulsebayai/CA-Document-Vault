@@ -23,7 +23,7 @@ let officeId: string;
 const u = {} as Record<Role | "spare", { id: string; email: string }>;
 const as = {} as Record<Role, SupabaseClient>;
 const client = {} as Record<"A" | "B", string>;
-const ids = {} as Record<"bank" | "apr" | "banking" | "gst", string>;
+const ids = {} as Record<"bank" | "apr" | "banking" | "gst" | "notice", string>;
 const activityOn = {} as Record<string, number>;
 
 type Probe = (who: SupabaseClient, clientId: string) => Promise<boolean>;
@@ -45,6 +45,15 @@ async function pendingItem(clientId: string) {
   if (!item) throw new Error("setup: ran out of pending expected items");
   used.add(item.id);
   return item;
+}
+
+// 10: helpers for the upload-link probes.
+const linkHash = () => randomUUID().replace(/-/g, "").padEnd(64, "0");
+let spare: SupabaseClient | undefined;
+const spareClient = async () => (spare ??= await signedInClient(u.spare.email));
+async function withMobile(clientId: string) {
+  const { error } = await as.admin.from("client").update({ mobile: "9876500999" }).eq("id", clientId).is("mobile", null);
+  if (error) throw new Error(`setup: ${error.message}`);
 }
 
 const PROBES: Record<string, Probe> = {
@@ -109,6 +118,19 @@ const PROBES: Record<string, Probe> = {
     if (!item) throw new Error("setup: no pending item to remind about");
     return ok(await rpc(who, "record_follow_up", { p_client: c, p_items: [item.id], p_channel: "phone" }));
   },
+  // 10: an ad-hoc WhatsApp link (the fixture clients get a mobile first — Admin edits clients).
+  send_upload_link: async (who, c) => {
+    await withMobile(c);
+    return ok(await rpc(who, "record_link_whatsapp", { p: { client_id: c, items: [{ kind: "ad_hoc", doc_type_id: ids.notice }], token_hash: linkHash() } }));
+  },
+  // 10: a link sent by another staff member ("spare"); only Admin/Manager may revoke it.
+  revoke_upload_link: async (who, c) => {
+    await withMobile(c);
+    const spare = await spareClient();
+    const sent = await rpc(spare, "record_link_whatsapp", { p: { client_id: c, items: [{ kind: "ad_hoc", doc_type_id: ids.notice }], token_hash: linkHash() } });
+    if (sent.error) throw new Error(`setup: ${sent.error.message}`);
+    return ok(await rpc(who, "revoke_upload_request", { p_id: (sent.data as { request_id: string }).request_id }));
+  },
   change_plans: async (who, c) => {
     const on = ok(await rpc(who, "enable_client_group", { p_client_id: c, p_doc_group_id: ids.gst }));
     const off = ok(await rpc(who, "disable_client_group", { p_client_id: c, p_doc_group_id: ids.gst }));
@@ -154,6 +176,7 @@ beforeAll(async () => {
   ids.apr = await periodId(officeId, "2026-04");
   ids.banking = await groupId(officeId, "Banking");
   ids.gst = await groupId(officeId, "GST");
+  ids.notice = await typeId(officeId, T.notice); // 10
   // Plans start in April 2026; generating as of September 2027 gives each client ~16 pending monthly items.
   await generateAsOf(as.admin, "2026-04-10");
   client.A = await bankOnlyClient(as.staff, officeId, { name: "Matrix A", incharge_id: u.limited.id });

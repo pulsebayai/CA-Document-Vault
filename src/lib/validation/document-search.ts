@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CHANNELS, RECEIVED_AS, type Channel, type ReceivedAs } from "./document";
+import { DOCUMENT_CHANNELS, RECEIVED_AS, type DocumentChannel, type ReceivedAs } from "./document";
 
 // Spec 03b AC-3, AC-6, AC-8, AC-11.
 // Filters are IDs, enums and dates only, so they may sit in the URL (Back, refresh and shared links work).
@@ -56,7 +56,7 @@ export type DocumentFilters = {
   period: string | null;
   registration: string | null;
   as: ReceivedAs | null;
-  channel: Channel | null;
+  channel: DocumentChannel | null;
   by: string | null;
   from: string | null;
   to: string | null;
@@ -99,7 +99,7 @@ export function parseDocumentSearchParams(params: Params): DocumentFilters {
   for (const k of UUID_KEYS) f[k] = uuidOrNull(get(k));
   f.by = uuidOrNull(get("by"));
   f.as = oneOf(RECEIVED_AS, get("as"));
-  f.channel = oneOf(CHANNELS, get("channel"));
+  f.channel = oneOf(DOCUMENT_CHANNELS, get("channel"));
   f.status = oneOf(DOC_STATUSES, get("status"));
   f.state = oneOf(DOC_STATES, get("state"));
   const ret = oneOf(DOC_RETURNS, get("return"));

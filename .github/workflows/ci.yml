@@ -73,13 +73,16 @@ jobs:
     needs: [changes, verify]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    # 25 min of tests + up to 30 min waiting for a free test lane.
-    # Keep below the 90-min lane lease (scripts/test-lane.mjs LEASE_MINUTES) or a slow run could lose its lane.
-    timeout-minutes: 55
+    # ≈ 55 min of tests (feature 10: ~75 with a PR's changed tests run first) + up to 30 min waiting for a lane.
+    # PR #3's first run hit the old 55-min limit in e2e (run 40215776683). Keep below the 150-min lane lease
+    # (scripts/test-lane.mjs LEASE_MINUTES) or a slow run could lose its lane.
+    timeout-minutes: 120
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
       SUPABASE_SECRET_KEY: ${{ secrets.DEV_SUPABASE_SECRET_KEY }} # dev only — never prod
+      # Feature 10: upload links in e2e point at CI's own build.
+      APP_PUBLIC_URL: http://localhost:3000
       # Test lanes (chore test-isolation): up to 2 runs share dev, each with its own fixture offices/users.
       TEST_LANE_HOLDER: ci-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
