@@ -171,6 +171,7 @@ Every AC has a test in the spec's table and the result goes in each PR's AC tabl
 
 ## Session log
 ### 2026-10-26 (build, 10b)
+- **CI green on PR #3: run 40276633056 on c80bb92** (unit, lint, build; full RLS suite; e2e 120 passed + changed-first 26 passed). One flaky: `upload-link-review.spec.ts` AC-15 (bell "1 unread") passed on retry — to look at before merge. RUN_SLOW Regression on the preview (`ca-document-vault-78txm2ed5-cad-oc-vault.vercel.app`): Raja chose later.
 - Step 13 (in progress): CI/Regression limits; architecture + ui-reference for 10b; sdlc-reviewer on 10b → fixes above (migration J applied on dev, md5 = file).
   - Results: affected DB files 137/137 after the fix (upload-links ×6, 06's today ×2, 05's type-governance); unit 494/494; e2e requested + today + add-document + 06's today 18/18; lint, typecheck, build clean.
   - Left: Raja's decision on the K3 re-time; one full CI run on PR #3; RUN_SLOW Regression on the branch preview; `CRON_SECRET` on Vercel; PR ready.
