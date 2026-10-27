@@ -23,12 +23,12 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - Known risks: 05 `20261002083900` and 08 `20261002120000` were applied through the dashboard; `pg_cron` / Storage available locally.
   - Also: time the RLS suite against the local DB (serial, unchanged tests) as evidence for step 2.
   - Done when: the diff is empty, or every difference is explained and fixed in a new migration.
-- [ ] **1. Low-risk CI wins** (no DB change) — built 2026-10-27, waiting for its CI run
+- [x] **1. Low-risk CI wins** (no DB change) — done 2026-10-27, PR #9 CI 40549358463
   - Cache the Playwright browsers.
   - Build the app once (the changed-e2e-first step starts a second build).
   - ~~Print per-step timings in the summary.~~ Dropped: the Actions API already gives per-step times (used for the baseline below).
   - Done when: CI is ≥ 5 min faster [Likely], and the same tests run.
-- [ ] **2. RLS on a local Supabase** (the RLS step is the timeout source and is DB-only) — built 2026-10-27, waiting for its CI runs
+- [x] **2. RLS on a local Supabase** (the RLS step is the timeout source and is DB-only) — done 2026-10-27, 3 green runs (PR #9)
   - A new `rls` job running in parallel with `e2e`.
   - Fixtures seeded locally. No test lane needed. Raise `fileParallelism` only after it's green serially.
   - Done when: RLS passes 3 runs in a row locally on CI, ≤ 5 min [Likely 2–4].
@@ -83,3 +83,8 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
     - I-2 docs ahead of proof → CLAUDE.md says "being proven"; **don't merge until 3 green `rls` runs are recorded here** (run IDs, seconds, test count vs hosted 644).
     - I-3 a laptop `start` didn't export the local env, so tests would silently use `.env.local`'s dev keys → script header + CLAUDE.md give the export line; `start` only writes `$GITHUB_ENV` in Actions.
     - Nits: unused `db_tests` output commented · `E2E_PREBUILT === "1"` + "never set locally" · cache key adds `ImageOS` · cert renewed when < 1 day left · `API_URL` read from `supabase status` and must be `https:` · `mktemp` log · CLAUDE.md: PR CI no longer catches slow queries (nightly does) · `enable_signup = false` as the product · fingerprint adds `storage_policy` (dev: none, 2026-10-27; auth settings stay a manual check) · stale comments in `setup-env.ts`, `vitest.config.mts`, `test-lane.mjs`, CLAUDE.md verification line · this "Files that change" section.
+- **2026-10-27 (night): PR #9 (draft), CI 40549358463 on c75834d — green in 30.2 min (main this morning: 83 min).**
+  - verify 1.4 min · **rls 2.5 min** · e2e 30.0 min (tests 1,736 s; 128 passed, 1 flaky: `review-dispatch.spec.ts:168` AC-14 filters, expect timeout, passed on retry [Likely] dev latency — watch it).
+  - **3 green `rls` runs (I-2 met):** attempts 1–3 of run 40549358463 (jobs 122348670086, 122366907649, 122368780441): suite 55 / 62 / 61 s, start 72 / 61 / 67 s, each **698 tests, 0 failures, 17 skipped** (the 7 `RUN_SLOW` and 1 `VOLUME` blocks, as in hosted PR CI). TLS works: `bulk.test.ts:226` passes unedited.
+  - Correction to the baseline: Playwright install took 20 s without a cache here (343 s on main earlier the same day), so the cache saves less than assumed; most of that time was apt/system packages on that runner.
+  - **e2e is now the whole critical path (≈ 30 min).** Owner (23:00): still too slow. Next = step 3: trial e2e on a local Supabase in one job (latency, as with RLS), then shard 3–4 ways.
