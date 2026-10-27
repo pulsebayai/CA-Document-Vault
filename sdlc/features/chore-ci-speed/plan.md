@@ -35,7 +35,7 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - Effect: CI ≈ verify + e2e alone ≈ 25–30 min; DB timeouts in RLS gone.
 - [ ] **3. E2E on a local Supabase, split 3 ways** — built 2026-10-28 (branch `chore/ci-speed-e2e`), waiting for its CI runs (`--shard`, each shard with its own DB and app build)
   - Check that sign-in (OTP codes via admin API / local mail), Storage signed uploads and the `/u` upload route work locally.
-  - Done when: 3 green runs in a row. [Uncertain] PR CI ≤ 15 min.
+  - Done when: 3 green runs in a row (all shards), recorded here with run IDs, per-shard seconds and the merged count (129). **Don't merge before.** [Uncertain] PR CI ≤ 15 min.
 - [ ] **4. Policy + docs** — RLS part done with steps 1–2 (architecture.md + CLAUDE.md); e2e part with step 3
   - Update architecture.md:
     - Environments: "no local Supabase/Docker" → PR CI uses an ephemeral local DB; nightly/RUN_SLOW/staging stay hosted.
@@ -43,7 +43,7 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - Update CLAUDE.md test rules: lanes only for hosted runs.
 
 ## Files that change
-`.github/workflows/ci.yml` · `.github/workflows/local-db-trial.yml` (step 0 only, then removed) · `playwright.config.ts` · `supabase/config.toml` · `supabase/.gitignore` · `scripts/local-db.sh` · `scripts/schema-fingerprint.sql` · comments only: `tests/support/setup-env.ts` (error text), `vitest.config.mts`, `scripts/test-lane.mjs` · docs: `sdlc/product/architecture.md`, `CLAUDE.md`, this plan + `evidence/`. Step 3 adds the e2e job's local stack (same files). **No migration, no product code, no test assertion changes.**
+`.github/workflows/ci.yml` · `.github/workflows/local-db-trial.yml` (step 0 only, then removed) · `playwright.config.ts` · `supabase/config.toml` · `supabase/.gitignore` · `scripts/local-db.sh` · `scripts/schema-fingerprint.sql` · comments only: `tests/support/setup-env.ts` (error text), `vitest.config.mts`, `scripts/test-lane.mjs` · docs: `sdlc/product/architecture.md`, `CLAUDE.md`, this plan + `evidence/`. Step 3 adds the e2e shards' local stacks (same files). **Step 3 also changes product code, approved by the owner 2026-10-28 00:14:** `src/app/(app)/documents/new/document-form.tsx` (a race the fast local stack exposed) + new `tests/unit/document-form-client-race.test.tsx`. It is 03's form UI only, no write path, so no RUN_SLOW. **No migration and no existing test changes.**
 
 ## Not doing (and why)
 - **Moving tests out of PR CI** (screenshots, slow tests). Policy is "full suite per PR", and finding breakage late has already cost more than the wait.
@@ -96,3 +96,11 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - Docs: architecture.md (policy 1, Environments, decision row), CLAUDE.md (local e2e; a third thing PR CI no longer proves: hosted-only e2e behaviour; races exposed by a fast stack → fix code), `test-lane.mjs` comment.
   - Session checks: lint 0 · typecheck 0 · unit 531/531.
   - Expected [Likely]: PR CI ≈ the slowest shard ≈ 5 min (was 30 after step 2, 83 before).
+  - **Pre-PR review (sdlc-reviewer, 2026-10-28): no blockers, 3 Important, 7 Nits.**
+    - **I-1 the same race reset a *period* chosen during the load** (re-applying the type's default): failing-first test "keeps a period chosen while the client's types load" (p9 instead of p8 before the fix), then fixed. `pickClient` now counts the user's type/period choices (`userEdits`). If any happened during the load, it keeps their period and refreshes only the registration; otherwise the client's own schedule sets the default as before. All type changes go through one `selectType` (N-6). Trade-off: a type picked during the load gets its default period from the catalogue schedule, not this client's; the user sees and can change it.
+    - **I-2** "Files that change" updated (product code + test, owner-approved).
+    - **I-3 one evidence set again:** each shard also writes a Playwright blob. `e2e (all shards)` merges them into `test-results/e2e-results.json` + `junit-e2e.xml` + the HTML report, unions the screenshots, prints a total-count annotation, runs `regression-summary` and uploads **`test-evidence`** (the name earlier plans cite). Per-shard artifacts stay.
+    - Nits fixed: stale lane comment in `ci.yml` (N-1); `e2e (all shards)` fails when "What changed" failed, instead of being skipped (N-2); `playwright.config.ts` refuses `E2E_LOCAL_DB=1` together with `E2E_BASE_URL`, and its comments now say "hosted runs" (N-3); figures corrected to 129 tests, 62–138 s (N-5); `selectType` (N-6).
+    - Left as is: `verify` still builds with dev's *public* URL/key repo variables (N-4, not secrets).
+    - **For Later** (roadmap at merge; N-7, older than this chore): `pickClient` has no request counter, so two quick client changes can finish out of order; `createNewType` can add a type for the previous client; `onClientQuery` can show an older query's results. Fix with a sequence ref like `uploadRun`.
+  - Session checks after the fixes: lint 0 · typecheck 0 · unit 532/532. Config check: shard 2/3 lists 39 tests (47 + 39 + 43 = 129); the E2E_LOCAL_DB + E2E_BASE_URL guard throws.

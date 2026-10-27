@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 
-# A newer push to the same PR supersedes the older run (its test lane is released by the always() step).
+# A newer push to the same PR supersedes the older run.
 # Pushes to main are never cancelled.
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.sha }}
@@ -102,7 +102,7 @@ jobs:
 
   # Chore ci-speed step 3 (approved 2026-10-27/28): e2e also runs on EPHEMERAL local Supabase stacks, one per
   # shard, built only from supabase/migrations/ — no secrets, no test lane, no shared data. Trial runs 40558491885
-  # and 40561352784: shards took 62–156 s of tests (hosted dev: ~29 min for the whole suite in one job). Hosted dev
+  # and 40561352784: 129 tests in 62–138 s per shard (trial 2; hosted dev: ~29 min for the whole suite in one job). Hosted dev
   # still runs the full e2e suite nightly (Regression), on RUN_SLOW dispatches and at the staging gate.
   # "Changed e2e tests first" is gone: a shard runs in about 2 minutes.
   e2e:
@@ -122,6 +122,7 @@ jobs:
       E2E_PREBUILT: "1"
       # The browser accepts the local stack's self-signed cert (playwright.config.ts). Never set for hosted targets.
       E2E_LOCAL_DB: "1"
+      E2E_SHARD: ${{ matrix.shard }} # adds the blob reporter (playwright.config.ts) for the merged report
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -159,17 +160,55 @@ jobs:
         run: node scripts/regression-summary.mjs >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: "test-evidence-shard-${{ matrix.shard }}", path: "test-results/\nplaywright-report/", retention-days: 90 }
+        with: { name: "test-evidence-shard-${{ matrix.shard }}", path: "test-results/\nplaywright-report/\nblob-report/", retention-days: 90 }
 
-  # One status for "all e2e shards passed" (stable name for a future required check; shard names include the number).
+  # One status for "all e2e shards passed" (a stable name for a future required check) and ONE e2e evidence set,
+  # as before the split: the shards' blobs merged into test-results/e2e-results.json + junit-e2e.xml + the HTML
+  # report, the shards' screenshots side by side, uploaded as `test-evidence` (the name earlier plans cite).
   e2e-all:
     name: e2e (all shards)
     needs: [changes, e2e]
-    if: always() && needs.changes.outputs.code == 'true'
+    if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
+      - name: What ran
+        id: what
+        env: { CHANGES: "${{ needs.changes.result }}", CODE: "${{ needs.changes.outputs.code }}" }
+        run: |
+          # A failed "What changed" job must not read as "nothing to test" (skipped = passing for a required check).
+          [ "$CHANGES" = "success" ] || { echo "::error::'What changed' did not succeed ($CHANGES)."; exit 1; }
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          [ "$CODE" = "true" ] || echo "Docs-only change: no e2e shards ran."
+      - uses: actions/checkout@v4
+        if: steps.what.outputs.code == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.what.outputs.code == 'true'
+        with: { node-version: 22, cache: npm }
+      - if: steps.what.outputs.code == 'true'
+        run: npm ci
+      - uses: actions/download-artifact@v4
+        if: steps.what.outputs.code == 'true'
+        with: { pattern: "test-evidence-shard-*", merge-multiple: true, path: . }
+      - name: Merge the shard reports
+        if: steps.what.outputs.code == 'true'
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/e2e-results.json
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/junit-e2e.xml
+        run: |
+          rm -rf playwright-report test-results/e2e-results.json test-results/junit-e2e.xml
+          ls blob-report
+          npx playwright merge-reports --reporter=json,junit,html blob-report
+          node -e 'const s=JSON.parse(require("fs").readFileSync("test-results/e2e-results.json","utf8")).stats??{};console.log(`::notice title=e2e counts (all shards)::expected=${s.expected} unexpected=${s.unexpected} flaky=${s.flaky} skipped=${s.skipped}`)'
+      - name: Evidence summary (all shards)
+        if: steps.what.outputs.code == 'true'
+        env: { EXPECT_SUITES: "e2e" }
+        run: node scripts/regression-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: steps.what.outputs.code == 'true'
+        with: { name: test-evidence, path: "test-results/\nplaywright-report/", retention-days: 90 }
       - name: All shards green
+        if: steps.what.outputs.code == 'true'
         env: { RESULT: "${{ needs.e2e.result }}" }
         run: |
           echo "e2e shards: $RESULT"

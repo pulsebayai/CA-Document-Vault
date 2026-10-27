@@ -77,10 +77,18 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
   const [client, setClient] = useState<ClientOption | null>(existing ? existing.client : initialClient);
   const [types, setTypes] = useState<ClientTypes>(initialTypes);
   const [docTypeId, setDocTypeId] = useState(existing?.docTypeId ?? prefillType?.id ?? "");
-  // The type selected *now*, for code that resumes after an await (pickClient): its closure holds the type that was
-  // selected when it started, so a type chosen while the client's types were loading was cleared (chore ci-speed).
+  // For code that resumes after an await (pickClient), whose closure holds the values from when it started
+  // (chore ci-speed; a type or period chosen while the client's types were loading was lost):
+  // docTypeNow = the type selected now; userEdits counts the user's type/period choices, so pickClient can tell
+  // whether the user chose something during the load and must keep it.
   const docTypeNow = useRef(docTypeId);
+  const userEdits = useRef(0);
   useEffect(() => { docTypeNow.current = docTypeId; }, [docTypeId]);
+  function selectType(id: string) {
+    docTypeNow.current = id; // before the effect runs, in case a client load resolves in between
+    userEdits.current++;
+    setDocTypeId(id);
+  }
   const [periodChoice, setPeriodChoice] = useState<PeriodChoice>(initialPeriod?.kind ?? "none");
   const [periodId, setPeriodId] = useState(initialPeriod?.id ?? "");
   const [registrationId, setRegistrationId] = useState(existing?.registrationId ?? (prefillType ? prefill!.registrationId : ""));
@@ -191,12 +199,18 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     setClientQuery("");
     setClientResults([]);
     setRegistrationId("");
+    const editsAtStart = userEdits.current;
     const r = await loadClientTypes(c?.id ?? null);
     if (!r.ok) { setError(r.error); return; }
     setTypes({ planTypes: r.planTypes, otherTypes: r.otherTypes, registrations: r.registrations });
     const still = [...r.planTypes, ...r.otherTypes].find((t) => t.id === docTypeNow.current);
-    if (!still) { setDocTypeId(""); setPeriodChoice("none"); setPeriodId(""); }
-    else applyType(still, r.registrations);
+    if (!still) { docTypeNow.current = ""; setDocTypeId(""); setPeriodChoice("none"); setPeriodId(""); }
+    else if (userEdits.current !== editsAtStart) {
+      // The user chose the type or period during the load: keep their period, refresh only the registration
+      // (it depends on the client).
+      const regs = still.registrationKind ? r.registrations.filter((x) => x.kind === still.registrationKind) : [];
+      setRegistrationId(regs.length === 1 ? regs[0].id : "");
+    } else applyType(still, r.registrations); // the client's own schedule decides the default period
   }
 
   // ── Type → group, period default, registration (AC-3) ────────────────────
@@ -212,13 +226,13 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
   }
 
   function onTypeChange(id: string) {
-    docTypeNow.current = id; // before the effect runs, in case a client load resolves in between
-    setDocTypeId(id);
+    selectType(id);
     if (id !== NEW_TYPE) applyType(allTypes.find((t) => t.id === id));
     else { setPeriodChoice("none"); setPeriodId(""); setRegistrationId(""); }
   }
 
   function onPeriodChoice(k: PeriodChoice) {
+    userEdits.current++;
     setPeriodChoice(k);
     if (k === "none") { setPeriodId(""); return; }
     const want = type ? defaultPeriod(type.frequency, today) : null;
@@ -238,7 +252,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
   function pickSuggestion(s: Suggestion) {
     setNewName(""); setSuggestions([]);
     const t = allTypes.find((x) => x.id === s.id);
-    setDocTypeId(s.id);
+    selectType(s.id);
     applyType(t);
   }
 
@@ -249,7 +263,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     const r = await proposeType(client.id, group, newName);
     if (!r.ok) { setNewTypeError(r.error); return; }
     setTypes((t) => ({ ...t, planTypes: [...t.planTypes, r.type] }));
-    setDocTypeId(r.type.id);
+    selectType(r.type.id);
     setNewName(""); setSuggestions([]); setNewGroupId("");
     applyType(r.type);
   }
@@ -448,7 +462,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
           {periodChoice !== "none" && (
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <label className="sr-only" htmlFor={`${uid}-period`}>{PERIOD_LABEL[periodChoice]}</label>
-              <select id={`${uid}-period`} value={periodId} onChange={(e) => setPeriodId(e.target.value)} className={`${control} w-auto min-w-48`} {...described("periodId")}>
+              <select id={`${uid}-period`} value={periodId} onChange={(e) => { userEdits.current++; setPeriodId(e.target.value); }} className={`${control} w-auto min-w-48`} {...described("periodId")}>
                 {periodOptions.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
               </select>
               {chosenPeriod && <span className="text-[13px] text-ink-3">FY {chosenPeriod.fyCode}</span>}

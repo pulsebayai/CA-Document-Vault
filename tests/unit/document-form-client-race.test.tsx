@@ -92,4 +92,36 @@ describe("document form: client picked, type chosen while the client's types loa
     await act(async () => { resolveLoad({ ok: true, planTypes: [], otherTypes: [], registrations: [] }); });
     expect(container.querySelector<HTMLSelectElement>("select")!.value).toBe("");
   });
+
+  // Review I-1 (2026-10-28): the same race for the period. The user picks the type, then another period, and only
+  // then does the client's list arrive: the period they chose must stay (it decides which expected item links).
+  it("keeps a period chosen while the client's types load", async () => {
+    vi.useFakeTimers();
+    const bank = { ...form16, id: "55555555-5555-4555-8555-555555555555", name: "Bank statement", groupName: "Banking",
+      periodKind: "month", frequency: "monthly" } as TypeOption;
+    const periods = [
+      { id: "p9", kind: "month" as const, code: "2026-09", label: "Sep 2026", fyCode: "2026-27" },
+      { id: "p8", kind: "month" as const, code: "2026-08", label: "Aug 2026", fyCode: "2026-27" },
+    ];
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    await act(async () => {
+      createRoot(container).render(
+        <DocumentForm existing={inboxDoc} initialClient={null} initialTypes={{ planTypes: [], otherTypes: [bank], registrations: [] }}
+          periods={periods} groups={[]} today="2026-10-27" canPropose returnTo="/inbox" />,
+      );
+    });
+    const search = container.querySelector<HTMLInputElement>('input[role="combobox"]')!;
+    await act(async () => { setValue(search, "Inbox Tr", "input"); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+    const pick = [...container.querySelectorAll<HTMLButtonElement>('[role="listbox"] button')].find((b) => b.textContent?.includes("Inbox Traders"))!;
+    await act(async () => { pick.click(); });
+    await act(async () => { setValue(container.querySelector<HTMLSelectElement>("select")!, bank.id, "change"); });
+    const period = () => container.querySelector<HTMLSelectElement>('select[id$="-period"]')!;
+    expect(period().value).toBe("p9"); // the period that just ended is preselected
+    await act(async () => { setValue(period(), "p8", "change"); });
+    await act(async () => { resolveLoad({ ok: true, planTypes: [bank], otherTypes: [], registrations: [] }); });
+    expect(container.querySelector<HTMLSelectElement>("select")!.value).toBe(bank.id);
+    expect(period().value).toBe("p8");
+  });
 });
