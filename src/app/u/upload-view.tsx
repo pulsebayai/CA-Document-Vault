@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Badge, BrandMark, Button, Card } from "@/components/ui";
 import { putFile } from "@/lib/documents/upload-client";
 import type { LinkCode, LinkItem, LinkPage } from "@/lib/upload-links/public";
 import { GST_STATES } from "@/lib/validation/gst-states";
+import { formatLabel, isPreferred } from "@/lib/validation/formats";
 import { finishLinkUpload, openUploadLink, startLinkUpload } from "./actions";
 
 // Feature 10 — the client's upload page (spec AC-6…AC-9, UX "Public page"). The token is read from the URL fragment
@@ -45,6 +46,8 @@ export function UploadView() {
   const [view, setView] = useState<View>({ state: "loading" });
   const [files, setFiles] = useState<Record<string, FileState[]>>({});
   const [announce, setAnnounce] = useState("");
+  // 11 (spec AC-13): items whose format warning was shown in this page session ("warned" goes with each upload).
+  const warnedItems = useRef<Set<string>>(new Set());
 
   // Resolves the page for a token; callers set the view from the result (async, never inside an effect body).
   const load = useCallback(async (token: string): Promise<View> => {
@@ -63,7 +66,7 @@ export function UploadView() {
   const setFile = (item: string, key: string, patch: Partial<FileState>) =>
     setFiles((all) => ({ ...all, [item]: (all[item] ?? []).map((f) => (f.key === key ? { ...f, ...patch } : f)) }));
 
-  async function uploadAll(token: string, item: LinkItem, list: FileList) {
+  async function uploadAll(token: string, item: LinkItem, list: FileList | File[]) {
     for (const file of Array.from(list)) {
       const key = `${file.name}-${file.size}-${Math.random().toString(36).slice(2)}`;
       setFiles((all) => ({ ...all, [item.id]: [...(all[item.id] ?? []), { key, name: file.name, status: "uploading", progress: 0 }] }));
@@ -82,7 +85,9 @@ export function UploadView() {
         setAnnounce(`${file.name}: ${MESSAGES.UPLOAD_FAILED}`);
         continue;
       }
-      const done = await finishLinkUpload(token, item.id, { path: start.path, fileName: start.fileName, size: file.size, contentType: start.contentType });
+      const done = await finishLinkUpload(token, item.id, {
+        path: start.path, fileName: start.fileName, size: file.size, contentType: start.contentType, warned: warnedItems.current.has(item.id),
+      });
       if (done.ok) {
         setFile(item.id, key, { status: "done", progress: 100 });
         setAnnounce(`${file.name} uploaded`);
@@ -114,15 +119,18 @@ export function UploadView() {
           <p className="mt-2 text-ink-2">Please ask the person who sent it to you for a new one.</p>
         </Card>
       )}
-      {view.state === "active" && <ActivePage view={view} files={files} onUpload={uploadAll} />}
+      {view.state === "active" && (
+        <ActivePage view={view} files={files} onUpload={uploadAll} onWarned={(id, text) => { warnedItems.current.add(id); setAnnounce(text); }} />
+      )}
     </div>
   );
 }
 
-function ActivePage({ view, files, onUpload }: {
+function ActivePage({ view, files, onUpload, onWarned }: {
   view: Extract<View, { state: "active" }>;
   files: Record<string, FileState[]>;
-  onUpload: (token: string, item: LinkItem, list: FileList) => Promise<void>;
+  onUpload: (token: string, item: LinkItem, list: FileList | File[]) => Promise<void>;
+  onWarned: (itemId: string, text: string) => void;
 }) {
   const { page, token } = view;
   const full = page.files_count >= page.max_files;
@@ -141,7 +149,8 @@ function ActivePage({ view, files, onUpload }: {
       <ul className="space-y-3">
         {page.items.map((item) => (
           <li key={item.id}>
-            <ItemCard item={item} files={files[item.id] ?? []} disabled={full} onFiles={(list) => onUpload(token, item, list)} />
+            <ItemCard item={item} files={files[item.id] ?? []} disabled={full} onFiles={(list) => onUpload(token, item, list)}
+              onWarned={(text) => onWarned(item.id, text)} />
           </li>
         ))}
       </ul>
@@ -156,11 +165,32 @@ function ActivePage({ view, files, onUpload }: {
   );
 }
 
-function ItemCard({ item, files, disabled, onFiles }: {
-  item: LinkItem; files: FileState[]; disabled: boolean; onFiles: (list: FileList) => void;
+function ItemCard({ item, files, disabled, onFiles, onWarned }: {
+  item: LinkItem; files: FileState[]; disabled: boolean; onFiles: (list: FileList | File[]) => void; onWarned: (text: string) => void;
 }) {
   const inputId = useId();
+  const warnId = useId();
+  const input = useRef<HTMLInputElement>(null);
+  const chooseAgain = useRef<HTMLButtonElement>(null);
   const busy = files.some((f) => f.status === "uploading");
+  // 11 (spec AC-10): files waiting for the client's answer to the format warning. Nothing is ever refused.
+  // The input stays enabled while the warning is open: "Choose another file" clicks it in the same event, before
+  // React re-renders (review I-1); choosing again simply replaces the waiting files.
+  const [pending, setPending] = useState<File[] | null>(null);
+  const preferred = item.preferred?.length ? item.preferred : null;
+  const offFormat = pending ? pending.filter((f) => !isPreferred(f.name, preferred)) : [];
+  useEffect(() => { if (pending) chooseAgain.current?.focus(); }, [pending]);
+  function chosen(list: FileList) {
+    const all = Array.from(list);
+    const off = preferred ? all.filter((f) => !isPreferred(f.name, preferred)) : [];
+    if (preferred && off.length > 0) {
+      setPending(all);
+      // Review I-2: announced through the page's live region (the group itself isn't read out on appearing).
+      onWarned(`${itemTitle(item)}: this document is preferred as ${formatLabel(preferred)}.${all.length > 1 ? ` ${off.length} of ${all.length} files are in another format.` : ""} Choose another file, or upload anyway.`);
+      return;
+    }
+    onFiles(all);
+  }
   return (
     <Card className="p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
@@ -169,14 +199,29 @@ function ItemCard({ item, files, disabled, onFiles }: {
       </div>
       {item.note && <p className="mt-1 text-ink-2">{item.note}</p>}
       {item.needed_by && <p className="mt-1 text-[13px] text-ink-3">Needed by {fmtDate(item.needed_by)}</p>}
+      {preferred && <p className="mt-1 text-[13px] font-medium text-ink-2">{formatLabel(preferred)} preferred</p>}
       <div className="mt-3">
-        <input id={inputId} type="file" multiple accept={ACCEPT} className="sr-only" disabled={disabled || busy}
-          onChange={(e) => { if (e.target.files?.length) onFiles(e.target.files); e.target.value = ""; }} />
+        <input ref={input} id={inputId} type="file" multiple accept={ACCEPT} className="sr-only" disabled={disabled || busy}
+          onChange={(e) => { if (e.target.files?.length) chosen(e.target.files); e.target.value = ""; }} />
         <label htmlFor={inputId}
           className={`inline-flex min-h-[44px] items-center justify-center rounded-[9px] px-4 font-medium ${disabled || busy ? "cursor-not-allowed bg-canvas text-ink-3" : "cursor-pointer bg-accent text-white hover:bg-[#264d8f]"} focus-within:outline-2 focus-within:outline-accent`}>
           {busy ? "Uploading…" : item.received || item.files > 0 ? "Add more files" : "Upload files"}
         </label>
       </div>
+      {pending && (
+        <div role="group" aria-labelledby={warnId} className="mt-3 rounded-lg bg-warn-soft px-4 py-3 text-[14px] text-warn">
+          <p id={warnId}>This document is preferred as {formatLabel(preferred)}. If you have it in that format, please choose that file. Otherwise you can upload this one.</p>
+          {pending.length > 1 && (
+            <ul className="mt-1 list-disc pl-5 text-[13.5px]">{offFormat.map((f, n) => <li key={`${f.name}-${n}`}>{f.name}</li>)}</ul>
+          )}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button ref={chooseAgain} type="button" className="min-h-[44px] rounded-[9px] bg-accent px-4 font-medium text-white"
+              onClick={() => { setPending(null); input.current?.focus(); input.current?.click(); }}>Choose another file</button>
+            <button type="button" className="min-h-[44px] rounded-[9px] border border-line-2 bg-panel px-4 font-medium text-ink"
+              onClick={() => { const list = pending; setPending(null); onFiles(list); }}>Upload anyway</button>
+          </div>
+        </div>
+      )}
       {files.length > 0 && (
         <ul className="mt-3 space-y-1.5 text-[13.5px]">
           {files.map((f) => (

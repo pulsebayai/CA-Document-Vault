@@ -10,6 +10,7 @@ import { ApproveDialog, EditApproveDialog, MergeDialog, RejectDialog, type Group
 import {
   allowedFrequencies, FREQUENCY_LABEL, PERIOD_KINDS, PERIOD_LABEL, scheduleSummary, type DocSource, type Frequency, type PeriodKind,
 } from "@/lib/validation/catalogue";
+import { FORMAT_CHOICES, FORMAT_CHOICE_LABELS, formatLabel } from "@/lib/validation/formats";
 import { Badge, Button, Card, Switch } from "@/components/ui";
 import { FieldError, inputCls, Modal, Offset } from "@/components/dialog";
 
@@ -138,6 +139,9 @@ function TypeRow({ type: t, canEdit }: { type: CatalogueType; canEdit: boolean }
             {t.usedFor && t.aliases.length > 0 && " · "}
             {t.aliases.length > 0 && <>Also: {t.aliases.join(", ")}</>}
           </span>
+        )}
+        {t.preferredFormats && (
+          <span className="mt-0.5 block text-[13px] text-ink-2">{formatLabel(t.preferredFormats)} preferred</span>
         )}
         {error && <span role="alert" className="mt-1 block text-[13px] text-bad">{error}</span>}
       </th>
@@ -380,6 +384,7 @@ function TypeForm({ source, type, groups, close }: { source: DocSource; type?: C
         </label>
         <FieldError id={`${uid}-usedFor`} message={fe.usedFor} />
       </div>
+      <PreferredFormats selected={type?.preferredFormats ?? null} error={fe.preferredFormats} uid={uid} />
       {type && (
         <label className="flex items-center gap-2 text-[13.5px]">
           <input type="checkbox" name="active" defaultChecked={type.active} className="h-4 w-4 accent-accent" />
@@ -389,6 +394,26 @@ function TypeForm({ source, type, groups, close }: { source: DocSource; type?: C
       {type && source === "client" && <p className="text-[13px] text-ink-3">Existing clients keep their own schedule.</p>}
       <FormFooter state={state} pending={pending} close={close} />
     </form>
+  );
+}
+
+/** 11 (spec AC-1): optional preferred formats. Advisory only: staff and clients are warned, nothing is refused. */
+function PreferredFormats({ selected, error, uid }: { selected: string[] | null; error?: string; uid: string }) {
+  const hintId = `${uid}-formats-hint`;
+  return (
+    <fieldset className="rounded-lg border border-line px-4 py-3" aria-describedby={error ? `${uid}-preferredFormats ${hintId}` : hintId}>
+      <legend className="px-1 text-[13.5px] font-medium">Preferred formats <span className="font-normal text-ink-3">(optional)</span></legend>
+      <p id={hintId} className="text-[13px] text-ink-3">Staff and clients are warned when a file is in another format. Nothing is refused.</p>
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+        {FORMAT_CHOICES.map((f) => (
+          <label key={f} className="flex items-center gap-1.5 text-[13.5px]">
+            <input type="checkbox" name="preferredFormats" value={f} defaultChecked={selected?.includes(f) ?? false} className="h-4 w-4 accent-accent" />
+            {FORMAT_CHOICE_LABELS[f]}
+          </label>
+        ))}
+      </div>
+      <FieldError id={`${uid}-preferredFormats`} message={error} />
+    </fieldset>
   );
 }
 

@@ -33,9 +33,11 @@ export type DocumentHit = {
   correctionReason?: string | null;
   dispatchedOn?: string | null;
   dispatchMethod?: string | null;
+  /** 11 (spec AC-16): present only when the document was filed outside the preference that applied. */
+  notPreferred?: string[] | null;
 };
 
-export type FacetName = "group" | "received_as" | "channel" | "received_by" | "status" | "return";
+export type FacetName = "group" | "received_as" | "channel" | "received_by" | "status" | "return" | "format";
 export type FacetValue = { facet: FacetName; value: string; label: string; n: number };
 export type ClientHit = { id: string; name: string; code: string };
 export type PickerClient = ClientHit & { archived: boolean };
@@ -47,6 +49,7 @@ type Row = {
   file_name: string | null; archived_at: string | null;
   doc_type_id?: string | null; reviewed_at?: string | null; reviewed_by_name?: string | null; correction_reason?: string | null;
   dispatched_on?: string | null; dispatch_method?: string | null;
+  format_ok?: boolean | null; format_preferred?: string[] | null; // 11
 };
 
 export class SearchError extends Error {
@@ -69,6 +72,7 @@ const toHit = (r: Row): DocumentHit => ({
   status: r.status, fileName: r.file_name, archived: r.archived_at !== null,
   docTypeId: r.doc_type_id ?? null, reviewedAt: r.reviewed_at ?? null, reviewedByName: r.reviewed_by_name ?? null,
   correctionReason: r.correction_reason ?? null, dispatchedOn: r.dispatched_on ?? null, dispatchMethod: r.dispatch_method ?? null,
+  ...(r.format_ok === false ? { notPreferred: r.format_preferred ?? null } : {}), // 11: key absent otherwise (shape unchanged)
 });
 
 export async function searchDocumentsAs(input: SearchInput): Promise<{ total: number; rows: DocumentHit[] }> {

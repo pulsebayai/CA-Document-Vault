@@ -3,12 +3,13 @@
 import { useActionState, useEffect, useId, useState, useTransition } from "react";
 import {
   addPlanType, assignGroup, disableGroup, enableGroup, pausePlanItem, resumePlanItem, savePlanType, setPlanTypeActive,
-  setPlanTypeReminders, type PlanResult,
+  setPlanTypeAnyFormat, setPlanTypeReminders, type PlanResult,
 } from "@/lib/plan/actions";
 import type { ClientPlan, PlanGroup, PlanPeriod, PlanType } from "@/lib/plan/queries";
 import { allowedFrequencies, FREQUENCY_LABEL, scheduleSummary, type Frequency } from "@/lib/validation/catalogue";
 import { periodKindFor } from "@/lib/validation/plan";
 import { Badge, Button, Card, Switch } from "@/components/ui";
+import { formatLabel } from "@/lib/validation/formats";
 import { FieldError, inputCls, Modal, Offset } from "@/components/dialog";
 
 type Props = {
@@ -163,6 +164,17 @@ function TypeRow({ type: t, periods, staff, groupAssignee, assigneeName, canEdit
         {/* 04 AC-5: with the schedule, not in the name cell (whose accessible name is the type name). */}
         {!removed && t.frequency !== "as_needed" && t.registrationKind && !activeKinds.includes(t.registrationKind) && (
           <span className="block text-[12.5px] text-ink-2">No active {t.registrationKind === "gstin" ? "GSTIN" : "TAN"} — nothing expected</span>
+        )}
+        {/* 11 (spec AC-5, AC-6, AC-8): only on types with a preference; Limited sees it read-only. */}
+        {t.preferredFormats && (
+          <span className="mt-1 block text-[12.5px] text-ink-2">
+            {t.anyFormat ? "Any format (exception)" : `${formatLabel(t.preferredFormats)} preferred`}
+            <span className="mt-1 flex items-center gap-2" title={canEdit ? undefined : "Staff, Manager or Admin can change this"}>
+              <Switch checked={t.anyFormat ?? false} label={`Any format is fine for ${t.name} for this client`} disabled={!canEdit || pending}
+                onChange={(on) => run(() => setPlanTypeAnyFormat(t.id, on))} />
+              <span aria-hidden="true">Any format is fine for this client</span>
+            </span>
+          </span>
         )}
       </td>
       <td className="px-3 py-2.5">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Badge, Button, Card, PageHeader } from "@/components/ui";
+import { FormatBadge } from "@/components/format-badge";
 import { LoadingState, Block } from "@/components/states";
 import { RowCheckbox, SelectAll, SelectionBar, useSelection } from "@/components/selection-bar";
 import type { ReviewTarget } from "@/components/bulk-review-dialog";
@@ -14,7 +15,7 @@ import { CHANNEL_LABELS, RECEIVED_AS } from "@/lib/validation/document";
 import { documentState, type ShownStateKind } from "@/lib/documents/state";
 import { istDate } from "@/lib/documents/period";
 import {
-  DEFAULT_FILTERS, DOC_RETURNS, DOC_STATES, DOC_STATUSES, PAGE_SIZE, SEARCH_TEXT_KEY, SORTS, SUGGEST_DEBOUNCE_MS, filtersToQuery,
+  DEFAULT_FILTERS, DOC_FORMATS, DOC_RETURNS, DOC_STATES, DOC_STATUSES, PAGE_SIZE, SEARCH_TEXT_KEY, SORTS, SUGGEST_DEBOUNCE_MS, filtersToQuery,
   isFiltered, normaliseSearchText, type DocumentFilters,
 } from "@/lib/validation/document-search";
 
@@ -26,6 +27,7 @@ const CHANNEL_LABEL = CHANNEL_LABELS; // 10: includes "Upload link"
 const STATUS_LABEL: Record<string, string> = Object.fromEntries(DOC_STATUSES.map((s) => [s.value, s.label]));
 const STATE_LABEL: Record<string, string> = Object.fromEntries(DOC_STATES.map((s) => [s.value, s.label]));
 const RETURN_LABEL: Record<string, string> = Object.fromEntries(DOC_RETURNS.map((s) => [s.value, s.label]));
+const FORMAT_LABEL: Record<string, string> = Object.fromEntries(DOC_FORMATS.map((s) => [s.value, s.label])); // 11
 const day = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
 const shortDate = (iso: string) => day.format(new Date(`${iso}T00:00:00+05:30`));
 
@@ -70,6 +72,7 @@ export function activeChips(f: DocumentFilters, o: FilterOptions, facets: FacetV
   add("status", "Status", f.status ? STATUS_LABEL[f.status] : null);
   add("state", "Show", f.state ? STATE_LABEL[f.state] : null);
   if (f.return) chips.push({ key: "return", label: `Return: ${RETURN_LABEL[f.return]}` }); // 07
+  if (f.format) chips.push({ key: "format", label: `Format: ${FORMAT_LABEL[f.format]}` }); // 11
   if (f.archived) chips.push({ key: "archived", label: "Including archived" });
   return chips;
 }
@@ -78,6 +81,7 @@ export function activeChips(f: DocumentFilters, o: FilterOptions, facets: FacetV
 export function withoutFilter(f: DocumentFilters, key: keyof DocumentFilters): DocumentFilters {
   const next: DocumentFilters = { ...f, page: 1, [key]: key === "archived" ? false : null };
   if (key === "return") delete next.return; // 07: optional key (absent, not null)
+  if (key === "format") delete next.format; // 11: optional key too
   if (key === "group") next.type = null;
   if (key === "fy") next.period = null;
   if (key === "client") next.registration = null;
@@ -160,6 +164,11 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
     if (v === "ready" || v === "dispatched") next.return = v; else delete next.return;
     go(next);
   };
+  const setFormat = (v: string | null) => { // 11 (spec AC-21)
+    const next: DocumentFilters = { ...filters, page: 1 };
+    if (v === "not_preferred") next.format = v; else delete next.format;
+    go(next);
+  };
 
   const facetOptions = (facet: FacetName, labelOf: (v: string, l: string) => string, current: string | null) => {
     const list = facets.filter((x) => x.facet === facet).map((x) => ({ value: x.value, label: `${labelOf(x.value, x.label)} (${x.n})` }));
@@ -222,6 +231,8 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
             options={facetOptions("status", (v) => STATUS_LABEL[v] ?? v, filters.status)} />
           <Select label="Return" value={filters.return ?? null} onChange={(v) => setReturn(v)}
             options={facetOptions("return", (v) => RETURN_LABEL[v] ?? v, filters.return ?? null)} />
+          <Select label="Format" value={filters.format ?? null} onChange={(v) => setFormat(v)}
+            options={facetOptions("format", (v) => FORMAT_LABEL[v] ?? v, filters.format ?? null)} />
           <Select label="Show" value={filters.state} onChange={(v) => set({ state: v as DocumentFilters["state"] })}
             options={DOC_STATES.map((s) => ({ value: s.value, label: s.label }))} allLabel="Show: classified and Inbox" />
           <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">
@@ -325,6 +336,7 @@ function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolea
         {d.receivedAs !== "soft_copy" && <Badge tone={d.receivedAs === "original" ? "bad" : "warn"}>{RECEIVED_LABEL[d.receivedAs]}</Badge>}
         {d.archived && <Badge tone="muted">Archived</Badge>}
         {d.channel === "upload_link" && <Badge tone="accent">From client link</Badge>}
+        <FormatBadge preferred={d.notPreferred} />
       </span>
     </li>
   );

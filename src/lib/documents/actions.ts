@@ -1,5 +1,6 @@
 "use server";
 
+import { setPlanTypeAnyFormat } from "@/lib/plan/actions";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -297,4 +298,13 @@ export async function unarchiveDocumentAction(id: string): Promise<SimpleResult>
   }
   revalidatePath(`/documents/${id}`);
   return { ok: true };
+}
+
+/**
+ * 11 (spec AC-19): "Allow any format for this client" from the Add document warning. The form imports only this
+ * module (already server-action-only), so its unit tests keep mocking one module; the rule lives in plan/actions.
+ */
+export async function allowAnyFormat(planRowId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const r = await setPlanTypeAnyFormat(planRowId, true);
+  return r.ok ? { ok: true } : { ok: false, error: r.error };
 }

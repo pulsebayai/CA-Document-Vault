@@ -186,12 +186,16 @@ export async function followUpsOf(officeId: string, clientId?: string): Promise<
   return (data ?? []) as FollowUp[];
 }
 
-/** Activity rows written by 06 for an office, oldest first. */
+/**
+ * Activity rows written by 06 for an office, oldest first: the newest 1,000. Activity is append-only and survives
+ * reset_test_office, so a lane's office keeps growing; PostgREST returns at most 1,000 rows per request, and reading
+ * oldest first cut off the current run's rows once a lane passed 1,000 (CI 40448990859, lane 1: 1,005 rows).
+ */
 export async function reminderActivity(officeId: string) {
   const { data, error } = await adminClient().from("activity").select("action, actor_id, entity_type, entity_id, data")
-    .eq("office_id", officeId).like("action", "reminder.%").order("id");
+    .eq("office_id", officeId).like("action", "reminder.%").order("id", { ascending: false }).limit(1000);
   if (error) throw error;
-  return data as Array<{ action: string; actor_id: string | null; entity_type: string; entity_id: string; data: Record<string, unknown> }>;
+  return (data ?? []).reverse() as Array<{ action: string; actor_id: string | null; entity_type: string; entity_id: string; data: Record<string, unknown> }>;
 }
 
 /**

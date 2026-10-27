@@ -172,14 +172,14 @@ export async function addPlanType(clientId: string, docTypeId: string): Promise<
 type PlanTypeRow = {
   id: string; client_id: string; client_group_id: string; state: string; frequency: string; reminders: boolean;
   ask_after_months: number | null; ask_day: number | null; overdue_after_months: number | null; overdue_day: number | null;
-  start_period_id: string | null; assigned_staff_id: string | null;
-  doc_type: { period_kind: PeriodKind } | null; client_group: { state: string } | null;
+  start_period_id: string | null; assigned_staff_id: string | null; any_format: boolean;
+  doc_type: { period_kind: PeriodKind; preferred_formats: string[] | null } | null; client_group: { state: string } | null;
 };
 async function loadType(id: string) {
   const supabase = await createClient();
   const { data } = await supabase.from("client_doc_type")
     .select(`id, client_id, client_group_id, state, frequency, reminders, ask_after_months, ask_day, overdue_after_months, overdue_day,
-      start_period_id, assigned_staff_id, doc_type(period_kind), client_group(state)`)
+      start_period_id, assigned_staff_id, any_format, doc_type(period_kind, preferred_formats), client_group(state)`)
     .eq("id", id).maybeSingle();
   return data as unknown as PlanTypeRow | null;
 }
@@ -202,6 +202,28 @@ export async function setPlanTypeActive(id: string, active: boolean): Promise<Pl
   await logActivity({ officeId: me.officeId, actorId: me.id, action: active ? "client_doc_type.restored" : "client_doc_type.removed",
     entityType: "client_doc_type", entityId: id, data: { client_id: t.client_id, fields: ["state"] } });
   return done(t.client_id, active ? "Type restored." : "Type removed for this client.");
+}
+
+/**
+ * 11 (spec AC-5…AC-8): "Any format is fine for this client" on one plan row. Staff+ only (the action checks the role;
+ * client_doc_type's RLS refuses Limited anyway, plan P1). Affects only documents filed afterwards.
+ */
+export async function setPlanTypeAnyFormat(id: string, on: boolean): Promise<PlanResult> {
+  const me = await editor();
+  if ("error" in me) return { ok: false, error: me.error };
+  if (!uuid.safeParse(id).success || typeof on !== "boolean") return { ok: false, error: INVALID };
+  const t = await loadType(id);
+  if (!t) return { ok: false, error: "This type is no longer available." };
+  const closed = await clientIsOpen(t.client_id);
+  if (closed) return { ok: false, error: closed };
+  if (t.any_format === on) return { ok: true, message: "No changes." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("client_doc_type").update({ any_format: on }).eq("id", id).select("id");
+  if (error || !data?.length) return { ok: false, error: friendly(error?.message ?? "permission denied") };
+  await logActivity({ officeId: me.officeId, actorId: me.id,
+    action: on ? "client_doc_type.format_exception_set" : "client_doc_type.format_exception_cleared",
+    entityType: "client_doc_type", entityId: id, data: { client_id: t.client_id } });
+  return done(t.client_id, on ? "Any format is fine for this client." : "Preferred formats apply to this client again.");
 }
 
 /** Reminders switch on a row (mockup 11). Only scheduled types send reminders. */

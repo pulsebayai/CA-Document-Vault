@@ -14,6 +14,8 @@ import { TOKEN_PATTERN, hashToken } from "./token";
 export type LinkItem = {
   id: string; kind: "scheduled" | "ad_hoc"; group: string; type: string; period?: string;
   state_code?: string; reg_kind?: "gstin" | "tan"; needed_by?: string; note?: string; received: boolean; files: number;
+  /** 11 (spec AC-9, AC-12): formats this item prefers; absent when none apply. */
+  preferred?: string[];
 };
 export type LinkPage =
   | { active: false }
@@ -80,14 +82,16 @@ export async function linkTicket(token: unknown, itemId: string, file: ValidFile
 }
 
 export async function linkRegister(
-  token: unknown, itemId: string, upload: { path: string; fileName: string },
+  token: unknown, itemId: string, upload: { path: string; fileName: string; warned?: boolean },
 ): Promise<{ docCode: string }> {
   const hash = tokenHashOf(token);
   if (!hash) throw new LinkError("NOT_ACTIVE");
   // No storage call before the database has checked the token (review N2): link_register reads the object's size
   // and type from storage.objects itself, and forces the stored name's extension to the object's (review B1).
   const { data, error } = await createAdminClient().rpc("link_register", {
-    p_token_hash: hash, p_item_id: itemId, p_file: { storage_path: upload.path, file_name: upload.fileName }, p_ip_hash: await ipHash(),
+    p_token_hash: hash, p_item_id: itemId, p_ip_hash: await ipHash(),
+    // 11 (spec AC-13): whether the page warned about the format — untrusted, kept for the metric only.
+    p_file: { storage_path: upload.path, file_name: upload.fileName, warned: upload.warned === true },
   });
   if (error) throw new LinkError(codeOf(error.message));
   if ((data as { error?: string }).error) throw new LinkError("NOT_ACTIVE");

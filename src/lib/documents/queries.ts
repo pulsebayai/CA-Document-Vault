@@ -11,6 +11,10 @@ export type TypeOption = {
   frequency: Frequency;
   registrationKind: "gstin" | "tan" | null;
   proposed: boolean;
+  /** 11 (spec AC-19, AC-20): the type's preferred formats; the client's exception; the plan row (any state) for it. */
+  preferredFormats?: string[] | null;
+  anyFormat?: boolean;
+  planRowId?: string | null;
 };
 export type RegistrationOption = { id: string; kind: "gstin" | "tan"; number: string };
 export type PeriodOption = { id: string; kind: Exclude<PeriodKind, "none">; code: string; label: string; fyCode: string };
@@ -20,6 +24,7 @@ export type ClientOption = { id: string; name: string; code: string };
 type TypeRow = {
   id: string; name: string; doc_group_id: string; period_kind: PeriodKind; default_frequency: Frequency;
   registration_kind: "gstin" | "tan" | null; status: "approved" | "proposed"; proposed_for_client_id: string | null;
+  preferred_formats: string[] | null;
   doc_group: { name: string; sort: number; active: boolean } | null;
 };
 
@@ -34,11 +39,12 @@ export async function typesForClient(clientId: string | null): Promise<ClientTyp
   const supabase = await createClient();
   const [types, plan, regs] = await Promise.all([
     supabase.from("doc_type")
-      .select("id, name, doc_group_id, period_kind, default_frequency, registration_kind, status, proposed_for_client_id, doc_group:doc_group_id (name, sort, active)")
+      .select("id, name, doc_group_id, period_kind, default_frequency, registration_kind, status, proposed_for_client_id, preferred_formats, doc_group:doc_group_id (name, sort, active)")
       .eq("active", true),
     clientId
-      ? supabase.from("client_doc_type").select("doc_type_id, frequency").eq("client_id", clientId).eq("state", "active")
-      : Promise.resolve({ data: [] as { doc_type_id: string; frequency: Frequency }[], error: null }),
+      // 11: every plan row (any state) — the exception lives on the row whatever its state; "in plan" = active rows.
+      ? supabase.from("client_doc_type").select("id, doc_type_id, frequency, state, any_format").eq("client_id", clientId)
+      : Promise.resolve({ data: [] as { id: string; doc_type_id: string; frequency: Frequency; state: string; any_format: boolean }[], error: null }),
     clientId
       ? supabase.from("client_registration").select("id, kind, number").eq("client_id", clientId).eq("active", true).order("number")
       : Promise.resolve({ data: [] as RegistrationOption[], error: null }),
@@ -48,7 +54,9 @@ export async function typesForClient(clientId: string | null): Promise<ClientTyp
     console.error("documents.types_failed", { code: failed.error?.code });
     throw new Error("Could not load document types.");
   }
-  const inPlan = new Map((plan.data ?? []).map((p) => [p.doc_type_id, p.frequency]));
+  const rows = (plan.data ?? []) as { id: string; doc_type_id: string; frequency: Frequency; state: string; any_format: boolean }[];
+  const inPlan = new Map(rows.filter((p) => p.state === "active").map((p) => [p.doc_type_id, p.frequency]));
+  const rowOf = new Map(rows.map((p) => [p.doc_type_id, p]));
   const all = ((types.data ?? []) as unknown as TypeRow[])
     .filter((t) => t.doc_group?.active)
     .filter((t) => t.status === "approved" || (clientId && t.proposed_for_client_id === clientId))
@@ -56,11 +64,14 @@ export async function typesForClient(clientId: string | null): Promise<ClientTyp
       id: t.id, name: t.name, groupId: t.doc_group_id, groupName: t.doc_group!.name, sort: t.doc_group!.sort,
       periodKind: t.period_kind, frequency: inPlan.get(t.id) ?? t.default_frequency,
       registrationKind: t.registration_kind, proposed: t.status === "proposed",
+      preferredFormats: t.preferred_formats ?? null, anyFormat: rowOf.get(t.id)?.any_format ?? false,
+      planRowId: rowOf.get(t.id)?.id ?? null,
     }))
     .sort(byGroupThenName);
   const strip = (t: TypeOption & { sort: number }): TypeOption => ({
     id: t.id, name: t.name, groupId: t.groupId, groupName: t.groupName, periodKind: t.periodKind,
     frequency: t.frequency, registrationKind: t.registrationKind, proposed: t.proposed,
+    preferredFormats: t.preferredFormats, anyFormat: t.anyFormat, planRowId: t.planRowId,
   });
   return {
     planTypes: all.filter((t) => inPlan.has(t.id)).map(strip),
@@ -167,6 +178,8 @@ export type ClientDocument = {
   current: { id: string; mimeType: string } | null; proposed: boolean;
   /** 10: the document came through a client upload link ("From client link"). */
   fromLink?: boolean;
+  /** 11 (spec AC-16): filed outside the preference that applied — the snapshot it missed. */
+  notPreferred?: string[] | null;
   // 07: review state and the live packet (documentState() in ./state.ts).
   status: string; reviewedAt: string | null; reviewedByName: string | null; correctionReason: string | null;
   dispatchedOn: string | null; dispatchMethod: string | null;
@@ -181,6 +194,7 @@ type ClientDocRow = {
   current: { id: string; mime_type: string } | null;
   status: string; reviewed_at: string | null; correction_reason: string | null; reviewer: { full_name: string } | null;
   packets: Array<{ removed_at: string | null; dispatch: { dispatched_on: string; method: string } | null }> | null;
+  format_ok: boolean | null; format_preferred: string[] | null;
 };
 
 /**
@@ -205,6 +219,7 @@ export async function listClientDocuments(clientId: string): Promise<ClientDocum
     receivedOn: r.received_on, receivedBy: r.receiver?.full_name ?? "—", receivedAs: r.received_as,
     versionCount: r.version_count, current: r.current ? { id: r.current.id, mimeType: r.current.mime_type } : null,
     proposed: r.doc_type!.status === "proposed", fromLink: r.channel === "upload_link",
+    notPreferred: r.format_ok === false ? r.format_preferred : null,
     ...reviewFields(r),
   }));
 }
@@ -236,6 +251,10 @@ export type DocumentDetail = DocumentForForm & {
   typeName: string | null; groupName: string | null; periodLabel: string | null; registrationNumber: string | null;
   receivedBy: string; addedBy: string; createdAt: string; archivedAt: string | null; archiveReason: string | null;
   currentVersionId: string | null;
+  /** 11 (spec AC-16): the preference the current file missed, or null. */
+  notPreferred?: string[] | null;
+  /** 11 (spec AC-19): the preference that applies to a new version now (type's list unless the client has an exception). */
+  appliedFormats?: string[] | null;
   // 07: review state (the history and packets load separately: src/lib/review, src/lib/dispatch).
   status: string; reviewedAt: string | null; reviewedByName: string | null; correctionReason: string | null;
   versions: { id: string; versionNo: number; fileName: string; mimeType: string; sizeBytes: number; uploadedAt: string; uploadedBy: string }[];
@@ -246,10 +265,10 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
   if (!base) return null;
   const supabase = await createClient();
   const [doc, versions] = await Promise.all([
-    supabase.from("document").select(`created_at, archived_at, archive_reason, current_version_id,
+    supabase.from("document").select(`created_at, archived_at, archive_reason, current_version_id, format_ok, format_preferred,
         status, reviewed_at, correction_reason, reviewer:reviewed_by (full_name),
         receiver:received_by (full_name), creator:created_by (full_name),
-        doc_type:doc_type_id (name, doc_group:doc_group_id (name)), period:period_id (label), registration:registration_id (number)`)
+        doc_type:doc_type_id (name, preferred_formats, doc_group:doc_group_id (name)), period:period_id (label), registration:registration_id (number)`)
       .eq("id", id).single(),
     supabase.from("document_version").select("id, version_no, file_name, mime_type, size_bytes, uploaded_at, uploader:uploaded_by (full_name)")
       .eq("document_id", id).order("version_no", { ascending: false }),
@@ -257,16 +276,25 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
   if (doc.error || versions.error) throw new Error("Could not load the document.");
   const d = doc.data as unknown as {
     created_at: string; archived_at: string | null; archive_reason: string | null; current_version_id: string | null;
+    format_ok: boolean | null; format_preferred: string[] | null;
     status: string; reviewed_at: string | null; correction_reason: string | null; reviewer: { full_name: string } | null;
     receiver: { full_name: string } | null; creator: { full_name: string } | null;
-    doc_type: { name: string; doc_group: { name: string } | null } | null; period: { label: string } | null;
+    doc_type: { name: string; preferred_formats: string[] | null; doc_group: { name: string } | null } | null; period: { label: string } | null;
     registration: { number: string } | null;
   };
+  let appliedFormats: string[] | null = d.doc_type?.preferred_formats ?? null;
+  if (appliedFormats && base.client && base.docTypeId) {
+    const { data: row } = await supabase.from("client_doc_type").select("any_format")
+      .eq("client_id", base.client.id).eq("doc_type_id", base.docTypeId).maybeSingle();
+    if (row?.any_format) appliedFormats = null;
+  }
   return {
     ...base,
+    appliedFormats,
     typeName: d.doc_type?.name ?? null, groupName: d.doc_type?.doc_group?.name ?? null, periodLabel: d.period?.label ?? null,
     registrationNumber: d.registration?.number ?? null, receivedBy: d.receiver?.full_name ?? "—", addedBy: d.creator?.full_name ?? "—",
     createdAt: d.created_at, archivedAt: d.archived_at, archiveReason: d.archive_reason, currentVersionId: d.current_version_id,
+    notPreferred: d.format_ok === false ? d.format_preferred : null,
     status: d.status, reviewedAt: d.reviewed_at, reviewedByName: d.reviewer?.full_name ?? null, correctionReason: d.correction_reason,
     versions: ((versions.data ?? []) as unknown as Array<{ id: string; version_no: number; file_name: string; mime_type: string; size_bytes: number; uploaded_at: string; uploader: { full_name: string } | null }>)
       .map((v) => ({ id: v.id, versionNo: v.version_no, fileName: v.file_name, mimeType: v.mime_type, sizeBytes: v.size_bytes, uploadedAt: v.uploaded_at, uploadedBy: v.uploader?.full_name ?? "—" })),

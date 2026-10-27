@@ -80,6 +80,8 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   "client_doc_type.updated": fixed("clients_plans", "changed a type's schedule"),
   "client_doc_type.paused": fixed("clients_plans", "paused a type"),
   "client_doc_type.resumed": fixed("clients_plans", "resumed a type"),
+  "client_doc_type.format_exception_set": fixed("clients_plans", "allowed any file format for a type"), // 11
+  "client_doc_type.format_exception_cleared": fixed("clients_plans", "turned preferred formats back on for a type"), // 11
   // Catalogue (02, 03)
   "doc_type.proposed": fixed("catalogue", "proposed a new type"),
   "doc_type.approved": fixed("catalogue", "approved a proposed type"), // 05
@@ -87,6 +89,7 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   "doc_type.rejected": fixed("catalogue", "rejected a proposed type"), // 05
   "doc_type.created": fixed("catalogue", "added a type to the catalogue"),
   "doc_type.updated": fixed("catalogue", "edited a catalogue type"),
+  "doc_type.formats_changed": fixed("catalogue", "changed a type's preferred file formats"), // 11
   "doc_group.created": fixed("catalogue", "added a document group"),
   "doc_group.updated": fixed("catalogue", "edited a document group"),
   "doc_group.reordered": fixed("catalogue", "reordered the document groups"),

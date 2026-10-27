@@ -6,6 +6,7 @@ import { canManageCatalogue } from "@/lib/auth/roles";
 import { getDocumentDetail } from "@/lib/documents/queries";
 import { CHANNEL_LABELS, RECEIVED_AS, viewBlockedForLink } from "@/lib/validation/document";
 import { Badge, Card } from "@/components/ui";
+import { FormatBadge, formatDetail } from "@/components/format-badge";
 import { FileButtons } from "../file-buttons";
 import { ArchiveDocument, NewVersion } from "./document-controls";
 import { DispatchPanel, ReviewPanel } from "./review-panel";
@@ -66,8 +67,10 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
             {d.receivedAs !== "soft_copy" && <Badge tone={d.receivedAs === "original" ? "bad" : "warn"}>{RECEIVED_LABEL[d.receivedAs]}</Badge>}
             {!d.classified && <Badge tone="warn">In Inbox</Badge>}
             {d.channel === "upload_link" && <Badge tone="accent">From client link</Badge>}
+            <FormatBadge preferred={d.notPreferred} />
             {archived && <Badge tone="muted">Archived</Badge>}
           </p>
+          {d.notPreferred && <p className="mt-1 text-[13px] text-ink-2">{formatDetail(d.fileName, d.notPreferred)}</p>}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!archived && <Link href={`/documents/${d.id}/assign`} className="inline-flex h-[30px] items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas">{d.classified ? "Edit" : "Assign"}</Link>}
@@ -95,7 +98,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
             ) : (
               <p className="mt-2 text-[13.5px] text-ink-2">No file yet — {RECEIVED_LABEL[d.receivedAs].toLowerCase()} only.</p>
             )}
-            {!archived && <div className="mt-4"><NewVersion documentId={d.id} correction={d.status === "needs_correction" ? { today } : undefined} /></div>}
+            {!archived && <div className="mt-4"><NewVersion documentId={d.id} correction={d.status === "needs_correction" ? { today } : undefined} preferred={d.appliedFormats ?? null} /></div>}
           </Card>
 
           <Card className="p-5">

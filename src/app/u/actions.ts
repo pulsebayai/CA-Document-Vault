@@ -47,13 +47,15 @@ export async function startLinkUpload(token: string, itemId: string, file: { nam
 const PATH = /^office\/[0-9a-f-]{36}\/doc\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.[a-z]+$/;
 
 export async function finishLinkUpload(
-  token: string, itemId: string, upload: { path: string; fileName: string; size: number; contentType: string },
+  token: string, itemId: string, upload: { path: string; fileName: string; size: number; contentType: string; warned?: boolean },
 ): Promise<FinishResult> {
   if (!uuid.safeParse(itemId).success || !PATH.test(String(upload?.path ?? ""))) return { ok: false, code: "UPLOAD_FAILED" };
   const ext = String(upload.path).slice(String(upload.path).lastIndexOf(".") + 1);
   try {
     // The browser's name is only a suggestion: cleaned here, and the database forces the object's extension (B1).
-    await linkRegister(token, itemId, { path: upload.path, fileName: sanitiseFileName(String(upload?.fileName ?? ""), ext) });
+    await linkRegister(token, itemId, {
+      path: upload.path, fileName: sanitiseFileName(String(upload?.fileName ?? ""), ext), warned: upload?.warned === true,
+    });
     return { ok: true };
   } catch (e) {
     return { ok: false, code: fail("register", e) };
