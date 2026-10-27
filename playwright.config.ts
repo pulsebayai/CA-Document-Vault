@@ -16,7 +16,13 @@ export default defineConfig({
     : "list",
   // CI runners are in the US and the dev database is in Mumbai: allow for round-trips.
   expect: { timeout: 15_000 },
-  use: { baseURL, trace: "retain-on-failure", screenshot: "only-on-failure", actionTimeout: 15_000, navigationTimeout: 30_000 },
+  use: {
+    baseURL, trace: "retain-on-failure", screenshot: "only-on-failure", actionTimeout: 15_000, navigationTimeout: 30_000,
+    // E2E_LOCAL_DB=1 (CI, chore ci-speed step 3): the app talks to an ephemeral local Supabase whose API uses a
+    // self-signed cert (scripts/local-db.sh). The browser opens its sign-in links and Storage URLs directly, so it
+    // must accept that cert. Never set for hosted targets (dev, staging, prod).
+    ignoreHTTPSErrors: process.env.E2E_LOCAL_DB === "1",
+  },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: process.env.E2E_BASE_URL
     ? undefined
