@@ -4,5 +4,5 @@ import { config } from "dotenv";
 config({ path: ".env.local", quiet: true });
 
 for (const name of ["NEXT_PUBLIC_SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_SECRET_KEY"]) {
-  if (!process.env[name]) throw new Error(`Missing ${name}: DB tests run against the dev Supabase project.`);
+  if (!process.env[name]) throw new Error(`Missing ${name}: DB tests need a Supabase project (dev via .env.local, or the local stack: scripts/local-db.sh).`);
 }

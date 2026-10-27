@@ -18,7 +18,7 @@ export default defineConfig({
       {
         extends: true,
         test: {
-          // RLS + integration tests hit the hosted dev Supabase project.
+          // RLS + integration tests hit a real Supabase: hosted dev (sessions, nightly) or the local stack (PR CI, chore ci-speed).
           name: "db",
           environment: "node",
           include: ["tests/rls/**/*.test.ts", "tests/integration/**/*.test.ts"],

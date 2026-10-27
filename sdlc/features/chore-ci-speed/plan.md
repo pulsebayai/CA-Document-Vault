@@ -42,6 +42,9 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
     - Add a decision-log row.
   - Update CLAUDE.md test rules: lanes only for hosted runs.
 
+## Files that change
+`.github/workflows/ci.yml` · `.github/workflows/local-db-trial.yml` (step 0 only, then removed) · `playwright.config.ts` · `supabase/config.toml` · `supabase/.gitignore` · `scripts/local-db.sh` · `scripts/schema-fingerprint.sql` · comments only: `tests/support/setup-env.ts` (error text), `vitest.config.mts`, `scripts/test-lane.mjs` · docs: `sdlc/product/architecture.md`, `CLAUDE.md`, this plan + `evidence/`. Step 3 adds the e2e job's local stack (same files). **No migration, no product code, no test assertion changes.**
+
 ## Not doing (and why)
 - **Moving tests out of PR CI** (screenshots, slow tests). Policy is "full suite per PR", and finding breakage late has already cost more than the wait.
 - **A self-hosted runner** (Raja's Mac / India). The repo is public, so fork PRs could run code on it.
@@ -75,3 +78,8 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - Docs: architecture.md (policy 1, Environments, decision-log row, the 2026-09-25 row annotated), CLAUDE.md (local RLS rule; lanes = e2e job + Regression).
   - Session checks: lint 0, typecheck 0, unit 529/529, build OK. RLS/e2e can't run here (no registry access; no preview access).
   - Expected [Likely]: PR CI ≈ e2e job alone ≈ 35–40 min (from 75–83); RLS job ≈ 4 min. e2e stays the critical path → step 3.
+  - **Pre-PR review (sdlc-reviewer, 2026-10-27): no blockers, 3 Important, 9 Nits, all addressed:**
+    - I-1 PR CI no longer proves dev has the PR's migrations → CLAUDE.md rule: a PR with a migration applies it to dev, records md5 = file, and dispatches Regression `only` = its RLS files before merge (no schema change needed for a check in CI).
+    - I-2 docs ahead of proof → CLAUDE.md says "being proven"; **don't merge until 3 green `rls` runs are recorded here** (run IDs, seconds, test count vs hosted 644).
+    - I-3 a laptop `start` didn't export the local env, so tests would silently use `.env.local`'s dev keys → script header + CLAUDE.md give the export line; `start` only writes `$GITHUB_ENV` in Actions.
+    - Nits: unused `db_tests` output commented · `E2E_PREBUILT === "1"` + "never set locally" · cache key adds `ImageOS` · cert renewed when < 1 day left · `API_URL` read from `supabase status` and must be `https:` · `mktemp` log · CLAUDE.md: PR CI no longer catches slow queries (nightly does) · `enable_signup = false` as the product · fingerprint adds `storage_policy` (dev: none, 2026-10-27; auth settings stay a manual check) · stale comments in `setup-env.ts`, `vitest.config.mts`, `test-lane.mjs`, CLAUDE.md verification line · this "Files that change" section.

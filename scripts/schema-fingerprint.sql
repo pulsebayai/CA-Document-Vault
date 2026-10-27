@@ -1,7 +1,8 @@
 -- Chore ci-speed step 0: a fingerprint of everything the app's migrations own, so a database rebuilt from
 -- supabase/migrations/ can be compared with hosted dev (or staging) object by object.
 -- One row per object: kind | name | md5 of its definition. Run the same file on both and diff the output.
--- Scope: schemas public + private, storage buckets, pg_cron jobs, extensions. Platform-owned schemas
+-- Scope: schemas public + private, storage buckets and policies, pg_cron jobs, extensions. Not covered: auth
+-- settings and hooks (dashboard config; check by hand on staging/prod). Platform-owned schemas
 -- (auth, storage internals, realtime …) are left out: their versions differ between hosts by design.
 with s as (select oid, nspname from pg_namespace where nspname in ('public', 'private'))
 select kind, name, md5(def) as hash from (
@@ -43,6 +44,13 @@ select kind, name, md5(def) as hash from (
          (select string_agg(coalesce(r.rolname, 'public'), ',' order by r.rolname) from unnest(p.polroles) pr left join pg_roles r on r.oid = pr) ||
          ' using=' || coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' check=' || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
   from pg_policy p join pg_class c on c.oid = p.polrelid join s on s.oid = c.relnamespace
+  union all
+  -- Storage policies: architecture.md requires none for app roles (files only via server-signed URLs), so any
+  -- row here on staging/prod is a finding. Dev had none on 2026-10-27.
+  select 'storage_policy', c.relname || '.' || p.polname,
+         p.polcmd::text || ' roles=' || (select string_agg(coalesce(r.rolname, 'public'), ',' order by r.rolname) from unnest(p.polroles) pr left join pg_roles r on r.oid = pr) ||
+         ' using=' || coalesce(pg_get_expr(p.polqual, p.polrelid), '') || ' check=' || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')
+  from pg_policy p join pg_class c on c.oid = p.polrelid join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'storage'
   union all
   -- triggers on app tables, including app triggers on storage.objects / auth.users if any
   select 'trigger', n.nspname || '.' || c.relname || '.' || t.tgname, pg_get_triggerdef(t.oid) || ' enabled=' || t.tgenabled::text
