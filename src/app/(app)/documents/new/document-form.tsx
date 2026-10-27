@@ -77,6 +77,10 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
   const [client, setClient] = useState<ClientOption | null>(existing ? existing.client : initialClient);
   const [types, setTypes] = useState<ClientTypes>(initialTypes);
   const [docTypeId, setDocTypeId] = useState(existing?.docTypeId ?? prefillType?.id ?? "");
+  // The type selected *now*, for code that resumes after an await (pickClient): its closure holds the type that was
+  // selected when it started, so a type chosen while the client's types were loading was cleared (chore ci-speed).
+  const docTypeNow = useRef(docTypeId);
+  useEffect(() => { docTypeNow.current = docTypeId; }, [docTypeId]);
   const [periodChoice, setPeriodChoice] = useState<PeriodChoice>(initialPeriod?.kind ?? "none");
   const [periodId, setPeriodId] = useState(initialPeriod?.id ?? "");
   const [registrationId, setRegistrationId] = useState(existing?.registrationId ?? (prefillType ? prefill!.registrationId : ""));
@@ -190,7 +194,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     const r = await loadClientTypes(c?.id ?? null);
     if (!r.ok) { setError(r.error); return; }
     setTypes({ planTypes: r.planTypes, otherTypes: r.otherTypes, registrations: r.registrations });
-    const still = [...r.planTypes, ...r.otherTypes].find((t) => t.id === docTypeId);
+    const still = [...r.planTypes, ...r.otherTypes].find((t) => t.id === docTypeNow.current);
     if (!still) { setDocTypeId(""); setPeriodChoice("none"); setPeriodId(""); }
     else applyType(still, r.registrations);
   }
@@ -208,6 +212,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
   }
 
   function onTypeChange(id: string) {
+    docTypeNow.current = id; // before the effect runs, in case a client load resolves in between
     setDocTypeId(id);
     if (id !== NEW_TYPE) applyType(allTypes.find((t) => t.id === id));
     else { setPeriodChoice("none"); setPeriodId(""); setRegistrationId(""); }
