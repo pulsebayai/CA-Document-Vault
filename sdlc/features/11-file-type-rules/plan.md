@@ -75,7 +75,7 @@ A then B, both additive or `create or replace` with the same signatures. Each dr
 - [x] 5. **Staff warning + badge:** document form (add, edit/classify, Upload for item), Add version, badge on Client › Documents, `/documents`, document page. Proof: unit form test; e2e part 2; 03 add-document / client-documents / 10 requested e2e unedited. (0.75)
 - [x] 6. **Migration B + `/u` + search:** `link_open` / `link_register`, search filter + facet, `/u` hint + dialog + `warned`, Format chip. Proof: `format-reads` green; `upload-link-formats.spec` (390 px + axe); 03b search + 10 upload-link suites unedited. (0.75) [review SQL: 20 min]
 - [x] 7. **Collection section:** `format_metric` + page section. Proof: `format-reads` metric cases; e2e part 3; 04's `collection.spec` and 10's link-metric e2e unedited. (0.25)
-- [ ] 8. **Close:** architecture.md + ui-reference rows; verifier (lint, typecheck, unit, full DB suite, build); new/changed e2e locally on a production build; **full CI on the PR**; **RUN_SLOW Regression on the branch preview** (03 filing trigger changed); sdlc-reviewer; PR ready. Timing: one save with the check vs 03's baseline (≤ 5 ms added). (0.5) [PR review 1–2 h; ask before each CI run]
+- [x] 8. **Close:** architecture.md + ui-reference rows; verifier (lint, typecheck, unit, full DB suite, build); new/changed e2e locally on a production build; **full CI on the PR**; **RUN_SLOW Regression on the branch preview** (03 filing trigger changed); sdlc-reviewer; PR ready. Timing: one save with the check vs 03's baseline (≤ 5 ms added). (0.5) [PR review 1–2 h; ask before each CI run]
 
 ## Risks
 | Risk | Mitigation |
@@ -142,7 +142,12 @@ Every spec AC → test file → result in the PR's AC table (P2/P3 marked as app
   - `smoke.spec.ts` "storage sweep refuses a call without the cron secret" — 302, not 401. The test uses Playwright's `request` client, which never gets the preview's bypass cookie (`allowPreview` primes the browser context only), so Vercel's protection redirects. 10's test; first time run against a protected preview (10's RUN_SLOW ran after merge).
   - `upload-link.spec.ts` AC-6 (10, unedited) and `upload-link-formats.spec.ts` AC-9 (11): the active `/u` page never rendered for a valid token. The "not active" cases passed on the same preview, and both files pass locally on 9523b70 against dev, so [Likely] this is about the preview deployment, not 11's code. The cause is unknown: the artifacts and logs are on a host this session can't reach.
   - No green nightly has yet run 10's `/u` tests against a deployed URL (last nightly 40239687499 was before 10 merged).
-- Next: Raja to look at the failure screenshot in run 40396660735's `regression-evidence-dev` artifact (or the job log); decide the fix route before merge.
+- Cause found (2026-10-27, from the artifact Raja pushed to a temporary branch): the page showed "Something went wrong". The server action returned `UPLOAD_FAILED`, and no `link_open` call reached the database. Vercel had **no `LINK_IP_SALT`** in any environment, and Preview has `MAIL_TRANSPORT=brevo`, so `ipSalt()` fails closed (10's review N5) before any link call. Raja added `LINK_IP_SALT` (Production + Preview); the preview and main's Production were redeployed.
+- **Quick check 40442859475** (`only = upload-link`, redeployed preview): 21/21 ✅. Not release evidence.
+- Save timing: `documents-perf` (03's save timing) passed inside the RUN_SLOW RLS step with the format check in the trigger.
+- 10 follow-ups for roadmap Later (not 11): the cron smoke test needs the preview bypass on Playwright's `request` client; `upload-link.spec` AC-10's fake-token step only changes the fragment, so it never calls the server (force a reload).
+- R1 checklist: `LINK_IP_SALT` on every Vercel environment (dev Production/Preview done 2026-10-27; staging/prod in the existing item).
+- PR description: `pr-description.md`. Next: Raja reviews and merges PR #6; after merge, roadmap on main + full RUN_SLOW Regression on main.
 
 ### 2026-10-26 (step 7)
 - Done: Settings › Collection "Preferred formats" section (five figures for the last 30 days + exceptions by type, top 5, as of now; definition paragraph). `formatMetricAs` query, `sharePct` helper + unit test.
