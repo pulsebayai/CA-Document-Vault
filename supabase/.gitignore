@@ -6,3 +6,6 @@
 .env.keys
 .env.local
 .env.*.local
+
+# chore ci-speed: local TLS pair, made by scripts/local-db.sh
+certs/

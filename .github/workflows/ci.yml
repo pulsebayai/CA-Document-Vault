@@ -68,13 +68,44 @@ jobs:
         if: always()
         with: { name: unit-evidence, path: test-results/, retention-days: 90 }
 
-  db-and-e2e:
-    name: RLS + e2e (dev Supabase)
-    needs: [changes, verify]
+  # Chore ci-speed step 2 (plan approved 2026-10-27): RLS runs on an EPHEMERAL local Supabase built only from
+  # supabase/migrations/ (step 0: schema identical to dev, 1,197 objects). No secrets, no test lane, no shared
+  # data, no US↔Mumbai round-trips: ~1 min instead of ~15–37 min on hosted dev, and no statement timeouts from
+  # other runs' data. Hosted dev still runs the full RLS suite every night (Regression) and RUN_SLOW dispatches.
+  # Runs in parallel with verify and e2e. "Changed RLS tests first" is gone: the whole suite takes about a minute.
+  rls:
+    name: RLS (local Supabase)
+    needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    # ≈ 55 min of tests (feature 10: ~75 with a PR's changed tests run first) + up to 30 min waiting for a lane.
-    # PR #3's first run hit the old 55-min limit in e2e (run 40215776683). Keep below the 150-min lane lease
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with: { version: 2.122.0 }
+      - name: Start local Supabase (every migration file, in order)
+        run: scripts/local-db.sh start # also sets the local URL/keys + NODE_EXTRA_CA_CERTS in $GITHUB_ENV
+      - run: npm run test:db:ci
+      - name: Evidence summary
+        if: always()
+        env: { EXPECT_SUITES: "db" }
+        run: |
+          node scripts/regression-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+          # Counts as an annotation too, readable through the API without downloading the artifact.
+          node -e 'const x=require("fs").readFileSync("test-results/junit-db.xml","utf8");const t=x.match(/<testsuites\b[^>]*>/)?.[0]??"";const a=n=>t.match(new RegExp(n+"=\"(\\d+)\""))?.[1];console.log(`::notice title=rls counts::tests=${a("tests")} failures=${a("failures")} errors=${a("errors")} skipped=${(x.match(/<skipped/g)??[]).length}`)' || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: rls-evidence, path: test-results/, retention-days: 90 }
+
+  e2e:
+    name: e2e (dev Supabase)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    # ≈ 30 min of tests + up to 30 min waiting for a lane. Keep below the 150-min lane lease
     # (scripts/test-lane.mjs LEASE_MINUTES) or a slow run could lose its lane.
     timeout-minutes: 120
     env:
@@ -85,6 +116,8 @@ jobs:
       APP_PUBLIC_URL: http://localhost:3000
       # Test lanes (chore test-isolation): up to 2 runs share dev, each with its own fixture offices/users.
       TEST_LANE_HOLDER: ci-${{ github.run_id }}-${{ github.run_attempt }}
+      # Chore ci-speed step 1: the app is built once below; Playwright only starts it (playwright.config.ts).
+      E2E_PREBUILT: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -94,24 +127,35 @@ jobs:
         run: |
           code=$(curl -s -o /dev/null -w "%{http_code}" "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/health" -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
           if [ "$code" != "200" ]; then echo "::error::Dev Supabase project is paused or unreachable (HTTP $code). Resume it in the dashboard."; exit 1; fi
+      # Chore ci-speed step 1: the browser download is cached per Playwright version (install took ~6 min).
+      # The system libraries still come from apt on every run (install-deps).
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        id: pw-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium
+      - name: Install Chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install Chromium system libraries (browser from cache)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - run: npm run build
       - name: Take a test lane
         run: node scripts/test-lane.mjs acquire
-      # Chore test-feedback (Raja 2026-10-06): the PR's new or changed RLS and e2e files run first, so a failing new
-      # test stops the job in minutes instead of after the ~25 min full suites. The full suites below still run them.
-      - name: Changed RLS tests first
-        if: needs.changes.outputs.db_tests != ''
-        env: { CHANGED: "${{ needs.changes.outputs.db_tests }}" }
-        run: npx vitest run --project db $CHANGED # paths validated by scripts/ci-changes.mjs; unquoted to split
-      - run: npx playwright install --with-deps chromium
+      # Chore test-feedback (Raja 2026-10-06): the PR's new or changed e2e files run first, so a failing new test
+      # stops the job in minutes instead of after the full suite. The full suite below still runs them.
       - name: Changed e2e tests first
         if: needs.changes.outputs.e2e_tests != ''
         env: { CHANGED: "${{ needs.changes.outputs.e2e_tests }}" }
-        run: npx playwright test $CHANGED # builds and starts the app once more (~2 min)
-      - run: npm run test:db:ci
+        run: npx playwright test $CHANGED # paths validated by scripts/ci-changes.mjs; unquoted to split
       - run: npm run test:e2e
       - name: Evidence summary
         if: always()
-        env: { EXPECT_SUITES: "db,e2e" }
+        env: { EXPECT_SUITES: "e2e" }
         run: node scripts/regression-summary.mjs >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()

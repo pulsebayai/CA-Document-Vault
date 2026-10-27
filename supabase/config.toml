@@ -28,10 +28,12 @@ max_rows = 1000
 
 [api.tls]
 # Enable HTTPS endpoints locally using a self-signed certificate.
-enabled = false
-# Paths to self-signed certificate pair.
-# cert_path = "../certs/my-cert.pem"
-# key_path = "../certs/my-key.pem"
+# Chore ci-speed: on, so Storage-signed links start with https: as on hosted projects. The pair is created by
+# scripts/local-db.sh (git-ignored); start the stack through that script.
+enabled = true
+# Paths to self-signed certificate pair (relative to supabase/).
+cert_path = "./certs/local-cert.pem"
+key_path = "./certs/local-key.pem"
 
 [db]
 # Port to use for the local database URL.

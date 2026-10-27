@@ -20,5 +20,11 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: process.env.E2E_BASE_URL
     ? undefined
-    : { command: `npm run build && npm run start -- -p ${PORT}`, url: baseURL, timeout: 240_000, reuseExistingServer: !process.env.CI },
+    : {
+        // E2E_PREBUILT=1 (CI, chore ci-speed): the job ran `npm run build` once, so each Playwright run only starts it.
+        command: process.env.E2E_PREBUILT ? `npm run start -- -p ${PORT}` : `npm run build && npm run start -- -p ${PORT}`,
+        url: baseURL,
+        timeout: 240_000,
+        reuseExistingServer: !process.env.CI,
+      },
 });
