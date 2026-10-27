@@ -33,7 +33,7 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - Fixtures seeded locally. No test lane needed. Raise `fileParallelism` only after it's green serially.
   - Done when: RLS passes 3 runs in a row locally on CI, ≤ 5 min [Likely 2–4].
   - Effect: CI ≈ verify + e2e alone ≈ 25–30 min; DB timeouts in RLS gone.
-- [ ] **3. E2E on a local Supabase, split 3 ways** — built 2026-10-28 (branch `chore/ci-speed-e2e`), waiting for its CI runs (`--shard`, each shard with its own DB and app build)
+- [x] **3. E2E on a local Supabase, split 3 ways** — done 2026-10-28, PR #10, 3 green runs (`--shard`, each shard with its own DB and app build)
   - Check that sign-in (OTP codes via admin API / local mail), Storage signed uploads and the `/u` upload route work locally.
   - Done when: 3 green runs in a row (all shards), recorded here with run IDs, per-shard seconds and the merged count (129). **Don't merge before.** [Uncertain] PR CI ≤ 15 min.
 - [ ] **4. Policy + docs** — RLS part done with steps 1–2 (architecture.md + CLAUDE.md); e2e part with step 3
@@ -104,3 +104,12 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
     - Left as is: `verify` still builds with dev's *public* URL/key repo variables (N-4, not secrets).
     - **For Later** (roadmap at merge; N-7, older than this chore): `pickClient` has no request counter, so two quick client changes can finish out of order; `createNewType` can add a type for the previous client; `onClientQuery` can show an older query's results. Fix with a sequence ref like `uploadRun`.
   - Session checks after the fixes: lint 0 · typecheck 0 · unit 532/532. Config check: shard 2/3 lists 39 tests (47 + 39 + 43 = 129); the E2E_LOCAL_DB + E2E_BASE_URL guard throws.
+- **2026-10-28 (00:40–01:05): PR #10, CI 40564838168 on c91910d — 3 green full runs (merge condition met).**
+  | Attempt | Run | Slowest e2e shard | RLS | e2e merged |
+  |---|---|---|---|---|
+  | 1 | 5.1 min | 4.3 min | 698 / 0 failures | 129 passed, 0 failed, 0 flaky |
+  | 2 | 5.2 min | 4.3 min | 698 / 0 | 129 / 0 / 0 |
+  | 3 | 4.8 min | 4.1 min | 698 / 0 | 129 / 0 / 0 |
+  - **The inbox AC-8 race is gone** (0 flaky in 3 runs; it was 3 of 4 failing before the fix). `e2e (all shards)` merged the evidence each time (`test-evidence`, count annotation 129).
+  - **Outcome:** PR CI is **≈ 5 min** (83 min on main on 2026-10-27 morning; 30–38 min after steps 1–2). It uses no secrets, no dev and no lane.
+  - Remaining: step 4's docs are done with each step. Roadmap at merge: chore ci-speed shipped, architecture lock released, plus Later items (N-7 form request ordering; `review-dispatch.spec.ts:168` flake seen once on hosted dev).
