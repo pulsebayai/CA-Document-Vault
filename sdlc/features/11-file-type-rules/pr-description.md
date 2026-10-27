@@ -46,7 +46,7 @@ Spec: `sdlc/features/11-file-type-rules/spec.md` (AC-1…AC-24) · Plan: `plan.m
 | — | 10's tests unedited | all `upload-links-*` RLS + e2e green | ✅ |
 
 ## Evidence
-- **CI 40362710004 (attempt 2) green on 9523b70**, the last code commit. Attempt 1 hung on `playwright install` and timed out; no test ran.
+- **CI 40454733549 (attempt 2) green on 35ef103**, the last commit (06 test-helper fix + docs on top of 9523b70). Attempt 1 failed only 02's `clients-list` timing check (4.0 s first page; 271 ms on re-run): a dev-database stall. Earlier: CI 40362710004 green on 9523b70 (11's last code change); CI 40448990859 on f9ab6b7 failed 06's `follow-up.test.ts` AC-17 because lane 1's office had passed PostgREST's 1,000-row cap, fixed in the test helper (35ef103, approved by Raja).
 - **RUN_SLOW Regression 40396660735** on the branch preview (9523b70):
   - Unit ✅ · **RLS incl. RUN_SLOW ✅** (incl. `documents-perf`: 03's save timing with the format check in the trigger) · e2e 121 ✅ / 3 ❌.
   - The three failures were preview setup, not 11:

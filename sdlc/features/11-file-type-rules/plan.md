@@ -137,6 +137,9 @@ Every spec AC → test file → result in the PR's AC table (P2/P3 marked as app
   - A had seeded preferences into automated-test offices (its `seed_catalogue` replacement plus the one-time update). 10's e2e PDF bank upload would then hit the new warning. C restores 02's `seed_catalogue` (prosrc md5 = the original's) and clears preferences in `is_test` offices. 11's tests switch them on with `test_seed_preferred_formats` (`tests/support/formats.ts` `seedPreferences`). Real offices keep A's one-time seed; staging/prod get it by replaying A.
 
 ## Session log
+### 2026-10-27 (merged)
+- Last commit 35ef103 green: CI 40454733549, attempt 2. Attempt 1 failed only 02's `clients-list` timing check, a dev-database stall (4.0 s in CI; 271 ms in the session). Raja merged PR #6 (merge e331c81). Roadmap: 11 shipped, locks released, R1 checklist + Later items (`chore/roadmap-11-shipped`). Next: full RUN_SLOW Regression on main (ask Raja first).
+
 ### 2026-10-26/27 (step 8: CI + RUN_SLOW)
 - CI 40349457124 green on c148a21 (1 h 8 min). Pre-PR review fixes pushed (9523b70); CI 40362710004 attempt 1 hung on `playwright install` (1 h 36 min, cancelled at the job limit, lane released); **attempt 2 green** (Raja approved the re-run).
 - **RUN_SLOW Regression 40396660735** on the branch preview (9523b70, full suite): Unit ✓ · **RLS incl. RUN_SLOW ✓** (43 min) · **e2e 121 passed, 3 failed, 5 did not run** (serial files after a failure):
