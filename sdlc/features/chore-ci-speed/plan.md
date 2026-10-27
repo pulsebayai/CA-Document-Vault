@@ -33,7 +33,7 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - Fixtures seeded locally. No test lane needed. Raise `fileParallelism` only after it's green serially.
   - Done when: RLS passes 3 runs in a row locally on CI, ≤ 5 min [Likely 2–4].
   - Effect: CI ≈ verify + e2e alone ≈ 25–30 min; DB timeouts in RLS gone.
-- [ ] **3. E2E on a local Supabase, split 3 ways** (`--shard`, each shard with its own DB and app build)
+- [ ] **3. E2E on a local Supabase, split 3 ways** — built 2026-10-28 (branch `chore/ci-speed-e2e`), waiting for its CI runs (`--shard`, each shard with its own DB and app build)
   - Check that sign-in (OTP codes via admin API / local mail), Storage signed uploads and the `/u` upload route work locally.
   - Done when: 3 green runs in a row. [Uncertain] PR CI ≤ 15 min.
 - [ ] **4. Policy + docs** — RLS part done with steps 1–2 (architecture.md + CLAUDE.md); e2e part with step 3
@@ -88,3 +88,11 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - **3 green `rls` runs (I-2 met):** attempts 1–3 of run 40549358463 (jobs 122348670086, 122366907649, 122368780441): suite 55 / 62 / 61 s, start 72 / 61 / 67 s, each **698 tests, 0 failures, 17 skipped** (the 7 `RUN_SLOW` and 1 `VOLUME` blocks, as in hosted PR CI). TLS works: `bulk.test.ts:226` passes unedited.
   - Correction to the baseline: Playwright install took 20 s without a cache here (343 s on main earlier the same day), so the cache saves less than assumed; most of that time was apt/system packages on that runner.
   - **e2e is now the whole critical path (≈ 30 min).** Owner (23:00): still too slow. Next = step 3: trial e2e on a local Supabase in one job (latency, as with RLS), then shard 3–4 ways.
+- **2026-10-28 (00:00–00:30): step 3.** Owner approved (23:41) and chose to keep the form fix (00:14).
+  - **Trial 1 (40558491885, 1a5e0d1):** 3 shards on local stacks. Shard 1: 47 passed in 108 s · shard 3: 43 passed in 81 s · shard 2: 36 passed, **`inbox.spec.ts:71` AC-8 failed twice** (Save to vault never navigated), 2 serial tests didn't run. Chromium `install --with-deps` took **651 s** on shard 2 (140 s on shard 3): apt, not the browser.
+  - **Trial 2 (40561352784, 15aefc2):** browser-only install (`install-deps` only if Chromium can't start: never needed) → jobs **3.1 / 3.8 / 4.8 min**, tests 62 / 88 / 138 s, 128 passed, AC-8 **flaky** (failed, passed on retry).
+  - **Root cause = a real bug in 03's document form, not the test:** `pickClient` awaited `loadClientTypes`, then compared the reloaded list with the type selected *when the client was clicked* (closure), so a type chosen from "All types" during the load was cleared and Save failed validation. Staff on a slow connection could hit it too; dev's latency hid it from e2e. **Fix** (`document-form.tsx`, a ref holding the current type) + **failing-first unit test** `tests/unit/document-form-client-race.test.tsx` (failed before, 2/2 after). Not a test edit.
+  - `ci.yml`: the `e2e` job is now a 3-shard matrix on local stacks (no secrets, no lane, `E2E_LOCAL_DB=1`, browser-only install, one build), plus `e2e (all shards)` as a single status. The trial workflow is removed. **PR CI now uses no secrets at all.**
+  - Docs: architecture.md (policy 1, Environments, decision row), CLAUDE.md (local e2e; a third thing PR CI no longer proves: hosted-only e2e behaviour; races exposed by a fast stack → fix code), `test-lane.mjs` comment.
+  - Session checks: lint 0 · typecheck 0 · unit 531/531.
+  - Expected [Likely]: PR CI ≈ the slowest shard ≈ 5 min (was 30 after step 2, 83 before).
