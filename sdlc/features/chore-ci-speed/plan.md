@@ -17,7 +17,7 @@ Every test goes from a US GitHub runner to the **shared, persistent, hosted dev 
 Give each CI job its **own throwaway local Supabase** (`supabase start` on the runner), built **only from migration files**. **Keep hosted dev for:** the nightly, the RUN_SLOW / preview Regression dispatches and the staging gate. Those catch hosted-only drift (auth email, storage settings, the deployed site), so the release policy stays intact.
 
 ## Steps
-- [ ] **0. Migration replay proof** (shared with the staging rehearsal, Before pilot)
+- [x] **0. Migration replay proof** (done 2026-10-27, trial 40538705315) (shared with the staging rehearsal, Before pilot)
   - `supabase start` + every file in `supabase/migrations/` (workflow `local-db-trial.yml`, branch-only, no secrets).
   - Schema diff vs dev = empty: `scripts/schema-fingerprint.sql` run on both (functions incl. definitions and EXECUTE grants, relations + RLS flags + grants, columns + column grants, constraints, indexes, policies, triggers, enums/domains, sequences, buckets, pg_cron jobs, extensions).
   - Known risks: 05 `20261002083900` and 08 `20261002120000` were applied through the dashboard; `pg_cron` / Storage available locally.
@@ -58,4 +58,10 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - Dev baseline fingerprint (MCP, read-only): 1,197 objects — bucket 1 · column 301 · constraint 243 · cron 2 · extension 7 · function 173 · function_acl 173 · index 134 · policy 50 · relation 28 · sequence 2 · trigger 61 · type 21 · view 1. Per-kind hashes in `evidence/dev-fingerprint-summary.psv`.
   - The Claude cloud session has Docker but **its network blocks every container registry** (Docker Hub, GHCR, ECR), and the Mac's linked shell has no Docker, so step 0 runs on a GitHub runner: `local-db-trial.yml` (push to this branch only; no secrets; never touches dev).
   - Added `supabase/config.toml` (CLI 2.122.0 defaults; realtime/studio/analytics/edge runtime off; auth rate limits raised for the suite; OTP length 8 like hosted).
-  - Waiting: Raja's OK to push the branch (runs the trial) and the roadmap lock PR.
+  - Push approved in chat. Roadmap lock: PR #8 (docs-only).
+  - **Trial run 40538705315 (5c4071e), step 0 result:**
+    - `supabase start` + **all migrations replayed from files: 74 s**, no error.
+    - **Schema fingerprint identical to hosted dev in all 14 kinds (1,197 objects)**, function definitions and grants included (`evidence/local-fingerprint-summary.psv` = `evidence/dev-fingerprint-summary.psv`). So the two dashboard-applied migrations (05 `20261002083900`, 08 `20261002120000`) match their files, and the staging replay risk in Before pilot is cleared for schema. Data (seed office, catalogue) is not compared.
+    - **RLS suite, unchanged tests, serial: 64 s** (hosted dev: 891–1,140 s, ≈ 15× slower). **1 failure:** `bulk.test.ts:226` signLinks expects an `https:` link; the local API is `http://127.0.0.1:54321`. This is an environment difference, not a product bug. Fix in step 2 **by serving the local API over TLS** (`[api.tls]`), not by editing the test (CLAUDE.md rule).
+    - To add in step 2: pass/fail/skip counts as an annotation (the artifact can't be downloaded from the session).
+- [x] Step 0 done, except the TLS item, which moves into step 2.
