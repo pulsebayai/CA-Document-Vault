@@ -33,9 +33,9 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - Fixtures seeded locally. No test lane needed. Raise `fileParallelism` only after it's green serially.
   - Done when: RLS passes 3 runs in a row locally on CI, ≤ 5 min [Likely 2–4].
   - Effect: CI ≈ verify + e2e alone ≈ 25–30 min; DB timeouts in RLS gone.
-- [ ] **3. E2E on a local Supabase, split 3 ways** (`--shard`, each shard with its own DB and app build)
+- [x] **3. E2E on a local Supabase, split 3 ways** — done 2026-10-28, PR #10, 3 green runs (`--shard`, each shard with its own DB and app build)
   - Check that sign-in (OTP codes via admin API / local mail), Storage signed uploads and the `/u` upload route work locally.
-  - Done when: 3 green runs in a row. [Uncertain] PR CI ≤ 15 min.
+  - Done when: 3 green runs in a row (all shards), recorded here with run IDs, per-shard seconds and the merged count (129). **Don't merge before.** [Uncertain] PR CI ≤ 15 min.
 - [ ] **4. Policy + docs** — RLS part done with steps 1–2 (architecture.md + CLAUDE.md); e2e part with step 3
   - Update architecture.md:
     - Environments: "no local Supabase/Docker" → PR CI uses an ephemeral local DB; nightly/RUN_SLOW/staging stay hosted.
@@ -43,7 +43,7 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - Update CLAUDE.md test rules: lanes only for hosted runs.
 
 ## Files that change
-`.github/workflows/ci.yml` · `.github/workflows/local-db-trial.yml` (step 0 only, then removed) · `playwright.config.ts` · `supabase/config.toml` · `supabase/.gitignore` · `scripts/local-db.sh` · `scripts/schema-fingerprint.sql` · comments only: `tests/support/setup-env.ts` (error text), `vitest.config.mts`, `scripts/test-lane.mjs` · docs: `sdlc/product/architecture.md`, `CLAUDE.md`, this plan + `evidence/`. Step 3 adds the e2e job's local stack (same files). **No migration, no product code, no test assertion changes.**
+`.github/workflows/ci.yml` · `.github/workflows/local-db-trial.yml` (step 0 only, then removed) · `playwright.config.ts` · `supabase/config.toml` · `supabase/.gitignore` · `scripts/local-db.sh` · `scripts/schema-fingerprint.sql` · comments only: `tests/support/setup-env.ts` (error text), `vitest.config.mts`, `scripts/test-lane.mjs` · docs: `sdlc/product/architecture.md`, `CLAUDE.md`, this plan + `evidence/`. Step 3 adds the e2e shards' local stacks (same files). **Step 3 also changes product code, approved by the owner 2026-10-28 00:14:** `src/app/(app)/documents/new/document-form.tsx` (a race the fast local stack exposed) + new `tests/unit/document-form-client-race.test.tsx`. It is 03's form UI only, no write path, so no RUN_SLOW. **No migration and no existing test changes.**
 
 ## Not doing (and why)
 - **Moving tests out of PR CI** (screenshots, slow tests). Policy is "full suite per PR", and finding breakage late has already cost more than the wait.
@@ -88,3 +88,28 @@ Give each CI job its **own throwaway local Supabase** (`supabase start` on the r
   - **3 green `rls` runs (I-2 met):** attempts 1–3 of run 40549358463 (jobs 122348670086, 122366907649, 122368780441): suite 55 / 62 / 61 s, start 72 / 61 / 67 s, each **698 tests, 0 failures, 17 skipped** (the 7 `RUN_SLOW` and 1 `VOLUME` blocks, as in hosted PR CI). TLS works: `bulk.test.ts:226` passes unedited.
   - Correction to the baseline: Playwright install took 20 s without a cache here (343 s on main earlier the same day), so the cache saves less than assumed; most of that time was apt/system packages on that runner.
   - **e2e is now the whole critical path (≈ 30 min).** Owner (23:00): still too slow. Next = step 3: trial e2e on a local Supabase in one job (latency, as with RLS), then shard 3–4 ways.
+- **2026-10-28 (00:00–00:30): step 3.** Owner approved (23:41) and chose to keep the form fix (00:14).
+  - **Trial 1 (40558491885, 1a5e0d1):** 3 shards on local stacks. Shard 1: 47 passed in 108 s · shard 3: 43 passed in 81 s · shard 2: 36 passed, **`inbox.spec.ts:71` AC-8 failed twice** (Save to vault never navigated), 2 serial tests didn't run. Chromium `install --with-deps` took **651 s** on shard 2 (140 s on shard 3): apt, not the browser.
+  - **Trial 2 (40561352784, 15aefc2):** browser-only install (`install-deps` only if Chromium can't start: never needed) → jobs **3.1 / 3.8 / 4.8 min**, tests 62 / 88 / 138 s, 128 passed, AC-8 **flaky** (failed, passed on retry).
+  - **Root cause = a real bug in 03's document form, not the test:** `pickClient` awaited `loadClientTypes`, then compared the reloaded list with the type selected *when the client was clicked* (closure), so a type chosen from "All types" during the load was cleared and Save failed validation. Staff on a slow connection could hit it too; dev's latency hid it from e2e. **Fix** (`document-form.tsx`, a ref holding the current type) + **failing-first unit test** `tests/unit/document-form-client-race.test.tsx` (failed before, 2/2 after). Not a test edit.
+  - `ci.yml`: the `e2e` job is now a 3-shard matrix on local stacks (no secrets, no lane, `E2E_LOCAL_DB=1`, browser-only install, one build), plus `e2e (all shards)` as a single status. The trial workflow is removed. **PR CI now uses no secrets at all.**
+  - Docs: architecture.md (policy 1, Environments, decision row), CLAUDE.md (local e2e; a third thing PR CI no longer proves: hosted-only e2e behaviour; races exposed by a fast stack → fix code), `test-lane.mjs` comment.
+  - Session checks: lint 0 · typecheck 0 · unit 531/531.
+  - Expected [Likely]: PR CI ≈ the slowest shard ≈ 5 min (was 30 after step 2, 83 before).
+  - **Pre-PR review (sdlc-reviewer, 2026-10-28): no blockers, 3 Important, 7 Nits.**
+    - **I-1 the same race reset a *period* chosen during the load** (re-applying the type's default): failing-first test "keeps a period chosen while the client's types load" (p9 instead of p8 before the fix), then fixed. `pickClient` now counts the user's type/period choices (`userEdits`). If any happened during the load, it keeps their period and refreshes only the registration; otherwise the client's own schedule sets the default as before. All type changes go through one `selectType` (N-6). Trade-off: a type picked during the load gets its default period from the catalogue schedule, not this client's; the user sees and can change it.
+    - **I-2** "Files that change" updated (product code + test, owner-approved).
+    - **I-3 one evidence set again:** each shard also writes a Playwright blob. `e2e (all shards)` merges them into `test-results/e2e-results.json` + `junit-e2e.xml` + the HTML report, unions the screenshots, prints a total-count annotation, runs `regression-summary` and uploads **`test-evidence`** (the name earlier plans cite). Per-shard artifacts stay.
+    - Nits fixed: stale lane comment in `ci.yml` (N-1); `e2e (all shards)` fails when "What changed" failed, instead of being skipped (N-2); `playwright.config.ts` refuses `E2E_LOCAL_DB=1` together with `E2E_BASE_URL`, and its comments now say "hosted runs" (N-3); figures corrected to 129 tests, 62–138 s (N-5); `selectType` (N-6).
+    - Left as is: `verify` still builds with dev's *public* URL/key repo variables (N-4, not secrets).
+    - **For Later** (roadmap at merge; N-7, older than this chore): `pickClient` has no request counter, so two quick client changes can finish out of order; `createNewType` can add a type for the previous client; `onClientQuery` can show an older query's results. Fix with a sequence ref like `uploadRun`.
+  - Session checks after the fixes: lint 0 · typecheck 0 · unit 532/532. Config check: shard 2/3 lists 39 tests (47 + 39 + 43 = 129); the E2E_LOCAL_DB + E2E_BASE_URL guard throws.
+- **2026-10-28 (00:40–01:05): PR #10, CI 40564838168 on c91910d — 3 green full runs (merge condition met).**
+  | Attempt | Run | Slowest e2e shard | RLS | e2e merged |
+  |---|---|---|---|---|
+  | 1 | 5.1 min | 4.3 min | 698 / 0 failures | 129 passed, 0 failed, 0 flaky |
+  | 2 | 5.2 min | 4.3 min | 698 / 0 | 129 / 0 / 0 |
+  | 3 | 4.8 min | 4.1 min | 698 / 0 | 129 / 0 / 0 |
+  - **The inbox AC-8 race is gone** (0 flaky in 3 runs; it was 3 of 4 failing before the fix). `e2e (all shards)` merged the evidence each time (`test-evidence`, count annotation 129).
+  - **Outcome:** PR CI is **≈ 5 min** (83 min on main on 2026-10-27 morning; 30–38 min after steps 1–2). It uses no secrets, no dev and no lane.
+  - Remaining: step 4's docs are done with each step. Roadmap at merge: chore ci-speed shipped, architecture lock released, plus Later items (N-7 form request ordering; `review-dispatch.spec.ts:168` flake seen once on hosted dev).

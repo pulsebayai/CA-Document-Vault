@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 
-# A newer push to the same PR supersedes the older run (its test lane is released by the always() step).
+# A newer push to the same PR supersedes the older run.
 # Pushes to main are never cancelled.
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.sha }}
@@ -27,7 +27,7 @@ jobs:
       # Chore test-feedback (Raja 2026-10-06): the PR's new or changed test files, run first (space-separated paths).
       unit_tests: ${{ steps.diff.outputs.unit_tests }}
       db_tests: ${{ steps.diff.outputs.db_tests }} # unused since chore ci-speed (the local RLS suite takes ~1 min)
-      e2e_tests: ${{ steps.diff.outputs.e2e_tests }}
+      e2e_tests: ${{ steps.diff.outputs.e2e_tests }} # unused since chore ci-speed step 3 (a shard takes ~2 min)
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
@@ -100,35 +100,38 @@ jobs:
         if: always()
         with: { name: rls-evidence, path: test-results/, retention-days: 90 }
 
+  # Chore ci-speed step 3 (approved 2026-10-27/28): e2e also runs on EPHEMERAL local Supabase stacks, one per
+  # shard, built only from supabase/migrations/ — no secrets, no test lane, no shared data. Trial runs 40558491885
+  # and 40561352784: 129 tests in 62–138 s per shard (trial 2; hosted dev: ~29 min for the whole suite in one job). Hosted dev
+  # still runs the full e2e suite nightly (Regression), on RUN_SLOW dispatches and at the staging gate.
+  # "Changed e2e tests first" is gone: a shard runs in about 2 minutes.
   e2e:
-    name: e2e (dev Supabase)
+    name: e2e (local Supabase, shard ${{ matrix.shard }}/3)
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-    # ≈ 30 min of tests + up to 30 min waiting for a lane. Keep below the 150-min lane lease
-    # (scripts/test-lane.mjs LEASE_MINUTES) or a slow run could lose its lane.
-    timeout-minutes: 120
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false # every shard reports, so one failure doesn't hide others
+      matrix:
+        shard: [1, 2, 3]
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-      SUPABASE_SECRET_KEY: ${{ secrets.DEV_SUPABASE_SECRET_KEY }} # dev only — never prod
       # Feature 10: upload links in e2e point at CI's own build.
       APP_PUBLIC_URL: http://localhost:3000
-      # Test lanes (chore test-isolation): up to 2 runs share dev, each with its own fixture offices/users.
-      TEST_LANE_HOLDER: ci-${{ github.run_id }}-${{ github.run_attempt }}
-      # Chore ci-speed step 1: the app is built once below; Playwright only starts it (playwright.config.ts).
+      # The app is built once below; Playwright only starts it (playwright.config.ts).
       E2E_PREBUILT: "1"
+      # The browser accepts the local stack's self-signed cert (playwright.config.ts). Never set for hosted targets.
+      E2E_LOCAL_DB: "1"
+      E2E_SHARD: ${{ matrix.shard }} # adds the blob reporter (playwright.config.ts) for the merged report
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: npm }
       - run: npm ci
-      - name: Check dev project is awake
-        run: |
-          code=$(curl -s -o /dev/null -w "%{http_code}" "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/health" -H "apikey: $NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY")
-          if [ "$code" != "200" ]; then echo "::error::Dev Supabase project is paused or unreachable (HTTP $code). Resume it in the dashboard."; exit 1; fi
-      # Chore ci-speed step 1: the browser download is cached per Playwright version (install took ~6 min).
-      # The system libraries still come from apt on every run (install-deps).
+      - uses: supabase/setup-cli@v1
+        with: { version: 2.122.0 }
+      - name: Start local Supabase (every migration file, in order)
+        run: scripts/local-db.sh start # sets the local URL/keys + NODE_EXTRA_CA_CERTS in $GITHUB_ENV
       - name: Playwright version
         id: pw
         run: echo "version=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
@@ -137,29 +140,76 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ env.ImageOS }}-${{ steps.pw.outputs.version }}-chromium
-      - name: Install Chromium
+      # The runner image ships Chrome's system libraries, so install the browser only and fall back to Playwright's
+      # apt install (140–651 s in the first trial) only if Chromium can't start.
+      - name: Install Chromium (browser only)
         if: steps.pw-cache.outputs.cache-hit != 'true'
-        run: npx playwright install --with-deps chromium
-      - name: Install Chromium system libraries (browser from cache)
-        if: steps.pw-cache.outputs.cache-hit == 'true'
-        run: npx playwright install-deps chromium
-      - run: npm run build
-      - name: Take a test lane
-        run: node scripts/test-lane.mjs acquire
-      # Chore test-feedback (Raja 2026-10-06): the PR's new or changed e2e files run first, so a failing new test
-      # stops the job in minutes instead of after the full suite. The full suite below still runs them.
-      - name: Changed e2e tests first
-        if: needs.changes.outputs.e2e_tests != ''
-        env: { CHANGED: "${{ needs.changes.outputs.e2e_tests }}" }
-        run: npx playwright test $CHANGED # paths validated by scripts/ci-changes.mjs; unquoted to split
-      - run: npm run test:e2e
+        run: npx playwright install chromium
+      - name: Check Chromium starts (else install system libraries)
+        run: |
+          if ! node -e 'require("@playwright/test").chromium.launch().then(b => b.close())'; then
+            echo "::warning title=chromium::needed install-deps"; npx playwright install-deps chromium
+          fi
+      - name: Build (against the local stack's URL)
+        run: npm run build
+      - name: e2e shard ${{ matrix.shard }}/3
+        run: npx playwright test --shard=${{ matrix.shard }}/3
       - name: Evidence summary
         if: always()
         env: { EXPECT_SUITES: "e2e" }
         run: node scripts/regression-summary.mjs >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
+        with: { name: "test-evidence-shard-${{ matrix.shard }}", path: "test-results/\nplaywright-report/\nblob-report/", retention-days: 90 }
+
+  # One status for "all e2e shards passed" (a stable name for a future required check) and ONE e2e evidence set,
+  # as before the split: the shards' blobs merged into test-results/e2e-results.json + junit-e2e.xml + the HTML
+  # report, the shards' screenshots side by side, uploaded as `test-evidence` (the name earlier plans cite).
+  e2e-all:
+    name: e2e (all shards)
+    needs: [changes, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: What ran
+        id: what
+        env: { CHANGES: "${{ needs.changes.result }}", CODE: "${{ needs.changes.outputs.code }}" }
+        run: |
+          # A failed "What changed" job must not read as "nothing to test" (skipped = passing for a required check).
+          [ "$CHANGES" = "success" ] || { echo "::error::'What changed' did not succeed ($CHANGES)."; exit 1; }
+          echo "code=$CODE" >> "$GITHUB_OUTPUT"
+          [ "$CODE" = "true" ] || echo "Docs-only change: no e2e shards ran."
+      - uses: actions/checkout@v4
+        if: steps.what.outputs.code == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.what.outputs.code == 'true'
+        with: { node-version: 22, cache: npm }
+      - if: steps.what.outputs.code == 'true'
+        run: npm ci
+      - uses: actions/download-artifact@v4
+        if: steps.what.outputs.code == 'true'
+        with: { pattern: "test-evidence-shard-*", merge-multiple: true, path: . }
+      - name: Merge the shard reports
+        if: steps.what.outputs.code == 'true'
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/e2e-results.json
+          PLAYWRIGHT_JUNIT_OUTPUT_NAME: test-results/junit-e2e.xml
+        run: |
+          rm -rf playwright-report test-results/e2e-results.json test-results/junit-e2e.xml
+          ls blob-report
+          npx playwright merge-reports --reporter=json,junit,html blob-report
+          node -e 'const s=JSON.parse(require("fs").readFileSync("test-results/e2e-results.json","utf8")).stats??{};console.log(`::notice title=e2e counts (all shards)::expected=${s.expected} unexpected=${s.unexpected} flaky=${s.flaky} skipped=${s.skipped}`)'
+      - name: Evidence summary (all shards)
+        if: steps.what.outputs.code == 'true'
+        env: { EXPECT_SUITES: "e2e" }
+        run: node scripts/regression-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: steps.what.outputs.code == 'true'
         with: { name: test-evidence, path: "test-results/\nplaywright-report/", retention-days: 90 }
-      - name: Release the test lane
-        if: always()
-        run: node scripts/test-lane.mjs release
+      - name: All shards green
+        if: steps.what.outputs.code == 'true'
+        env: { RESULT: "${{ needs.e2e.result }}" }
+        run: |
+          echo "e2e shards: $RESULT"
+          [ "$RESULT" = "success" ] || { echo "::error::An e2e shard did not pass ($RESULT)."; exit 1; }
