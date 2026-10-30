@@ -41,6 +41,8 @@ export type TodayRowRaw = {
 export type TodayDocRowRaw = {
   document_id: string; kind: "to_review" | "ready"; doc_code: string; group: string; type: string; period: string | null;
   received_as: string; received_on: string; reviewed_on: string | null; reviewed_by: string | null; needs_correction: boolean;
+  /** 12: returnable hard copy (absent on rows written before 12; legacy received_as "original" counts too). */
+  returnable?: boolean;
 };
 /** 10 (AC-17): an open ad-hoc requested item with a needed-by date that has passed or falls within 7 days. */
 export type TodayAskRowRaw = {
@@ -114,7 +116,7 @@ export function toDocRow(r: TodayDocRowRaw, today: string): TodayDocRow {
     : ["Reviewed", r.reviewed_on ? shortDate(r.reviewed_on, today) : null, r.reviewed_by ? `by ${r.reviewed_by}` : null].filter(Boolean).join(" ");
   return {
     id: r.document_id, kind: r.kind, title: [r.group, r.type, r.period].filter(Boolean).join(" · "), docCode: r.doc_code,
-    original: r.received_as === "original", label: r.kind === "to_review" ? "To review" : "Ready to dispatch", detail,
+    original: r.returnable === true || r.received_as === "original", label: r.kind === "to_review" ? "To review" : "Ready to dispatch", detail,
   };
 }
 

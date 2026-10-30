@@ -49,17 +49,20 @@ export async function markReviewed(input: { id: string; clientId?: string }): Pr
   return run("reviewed", { p_id: input.id, p_outcome: "reviewed", p_reason: null }, "review_document", input, "Marked reviewed.");
 }
 
-export async function markNeedsCorrection(input: { id: string; clientId?: string; reason: string }): Promise<ReviewActionResult> {
+export async function markNeedsCorrection(input: { id: string; clientId?: string; reason: string; kind?: "file" | "details" }): Promise<ReviewActionResult> {
   await requireStaff();
   if (!uuid.safeParse(input?.id).success) return bad("Document not found.");
   const r = validateReason(input.reason);
   if (!r.data) return bad(r.error!);
-  return run("needs_correction", { p_id: input.id, p_outcome: "needs_correction", p_reason: r.data }, "review_document", input, "Marked as needing correction.");
+  // 12 (spec AC-21): wrong file | wrong details. Sent only when given, so 07's callers keep their exact arguments.
+  if (input.kind !== undefined && input.kind !== "file" && input.kind !== "details") return bad("Choose wrong file or wrong details.");
+  const args = { p_id: input.id, p_outcome: "needs_correction", p_reason: r.data, ...(input.kind ? { p_kind: input.kind } : {}) };
+  return run("needs_correction", args, "review_document", input, "Marked as needing correction.");
 }
 
 export async function undoReview(input: { id: string; clientId?: string; reason: string }): Promise<ReviewActionResult> {
   const me = await requireStaff();
-  if (me.role !== "admin" && me.role !== "manager") return bad(reviewErrorMessage("ROLE_REQUIRED"));
+  if (me.role === "limited") return bad(reviewErrorMessage("ROLE_REQUIRED: only Admin, Manager or Staff")); // 12 (AC-24)
   if (!uuid.safeParse(input?.id).success) return bad("Document not found.");
   const r = validateReason(input.reason);
   if (!r.data) return bad(r.error!);

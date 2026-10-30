@@ -7,6 +7,8 @@ const MESSAGES: Array<[RegExp, string]> = [
   [/NOT_CLASSIFIED/, "File the document (client and type) before reviewing it."],
   [/REASON_REQUIRED/, "Give a reason (up to 500 characters)."],
   [/ROLE_REQUIRED: sign in/, "Your session has ended. Sign in again."],
+  // 12 (AC-24): Staff can undo a review now; a refused undo is a dispatch undo (Admin/Manager) or a Limited user.
+  [/ROLE_REQUIRED: only Admin, Manager or Staff/, "Your role can't undo a review."],
   [/ROLE_REQUIRED/, "Only an Admin or Manager can undo this."],
   [/RECIPIENT_REQUIRED/, "Enter who received it (up to 120 characters)."],
   [/DATE_REQUIRED/, "Enter the date dispatched."],

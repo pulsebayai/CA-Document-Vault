@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth/staff";
-import { canManageCatalogue } from "@/lib/auth/roles";
+import { canManageCatalogue, canUndoReview } from "@/lib/auth/roles";
 import { getDocumentDetail } from "@/lib/documents/queries";
 import { CHANNEL_LABELS, RECEIVED_AS, viewBlockedForLink } from "@/lib/validation/document";
 import { Badge, Card } from "@/components/ui";
@@ -118,7 +118,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
         </div>
 
         <div className="space-y-5">
-          <ReviewPanel documentId={d.id} clientId={d.client?.id ?? null} label={label} canUndo={canUndo && !archived}
+          <ReviewPanel documentId={d.id} clientId={d.client?.id ?? null} label={label} canUndo={canUndoReview(me.role) && !archived}
             state={reviewState} reviewable={d.classified && !archived} status={d.status}
             history={history.map((h) => ({ ...h, atText: when.format(new Date(h.at)) }))} />
           {d.receivedAs === "original" && d.classified && (

@@ -81,7 +81,7 @@ export function BulkReviewDialog({ targets, open, onClose }: { targets: ReviewTa
       {phase.kind === "confirm" && (
         <div>
           <p>{confirmText(targets)}</p>
-          <p className="mt-2 text-[13.5px] text-ink-2">Only an Admin or Manager can undo a review, one document at a time.</p>
+          <p className="mt-2 text-[13.5px] text-ink-2">A review can be undone one document at a time, from the document page.</p>
           <div className="mt-5 flex justify-end gap-2">
             <Button variant="secondary" onClick={close}>Cancel</Button>
             <Button onClick={start} disabled={eligible.length === 0}>Mark {docs(eligible.length)} reviewed</Button>

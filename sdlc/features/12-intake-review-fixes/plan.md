@@ -121,7 +121,12 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 - **Migration A data step (step 2):** the first apply on dev failed (`55006 pending trigger events`) and rolled back cleanly. 03's deferred soft-copy check queued events, and 03's trigger refuses changes to archived documents. Fix in the file: `document_before_write` is disabled for the one data statement, then `set constraints all immediate`, then re-enabled. Applied on dev 2026-10-30: 136 originals → 136 returnable hard copies, 0 left.
 - **Migration B** needed the user's confirmation in the Supabase tool (it drops and recreates `review_document` / `search_clients`); applied on dev 2026-10-30 11:1x after confirmation. **md5 = file for all 10 replaced functions.**
 - **New test corrected (never green before):** `returnable.test.ts` "a direct write of 'original' is refused" → "is never stored as 'original'". The trigger maps legacy input on every path, so a direct write lands as hard copy + returnable (AC-10 holds). Not a weakening of an existing test.
-- **One more existing assertion found (pending approval):** `document-search.test.ts:249` asserts a search row's `received_as: "original"`. It's the same kind as the 12 approved rows; left unedited until approved.
+- **Two more existing assertions found (pending approval):**
+  - `document-search.test.ts:249` asserts a search row's `received_as: "original"`. It's the same kind as the 12 approved rows.
+  - `review-actions.test.ts:45` asserts "Undo is Admin/Manager only" with a Staff user. AC-24 changes this, as in the approved `review-dispatch.test.ts:127`.
+
+  Both are left unedited until approved.
+- **Legacy URL `as=original`** is accepted by `parseDocumentSearchParams` (AC-13), so `document-search.test.ts` (unit) stays unedited.
 
 ## Session log
 ### 2026-10-30
@@ -130,3 +135,18 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 - Blocked / failing: nightly 40975613618 red (RLS); the user checks the log in another session.
 - Next step: plan approval → step 0.
 - Decisions made (cross-cutting → flag for architecture.md): the 6 architecture items in spec; R1/R2 if approved.
+
+### 2026-10-30 (build session 1)
+- Done: steps 0–3. Roadmap PR #12 open. Failing tests first (step 1). Migrations A + B applied on dev (B after the user confirmed in the Supabase tool), md5 = file for all 10 functions. New RLS files 35/35 green. Affected existing RLS files green except the TS/SQL state cross-check (step 4) and document-search:249 (approval).
+- In progress: step 4, lib layer. Done so far:
+  - `state.ts` (`isReturnable`, correction kind text);
+  - Today shape + badge;
+  - permissions split, `canUndoReview`;
+  - review actions (kind, Staff undo) and messages;
+  - validation (2 options + legacy, `HANDED_OVER_KINDS`, `validateHandedOver`, returnable);
+  - search URL legacy `as`.
+
+  Unit tests: everything green except type-match (module = step 5) and review-actions:45 (approval).
+- Blocked / failing: nightly 40975613618 (RLS, cause under investigation by the user). Until 12 merges, nightlies also fail the approved 'Original' assertions, now that A + B are on dev (user accepted).
+- Next step: approval of the 2 extra test rows. Then the remaining step 4 (query selects: returnable / handed over / correction kind; dispatch ready list; document page + inbox labels), then step 5 (type field).
+- Decisions made (cross-cutting → flag for architecture.md): migration data steps that touch archived documents disable `document_before_write` for that statement + `set constraints all immediate` (pattern to note).

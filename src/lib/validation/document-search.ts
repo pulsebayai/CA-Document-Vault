@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DOCUMENT_CHANNELS, RECEIVED_AS, type DocumentChannel, type ReceivedAs } from "./document";
+import { DOCUMENT_CHANNELS, LEGACY_ORIGINAL, RECEIVED_AS, type DocumentChannel, type ReceivedAs } from "./document";
 
 // Spec 03b AC-3, AC-6, AC-8, AC-11.
 // Filters are IDs, enums and dates only, so they may sit in the URL (Back, refresh and shared links work).
@@ -104,7 +104,8 @@ export function parseDocumentSearchParams(params: Params): DocumentFilters {
   const f: DocumentFilters = { ...DEFAULT_FILTERS };
   for (const k of UUID_KEYS) f[k] = uuidOrNull(get(k));
   f.by = uuidOrNull(get("by"));
-  f.as = oneOf(RECEIVED_AS, get("as"));
+  // 12 (spec AC-13): an old shared link with as=original still opens; the database reads it as hard copy + returnable.
+  f.as = get("as") === LEGACY_ORIGINAL ? LEGACY_ORIGINAL : oneOf(RECEIVED_AS, get("as"));
   f.channel = oneOf(DOCUMENT_CHANNELS, get("channel"));
   f.status = oneOf(DOC_STATUSES, get("status"));
   f.state = oneOf(DOC_STATES, get("state"));

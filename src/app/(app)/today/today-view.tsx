@@ -157,7 +157,7 @@ function ClientCard({ card: c, today, onMessage }: { card: TodayCard; today: str
                 <p className="break-words">
                   {d.title}{" "}
                   <span className="rounded bg-canvas px-1.5 py-0.5 font-mono text-[12px] text-ink-2">{d.docCode}</span>
-                  {d.original && <>{" "}<span className="rounded-full bg-bad-soft px-2 py-0.5 text-[12px] font-medium text-bad">Original</span></>}
+                  {d.original && <>{" "}<span className="rounded-full bg-bad-soft px-2 py-0.5 text-[12px] font-medium text-bad">Returnable</span></>}
                 </p>
                 <p className="mt-0.5 text-[13px] text-ink-3">{d.detail}</p>
               </div>

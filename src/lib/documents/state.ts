@@ -30,7 +30,15 @@ export type DocumentStateInput = {
   correctionReason?: string | null;
   dispatchedOn?: string | null; // date of the live packet, if any
   dispatchMethod?: DispatchMethod | string | null;
+  /** 12: the client wants this hard copy back. Legacy rows/inputs with receivedAs "original" count as returnable. */
+  returnable?: boolean | null;
+  /** 12: Needs correction kind (wrong file | wrong details), when given. */
+  correctionKind?: "file" | "details" | string | null;
 };
+
+/** 12 (spec AC-11): what 07 called an "original" is now a returnable hard copy; "original" is legacy input only. */
+export const isReturnable = (d: Pick<DocumentStateInput, "receivedAs" | "returnable">) =>
+  d.returnable === true || d.receivedAs === "original";
 
 export type ShownState =
   | { kind: "archived"; text: string }
@@ -50,7 +58,7 @@ export const isToReview = (d: DocumentStateInput) => !d.archived && isFiled(d) &
 
 /** "Ready to dispatch": a filed, live original, reviewed or Needs correction, not in a live packet (SQL `return_state = 'ready'`). */
 export const isReadyToDispatch = (d: DocumentStateInput) =>
-  !d.archived && isFiled(d) && d.receivedAs === "original" && !d.dispatchedOn
+  !d.archived && isFiled(d) && isReturnable(d) && !d.dispatchedOn
   && (d.status === "reviewed" || d.status === "needs_correction");
 
 const istDay = (at: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(at));
@@ -59,14 +67,15 @@ const istDay = (at: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asi
 export function documentState(d: DocumentStateInput, today: string): ShownState {
   if (d.archived) return { kind: "archived", text: "Archived" };
   if (!isFiled(d)) return { kind: "inbox", text: "In inbox" };
-  if (d.receivedAs === "original" && d.dispatchedOn) {
+  if (isReturnable(d) && d.dispatchedOn) {
     const method = methodLabel(d.dispatchMethod ?? "other");
     return { kind: "dispatched", text: `Dispatched ${shortDate(d.dispatchedOn, today)} · ${method}`, on: d.dispatchedOn, method };
   }
   if (isReadyToDispatch(d)) return { kind: "ready", text: "Ready to dispatch" };
   if (d.status === "needs_correction") {
     const reason = d.correctionReason ?? "";
-    return { kind: "needs_correction", text: reason ? `Needs correction · ${reason}` : "Needs correction", reason };
+    const kind = d.correctionKind === "file" ? "wrong file" : d.correctionKind === "details" ? "wrong details" : null; // 12 (AC-21)
+    return { kind: "needs_correction", text: ["Needs correction", kind, reason || null].filter(Boolean).join(" · "), reason };
   }
   if (d.status === "reviewed") {
     const at = d.reviewedAt ? shortDate(istDay(d.reviewedAt), today) : null;
@@ -78,7 +87,7 @@ export function documentState(d: DocumentStateInput, today: string): ShownState 
 
 /** AC-11: originals not yet dispatched show "Held N days" (today − received on, India dates); otherwise null. */
 export function heldDays(d: DocumentStateInput & { receivedOn: string }, today: string): number | null {
-  if (d.archived || d.receivedAs !== "original" || d.dispatchedOn) return null;
+  if (d.archived || !isReturnable(d) || d.dispatchedOn) return null;
   return Math.max(daysBetween(d.receivedOn, today), 0);
 }
 
