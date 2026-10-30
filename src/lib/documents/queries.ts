@@ -15,6 +15,8 @@ export type TypeOption = {
   preferredFormats?: string[] | null;
   anyFormat?: boolean;
   planRowId?: string | null;
+  /** 12 (spec AC-2): old/new form names, and the group's catalogue order, for the type-ahead field. */
+  aliases?: string[]; groupSort?: number;
 };
 export type RegistrationOption = { id: string; kind: "gstin" | "tan"; number: string };
 export type PeriodOption = { id: string; kind: Exclude<PeriodKind, "none">; code: string; label: string; fyCode: string };
@@ -24,7 +26,7 @@ export type ClientOption = { id: string; name: string; code: string };
 type TypeRow = {
   id: string; name: string; doc_group_id: string; period_kind: PeriodKind; default_frequency: Frequency;
   registration_kind: "gstin" | "tan" | null; status: "approved" | "proposed"; proposed_for_client_id: string | null;
-  preferred_formats: string[] | null;
+  preferred_formats: string[] | null; aliases: string[] | null;
   doc_group: { name: string; sort: number; active: boolean } | null;
 };
 
@@ -39,7 +41,7 @@ export async function typesForClient(clientId: string | null): Promise<ClientTyp
   const supabase = await createClient();
   const [types, plan, regs] = await Promise.all([
     supabase.from("doc_type")
-      .select("id, name, doc_group_id, period_kind, default_frequency, registration_kind, status, proposed_for_client_id, preferred_formats, doc_group:doc_group_id (name, sort, active)")
+      .select("id, name, doc_group_id, period_kind, default_frequency, registration_kind, status, proposed_for_client_id, preferred_formats, aliases, doc_group:doc_group_id (name, sort, active)")
       .eq("active", true),
     clientId
       // 11: every plan row (any state) — the exception lives on the row whatever its state; "in plan" = active rows.
@@ -65,13 +67,14 @@ export async function typesForClient(clientId: string | null): Promise<ClientTyp
       periodKind: t.period_kind, frequency: inPlan.get(t.id) ?? t.default_frequency,
       registrationKind: t.registration_kind, proposed: t.status === "proposed",
       preferredFormats: t.preferred_formats ?? null, anyFormat: rowOf.get(t.id)?.any_format ?? false,
-      planRowId: rowOf.get(t.id)?.id ?? null,
+      planRowId: rowOf.get(t.id)?.id ?? null, aliases: t.aliases ?? [],
     }))
     .sort(byGroupThenName);
   const strip = (t: TypeOption & { sort: number }): TypeOption => ({
     id: t.id, name: t.name, groupId: t.groupId, groupName: t.groupName, periodKind: t.periodKind,
     frequency: t.frequency, registrationKind: t.registrationKind, proposed: t.proposed,
     preferredFormats: t.preferredFormats, anyFormat: t.anyFormat, planRowId: t.planRowId,
+    aliases: t.aliases, groupSort: t.sort, // 12
   });
   return {
     planTypes: all.filter((t) => inPlan.has(t.id)).map(strip),
