@@ -6,7 +6,8 @@ import { DOCUMENT_CHANNELS, LEGACY_ORIGINAL, RECEIVED_AS, type DocumentChannel, 
 // The search text is never read from or written to the URL: it travels in server-action POST bodies and, between
 // the header and /documents, in the tab's session storage. The text rules mirror search_documents.
 
-export const PAGE_SIZE = 50;
+/** 12 (AC-25): /documents shows 20 per page (passed as page_size; the SQL default and cap stay 50). */
+export const PAGE_SIZE = 20;
 export const MAX_WORDS = 5;
 export const MAX_WORD_LENGTH = 50;
 export const MAX_PAGE = 1000;
@@ -70,6 +71,8 @@ export type DocumentFilters = {
   return?: DocReturn;
   /** 11: optional for the same reason. */
   format?: DocFormat;
+  /** 12 (AC-13): returnable hard copies only ("1"); optional for the same reason. */
+  returnable?: "1";
   archived: boolean;
   sort: Sort;
   page: number;
@@ -82,7 +85,7 @@ export const DEFAULT_FILTERS: DocumentFilters = Object.freeze({
 
 /** URL keys in the order they are written. */
 const UUID_KEYS = ["client", "group", "type", "fy", "period", "registration"] as const;
-const URL_ORDER = ["client", "group", "type", "fy", "period", "registration", "as", "channel", "by", "from", "to", "status", "state", "return", "format", "archived", "sort", "page"] as const;
+const URL_ORDER = ["client", "group", "type", "fy", "period", "registration", "as", "channel", "by", "from", "to", "status", "state", "return", "format", "returnable", "archived", "sort", "page"] as const;
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -113,6 +116,7 @@ export function parseDocumentSearchParams(params: Params): DocumentFilters {
   if (ret) f.return = ret;
   const fmt = oneOf(DOC_FORMATS, get("format"));
   if (fmt) f.format = fmt;
+  if (get("returnable") === "1") f.returnable = "1"; // 12 (AC-13)
   f.sort = oneOf(SORTS, get("sort")) ?? "received";
   f.archived = get("archived") === "1";
   const page = get("page");
@@ -162,6 +166,7 @@ const RPC_KEYS: Record<Exclude<(typeof URL_ORDER)[number], "archived" | "sort" |
   client: "client_id", group: "group_id", type: "doc_type_id", fy: "fy_id", period: "period_id",
   registration: "registration_id", as: "received_as", channel: "channel", by: "received_by",
   from: "from", to: "to", status: "status", state: "state", return: "return", format: "format",
+  returnable: "returnable", // 12: search_documents reads "1" / "true"
 };
 
 /** The `p` argument for search_documents / search_document_facets. */

@@ -1,6 +1,6 @@
 import { requireStaff } from "@/lib/auth/staff";
 import { listStaffOptions, searchClientsAs } from "@/lib/clients/queries";
-import { parseClientSearch } from "@/lib/validation/client-search";
+import { mineFromUrl, parseClientSearch } from "@/lib/validation/client-search";
 import { ClientsBrowser } from "./clients-browser";
 
 /**
@@ -13,11 +13,12 @@ export default async function ClientsPage({ searchParams }: PageProps<"/clients"
   const sp = await searchParams;
   // After Add document from the header (spec 03 AC-4). Only a well-formed DOC-ID is echoed.
   const saved = typeof sp.saved === "string" && /^DOC-FY\d{2}-\d{2}-\d{5,}$/.test(sp.saved) ? sp.saved : null;
-  const [initial, staff] = await Promise.all([searchClientsAs(parseClientSearch({})), listStaffOptions()]);
+  const mine = mineFromUrl(sp.mine, me.role); // 12 (AC-27): URL flag, default on for Staff
+  const [initial, staff] = await Promise.all([searchClientsAs(parseClientSearch({ mine: mine.on })), listStaffOptions()]);
   return (
     <>
       {saved && <p role="status" className="mb-4 rounded-lg bg-ok-soft px-4 py-3 text-[13.5px] text-ok"><strong className="font-semibold">{saved}</strong> saved.</p>}
-      <ClientsBrowser initial={initial} staff={staff} canAdd={me.role !== "limited"} />
+      <ClientsBrowser initial={initial} staff={staff} canAdd={me.role !== "limited"} mine={mine.shown ? { on: mine.on, defaultOn: me.role === "staff" } : undefined} />
     </>
   );
 }

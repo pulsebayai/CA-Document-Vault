@@ -2,7 +2,7 @@
 
 import { requireStaff } from "@/lib/auth/staff";
 import {
-  MIN_SUGGEST_CHARS, SUGGEST_LIMIT, filtersToQuery, normaliseSearchText, parseDocId, parseDocumentSearchParams, toSearchInput, type DocumentFilters,
+  MIN_SUGGEST_CHARS, PAGE_SIZE, SUGGEST_LIMIT, filtersToQuery, normaliseSearchText, parseDocId, parseDocumentSearchParams, toSearchInput, type DocumentFilters,
 } from "@/lib/validation/document-search";
 import {
   SearchError, documentFacetsAs, findClientsAs, findDocIdAs, searchDocumentsAs, suggestClientsAs,
@@ -55,7 +55,8 @@ export type SearchDocumentsResult = ({ ok: true; total: number; rows: DocumentHi
 export async function searchDocuments(input: { text?: string; filters?: unknown }): Promise<SearchDocumentsResult> {
   await requireStaff();
   try {
-    return { ok: true, ...(await searchDocumentsAs(toSearchInput(revalidate(input?.filters), input?.text), { withFiles: true })) }; // 12 AC-18
+    // 12: AC-25 (20 per page; facets don't page) and AC-18 (the rows' current files).
+    return { ok: true, ...(await searchDocumentsAs({ ...toSearchInput(revalidate(input?.filters), input?.text), page_size: PAGE_SIZE }, { withFiles: true })) };
   } catch (e) {
     return failure(e, "documents");
   }

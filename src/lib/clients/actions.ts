@@ -24,6 +24,7 @@ export type SearchResult = ({ ok: true } & ClientSearchResult) | { ok: false; er
  */
 export async function searchClients(input: {
   query?: string; clientType?: string | null; inchargeId?: string | null; includeArchived?: boolean; hasOverdue?: boolean; page?: number;
+  mine?: boolean; // 12 (AC-27)
 }): Promise<SearchResult> {
   await requireStaff();
   try {

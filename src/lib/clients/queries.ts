@@ -23,6 +23,7 @@ export async function searchClientsAs(s: ClientSearch, opts: { hasOverdue?: bool
       p_query: s.query || null, p_client_type: s.clientType, p_incharge_id: s.inchargeId,
       p_include_archived: s.includeArchived, p_limit: PAGE_SIZE, p_offset: (s.page - 1) * PAGE_SIZE,
       p_has_overdue: opts.hasOverdue === true, // 04 AC-15 "Has overdue" chip (POST body only)
+      p_mine: s.mine === true, // 12 (AC-27): "My clients" (a filter, never access)
     }),
     supabase.from("client").select("id", { count: "exact", head: true }).is("archived_at", null),
   ]);

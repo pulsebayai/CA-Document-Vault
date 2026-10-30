@@ -74,6 +74,7 @@ export function activeChips(f: DocumentFilters, o: FilterOptions, facets: FacetV
   add("state", "Show", f.state ? STATE_LABEL[f.state] : null);
   if (f.return) chips.push({ key: "return", label: `Return: ${RETURN_LABEL[f.return]}` }); // 07
   if (f.format) chips.push({ key: "format", label: `Format: ${FORMAT_LABEL[f.format]}` }); // 11
+  if (f.returnable) chips.push({ key: "returnable", label: "Returnable: Yes" }); // 12 (AC-13)
   if (f.archived) chips.push({ key: "archived", label: "Including archived" });
   return chips;
 }
@@ -83,6 +84,7 @@ export function withoutFilter(f: DocumentFilters, key: keyof DocumentFilters): D
   const next: DocumentFilters = { ...f, page: 1, [key]: key === "archived" ? false : null };
   if (key === "return") delete next.return; // 07: optional key (absent, not null)
   if (key === "format") delete next.format; // 11: optional key too
+  if (key === "returnable") delete next.returnable; // 12: optional key too
   if (key === "group") next.type = null;
   if (key === "fy") next.period = null;
   if (key === "client") next.registration = null;
@@ -165,6 +167,11 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
     if (v === "ready" || v === "dispatched") next.return = v; else delete next.return;
     go(next);
   };
+  const setReturnable = (v: string | null) => { // 12 (AC-13)
+    const next: DocumentFilters = { ...filters, page: 1 };
+    if (v === "1") next.returnable = "1"; else delete next.returnable;
+    go(next);
+  };
   const setFormat = (v: string | null) => { // 11 (spec AC-21)
     const next: DocumentFilters = { ...filters, page: 1 };
     if (v === "not_preferred") next.format = v; else delete next.format;
@@ -236,6 +243,11 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
             options={facetOptions("format", (v) => FORMAT_LABEL[v] ?? v, filters.format ?? null)} />
           <Select label="Show" value={filters.state} onChange={(v) => set({ state: v as DocumentFilters["state"] })}
             options={DOC_STATES.map((s) => ({ value: s.value, label: s.label }))} allLabel="Show: classified and untagged" />
+          {/* 12 (AC-13): a checkbox like "Include archived" (a combobox named "Returnable" would also match "Return"). */}
+          <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">
+            <input type="checkbox" checked={filters.returnable === "1"} onChange={(e) => setReturnable(e.target.checked ? "1" : null)} className="h-4 w-4 accent-accent" />
+            Returnable only
+          </label>
           <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">
             <input type="checkbox" checked={filters.archived} onChange={(e) => set({ archived: e.target.checked })} className="h-4 w-4 accent-accent" />
             Include archived
@@ -291,7 +303,8 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
           {pages > 1 && (
             <nav aria-label="Pages" className="mt-4 flex items-center justify-end gap-2 text-[13.5px]">
               <Button type="button" size="sm" variant="secondary" disabled={filters.page <= 1} onClick={() => go({ ...filters, page: filters.page - 1 })}>Previous</Button>
-              <span>Page {filters.page} of {pages}</span>
+              {/* 12 (AC-25): "21–40 of 120" */}
+              <span>{(filters.page - 1) * PAGE_SIZE + 1}–{Math.min(filters.page * PAGE_SIZE, ok.total)} of {ok.total}</span>
               <Button type="button" size="sm" variant="secondary" disabled={filters.page >= pages} onClick={() => go({ ...filters, page: filters.page + 1 })}>Next</Button>
             </nav>
           )}

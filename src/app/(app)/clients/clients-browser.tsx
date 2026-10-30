@@ -9,7 +9,7 @@ import { PAGE_SIZE } from "@/lib/validation/client-search";
 import { Button } from "@/components/ui";
 import { ClientsView } from "./clients-view";
 
-type Filters = { query: string; clientType: string; inchargeId: string; includeArchived: boolean; hasOverdue: boolean; page: number };
+type Filters = { query: string; clientType: string; inchargeId: string; includeArchived: boolean; hasOverdue: boolean; page: number; mine?: boolean };
 const EMPTY: Filters = { query: "", clientType: "", inchargeId: "", includeArchived: false, hasOverdue: false, page: 1 };
 
 const control = "h-9 rounded-full border border-line-2 bg-panel px-3 text-[13.5px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft";
@@ -18,8 +18,12 @@ const control = "h-9 rounded-full border border-line-2 bg-panel px-3 text-[13.5p
  * Clients list with search/filters (mockup 03, spec AC-7). State lives only in this component and is sent
  * to a server action (POST). Inputs have no `name`, so even a pre-hydration submit puts nothing in the URL.
  */
-export function ClientsBrowser({ initial, staff, canAdd }: { initial: ClientSearchResult; staff: StaffOption[]; canAdd: boolean }) {
-  const [filters, setFilters] = useState<Filters>(EMPTY);
+export function ClientsBrowser({ initial, staff, canAdd, mine }: {
+  initial: ClientSearchResult; staff: StaffOption[]; canAdd: boolean;
+  /** 12 (AC-27): the "My clients" toggle (absent for Limited); `on` came from the URL flag or the role default. */
+  mine?: { on: boolean; defaultOn: boolean };
+}) {
+  const [filters, setFilters] = useState<Filters>(mine?.on ? { ...EMPTY, mine: true } : EMPTY);
   const [data, setData] = useState<ClientSearchResult>(initial);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -32,6 +36,7 @@ export function ClientsBrowser({ initial, staff, canAdd }: { initial: ClientSear
       const r = await searchClients({
         query: f.query, clientType: f.clientType || null, inchargeId: f.inchargeId || null,
         includeArchived: f.includeArchived, hasOverdue: f.hasOverdue, page: f.page,
+        ...(f.mine ? { mine: true } : {}), // 12 (AC-27)
       });
       if (id !== requestId.current) return; // a newer search has started
       if (r.ok) { setData(r); setError(null); } else setError(r.error);
@@ -46,6 +51,12 @@ export function ClientsBrowser({ initial, staff, canAdd }: { initial: ClientSear
   }, [filters]);
 
   const set = (patch: Partial<Filters>) => setFilters((f) => ({ ...f, page: 1, ...patch }));
+  // 12 (AC-27): the toggle is a URL flag (no PII), written only when it differs from the role's default.
+  const setMine = (on: boolean) => {
+    set({ mine: on });
+    // history.replaceState: Next keeps it in step with the router; the list itself comes from the server action.
+    if (mine) window.history.replaceState(null, "", on === mine.defaultOn ? "/clients" : `/clients?mine=${on ? "1" : "0"}`);
+  };
   const filtered = !!(filters.query.trim() || filters.clientType || filters.inchargeId || filters.includeArchived || filters.hasOverdue);
   const pages = Math.max(1, Math.ceil(data.matched / PAGE_SIZE));
 
@@ -73,7 +84,11 @@ export function ClientsBrowser({ initial, staff, canAdd }: { initial: ClientSear
       {/* 04 AC-15: a toggle chip; its state goes to the server action like the other filters, never the URL. */}
       <button type="button" aria-pressed={filters.hasOverdue} onClick={() => set({ hasOverdue: !filters.hasOverdue })}
         className={`${control} font-medium ${filters.hasOverdue ? "border-bad bg-bad-soft text-bad" : ""}`}>Has overdue</button>
-      {filtered && <Button type="button" size="sm" variant="secondary" onClick={() => setFilters(EMPTY)}>Clear</Button>}
+      {mine && (
+        <button type="button" aria-pressed={!!filters.mine} onClick={() => setMine(!filters.mine)}
+          className={`${control} font-medium ${filters.mine ? "border-accent bg-accent-soft text-accent" : ""}`}>My clients</button>
+      )}
+      {filtered && <Button type="button" size="sm" variant="secondary" onClick={() => setFilters(filters.mine ? { ...EMPTY, mine: true } : EMPTY)}>Clear</Button>}
       <span role="status" aria-live="polite" className="sr-only">
         {pending ? "Searching…" : `${data.matched} ${data.matched === 1 ? "client" : "clients"} found`}
       </span>

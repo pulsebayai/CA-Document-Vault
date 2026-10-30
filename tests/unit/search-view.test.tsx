@@ -140,7 +140,7 @@ describe("SearchView", () => {
     searchDocuments.mockResolvedValue({ ok: true, total: 120, rows: [hit()] });
     const user = userEvent.setup();
     view({ page: 2 });
-    expect(await screen.findByText("Page 2 of 3")).toBeInTheDocument();
+    expect(await screen.findByText("21–40 of 120")).toBeInTheDocument(); // 12 (AC-25, approved 2026-10-31): 20 per page
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(push).toHaveBeenLastCalledWith("/documents?page=3", { scroll: false });
   });

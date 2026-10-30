@@ -33,7 +33,28 @@ test.beforeAll(async () => {
   const { error: e2 } = await as.rpc("review_document", { p_id: docs.wrong.id, p_outcome: "needs_correction", p_reason: "Wrong month", p_kind: "details" });
   if (e2) throw e2;
 });
-test.afterAll(async () => { if (staff) await retireStaff([staff.id]); });
+// Steps 9–10: a second client with 23 documents (incharge = someone else), for paging, Returnable and My clients.
+let other: { id: string; email: string };
+let manager: { id: string; email: string };
+let busyId: string;
+const busyDocs: { id: string; doc_code: string }[] = []; // busyDocs[i] received 2026-05-(i+1)
+test.beforeAll(async () => {
+  other = await createStaff(officeId, "if-other", "staff");
+  manager = await createStaff(officeId, "if-manager", "manager");
+  const as = await signedInClient(staff.email);
+  const { data: c, error } = await as.rpc("create_client", { p: { name: "Busy Paging Traders", client_type: "individual", incharge_id: other.id } });
+  if (error) throw error;
+  busyId = c.id;
+  const bank = await typeId(officeId, T.bank);
+  const apr = await periodId(officeId, "2026-04");
+  for (let i = 0; i < 23; i++) {
+    busyDocs.push(await mustCreateDocument(as, {
+      client_id: busyId, doc_type_id: bank, period_id: apr, received_as: "hard_copy", channel: "hand_delivery",
+      received_on: `2026-05-${String(i + 1).padStart(2, "0")}`, ...(i === 4 ? { returnable: true } : {}),
+    } as never));
+  }
+});
+test.afterAll(async () => { await retireStaff([staff?.id, other?.id, manager?.id].filter(Boolean) as string[]); });
 test.describe.configure({ mode: "serial" });
 
 async function seriousAxe(page: Page) {
@@ -126,4 +147,73 @@ test("AC-22, AC-23: Wrong details → Edit details → a changed received-on dat
   await page.waitForURL(new RegExp(`/documents/${docs.wrong.id}\\?saved=`));
   await expect(page.getByTestId("review-state")).toHaveText("To review");
   await expect(page.getByRole("list", { name: "Review history" })).toContainText("changed it — back to To review");
+});
+
+// Step 9 — lists (spec AC-25, AC-26, AC-13).
+test("AC-25: /documents shows 20 per page with N–M of T", async ({ page, baseURL }) => {
+  await signIn(page, staff.email, baseURL);
+  await page.goto(`/documents?client=${busyId}`);
+  const results = page.getByRole("list", { name: "Documents" }).getByRole("listitem");
+  await expect(results).toHaveCount(20);
+  const pages = page.getByRole("navigation", { name: "Pages" });
+  await expect(pages).toContainText("1–20 of 23");
+  await pages.getByRole("button", { name: "Next" }).click();
+  await expect(page).toHaveURL(/page=2/);
+  await expect(results).toHaveCount(3);
+  await expect(pages).toContainText("21–23 of 23");
+});
+
+test("AC-13: the Returnable filter lists returnable hard copies only, as a URL flag", async ({ page, baseURL }) => {
+  await signIn(page, staff.email, baseURL);
+  await page.goto(`/documents?client=${busyId}`);
+  await page.getByRole("checkbox", { name: "Returnable only" }).click(); // ticks once the URL changes (filters are the URL)
+  await expect(page).toHaveURL(/returnable=1/);
+  const results = page.getByRole("list", { name: "Documents" }).getByRole("listitem");
+  await expect(results).toHaveCount(1);
+  await expect(results.first()).toContainText(busyDocs[4].doc_code);
+  await expect(page.getByRole("button", { name: "Remove filter Returnable: Yes" })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "Returnable only" })).toBeChecked();
+});
+
+test("AC-26: Client › Documents pages each card by 20, newest received first", async ({ page, baseURL }) => {
+  await signIn(page, staff.email, baseURL);
+  await page.goto(`/clients/${busyId}`);
+  const banking = page.getByRole("list", { name: "Banking documents" }).getByRole("listitem");
+  await expect(banking).toHaveCount(20);
+  await expect(banking.first()).toContainText(busyDocs[22].doc_code); // received 23 May
+  const pager = page.getByRole("navigation", { name: "Banking pages" });
+  await expect(pager).toContainText("1–20 of 23");
+  await pager.getByRole("button", { name: "Next" }).click();
+  await expect(banking).toHaveCount(3);
+  await expect(banking.last()).toContainText(busyDocs[0].doc_code); // received 1 May
+  await expect(pager).toContainText("21–23 of 23");
+  expect(await seriousAxe(page)).toEqual([]);
+});
+
+// Step 10 — My clients (spec AC-27).
+test("AC-27: My clients is on by default for Staff; off shows every client and is kept in the URL", async ({ page, baseURL }) => {
+  await signIn(page, staff.email, baseURL);
+  await page.goto("/clients");
+  const toggle = page.getByRole("button", { name: "My clients" });
+  const list = page.getByRole("list", { name: "Clients" });
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(list).toContainText("Intake Fixes Traders");
+  await expect(list).not.toContainText("Busy Paging Traders");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(page).toHaveURL(/\/clients\?mine=0$/);
+  await expect(list).toContainText("Busy Paging Traders");
+  await page.reload();
+  await expect(page.getByRole("button", { name: "My clients" })).toHaveAttribute("aria-pressed", "false");
+  await expect(list).toContainText("Busy Paging Traders");
+  // Access never changes: the other staff member's client still opens by link.
+  await page.goto(`/clients/${busyId}`);
+  await expect(page.getByRole("heading", { name: "Busy Paging Traders" })).toBeVisible();
+});
+
+test("AC-27: My clients is off by default for a Manager", async ({ page, baseURL }) => {
+  await signIn(page, manager.email, baseURL);
+  await page.goto("/clients");
+  await expect(page.getByRole("button", { name: "My clients" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("list", { name: "Clients" })).toContainText("Busy Paging Traders");
 });

@@ -44,6 +44,7 @@ test("AC-7: search by name, PAN and previous reference, filter by type, show arc
   page.on("framenavigated", (f) => seen.push(f.url()));
 
   await signIn(page, staff.email, baseURL);
+  await page.goto("/clients?mine=0"); // 12 (AC-27, approved 2026-10-31): Staff start on My clients; this test checks the whole list
   await expect(page.getByText("3 clients", { exact: true })).toBeVisible();
   await expect(list(page).getByRole("listitem")).toHaveCount(3);
   await expect(list(page).getByRole("listitem", { name: "Kaveri Textiles" })).toContainText("Partnership firm · ZZZFZ5101Z · Incharge Test clients-staff");
@@ -70,7 +71,7 @@ test("AC-7: search by name, PAN and previous reference, filter by type, show arc
   await search.fill("no such client");
   await expect(page.getByText("No clients match")).toBeVisible();
 
-  expect(page.url()).toMatch(/\/clients$/);
+  expect(page.url()).toMatch(/\/clients(\?mine=0)?$/); // 12 (AC-27, approved 2026-10-31): My clients is the only URL flag
   for (const term of ["kaveri", "fz510", "k-old", "no such client", "no%20such", "proprietorship", "archived"]) {
     expect(seen.filter((u) => u.toLowerCase().includes(term))).toEqual([]);
   }

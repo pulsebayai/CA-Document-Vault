@@ -83,3 +83,50 @@ describe("My clients (AC-27)", () => {
     expect(await list("s1", { p_mine: true, p_query: "Own" })).toEqual([c.own]);
   });
 });
+
+// AC-28: with "My clients" on, the list is no slower than 02's list (same 1 s budget, same method: one warm-up call,
+// then the median of 5). 1,000 clients: half with this user as incharge, half with someone else.
+describe("My clients timing with 1,000 clients (AC-28)", () => {
+  let perfOffice: string;
+  let me: { id: string; email: string };
+  let other: { id: string; email: string };
+  let asMe: SupabaseClient;
+
+  beforeAll(async () => {
+    perfOffice = await createCatalogueOffice("mine-perf");
+    me = await createStaff(perfOffice, "mine-perf-me", "staff");
+    other = await createStaff(perfOffice, "mine-perf-other", "staff");
+    asMe = await signedInClient(me.email);
+    const rows = Array.from({ length: 1000 }, (_, i) => ({
+      office_id: perfOffice, name: `Mine perf ${String(i).padStart(4, "0")}`, client_type: "individual",
+      incharge_id: i % 2 === 0 ? me.id : other.id,
+    }));
+    const { error } = await asMe.from("client").insert(rows);
+    if (error) throw error;
+  }, 120_000);
+
+  afterAll(async () => { await retireStaff([me?.id, other?.id].filter(Boolean) as string[]); });
+
+  it("first page and a search with p_mine each return in under 1 s, and find only this user's 500", async () => {
+    const time = async (args: Record<string, unknown>) => {
+      const call = () => asMe.rpc("search_clients", { p_limit: 50, ...args });
+      await call(); // warm-up, not timed
+      const runs: number[] = [];
+      for (let i = 0; i < 5; i++) {
+        const t0 = performance.now();
+        const { data, error } = await call();
+        runs.push(performance.now() - t0);
+        expect(error).toBeNull();
+        expect((data as unknown[]).length).toBeGreaterThan(0);
+      }
+      return runs.sort((x, y) => x - y)[2];
+    };
+    const plain = await time({});
+    const mine = await time({ p_mine: true });
+    const mineByName = await time({ p_mine: true, p_query: "perf 09" });
+    console.info("search_clients p_mine timing (ms)", { plain: Math.round(plain), mine: Math.round(mine), mineByName: Math.round(mineByName) });
+    const { data } = await asMe.rpc("search_clients", { p_limit: 1, p_mine: true });
+    expect(Number((data as Array<{ total: number }>)[0].total)).toBe(500);
+    for (const t of [mine, mineByName]) expect(t).toBeLessThan(1000);
+  });
+});
