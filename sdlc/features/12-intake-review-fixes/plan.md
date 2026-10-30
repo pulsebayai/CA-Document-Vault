@@ -88,8 +88,8 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 ## Steps
 - [x] 0. **Setup.** (roadmap PR #12 open, docs-only; branch pushed) Branch from main; commit intent/spec/plan; roadmap PR on main (rows 12–15, locks → 12, pilot date); take the locks. — proof: roadmap PR merged (docs-only CI)
 - [x] 1. **Failing tests first (RLS + unit)** for AC-8–16, 21–24, 27: `returnable`, `handed-over`, `correction-kind`, `clients-mine`, and the changed rows above. — proof: they fail for the expected reason on dev
-- [ ] 2. **Migration A** (schema, data step, trigger, create/update). — proof: step-1 RLS files for A pass on dev; the documents / review-dispatch / type-governance / link files pass unedited
-- [ ] 3. **Migration B** (review kind, undo, dispatch, search, today, clients). — proof: all step-1 RLS files pass; role-matrix, document-search, today-documents and upload-link RLS files green
+- [x] 2. **Migration A** (schema, data step, trigger, create/update). — proof: step-1 RLS files for A pass on dev; the documents / review-dispatch / type-governance / link files pass unedited
+- [x] 3. **Migration B** (review kind, undo, dispatch, search, today, clients). — proof: all step-1 RLS files pass; role-matrix, document-search, today-documents and upload-link RLS files green
 - [ ] 4. **Lib layer** (validation, state, review, dispatch, search parse, permissions, activity sentences, today shape). — proof: unit suite green; `document-state` / `today-shape` / `dispatch-dialog` unedited
 - [ ] 5. **Type field:** `matchTypes` + `type-combobox` (ARIA, keyboard, cap, close matches, propose) + aliases loaded. — proof: `type-match` + `type-combobox` unit; benchmark 500 types < 16 ms
 - [ ] 6. **Document form:** type field in; received as + Returnable + handed over by; confirmation line; Assign / Edit pages. — proof: unit form tests; e2e `document-type-field.spec` locally
@@ -118,7 +118,10 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 [Uncertain] 5–7 working days incl. review (about 4–5 build sessions). Feature 13 starts after merge (it builds on Returnable); 14 can be planned in parallel.
 
 ## Deviations from plan
-(none yet)
+- **Migration A data step (step 2):** the first apply on dev failed (`55006 pending trigger events`) and rolled back cleanly. 03's deferred soft-copy check queued events, and 03's trigger refuses changes to archived documents. Fix in the file: `document_before_write` is disabled for the one data statement, then `set constraints all immediate`, then re-enabled. Applied on dev 2026-10-30: 136 originals → 136 returnable hard copies, 0 left.
+- **Migration B** needed the user's confirmation in the Supabase tool (it drops and recreates `review_document` / `search_clients`); applied on dev 2026-10-30 11:1x after confirmation. **md5 = file for all 10 replaced functions.**
+- **New test corrected (never green before):** `returnable.test.ts` "a direct write of 'original' is refused" → "is never stored as 'original'". The trigger maps legacy input on every path, so a direct write lands as hard copy + returnable (AC-10 holds). Not a weakening of an existing test.
+- **One more existing assertion found (pending approval):** `document-search.test.ts:249` asserts a search row's `received_as: "original"`. It's the same kind as the 12 approved rows; left unedited until approved.
 
 ## Session log
 ### 2026-10-30

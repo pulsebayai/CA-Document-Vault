@@ -54,10 +54,13 @@ describe("storage (AC-9, AC-10)", () => {
     expect(count).toBe(0);
   });
 
-  it("a direct write of 'original' is refused by the database", async () => {
+  // Corrected in step 3 (plan Deviations): the trigger maps 'original' on every write path before the check
+  // constraint runs, so even a direct table write can't store it — it lands as hard copy + returnable.
+  it("a direct write of 'original' is never stored as 'original' (mapped to hard copy + returnable)", async () => {
     const d = await hard();
     const { error } = await adminClient().from("document").update({ received_as: "original" }).eq("id", d.id);
-    expect(error?.message ?? "").toMatch(/original|check/i);
+    expect(error).toBeNull();
+    expect(await documentRow(d.id)).toMatchObject({ received_as: "hard_copy", returnable: true });
   });
 
   it("legacy input 'original' is stored as a hard copy + returnable", async () => {
