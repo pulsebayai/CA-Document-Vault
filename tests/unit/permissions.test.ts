@@ -18,7 +18,9 @@ describe("permissions matrix (AC-12)", () => {
       ["Add documents and file the Inbox", "Yes", "Yes", "Yes", "Assigned + own Inbox"],
       ["Propose a new type while filing", "Yes", "Yes", "Yes", "No"],
       ["Review, mark needs correction, dispatch originals", "Yes", "Yes", "Yes", "Assigned"],
-      ["Undo a review or a dispatch", "Yes", "Yes", "No", "No"],
+      // 12 (spec AC-24, approved 2026-10-30): the row splits; Staff can undo a review.
+      ["Undo a review", "Yes", "Yes", "Yes", "No"],
+      ["Undo a dispatch", "Yes", "Yes", "No", "No"],
       ["Archive or unarchive documents and clients", "Yes", "Yes", "No", "No"],
       ["Waive an expected document", "Yes", "Yes", "Yes", "No"],
       ["Reopen an expected document", "Yes", "Yes", "Yes", "Assigned"],

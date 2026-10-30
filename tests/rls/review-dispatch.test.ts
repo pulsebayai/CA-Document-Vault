@@ -124,10 +124,11 @@ describe("undo review (AC-5)", () => {
     }
   });
 
-  it("Staff and Limited can't undo — the database refuses it", async () => {
+  // 12 (spec AC-24, approved 2026-10-30): Staff can now undo a review; Limited still can't.
+  it("Limited can't undo — the database refuses it", async () => {
     const d = await filed();
     await mustReview(as.staff, d.id);
-    for (const k of ["staff", "limited"] as const) {
+    for (const k of ["limited"] as const) {
       expect((await undoReview(as[k], d.id, "Mistake")).error?.message ?? "").toMatch(/ROLE_REQUIRED/);
     }
     expect(await statusOf(d.id)).toBe("reviewed");
@@ -350,7 +351,8 @@ describe("dispatch packets (AC-8, AC-9)", () => {
   });
 
   it("an archived client's originals can still be dispatched", async () => {
-    const { data: docs } = await adminClient().from("document").select("id").eq("client_id", clientC).eq("received_as", "original");
+    // 12 (spec AC-9): originals are stored as returnable hard copies.
+    const { data: docs } = await adminClient().from("document").select("id").eq("client_id", clientC).eq("returnable", true);
     const o = docs![0].id as string;
     expect(await statusOf(o)).toBe("reviewed");
     expect((await createDispatch(as.staff, { client_id: clientC, document_ids: [o], dispatched_on: "2026-05-12" })).error).toBeNull();
@@ -393,7 +395,7 @@ describe("a dispatched original keeps its client and stays an original (PR #25 r
       const r = await as.staff.rpc("update_document", { p_id: d, p: patch });
       expect(r.error?.message ?? "").toMatch(/DISPATCHED/);
     }
-    expect(await documentRow(d)).toMatchObject({ client_id: clientA, received_as: "original" });
+    expect(await documentRow(d)).toMatchObject({ client_id: clientA, received_as: "hard_copy", returnable: true }); // 12 (AC-9/12)
     expect((await as.staff.rpc("update_document", { p_id: d, p: { remark: "Sent with covering letter" } })).error).toBeNull();
     expect((await as.manager.rpc("undo_dispatch_item", { p_document_id: d, p_reason: "Wrong client" })).error).toBeNull();
     expect((await as.staff.rpc("update_document", { p_id: d, p: { client_id: clientB } })).error).toBeNull();

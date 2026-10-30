@@ -342,14 +342,14 @@ describe("facet counts (AC-7)", () => {
       expect(r.total, `${x.facet}=${x.value}`).toBe(x.n);
     }
     const byAs = Object.fromEntries(facetOf(fs, "received_as").map((x) => [x.value, x.n]));
-    expect(byAs).toEqual({ original: 1, hard_copy: 3 });
+    expect(byAs).toEqual({ hard_copy: 4 }); // 12 (spec AC-13): the original is a returnable hard copy
     expect(facetOf(fs, "group").reduce((sum, x) => sum + x.n, 0)).toBe(3); // Inbox documents have no group
   });
 
   it("a facet ignores its own filter but applies the others", async () => {
     const fs = await facets("staff", { text: "zqf", filters: { channel: "courier" } });
     expect(facetOf(fs, "channel").length).toBe(4); // still offers the other channels
-    expect(facetOf(fs, "received_as").map((x) => [x.value, x.n])).toEqual([["original", 1]]); // narrowed by channel
+    expect(facetOf(fs, "received_as").map((x) => [x.value, x.n])).toEqual([["hard_copy", 1]]); // narrowed by channel; 12 (AC-13)
   });
 
   it("received by uses staff names, and marks deactivated staff (inactive)", async () => {

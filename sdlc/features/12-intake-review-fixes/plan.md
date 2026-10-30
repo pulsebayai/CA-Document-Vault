@@ -86,8 +86,8 @@ If R1 is rejected, `review-dispatch.test.ts:274–279` joins this list. No other
 Two files (A then B), applied to dev through the CLI / SQL editor with md5 = file recorded in the PR. Then Regression `only` = the RLS files (CLAUDE.md rule), and the schema fingerprint re-run. The down-migration text goes in the PR notes.
 
 ## Steps
-- [ ] 0. **Setup.** Branch from main; commit intent/spec/plan; roadmap PR on main (rows 12–15, locks → 12, pilot date); take the locks. — proof: roadmap PR merged (docs-only CI)
-- [ ] 1. **Failing tests first (RLS + unit)** for AC-8–16, 21–24, 27: `returnable`, `handed-over`, `correction-kind`, `clients-mine`, and the changed rows above. — proof: they fail for the expected reason on dev
+- [x] 0. **Setup.** (roadmap PR #12 open, docs-only; branch pushed) Branch from main; commit intent/spec/plan; roadmap PR on main (rows 12–15, locks → 12, pilot date); take the locks. — proof: roadmap PR merged (docs-only CI)
+- [x] 1. **Failing tests first (RLS + unit)** for AC-8–16, 21–24, 27: `returnable`, `handed-over`, `correction-kind`, `clients-mine`, and the changed rows above. — proof: they fail for the expected reason on dev
 - [ ] 2. **Migration A** (schema, data step, trigger, create/update). — proof: step-1 RLS files for A pass on dev; the documents / review-dispatch / type-governance / link files pass unedited
 - [ ] 3. **Migration B** (review kind, undo, dispatch, search, today, clients). — proof: all step-1 RLS files pass; role-matrix, document-search, today-documents and upload-link RLS files green
 - [ ] 4. **Lib layer** (validation, state, review, dispatch, search parse, permissions, activity sentences, today shape). — proof: unit suite green; `document-state` / `today-shape` / `dispatch-dialog` unedited

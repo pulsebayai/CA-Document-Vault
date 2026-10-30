@@ -55,7 +55,7 @@ test("AC-10: Documents tab groups by group → type → period with FY and group
   await expect(gst.getByRole("listitem")).toHaveCount(1);
   await expect(gst.getByRole("listitem").first()).toContainText("Sales invoices / sales register · Aug 2026");
   await expect(gst.getByRole("listitem").first()).toContainText(original.doc_code);
-  await expect(gst.getByRole("listitem").first()).toContainText("Original");
+  await expect(gst.getByRole("listitem").first()).toContainText("Returnable"); // 12 (spec AC-11): badge renamed
   await expect(page.getByRole("list", { name: "Income Tax documents" })).toHaveCount(0);
   expect(await seriousAxe(page)).toEqual([]);
 

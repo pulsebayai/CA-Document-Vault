@@ -88,7 +88,7 @@ describe("TodayView", () => {
     expect(rows).toHaveTextContent("GST · Invoices · Jul 2026 DOC-FY26-27-00087");
     expect(rows).toHaveTextContent("Received 2 Aug · waiting for review");
     expect(within(rows).getByRole("button", { name: "Mark reviewed: DOC-FY26-27-00087 GST · Invoices · Jul 2026" })).toBeVisible();
-    expect(rows).toHaveTextContent("ROC · Signed annual return · FY 2025-26 DOC-FY26-27-00111 Original");
+    expect(rows).toHaveTextContent("ROC · Signed annual return · FY 2025-26 DOC-FY26-27-00111 Returnable"); // 12 (spec AC-11): badge renamed
     expect(rows).toHaveTextContent("Reviewed 12 Sep by Ravi");
     expect(within(rows).getByRole("button", { name: "Mark dispatched: DOC-FY26-27-00111 ROC · Signed annual return · FY 2025-26" })).toBeVisible();
     // Document rows have no Remind / Upload (those are for expected rows).

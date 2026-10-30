@@ -39,7 +39,7 @@ test("step 9: To review and Ready to dispatch on Today — counts, rows, Mark re
   const rows = page.getByRole("list", { name: "Open documents for Delta Docs" });
   await expect(rows.getByRole("listitem")).toHaveCount(2);
   await expect(rows.getByRole("listitem").nth(0)).toContainText("Received 10 Mar · waiting for review");
-  await expect(rows.getByRole("listitem").nth(1)).toContainText("Original");
+  await expect(rows.getByRole("listitem").nth(1)).toContainText("Returnable"); // 12 (spec AC-11): badge renamed
   await expect(rows.getByRole("listitem").nth(1)).toContainText("Ready to dispatch");
   await expect(rows.getByRole("button", { name: /^Mark dispatched: DOC-FY/ })).toBeVisible();
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
