@@ -246,7 +246,8 @@ describe("filters (AC-6) and result rows (AC-5)", () => {
     expect(row).toMatchObject({
       id: f.sales, client_id: clientA, client_name: "Search client A", doc_type_id: t.sales,
       type_name: "Sales invoices / sales register", group_id: g.sales, period_code: "2026-08", registration_id: gstinA,
-      received_as: "original", channel: "courier", received_on: "2026-08-05", received_by: u.staff.id,
+      received_as: "hard_copy", returnable: true, // 12 (spec AC-9/10, approved 2026-10-30): the original is a returnable hard copy
+      channel: "courier", received_on: "2026-08-05", received_by: u.staff.id,
       received_by_name: "Test search-staff", status: "received", remark: "zqf one", file_name: null, archived_at: null,
     });
     expect(row.doc_code).toMatch(/^DOC-FY\d{2}-\d{2}-\d{5,}$/);

@@ -160,6 +160,6 @@ describe("search and Today follow returnable (AC-11, AC-13)", () => {
 describe("client upload links stay soft copies (AC-16)", () => {
   it("returnable defaults to false and a link upload never sets it", async () => {
     const s = await createSoftCopy(as.staff, officeId, { client_id: client, doc_type_id: bank, period_id: apr });
-    expect(await documentRow(s.id)).toMatchObject({ received_as: "soft_copy", returnable: false, handed_over_kind: null });
+    expect(await documentRow(s.id)).toMatchObject({ received_as: "soft_copy", returnable: false, handed_over_name: null });
   });
 });

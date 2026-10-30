@@ -6,7 +6,8 @@ import { activityFor, createDocumentOffice, createSoftCopy, documentRow, mustCre
 import { T } from "../support/expected";
 
 // Feature 12 — Handed over by (spec AC-14, AC-15 as amended by plan R2). Written before migration A (plan step 1).
-// The database checks the SHAPE only: kind + name together (1–120), never on a soft copy, can't be cleared once set.
+// Decision D1 (30 Oct): one text field, handed_over_name. The database checks the SHAPE only: 1–120 characters,
+// never on a soft copy, can't be cleared once set.
 // "Required for a new hard copy" is checked by the server actions (tests/unit/handed-over-rules.test.ts), so existing
 // callers that create hard copies without it keep working.
 
@@ -34,45 +35,47 @@ beforeAll(async () => {
 afterAll(async () => { if (staffU) await retireStaff([staffU.id]); });
 
 describe("shape (AC-14)", () => {
-  it("a hard copy stores the kind and the name", async () => {
-    const d = await hard({ handed_over_kind: "courier", handed_over_name: NAME });
-    expect(await documentRow(d.id)).toMatchObject({ handed_over_kind: "courier", handed_over_name: NAME });
+  it("a hard copy stores who handed it over (trimmed)", async () => {
+    const d = await hard({ handed_over_name: `  ${NAME}  ` });
+    expect(await documentRow(d.id)).toMatchObject({ handed_over_name: NAME });
   });
 
   it("a hard copy without it is still accepted by the database (R2: the app requires it)", async () => {
     const d = await hard();
-    expect(await documentRow(d.id)).toMatchObject({ handed_over_kind: null, handed_over_name: null });
+    expect(await documentRow(d.id)).toMatchObject({ handed_over_name: null });
   });
 
-  it("kind and name go together; the name is 1–120 characters; the kind is one of four", async () => {
-    expect((await create({ handed_over_kind: "courier" })).error?.message ?? "").toMatch(/HANDED_OVER/);
-    expect((await create({ handed_over_name: NAME })).error?.message ?? "").toMatch(/HANDED_OVER/);
-    expect((await create({ handed_over_kind: "other", handed_over_name: "x".repeat(121) })).error?.message ?? "").toMatch(/HANDED_OVER/);
-    expect((await create({ handed_over_kind: "drone", handed_over_name: NAME })).error).not.toBeNull();
+  it("the name is up to 120 characters; blank means not given", async () => {
+    expect((await create({ handed_over_name: "x".repeat(121) })).error?.message ?? "").toMatch(/HANDED_OVER_NAME/);
+    expect((await create({ handed_over_name: "x".repeat(120) })).error).toBeNull();
+    const { data, error } = await create({ handed_over_name: "   " });
+    expect(error).toBeNull();
+    expect(await documentRow((data as { id: string }).id)).toMatchObject({ handed_over_name: null });
   });
 
   it("a soft copy never carries it", async () => {
     const s = await createSoftCopy(staff, officeId, { client_id: client, doc_type_id: bank, period_id: apr });
-    expect((await update(s.id, { handed_over_kind: "courier", handed_over_name: NAME })).error?.message ?? "").toMatch(/HANDED_OVER/);
+    expect((await update(s.id, { handed_over_name: NAME })).error?.message ?? "").toMatch(/HANDED_OVER_SOFT_COPY/);
   });
 
   it("once set, it can be changed but not cleared", async () => {
-    const d = await hard({ handed_over_kind: "courier", handed_over_name: NAME });
-    expect((await update(d.id, { handed_over_kind: "security", handed_over_name: "Gate security" })).error).toBeNull();
-    expect(await documentRow(d.id)).toMatchObject({ handed_over_kind: "security", handed_over_name: "Gate security" });
-    expect((await update(d.id, { handed_over_kind: null, handed_over_name: null })).error?.message ?? "").toMatch(/HANDED_OVER_CLEAR/);
+    const d = await hard({ handed_over_name: NAME });
+    expect((await update(d.id, { handed_over_name: "Gate security" })).error).toBeNull();
+    expect(await documentRow(d.id)).toMatchObject({ handed_over_name: "Gate security" });
+    expect((await update(d.id, { handed_over_name: null })).error?.message ?? "").toMatch(/HANDED_OVER_CLEAR/);
+    expect((await update(d.id, { handed_over_name: "  " })).error?.message ?? "").toMatch(/HANDED_OVER_CLEAR/);
   });
 
   it("a hard copy recorded without it can have it added later", async () => {
     const d = await hard();
-    expect((await update(d.id, { handed_over_kind: "client_staff", handed_over_name: "Accountant" })).error).toBeNull();
+    expect((await update(d.id, { handed_over_name: "Client's accountant" })).error).toBeNull();
   });
 });
 
 describe("privacy (AC-15)", () => {
   it("the name never goes into activity: only that the field changed", async () => {
-    const d = await hard({ handed_over_kind: "courier", handed_over_name: NAME });
-    expect((await update(d.id, { handed_over_kind: "other", handed_over_name: "Neighbour Lakshmi" })).error).toBeNull();
+    const d = await hard({ handed_over_name: NAME });
+    expect((await update(d.id, { handed_over_name: "Neighbour Lakshmi" })).error).toBeNull();
     const rows = await activityFor(officeId, d.id);
     const text = JSON.stringify(rows);
     expect(text).not.toContain("Ravi");

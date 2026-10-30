@@ -98,37 +98,25 @@ export type ReceivedAs = (typeof RECEIVED_AS)[number]["value"] | typeof LEGACY_O
 /** Labels for every value a row may carry, legacy included (12 stores none as "original"). */
 export const RECEIVED_LABEL: Readonly<Record<string, string>> = { soft_copy: "Soft copy", hard_copy: "Hard copy", original: "Hard copy" };
 
-/** 12 (spec AC-14): who handed a hard copy in. */
-export const HANDED_OVER_KINDS = [
-  { value: "client_staff", label: "Client's staff" },
-  { value: "courier", label: "Courier" },
-  { value: "security", label: "Security" },
-  { value: "other", label: "Other" },
-] as const;
-export type HandedOverKind = (typeof HANDED_OVER_KINDS)[number]["value"];
+/** 12 (spec AC-14, decision D1): who handed a hard copy in — one text field. */
 export const MAX_HANDED_OVER_NAME = 120;
 
 /**
- * 12 (spec AC-14, plan R2): "Handed over by" is required on every staff screen for a new hard copy or a change to
+ * 12 (spec AC-14, plan R2, D1): "Handed over by" is required on every staff screen for a new hard copy or a change to
  * hard copy, and can't be cleared once set. A soft copy never carries it. Legacy "original" input isn't asked for it.
  * The database checks only the shape; this is the rule the server actions apply.
  */
 export function validateHandedOver(
-  input: { receivedAs?: unknown; handedOverKind?: unknown; handedOverName?: unknown },
-  ctx: { existing: { receivedAs: string; handedOverKind: string | null } | null },
-): { data: { handedOverKind: HandedOverKind | null; handedOverName: string | null } | null; errors: FieldIssue[] } {
+  input: { receivedAs?: unknown; handedOverName?: unknown },
+  ctx: { existing: { receivedAs: string; handedOverName: string | null } | null },
+): { data: { handedOverName: string | null } | null; errors: FieldIssue[] } {
   const receivedAs = str(input.receivedAs);
-  if (receivedAs !== "hard_copy") return { data: { handedOverKind: null, handedOverName: null }, errors: [] };
-  const kindRaw = str(input.handedOverKind);
-  const kind = HANDED_OVER_KINDS.some((k) => k.value === kindRaw) ? (kindRaw as HandedOverKind) : null;
+  if (receivedAs !== "hard_copy") return { data: { handedOverName: null }, errors: [] };
   const name = str(input.handedOverName);
-  const required = !ctx.existing || ctx.existing.receivedAs !== "hard_copy" || ctx.existing.handedOverKind !== null;
-  const errors: FieldIssue[] = [];
-  if (!kind && (required || kindRaw || name)) errors.push({ field: "handedOverKind", message: "Say who handed it over." });
-  if (name.length > MAX_HANDED_OVER_NAME) errors.push({ field: "handedOverName", message: "Name is too long (120 characters max)." });
-  else if (!name && (required || kind)) errors.push({ field: "handedOverName", message: "Give their name." });
-  if (errors.length) return { data: null, errors };
-  return { data: { handedOverKind: kind, handedOverName: name || null }, errors };
+  const required = !ctx.existing || ctx.existing.receivedAs !== "hard_copy" || ctx.existing.handedOverName !== null;
+  if (name.length > MAX_HANDED_OVER_NAME) return { data: null, errors: [{ field: "handedOverName", message: "Too long (120 characters max)." }] };
+  if (!name && required) return { data: null, errors: [{ field: "handedOverName", message: "Say who handed it over." }] };
+  return { data: { handedOverName: name || null }, errors: [] };
 }
 
 export const CHANNELS = [
@@ -149,7 +137,7 @@ export const viewBlockedForLink = (d: { channel: string; status: string }) => d.
 
 export type DocumentMetaInput = {
   receivedAs?: unknown; channel?: unknown; receivedOn?: unknown; remark?: unknown;
-  returnable?: unknown; handedOverKind?: unknown; handedOverName?: unknown; // 12
+  returnable?: unknown; handedOverName?: unknown; // 12
   clientId?: unknown; docTypeId?: unknown; periodId?: unknown; registrationId?: unknown;
 };
 export type ValidDocumentMeta = {

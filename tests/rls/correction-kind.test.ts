@@ -75,7 +75,7 @@ describe("what sends it back to To review (AC-23, plan R1)", () => {
     for (const patch of [
       { received_on: "2026-05-03" },
       { received_as: "hard_copy", returnable: true },
-      { handed_over_kind: "courier", handed_over_name: "Blue Dart" },
+      { handed_over_name: "Blue Dart" },
       { period_id: may },
     ]) {
       const d = await filed();
