@@ -111,7 +111,7 @@ export function TypeCombobox({ id, types, value, onChange, disabled, invalid, de
       {/* The listbox stays in the DOM (aria-controls must point at it); it is hidden while closed. */}
       <div hidden={!popover}
         className="absolute z-20 mt-1 max-h-[22rem] w-full overflow-y-auto rounded-[10px] border border-line-2 bg-panel py-1 shadow-lg">
-        <div role="listbox" id={listId} aria-label="Document types">
+        <div role="listbox" id={listId} aria-label="Matching types">
           {groups.map((g, gi) => (
             <div key={`${g.kind}-${g.heading}`} role="group" aria-labelledby={`${uid}-h${gi}`}>
               <div id={`${uid}-h${gi}`} role="presentation"

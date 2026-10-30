@@ -15,6 +15,7 @@ import { Button, Card } from "@/components/ui";
 import { putFile } from "@/lib/documents/upload-client";
 import type { Prefill } from "@/lib/expected/prefill";
 import { formatLabel, isPreferred, preferenceApplies } from "@/lib/validation/formats";
+import { TypeCombobox, type ComboType } from "@/components/type-combobox";
 
 // Add document (mockup 12, spec AC-1 … AC-5, AC-15). The file uploads straight to private Storage as soon as it
 // is chosen (signed URL from the server), so "Save" is usually instant. ≤ 3 clicks after choosing the file when
@@ -73,7 +74,14 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     ? periods.find((p) => p.id === prefill!.periodId)
       ?? (prefillDefault ? periods.find((p) => p.kind === prefillDefault.kind && p.code === prefillDefault.code) : undefined)
     : undefined);
-  const [receivedAs, setReceivedAs] = useState<ReceivedAs>(existing?.receivedAs ?? "soft_copy");
+  const [receivedAs, setReceivedAs] = useState<ReceivedAs>(existing?.receivedAs === "original" ? "hard_copy" : (existing?.receivedAs ?? "soft_copy"));
+  // 12 (AC-8, AC-14): Returnable and who handed a hard copy in.
+  const [returnable, setReturnable] = useState(existing ? !!existing.returnable || existing.receivedAs === "original" : false);
+  const [handedOverName, setHandedOverName] = useState(existing?.handedOverName ?? "");
+  function onReceivedAs(v: ReceivedAs) {
+    setReceivedAs(v);
+    if (v !== "hard_copy") setReturnable(false); // AC-8: Soft copy hides and clears it
+  }
   const [client, setClient] = useState<ClientOption | null>(existing ? existing.client : initialClient);
   const [types, setTypes] = useState<ClientTypes>(initialTypes);
   const [docTypeId, setDocTypeId] = useState(existing?.docTypeId ?? prefillType?.id ?? "");
@@ -127,6 +135,23 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     setTypes((cur) => ({ ...cur, planTypes: mark(cur.planTypes), otherTypes: mark(cur.otherTypes) }));
   }
   const type: TypeOption | undefined = allTypes.find((t) => t.id === docTypeId);
+  // 12 (AC-1 … AC-6): the type-ahead field's options; plan types are the client's active plan rows.
+  const comboTypes: ComboType[] = useMemo(() => {
+    const inPlan = new Set(types.planTypes.map((t) => t.id));
+    return allTypes.map((t) => ({
+      id: t.id, name: t.name, groupId: t.groupId, groupName: t.groupName, groupSort: t.groupSort ?? 0, frequency: t.frequency,
+      inPlan: inPlan.has(t.id), proposed: t.proposed, aliases: t.aliases ?? [],
+    }));
+  }, [allTypes, types.planTypes]);
+  // 12 (AC-20): what the document was when the form opened, for the "Moves from … to …" line.
+  const [opened] = useState(() => {
+    const t = existing?.docTypeId ? [...initialTypes.planTypes, ...initialTypes.otherTypes].find((x) => x.id === existing.docTypeId) : undefined;
+    return existing && existing.classified && t ? { clientId: existing.client?.id ?? null, typeId: t.id, typeName: t.name, groupName: t.groupName } : null;
+  });
+  const moving = opened && type && (opened.typeId !== type.id || opened.clientId !== (client?.id ?? null))
+    ? { from: `${opened.groupName} › ${opened.typeName}`, to: `${type.groupName} › ${type.name}`, clientChanged: opened.clientId !== (client?.id ?? null) }
+    : null;
+  const resetsReview = existing?.status === "reviewed" || existing?.status === "needs_correction";
   const kinds: PeriodChoice[] = type ? ["none", ...allowedPeriodKinds(type.periodKind)] : ["none", "month", "quarter", "year"];
   const regChoices = type?.registrationKind ? types.registrations.filter((r) => r.kind === type.registrationKind) : [];
   const periodOptions = periods.filter((p) => p.kind === periodChoice);
@@ -274,7 +299,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     if (upload.status === "uploading") { setError("Wait for the upload to finish."); return; }
     setSaving(target);
     const fields = {
-      target, receivedAs, channel, receivedOn, remark,
+      target, receivedAs, channel, receivedOn, remark, returnable, handedOverName, // 12
       clientId: client?.id ?? "", docTypeId: docTypeId === NEW_TYPE ? "" : docTypeId,
       periodId: periodChoice === "none" ? "" : periodId, registrationId,
     };
@@ -353,8 +378,23 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
       <Card className="divide-y divide-line">
         {/* Received as */}
         <Row label="Received as" as="fieldset">
-          <Segmented name={`${uid}-ra`} value={receivedAs} onChange={(v) => setReceivedAs(v as ReceivedAs)}
+          <Segmented name={`${uid}-ra`} value={receivedAs} onChange={(v) => onReceivedAs(v as ReceivedAs)}
             options={RECEIVED_AS.map((r) => ({ value: r.value, label: r.label }))} />
+          {receivedAs === "hard_copy" && (
+            <div className="mt-3 space-y-3">
+              <label className="flex items-start gap-2 text-[14px]">
+                <input type="checkbox" checked={returnable} onChange={(e) => setReturnable(e.target.checked)} className="mt-1 size-4 accent-[var(--color-accent,#2B5BA8)]" />
+                <span><span className="font-medium">Returnable</span> <span className="text-ink-3">— the client wants this back</span></span>
+              </label>
+              <div>
+                <label htmlFor={`${uid}-handed`} className="block text-[13.5px] font-medium">Handed over by</label>
+                <input id={`${uid}-handed`} value={handedOverName} onChange={(e) => setHandedOverName(e.target.value)} maxLength={120} autoComplete="off"
+                  className={`mt-1 ${control}`} {...described("handedOverName", `${uid}-handed-hint`)} />
+                {errText("handedOverName")}
+                <p id={`${uid}-handed-hint`} className="mt-1 text-[13px] text-ink-3">Who brought it in, e.g. Courier — Blue Dart, or Client&apos;s accountant.</p>
+              </div>
+            </div>
+          )}
         </Row>
 
         {/* Client */}
@@ -397,23 +437,23 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
 
         {/* Document type */}
         <Row label="Document type" htmlFor={`${uid}-type`}>
-          <select id={`${uid}-type`} value={docTypeId} disabled={forItem} onChange={(e) => onTypeChange(e.target.value)} className={`${control} disabled:bg-canvas`} {...described("docTypeId", `${uid}-type-hint`)}>
-            <option value="">Choose a type…</option>
-            {types.planTypes.length > 0 && (
-              <optgroup label={`Active for ${client?.name ?? "this client"}`}>
-                {types.planTypes.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.groupName}{t.proposed ? " (proposed)" : ""}</option>)}
-              </optgroup>
-            )}
-            <optgroup label={client ? "Other types" : "All types"}>
-              {types.otherTypes.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.groupName}</option>)}
-            </optgroup>
-            {client && canPropose && !forItem && <option value={NEW_TYPE}>+ New type for this client…</option>}
-          </select>
+          <TypeCombobox id={`${uid}-type`} types={comboTypes} value={docTypeId === NEW_TYPE ? "" : docTypeId} disabled={forItem}
+            onChange={onTypeChange} invalid={!!fe("docTypeId")}
+            describedBy={[fe("docTypeId") && `${uid}-docTypeId-err`, `${uid}-type-hint`].filter(Boolean).join(" ")}
+            canPropose={!!client && canPropose && !forItem}
+            onPropose={(text) => { onTypeChange(NEW_TYPE); onNewName(text); }} />
           {errText("docTypeId")}
           <p id={`${uid}-type-hint`} className="mt-1 text-[13px] text-ink-3">
             {type ? <>Group <strong className="font-semibold text-ink">{type.groupName}</strong> · set from the type.{type.proposed ? " Proposed — waiting for approval." : ""}</>
-              : client ? "Types active for this client are listed first." : "Choose a client to see their types first."}
+              : client ? "Types in this client's plan are listed first." : "Choose a client to see their types first."}
           </p>
+          {/* 12 (AC-20): information only; the save needs no second click. */}
+          {moving && (
+            <p role="status" className="mt-2 rounded-lg bg-warn-soft px-3 py-2 text-[13px] text-warn">
+              Moves from {moving.from} to {moving.to}{moving.clientChanged && client ? ` (client ${client.name})` : ""}.
+              {resetsReview ? " Review will reset to To review." : ""}
+            </p>
+          )}
 
           {docTypeId === NEW_TYPE && (
             <div className="mt-3 space-y-3 rounded-lg border border-line bg-canvas p-3">

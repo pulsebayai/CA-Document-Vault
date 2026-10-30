@@ -7,7 +7,7 @@ import { z } from "zod";
 import { requireStaff } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
 import {
-  MIME_BY_EXTENSION, canView, extensionOf, sanitiseFileName, validateDocumentMeta, validateFile, viewBlockedForLink,
+  MIME_BY_EXTENSION, canView, extensionOf, sanitiseFileName, validateDocumentMeta, validateFile, validateHandedOver, viewBlockedForLink,
   type AllowedExtension, type DocumentMetaInput,
 } from "@/lib/validation/document";
 import { istDate } from "./period";
@@ -100,7 +100,10 @@ const DB_MESSAGES: Array<[RegExp, string, string?]> = [
   [/CLIENT_OFFICE|row-level security/, "You can't add documents for this client.", "clientId"],
   [/RECEIVED_ON_FUTURE/, "Received on can't be in the future.", "receivedOn"],
   [/OBJECT_MISSING|FILE_TYPE|PATH/, "The upload didn't finish. Please add the file again.", "file"],
-  [/DISPATCHED/, "This original is in a dispatch packet. Undo the dispatch on the document page before changing its client or how it was received.", "clientId"], // 07
+  [/DISPATCHED/, "This document is in a dispatch packet. Undo the dispatch on the document page before changing its client, how it was received or Returnable.", "clientId"], // 07, 12
+  [/RETURNABLE_HARD_COPY/, "Only a hard copy can be returnable.", "returnable"], // 12
+  [/HANDED_OVER_CLEAR/, "Say who handed it over — it can be changed but not cleared.", "handedOverName"], // 12
+  [/HANDED_OVER_NAME|HANDED_OVER_SOFT_COPY/, "Check who handed it over (up to 120 characters, hard copies only).", "handedOverName"], // 12
   [/ARCHIVED/, "Unarchive the document before changing it."],
   [/NOT_FOUND/, "Document not found."],
 ];
@@ -119,8 +122,10 @@ export async function saveDocument(input: SaveDocumentInput): Promise<SaveDocume
   const target = input?.target === "vault" ? "vault" : "inbox";
   const file = input?.file ?? null;
   const v = validateDocumentMeta(input ?? {}, { target, hasFile: !!file, today: istDate() });
-  if (!v.data) {
-    return { ok: false, error: "Check the highlighted fields.", fieldErrors: Object.fromEntries(v.errors.map((e) => [e.field, e.message])) };
+  // 12 (AC-14, R2): every staff screen asks who handed a new hard copy in.
+  const h = validateHandedOver({ receivedAs: input?.receivedAs, handedOverName: input?.handedOverName }, { existing: null });
+  if (!v.data || !h.data) {
+    return { ok: false, error: "Check the highlighted fields.", fieldErrors: Object.fromEntries([...v.errors, ...h.errors].map((e) => [e.field, e.message])) };
   }
   let filePayload: { storage_path: string; file_name: string } | null = null;
   if (file) {
@@ -138,6 +143,7 @@ export async function saveDocument(input: SaveDocumentInput): Promise<SaveDocume
     received_as: d.receivedAs, channel: d.channel, received_on: d.receivedOn, remark: d.remark,
     client_id: d.clientId, doc_type_id: d.docTypeId, period_id: d.periodId, registration_id: d.registrationId,
     file: filePayload,
+    returnable: d.returnable, handed_over_name: h.data.handedOverName, // 12
   };
   const itemId = input?.requestItemId && uuid.safeParse(input.requestItemId).success ? input.requestItemId : null;
   const { data, error } = itemId
@@ -214,17 +220,23 @@ export async function updateDocumentAction(input: UpdateDocumentInput): Promise<
   await requireStaff();
   if (!uuid.safeParse(input?.id).success) return { ok: false, error: "Document not found.", fieldErrors: {} };
   const supabase = await createClient();
-  const { data: doc } = await supabase.from("document").select("id, doc_code, version_count, client_id, channel").eq("id", input.id).maybeSingle();
+  const { data: doc } = await supabase.from("document")
+    .select("id, doc_code, version_count, client_id, channel, received_as, handed_over_name").eq("id", input.id).maybeSingle();
   if (!doc) return { ok: false, error: "Document not found.", fieldErrors: {} };
   const target = input.target === "vault" ? "vault" : "inbox";
   const v = validateDocumentMeta(input, { target, hasFile: doc.version_count > 0, today: istDate(), existingChannel: doc.channel });
-  if (!v.data) {
-    return { ok: false, error: "Check the highlighted fields.", fieldErrors: Object.fromEntries(v.errors.map((e) => [e.field, e.message])) };
+  // 12 (AC-14): needed when it becomes a hard copy; once recorded it can be changed, not cleared; older hard copies
+  // without it can be edited without it.
+  const h = validateHandedOver({ receivedAs: input?.receivedAs, handedOverName: input?.handedOverName },
+    { existing: { receivedAs: doc.received_as, handedOverName: doc.handed_over_name } });
+  if (!v.data || !h.data) {
+    return { ok: false, error: "Check the highlighted fields.", fieldErrors: Object.fromEntries([...v.errors, ...h.errors].map((e) => [e.field, e.message])) };
   }
   const d = v.data;
   const { error } = await supabase.rpc("update_document", { p_id: doc.id, p: {
     client_id: d.clientId, doc_type_id: d.docTypeId, period_id: d.periodId, registration_id: d.registrationId,
     received_as: d.receivedAs, channel: d.channel, received_on: d.receivedOn, remark: d.remark,
+    returnable: d.returnable, handed_over_name: h.data.handedOverName, // 12
   } });
   if (error) {
     console.error("documents.update_failed", { code: error.code });

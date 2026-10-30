@@ -26,7 +26,7 @@ export function InboxView({ items, now, saved, toReview }: { items: InboxItem[];
     <div className="mx-auto max-w-[815px]">
       <PageHeader title="Untagged documents"
         subtitle={<>Documents waiting for a client or a type. Filed documents to review are on{" "}
-          <Link href={todayHref("everyone", "to_review")} className="text-accent hover:underline">Today › To review</Link>{toReview !== undefined ? ` (${toReview})` : ""}.</>}
+          <Link href={todayHref("everyone", "to_review")} className="text-accent underline">Today › To review</Link>{toReview !== undefined ? ` (${toReview})` : ""}.</>}
         actions={<Link href="/documents/new?from=/inbox" className="inline-flex items-center rounded-[9px] bg-accent px-3.5 py-2 font-medium text-white hover:bg-[#264d8f]">Add document</Link>} />
       {saved && <p role="status" className="mb-4 rounded-lg bg-ok-soft px-4 py-3 text-[13.5px] text-ok"><strong className="font-semibold">{saved}</strong> saved.</p>}
       {items.length === 0 ? (

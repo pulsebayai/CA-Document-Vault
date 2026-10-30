@@ -6,7 +6,7 @@ import { groupId } from "../support/catalogue";
 import { createDocumentOffice, TINY } from "../support/documents";
 import { testGstin, testPan } from "../support/test-data";
 import { defaultPeriod, istDate } from "@/lib/documents/period";
-import { appAlert, signIn } from "./helpers";
+import { appAlert, pickType, signIn } from "./helpers";
 
 // Feature 03 step 5 — Add document (mockup 12; spec AC-1 … AC-5, AC-15). Own is_test office; its Storage
 // objects are removed and its rows reset at the start of every run.
@@ -63,8 +63,7 @@ test("AC-1 … AC-5: from a client page, a soft copy is filed in ≤ 3 clicks af
   await expect(page.getByText("Uploaded", { exact: true })).toBeVisible();
 
   // AC-5: click 1–2 = pick the type from the client's plan (listed first); click 3 = Save to vault.
-  const type = page.getByLabel("Document type");
-  await type.selectOption({ label: "Sales invoices / sales register · GST" });
+  await pickType(page, "Sales invoices / sales register"); // 12: type-ahead field
   // AC-3: group shown; period defaults to the month that just ended; the only GSTIN is picked.
   await expect(page.getByText("set from the type")).toContainText("GST");
   await expect(page.getByRole("radio", { name: "Month" })).toBeChecked();
@@ -93,6 +92,7 @@ test("AC-1, AC-4: a hard copy with no file goes to the Inbox from the header but
   await expect(page.getByRole("button", { name: "Save as untagged" })).toBeEnabled(); // form is interactive
   await page.locator("label").filter({ has: page.getByRole("radio", { name: "Hard copy" }) }).click(); // the radio is sr-only
   await expect(page.getByRole("radio", { name: "Hard copy" })).toBeChecked();
+  await page.getByLabel("Handed over by").fill("Courier — Blue Dart"); // 12 (AC-14, approved 2026-10-30)
   await page.getByLabel("Channel").selectOption("courier");
   await page.getByRole("button", { name: "Save as untagged" }).click();
   await page.waitForURL(/\/clients\?saved=/);
@@ -122,7 +122,10 @@ test("AC-15: a new type is offered only after the closest existing ones, and joi
   await expect(page.getByRole("button", { name: "Save as untagged" })).toBeEnabled(); // form is interactive
   await page.locator("label").filter({ has: page.getByRole("radio", { name: "Hard copy" }) }).click(); // the radio is sr-only
   await expect(page.getByRole("radio", { name: "Hard copy" })).toBeChecked();
-  await page.getByLabel("Document type").selectOption({ label: "+ New type for this client…" });
+  await page.getByLabel("Handed over by").fill("Courier — Blue Dart"); // 12 (AC-14, approved 2026-10-30)
+  // 12: no match in the type-ahead field → "+ Propose a new type…" opens 03's new-type step.
+  await page.getByRole("combobox", { name: "Document type" }).fill("Crypto exchange statement");
+  await page.getByRole("option", { name: /Propose a new type/ }).click();
 
   const name = page.getByLabel("New type name");
   await name.fill("form 16");
@@ -131,7 +134,7 @@ test("AC-15: a new type is offered only after the closest existing ones, and joi
   await name.fill("Crypto exchange statement");
   await page.getByLabel("Group", { exact: true }).selectOption({ label: "Income Tax" });
   await page.getByRole("button", { name: /New type “Crypto exchange statement” for this client/ }).click();
-  await expect(page.getByLabel("Document type")).toHaveValue(/[0-9a-f-]{36}/);
+  await expect(page.getByRole("combobox", { name: "Document type" })).toHaveValue("Crypto exchange statement"); // 12: shows the chosen type
   await expect(page.getByText("Proposed — waiting for approval.")).toBeVisible();
   expect(await seriousAxe(page)).toEqual([]);
 

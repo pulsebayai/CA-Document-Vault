@@ -165,13 +165,15 @@ export type DocumentForForm = {
   registrationId: string | null; receivedAs: "soft_copy" | "hard_copy" | "original"; channel: string; receivedOn: string;
   /** 12: returnable hard copy; who handed it in (personal data: shown on the document, never logged). */
   returnable?: boolean; handedOverName?: string | null;
+  /** 12 (AC-20): review status, so the form can say a change resets the review. */
+  status?: string;
   remark: string | null; fileName: string | null; versionCount: number; classified: boolean; archived: boolean;
 };
 
 export async function getDocumentForForm(id: string): Promise<DocumentForForm | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("document")
-    .select(`id, doc_code, doc_type_id, period_id, registration_id, received_as, returnable, handed_over_name, channel, received_on, remark, version_count,
+    .select(`id, doc_code, doc_type_id, period_id, registration_id, received_as, returnable, handed_over_name, status, channel, received_on, remark, version_count,
       classified_at, archived_at, client:client_id (id, name, code), current:current_version_id (file_name)`)
     .eq("id", id).maybeSingle();
   if (!data) return null;
@@ -180,7 +182,7 @@ export async function getDocumentForForm(id: string): Promise<DocumentForForm | 
     id: data.id, docCode: data.doc_code, client: client ? { id: client.id, name: client.name, code: client.code } : null,
     docTypeId: data.doc_type_id, periodId: data.period_id, registrationId: data.registration_id,
     receivedAs: data.received_as, channel: data.channel, receivedOn: data.received_on, remark: data.remark,
-    returnable: !!data.returnable, handedOverName: data.handed_over_name ?? null,
+    returnable: !!data.returnable, handedOverName: data.handed_over_name ?? null, status: data.status,
     fileName: (data.current as unknown as { file_name: string } | null)?.file_name ?? null,
     versionCount: data.version_count, classified: !!data.classified_at, archived: !!data.archived_at,
   };

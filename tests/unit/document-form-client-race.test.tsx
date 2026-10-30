@@ -43,6 +43,15 @@ function setValue(el: HTMLInputElement | HTMLSelectElement, value: string, event
   el.dispatchEvent(new Event(event, { bubbles: true }));
 }
 
+// 12 (approved 2026-10-30): the type is a type-ahead combobox now, not a <select>. Only how a type is picked and
+// read changes (type its name, pick the option; the field shows the chosen type's name); every check is the same.
+const typeField = () => container.querySelector<HTMLInputElement>('input[role="combobox"][id$="-type"]')!;
+async function chooseType(name: string) {
+  await act(async () => { setValue(typeField(), name, "input"); });
+  const opt = [...container.querySelectorAll<HTMLElement>('[role="option"]')].find((o) => o.textContent?.includes(name))!;
+  await act(async () => { opt.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true })); });
+}
+
 describe("document form: client picked, type chosen while the client's types load", () => {
   it("keeps the chosen type when the client's list still contains it", async () => {
     vi.useFakeTimers();
@@ -63,13 +72,12 @@ describe("document form: client picked, type chosen while the client's types loa
     await act(async () => { pick.click(); }); // loadClientTypes is now in flight
 
     // The user chooses the type from "All types" before the client's list arrives.
-    const select = container.querySelector<HTMLSelectElement>("select")!;
-    await act(async () => { setValue(select, form16.id, "change"); });
-    expect(select.value).toBe(form16.id);
+    await chooseType(form16.name);
+    expect(typeField().value).toBe(form16.name);
 
     // The client's list arrives and still contains the type: the choice must stay.
     await act(async () => { resolveLoad({ ok: true, planTypes: [], otherTypes: [form16], registrations: [] }); });
-    expect(container.querySelector<HTMLSelectElement>("select")!.value).toBe(form16.id);
+    expect(typeField().value).toBe(form16.name);
   });
 
   it("still clears the type when the client's list doesn't contain it", async () => {
@@ -87,10 +95,9 @@ describe("document form: client picked, type chosen while the client's types loa
     await act(async () => { await vi.advanceTimersByTimeAsync(300); });
     const pick = [...container.querySelectorAll<HTMLButtonElement>('[role="listbox"] button')].find((b) => b.textContent?.includes("Inbox Traders"))!;
     await act(async () => { pick.click(); });
-    const select = container.querySelector<HTMLSelectElement>("select")!;
-    await act(async () => { setValue(select, form16.id, "change"); });
+    await chooseType(form16.name);
     await act(async () => { resolveLoad({ ok: true, planTypes: [], otherTypes: [], registrations: [] }); });
-    expect(container.querySelector<HTMLSelectElement>("select")!.value).toBe("");
+    expect(typeField().value).toBe("");
   });
 
   // Review I-1 (2026-10-28): the same race for the period. The user picks the type, then another period, and only
@@ -116,12 +123,12 @@ describe("document form: client picked, type chosen while the client's types loa
     await act(async () => { await vi.advanceTimersByTimeAsync(300); });
     const pick = [...container.querySelectorAll<HTMLButtonElement>('[role="listbox"] button')].find((b) => b.textContent?.includes("Inbox Traders"))!;
     await act(async () => { pick.click(); });
-    await act(async () => { setValue(container.querySelector<HTMLSelectElement>("select")!, bank.id, "change"); });
+    await chooseType(bank.name);
     const period = () => container.querySelector<HTMLSelectElement>('select[id$="-period"]')!;
     expect(period().value).toBe("p9"); // the period that just ended is preselected
     await act(async () => { setValue(period(), "p8", "change"); });
     await act(async () => { resolveLoad({ ok: true, planTypes: [bank], otherTypes: [], registrations: [] }); });
-    expect(container.querySelector<HTMLSelectElement>("select")!.value).toBe(bank.id);
+    expect(typeField().value).toBe(bank.name);
     expect(period().value).toBe("p8");
   });
 });

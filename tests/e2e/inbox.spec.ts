@@ -3,7 +3,7 @@ import { expect, test, type Page } from "./fixtures";
 import "../support/setup-env";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import { createDocumentOffice, mustCreateDocument, uploadObject } from "../support/documents";
-import { signIn } from "./helpers";
+import { pickType, signIn } from "./helpers";
 
 // Feature 03 step 6 — Inbox, Assign and the nav count (mockup 02; spec AC-7 … AC-9).
 
@@ -80,7 +80,7 @@ test("AC-8: Assign opens the form with what is known; client + type files it and
 
   await page.getByRole("combobox", { name: "Client", exact: true }).fill("Inbox Tr");
   await page.getByRole("listbox", { name: "Matching clients" }).getByRole("button", { name: /Inbox Traders/ }).click();
-  await page.getByLabel("Document type").selectOption({ label: "Form 16 from employer · Income Tax" });
+  await pickType(page, "Form 16 from employer"); // 12: type-ahead field
   await page.getByRole("button", { name: "Save to vault" }).click();
 
   await page.waitForURL(/\/inbox\?saved=/);
@@ -102,6 +102,7 @@ test("AC-4: a document added from the Inbox (header button) comes back to the In
   await expect(page.getByRole("button", { name: "Save as untagged" })).toBeEnabled(); // form is interactive
   await page.locator("label").filter({ has: page.getByRole("radio", { name: "Hard copy" }) }).click(); // the radio is sr-only
   await expect(page.getByRole("radio", { name: "Hard copy" })).toBeChecked();
+  await page.getByLabel("Handed over by").fill("Client's accountant"); // 12 (AC-14, approved 2026-10-30)
   await page.getByRole("button", { name: "Save as untagged" }).click();
   await page.waitForURL(/\/inbox\?saved=/);
   const saved = await page.getByRole("status").filter({ hasText: "saved" }).innerText();

@@ -135,7 +135,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
               <Item label="Period">{d.periodLabel ?? (d.typeName ? "Not needed" : null)}</Item>
               <Item label="GSTIN / TAN">{d.registrationNumber}</Item>
               <Item label="Received as">{RECEIVED_LABEL[d.receivedAs]}{returnable ? " · returnable" : ""}</Item>
-              {d.receivedAs !== "soft_copy" && <Item label="Handed over by">{d.handedOverName}</Item>}
+              {d.receivedAs !== "soft_copy" && <Item label="Handed over by">{d.handedOverName ?? <span className="text-ink-3">Not recorded</span>}</Item>}
               <Item label="Channel">{CHANNEL_LABEL[d.channel] ?? d.channel}</Item>
               <Item label="Received on">{date.format(new Date(`${d.receivedOn}T00:00:00+05:30`))}</Item>
               <Item label="Received by">{d.receivedBy}</Item>

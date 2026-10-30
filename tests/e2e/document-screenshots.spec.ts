@@ -5,7 +5,7 @@ import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { groupId } from "../support/catalogue";
 import { createDocumentOffice, mustCreateDocument, periodId, typeId, uploadObject, TINY } from "../support/documents";
 import { testGstin, testPan } from "../support/test-data";
-import { signIn } from "./helpers";
+import { pickType, signIn } from "./helpers";
 
 // Feature 03 step 9 — screenshots of the new screens for the PR next to mockups 02 (Inbox), 10 (Client ›
 // Documents, received only) and 12 (Add document), plus the document page; axe at desktop and phone width;
@@ -82,7 +82,7 @@ test("screens vs mockups 02 / 10 / 12 + document page, desktop and phone width; 
   await page.goto(`/documents/new?client=${clientId}&from=/clients/${clientId}`);
   await page.locator('input[type="file"]').setInputFiles({ name: "Aug-2026-invoices.pdf", mimeType: "application/pdf", buffer: TINY.pdf.bytes });
   await expect(page.getByText("Uploaded", { exact: true })).toBeVisible();
-  await page.getByLabel("Document type").selectOption({ label: "Sales invoices / sales register · GST" });
+  await pickType(page, "Sales invoices / sales register"); // 12: type-ahead field
   await shoot(page, "12-add-document");
 
   // Document page (no mockup)

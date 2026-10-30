@@ -4,7 +4,7 @@ import "../support/setup-env";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import { createDocumentOffice, TINY } from "../support/documents";
 import { T, bankOnlyClient } from "../support/expected";
-import { signIn } from "./helpers";
+import { pickType, signIn } from "./helpers";
 
 // Feature 11 step 4–6 — preferred formats on the staff side (spec AC-1, AC-3, AC-5, AC-16, AC-19, AC-20, AC-21).
 // Own is_test office, reset every run; test offices start with no preferences (migration C), so the Admin sets
@@ -36,7 +36,7 @@ async function addPdf(page: Page) {
   await expect(page.getByRole("button", { name: "Save to vault" })).toBeEnabled();
   await page.locator('input[type="file"]').setInputFiles({ name: "statement.pdf", mimeType: "application/pdf", buffer: TINY.pdf.bytes });
   await expect(page.getByText("Uploaded", { exact: true })).toBeVisible();
-  await page.getByLabel("Document type").selectOption({ label: `${T.bank} · Banking` });
+  await pickType(page, T.bank); // 12: type-ahead field
 }
 
 test("AC-1, AC-3: the Admin sets preferred formats on a type; the catalogue row shows them", async ({ page, baseURL }) => {

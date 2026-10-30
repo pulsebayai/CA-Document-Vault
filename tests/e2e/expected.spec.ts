@@ -8,7 +8,7 @@ import { T, expectedFor, expectedItem, generateAsOf } from "../support/expected"
 import { testGstin, testPan } from "../support/test-data";
 import { istDate } from "@/lib/documents/period";
 import { shortDate } from "@/lib/expected/schedule";
-import { signIn } from "./helpers";
+import { signIn, typeFieldValue } from "./helpers";
 
 // Feature 04 step 5 — Client › Expected (spec AC-13) with Waive (AC-9), Undo (AC-10), Reopen (AC-11) and
 // Upload → Add document pre-filled → linked on save (AC-8). Own is_test office, reset every run.
@@ -132,7 +132,7 @@ test("AC-8 + AC-11: Upload pre-fills Add document (0 choices); saving links it �
   await page.getByRole("link", { name: `Upload ${label}` }).click();
   await expect(page.getByRole("heading", { name: "Add document" })).toBeVisible();
   await expect(page.getByText("Expected Traders")).toBeVisible();
-  await expect(page.getByLabel("Document type").locator("option:checked")).toHaveText(new RegExp(`^${T.sales.replace(/[/]/g, "\\/")}`));
+  await expect(page.getByRole("combobox", { name: "Document type" })).toHaveValue(typeFieldValue(T.sales)); // 12: type-ahead field
   await expect(page.getByRole("radio", { name: "Month" })).toBeChecked();
   await expect(page.getByRole("combobox", { name: "Month" }).locator("option:checked")).toHaveText("Jun 2026");
   await expect(page.getByLabel("GSTIN")).toHaveValue(g1Id);
