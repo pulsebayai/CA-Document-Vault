@@ -40,6 +40,10 @@ export type DocumentStateInput = {
 export const isReturnable = (d: Pick<DocumentStateInput, "receivedAs" | "returnable">) =>
   d.returnable === true || d.receivedAs === "original";
 
+/** 12: the paper badge on a document row — "Returnable" (bad) for a returnable hard copy, "Hard copy" (warn) otherwise. */
+export const paperBadge = (d: Pick<DocumentStateInput, "receivedAs" | "returnable">): { label: string; tone: "bad" | "warn" } | null =>
+  isReturnable(d) ? { label: "Returnable", tone: "bad" } : d.receivedAs === "hard_copy" ? { label: "Hard copy", tone: "warn" } : null;
+
 export type ShownState =
   | { kind: "archived"; text: string }
   | { kind: "inbox"; text: string }
@@ -66,7 +70,7 @@ const istDay = (at: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asi
 /** The one state a document shows (spec order). `today` = India date, for short dates. */
 export function documentState(d: DocumentStateInput, today: string): ShownState {
   if (d.archived) return { kind: "archived", text: "Archived" };
-  if (!isFiled(d)) return { kind: "inbox", text: "In inbox" };
+  if (!isFiled(d)) return { kind: "inbox", text: "Untagged" }; // 12 (D2)
   if (isReturnable(d) && d.dispatchedOn) {
     const method = methodLabel(d.dispatchMethod ?? "other");
     return { kind: "dispatched", text: `Dispatched ${shortDate(d.dispatchedOn, today)} · ${method}`, on: d.dispatchedOn, method };

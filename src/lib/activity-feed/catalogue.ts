@@ -24,7 +24,7 @@ const fixed = (category: ActivityCategory, s: string): Entry => ({ category, tex
 
 export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   // Documents (03)
-  "document.added": { category: "documents", text: (r) => (r.doc_type_name ? `added ${r.doc_type_name}` : "added a document to the Inbox") },
+  "document.added": { category: "documents", text: (r) => (r.doc_type_name ? `added ${r.doc_type_name}` : "added an untagged document") },
   "document.classified": { category: "documents", text: (r) => `filed ${doc(r)}` },
   "document.updated": { category: "documents", text: (r) => `edited ${doc(r)}` },
   "document.version_added": { category: "documents", text: (r) => `added a new file to ${doc(r)}` },

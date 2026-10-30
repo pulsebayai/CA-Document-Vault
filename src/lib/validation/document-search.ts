@@ -29,7 +29,7 @@ export type Sort = (typeof SORTS)[number]["value"];
 
 export const DOC_STATES = [
   { value: "classified", label: "Classified" },
-  { value: "inbox", label: "Inbox" },
+  { value: "inbox", label: "Untagged" }, // 12 (D2)
 ] as const;
 export type DocState = (typeof DOC_STATES)[number]["value"];
 

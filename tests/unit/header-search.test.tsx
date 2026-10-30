@@ -111,7 +111,7 @@ describe("suggestions (AC-2)", () => {
     suggest.mockResolvedValueOnce({ ...hits, clients: [], documents: [{ ...hits.documents[0], clientName: null, typeName: null, periodLabel: null, periodCode: null }] });
     await user.type(box, "z");
     await settle();
-    expect(screen.getByRole("option", { name: /DOC-FY26-27-00042/ })).toHaveTextContent("DOC-FY26-27-00042 · No type · Inbox · form16.pdf");
+    expect(screen.getByRole("option", { name: /DOC-FY26-27-00042/ })).toHaveTextContent("DOC-FY26-27-00042 · No type · Untagged · form16.pdf");
   });
 
   it("ignores an answer that arrives after a newer one", async () => {

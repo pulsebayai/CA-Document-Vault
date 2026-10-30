@@ -49,7 +49,7 @@ describe("helpers", () => {
   it("rowText shows type · period, the client or Inbox, and how it came in", () => {
     expect(rowText(hit())).toEqual({ what: "Sales register · Aug 2026", who: "Acme Traders", how: "GST · Received 5 Aug 2026 by Asha · Email · sales-aug.pdf" });
     expect(rowText(hit({ clientName: null, typeName: null, groupName: null, periodLabel: null, periodCode: null, fileName: null, receivedAs: "hard_copy" })))
-      .toEqual({ what: "No type", who: "Inbox", how: "Received 5 Aug 2026 by Asha · Email · Hard copy — no file" });
+      .toEqual({ what: "No type", who: "Untagged", how: "Received 5 Aug 2026 by Asha · Email · Hard copy — no file" });
   });
 
   it("activeChips names each filter and its value, using facet labels for people", () => {

@@ -70,7 +70,7 @@ test("screens vs mockups 02 / 10 / 12 + document page, desktop and phone width; 
 
   // Mockup 02 — Inbox
   await page.goto("/inbox");
-  await expect(page.getByRole("list", { name: "Inbox" }).getByRole("listitem")).toHaveCount(3);
+  await expect(page.getByRole("list", { name: "Untagged documents" }).getByRole("listitem")).toHaveCount(3);
   await shoot(page, "02-inbox");
 
   // Mockup 10 — Client › Documents (received documents only in 03)

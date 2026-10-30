@@ -58,7 +58,7 @@ export function TodayView({ data, inbox, scope, show, page }: {
         <Count n={data.counts.requested ?? 0} label="Requested" tone="text-ink" pressed={show === "requested"}
           onClick={() => go(scope, show === "requested" ? null : "requested")} />
         <Link href="/inbox" className="flex items-baseline gap-2 rounded-xl bg-panel px-4 py-3 shadow-card hover:bg-canvas">
-          <span className="text-[22px] font-semibold">{inbox}</span>{" "}<span className="text-[13.5px] text-ink-2">In inbox</span>
+          <span className="text-[22px] font-semibold">{inbox}</span>{" "}<span className="text-[13.5px] text-ink-2">Untagged</span>
         </Link>
       </div>
 

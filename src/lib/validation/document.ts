@@ -189,8 +189,8 @@ export function validateDocumentMeta(
     else { ids[k] = null; errors.push({ field: k, message: "Choose again from the list." }); }
   }
   if (ctx.target === "vault") {
-    if (!ids.clientId && !errors.some((e) => e.field === "clientId")) errors.push({ field: "clientId", message: "Choose a client, or save to inbox." });
-    if (!ids.docTypeId && !errors.some((e) => e.field === "docTypeId")) errors.push({ field: "docTypeId", message: "Choose a document type, or save to inbox." });
+    if (!ids.clientId && !errors.some((e) => e.field === "clientId")) errors.push({ field: "clientId", message: "Choose a client, or save as untagged." });
+    if (!ids.docTypeId && !errors.some((e) => e.field === "docTypeId")) errors.push({ field: "docTypeId", message: "Choose a document type, or save as untagged." });
   }
 
   if (errors.length) return { data: null, errors };

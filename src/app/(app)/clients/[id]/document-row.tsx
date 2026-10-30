@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { ClientDocument } from "@/lib/documents/queries";
-import { documentState, heldDays, nextAction, type ShownStateKind } from "@/lib/documents/state";
+import { documentState, heldDays, nextAction, paperBadge, type ShownStateKind } from "@/lib/documents/state";
 import { Badge } from "@/components/ui";
 import { FormatBadge } from "@/components/format-badge";
 import { RowCheckbox } from "@/components/selection-bar";
@@ -29,10 +29,12 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
 }) {
   const [msg, setMsg] = useState<RowMessage | null>(null);
   const input = { archived: false, clientId, docTypeId: d.typeName ? "filed" : null, receivedAs: d.receivedAs, status: d.status,
+    returnable: d.returnable, correctionKind: d.correctionKind, // 12
     reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
     dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod };
   const state = documentState(input, today);
   const held = heldDays({ ...input, receivedOn: d.receivedOn }, today);
+  const paper = paperBadge(d); // 12
   const action = nextAction(state);
   const label = `${d.typeName}${d.periodLabel ? ` · ${d.periodLabel}` : ""} (${d.docCode})`;
   return (
@@ -46,8 +48,7 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
         <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[13px] text-ink-2">
           <span>Received {day.format(new Date(`${d.receivedOn}T00:00:00+05:30`))} by {d.receivedBy}</span>
           <span className="text-ink-3">{d.docCode}</span>
-          {d.receivedAs === "hard_copy" && <Badge tone="warn">Hard copy</Badge>}
-          {d.receivedAs === "original" && <Badge tone="bad">Original</Badge>}
+          {paper && <Badge tone={paper.tone}>{paper.label}</Badge>}
           {d.versionCount > 1 && <Badge tone="muted">{d.versionCount} versions</Badge>}
           {d.proposed && <Badge tone="accent">Proposed type</Badge>}
           {d.fromLink && <Badge tone="accent">From client link</Badge>}

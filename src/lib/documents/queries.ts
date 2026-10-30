@@ -109,12 +109,14 @@ export async function clientOption(id: string): Promise<ClientOption | null> {
 // ── Inbox (AC-7 … AC-9) ──────────────────────────────────────────────────────
 export type InboxItem = {
   id: string; docCode: string; fileName: string | null; receivedAs: "soft_copy" | "hard_copy" | "original";
+  /** 12: the client wants this hard copy back. */
+  returnable?: boolean; handedOverName?: string | null;
   channel: string; remark: string | null; addedBy: string; createdAt: string;
   clientName: string | null; typeName: string | null;
 };
 
 type InboxRow = {
-  id: string; doc_code: string; received_as: InboxItem["receivedAs"]; channel: string; remark: string | null; created_at: string;
+  id: string; doc_code: string; received_as: InboxItem["receivedAs"]; returnable: boolean; handed_over_name: string | null; channel: string; remark: string | null; created_at: string;
   creator: { full_name: string } | null; current: { file_name: string } | null;
   client: { name: string } | null; doc_type: { name: string } | null;
 };
@@ -128,13 +130,21 @@ export async function listInbox(onlyAddedBy: string | null, limit = 200): Promis
   const { data, error } = await q.order("created_at", { ascending: false }).limit(limit);
   if (error) {
     console.error("documents.inbox_failed", { code: error.code });
-    throw new Error("Could not load the Inbox.");
+    throw new Error("Could not load untagged documents.");
   }
   return ((data ?? []) as unknown as InboxRow[]).map((r) => ({
-    id: r.id, docCode: r.doc_code, fileName: r.current?.file_name ?? null, receivedAs: r.received_as, channel: r.channel,
+    id: r.id, docCode: r.doc_code, fileName: r.current?.file_name ?? null, receivedAs: r.received_as, returnable: r.returnable, handedOverName: r.handed_over_name, channel: r.channel,
     remark: r.remark, addedBy: r.creator?.full_name ?? "—", createdAt: r.created_at,
     clientName: r.client?.name ?? null, typeName: r.doc_type?.name ?? null,
   }));
+}
+
+/** 12 (AC-17): filed documents waiting for review (Today › To review, everyone), for the Untagged page's subtitle. */
+export async function toReviewCount(): Promise<number> {
+  const supabase = await createClient();
+  const { count } = await supabase.from("document").select("id", { count: "exact", head: true })
+    .not("classified_at", "is", null).is("archived_at", null).eq("status", "received");
+  return count ?? 0;
 }
 
 /** Nav badge (AC-7): what this user's Inbox holds. */
@@ -150,13 +160,15 @@ export async function inboxCount(onlyAddedBy: string | null): Promise<number> {
 export type DocumentForForm = {
   id: string; docCode: string; client: ClientOption | null; docTypeId: string | null; periodId: string | null;
   registrationId: string | null; receivedAs: "soft_copy" | "hard_copy" | "original"; channel: string; receivedOn: string;
+  /** 12: returnable hard copy; who handed it in (personal data: shown on the document, never logged). */
+  returnable?: boolean; handedOverName?: string | null;
   remark: string | null; fileName: string | null; versionCount: number; classified: boolean; archived: boolean;
 };
 
 export async function getDocumentForForm(id: string): Promise<DocumentForForm | null> {
   const supabase = await createClient();
   const { data } = await supabase.from("document")
-    .select(`id, doc_code, doc_type_id, period_id, registration_id, received_as, channel, received_on, remark, version_count,
+    .select(`id, doc_code, doc_type_id, period_id, registration_id, received_as, returnable, handed_over_name, channel, received_on, remark, version_count,
       classified_at, archived_at, client:client_id (id, name, code), current:current_version_id (file_name)`)
     .eq("id", id).maybeSingle();
   if (!data) return null;
@@ -165,6 +177,7 @@ export async function getDocumentForForm(id: string): Promise<DocumentForForm | 
     id: data.id, docCode: data.doc_code, client: client ? { id: client.id, name: client.name, code: client.code } : null,
     docTypeId: data.doc_type_id, periodId: data.period_id, registrationId: data.registration_id,
     receivedAs: data.received_as, channel: data.channel, receivedOn: data.received_on, remark: data.remark,
+    returnable: !!data.returnable, handedOverName: data.handed_over_name ?? null,
     fileName: (data.current as unknown as { file_name: string } | null)?.file_name ?? null,
     versionCount: data.version_count, classified: !!data.classified_at, archived: !!data.archived_at,
   };
@@ -175,6 +188,8 @@ export type ClientDocument = {
   id: string; docCode: string; typeName: string; groupId: string; groupName: string; groupSort: number;
   periodLabel: string | null; periodStart: string | null; fyCode: string; receivedOn: string; receivedBy: string;
   receivedAs: "soft_copy" | "hard_copy" | "original"; versionCount: number;
+  /** 12 */
+  returnable?: boolean; correctionKind?: string | null;
   current: { id: string; mimeType: string } | null; proposed: boolean;
   /** 10: the document came through a client upload link ("From client link"). */
   fromLink?: boolean;
@@ -186,13 +201,13 @@ export type ClientDocument = {
 };
 
 type ClientDocRow = {
-  id: string; doc_code: string; received_on: string; received_as: ClientDocument["receivedAs"]; version_count: number;
+  id: string; doc_code: string; received_on: string; received_as: ClientDocument["receivedAs"]; returnable: boolean; version_count: number;
   channel: string;
   receiver: { full_name: string } | null;
   doc_type: { name: string; status: string; doc_group: { id: string; name: string; sort: number } | null } | null;
   period: { label: string; start_date: string; financial_year: { code: string } | null } | null;
   current: { id: string; mime_type: string } | null;
-  status: string; reviewed_at: string | null; correction_reason: string | null; reviewer: { full_name: string } | null;
+  status: string; reviewed_at: string | null; correction_reason: string | null; correction_kind: string | null; reviewer: { full_name: string } | null;
   packets: Array<{ removed_at: string | null; dispatch: { dispatched_on: string; method: string } | null }> | null;
   format_ok: boolean | null; format_preferred: string[] | null;
 };
@@ -216,8 +231,8 @@ export async function listClientDocuments(clientId: string): Promise<ClientDocum
     groupName: r.doc_type!.doc_group!.name, groupSort: r.doc_type!.doc_group!.sort,
     periodLabel: r.period?.label ?? null, periodStart: r.period?.start_date ?? null,
     fyCode: r.period?.financial_year?.code ?? fyOfDate(r.received_on),
-    receivedOn: r.received_on, receivedBy: r.receiver?.full_name ?? "—", receivedAs: r.received_as,
-    versionCount: r.version_count, current: r.current ? { id: r.current.id, mimeType: r.current.mime_type } : null,
+    receivedOn: r.received_on, receivedBy: r.receiver?.full_name ?? "—", receivedAs: r.received_as, returnable: r.returnable,
+    correctionKind: r.correction_kind, versionCount: r.version_count, current: r.current ? { id: r.current.id, mimeType: r.current.mime_type } : null,
     proposed: r.doc_type!.status === "proposed", fromLink: r.channel === "upload_link",
     notPreferred: r.format_ok === false ? r.format_preferred : null,
     ...reviewFields(r),
@@ -257,6 +272,8 @@ export type DocumentDetail = DocumentForForm & {
   appliedFormats?: string[] | null;
   // 07: review state (the history and packets load separately: src/lib/review, src/lib/dispatch).
   status: string; reviewedAt: string | null; reviewedByName: string | null; correctionReason: string | null;
+  /** 12: Wrong file / Wrong details (null on older corrections). */
+  correctionKind: string | null;
   versions: { id: string; versionNo: number; fileName: string; mimeType: string; sizeBytes: number; uploadedAt: string; uploadedBy: string }[];
 };
 
@@ -266,7 +283,7 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
   const supabase = await createClient();
   const [doc, versions] = await Promise.all([
     supabase.from("document").select(`created_at, archived_at, archive_reason, current_version_id, format_ok, format_preferred,
-        status, reviewed_at, correction_reason, reviewer:reviewed_by (full_name),
+        status, reviewed_at, correction_reason, correction_kind, reviewer:reviewed_by (full_name),
         receiver:received_by (full_name), creator:created_by (full_name),
         doc_type:doc_type_id (name, preferred_formats, doc_group:doc_group_id (name)), period:period_id (label), registration:registration_id (number)`)
       .eq("id", id).single(),
@@ -277,7 +294,7 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
   const d = doc.data as unknown as {
     created_at: string; archived_at: string | null; archive_reason: string | null; current_version_id: string | null;
     format_ok: boolean | null; format_preferred: string[] | null;
-    status: string; reviewed_at: string | null; correction_reason: string | null; reviewer: { full_name: string } | null;
+    status: string; reviewed_at: string | null; correction_reason: string | null; correction_kind: string | null; reviewer: { full_name: string } | null;
     receiver: { full_name: string } | null; creator: { full_name: string } | null;
     doc_type: { name: string; preferred_formats: string[] | null; doc_group: { name: string } | null } | null; period: { label: string } | null;
     registration: { number: string } | null;
@@ -296,6 +313,7 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
     createdAt: d.created_at, archivedAt: d.archived_at, archiveReason: d.archive_reason, currentVersionId: d.current_version_id,
     notPreferred: d.format_ok === false ? d.format_preferred : null,
     status: d.status, reviewedAt: d.reviewed_at, reviewedByName: d.reviewer?.full_name ?? null, correctionReason: d.correction_reason,
+    correctionKind: d.correction_kind,
     versions: ((versions.data ?? []) as unknown as Array<{ id: string; version_no: number; file_name: string; mime_type: string; size_bytes: number; uploaded_at: string; uploader: { full_name: string } | null }>)
       .map((v) => ({ id: v.id, versionNo: v.version_no, fileName: v.file_name, mimeType: v.mime_type, sizeBytes: v.size_bytes, uploadedAt: v.uploaded_at, uploadedBy: v.uploader?.full_name ?? "—" })),
   };

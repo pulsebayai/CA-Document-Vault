@@ -185,7 +185,7 @@ export type ProposeResult = { ok: true; type: TypeOption } | { ok: false; error:
 /** AC-15 (D5): Staff+ only; the type joins this client's plan at once. */
 export async function proposeType(clientId: string, group: { id: string; name: string }, name: string): Promise<ProposeResult> {
   const me = await requireStaff();
-  if (me.role === "limited") return { ok: false, error: "Staff and above can add new types. Save to inbox instead." };
+  if (me.role === "limited") return { ok: false, error: "Staff and above can add new types. Save as untagged instead." };
   if (!uuid.safeParse(clientId).success || !uuid.safeParse(group?.id).success) return { ok: false, error: "Choose the client and group again." };
   const clean = String(name ?? "").replace(/\s+/g, " ").trim();
   if (clean.length < 1 || clean.length > 120) return { ok: false, error: "A type name has 1–120 characters." };

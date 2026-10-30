@@ -11,8 +11,8 @@ import type { ReviewTarget } from "@/components/bulk-review-dialog";
 import { SEARCH_TEXT_EVENT, handOffSearchText } from "@/components/header-search";
 import { documentFacets, findClients, searchDocuments } from "@/lib/search/actions";
 import type { ClientHit, DocumentHit, FacetName, FacetValue, FilterOptions, PickerClient } from "@/lib/search/queries";
-import { CHANNEL_LABELS, RECEIVED_AS } from "@/lib/validation/document";
-import { documentState, type ShownStateKind } from "@/lib/documents/state";
+import { CHANNEL_LABELS, RECEIVED_LABEL as RECEIVED_LABEL_ALL } from "@/lib/validation/document";
+import { documentState, type ShownStateKind, paperBadge } from "@/lib/documents/state";
 import { istDate } from "@/lib/documents/period";
 import {
   DEFAULT_FILTERS, DOC_FORMATS, DOC_RETURNS, DOC_STATES, DOC_STATUSES, PAGE_SIZE, SEARCH_TEXT_KEY, SORTS, SUGGEST_DEBOUNCE_MS, filtersToQuery,
@@ -22,7 +22,7 @@ import {
 // Spec 03b AC-5…AC-9, AC-11 — the results page. Filters are the URL (router.push); the text is this tab's session
 // storage (the header writes it, this page reads and writes it). Searches and facet counts are server actions (POST).
 
-const RECEIVED_LABEL: Record<string, string> = Object.fromEntries(RECEIVED_AS.map((r) => [r.value, r.label]));
+const RECEIVED_LABEL: Record<string, string> = RECEIVED_LABEL_ALL; // 12: legacy "original" reads as Hard copy
 const CHANNEL_LABEL = CHANNEL_LABELS; // 10: includes "Upload link"
 const STATUS_LABEL: Record<string, string> = Object.fromEntries(DOC_STATUSES.map((s) => [s.value, s.label]));
 const STATE_LABEL: Record<string, string> = Object.fromEntries(DOC_STATES.map((s) => [s.value, s.label]));
@@ -91,7 +91,7 @@ export function withoutFilter(f: DocumentFilters, key: keyof DocumentFilters): D
 /** Row text (AC-5): what it is, whose it is, and how it came in. */
 export function rowText(d: DocumentHit) {
   const what = [d.typeName ?? "No type", d.periodLabel ?? d.periodCode].filter(Boolean).join(" · ");
-  const who = d.clientName ?? "Inbox";
+  const who = d.clientName ?? "Untagged";
   const file = d.fileName ?? `${RECEIVED_LABEL[d.receivedAs] ?? d.receivedAs} — no file`;
   const how = [
     d.groupName, `Received ${shortDate(d.receivedOn)}${d.receivedByName ? ` by ${d.receivedByName}` : ""}`,
@@ -234,7 +234,7 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
           <Select label="Format" value={filters.format ?? null} onChange={(v) => setFormat(v)}
             options={facetOptions("format", (v) => FORMAT_LABEL[v] ?? v, filters.format ?? null)} />
           <Select label="Show" value={filters.state} onChange={(v) => set({ state: v as DocumentFilters["state"] })}
-            options={DOC_STATES.map((s) => ({ value: s.value, label: s.label }))} allLabel="Show: classified and Inbox" />
+            options={DOC_STATES.map((s) => ({ value: s.value, label: s.label }))} allLabel="Show: classified and untagged" />
           <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">
             <input type="checkbox" checked={filters.archived} onChange={(e) => set({ archived: e.target.checked })} className="h-4 w-4 accent-accent" />
             Include archived
@@ -309,6 +309,7 @@ const STATE_TONE: Record<ShownStateKind, string> = {
 export function rowState(d: DocumentHit, today: string) {
   return documentState({
     archived: d.archived, clientId: d.clientId, docTypeId: d.docTypeId ?? (d.typeName ? "filed" : null), receivedAs: d.receivedAs,
+    returnable: d.returnable, correctionKind: d.correctionKind, // 12
     status: d.status, reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
     dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod,
   }, today);
@@ -317,6 +318,7 @@ export function rowState(d: DocumentHit, today: string) {
 function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolean; onToggle: () => void }) {
   const { what, who, how } = rowText(d);
   const state = rowState(d, istDate());
+  const paper = paperBadge(d); // 12
   return (
     <li className="relative flex flex-wrap items-center gap-3 px-5 py-3.5 hover:bg-canvas">
       <RowCheckbox docCode={d.docCode} checked={selected} onChange={onToggle} />
@@ -333,7 +335,7 @@ function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolea
         )}
       </div>
       <span className="flex shrink-0 gap-1.5">
-        {d.receivedAs !== "soft_copy" && <Badge tone={d.receivedAs === "original" ? "bad" : "warn"}>{RECEIVED_LABEL[d.receivedAs]}</Badge>}
+        {paper && <Badge tone={paper.tone}>{paper.label}</Badge>}
         {d.archived && <Badge tone="muted">Archived</Badge>}
         {d.channel === "upload_link" && <Badge tone="accent">From client link</Badge>}
         <FormatBadge preferred={d.notPreferred} />

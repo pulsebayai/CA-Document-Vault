@@ -98,7 +98,7 @@ export function ArchiveDocument({ id, docCode, archived }: { id: string; docCode
       <dialog ref={dialog} aria-labelledby="doc-archive-title" className="m-auto w-full max-w-md rounded-xl p-0 shadow-card backdrop:bg-ink/30">
         <div className="space-y-4 p-6">
           <h2 id="doc-archive-title" className="text-lg font-semibold">Archive {docCode}?</h2>
-          <p className="text-[13.5px] text-ink-2">It leaves the Inbox and client lists. The DOC-ID and files are kept, and an Admin or Manager can unarchive it.</p>
+          <p className="text-[13.5px] text-ink-2">It leaves Untagged documents and client lists. The DOC-ID and files are kept, and an Admin or Manager can unarchive it.</p>
           <label className="block text-[13.5px] font-medium">Reason
             <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} rows={2} required
               className="mt-1 w-full rounded-[9px] border border-line-2 bg-panel px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft" />

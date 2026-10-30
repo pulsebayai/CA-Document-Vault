@@ -15,7 +15,7 @@ describe("permissions matrix (AC-12)", () => {
     expect(PERMISSIONS.map((r) => [r.label, ...ROLES.map((role) => cellText(r, role))])).toEqual([
       ["See clients and their documents", "All", "All", "All", "Assigned"],
       ["Add, edit and import clients", "Yes", "Yes", "Yes", "No"],
-      ["Add documents and file the Inbox", "Yes", "Yes", "Yes", "Assigned + own Inbox"],
+      ["Add documents and file untagged documents", "Yes", "Yes", "Yes", "Assigned + own untagged"],
       ["Propose a new type while filing", "Yes", "Yes", "Yes", "No"],
       ["Review, mark needs correction, dispatch originals", "Yes", "Yes", "Yes", "Assigned"],
       // 12 (spec AC-24, approved 2026-10-30): the row splits; Staff can undo a review.

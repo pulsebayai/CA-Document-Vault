@@ -90,11 +90,11 @@ test("AC-1, AC-4: a hard copy with no file goes to the Inbox from the header but
   await signIn(page, staff.email, baseURL);
   await page.getByRole("banner").getByRole("link", { name: "Add document" }).click();
   await expect(page.getByRole("heading", { name: "Add document" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save to inbox" })).toBeEnabled(); // form is interactive
+  await expect(page.getByRole("button", { name: "Save as untagged" })).toBeEnabled(); // form is interactive
   await page.locator("label").filter({ has: page.getByRole("radio", { name: "Hard copy" }) }).click(); // the radio is sr-only
   await expect(page.getByRole("radio", { name: "Hard copy" })).toBeChecked();
   await page.getByLabel("Channel").selectOption("courier");
-  await page.getByRole("button", { name: "Save to inbox" }).click();
+  await page.getByRole("button", { name: "Save as untagged" }).click();
   await page.waitForURL(/\/clients\?saved=/);
   await expect(page.getByRole("status").filter({ hasText: "saved" })).toContainText(DOC_ID);
   const d = await latestDocument();
@@ -119,7 +119,7 @@ test("AC-1, AC-2, AC-4: errors are inline, in plain words, and nothing is saved"
 test("AC-15: a new type is offered only after the closest existing ones, and joins the client's plan", async ({ page, baseURL }) => {
   await signIn(page, staff.email, baseURL);
   await page.goto(`/documents/new?client=${clientId}`);
-  await expect(page.getByRole("button", { name: "Save to inbox" })).toBeEnabled(); // form is interactive
+  await expect(page.getByRole("button", { name: "Save as untagged" })).toBeEnabled(); // form is interactive
   await page.locator("label").filter({ has: page.getByRole("radio", { name: "Hard copy" }) }).click(); // the radio is sr-only
   await expect(page.getByRole("radio", { name: "Hard copy" })).toBeChecked();
   await page.getByLabel("Document type").selectOption({ label: "+ New type for this client…" });

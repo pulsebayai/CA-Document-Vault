@@ -4,13 +4,13 @@ import { z } from "zod";
 import { requireStaff } from "@/lib/auth/staff";
 import { canManageCatalogue, canUndoReview } from "@/lib/auth/roles";
 import { getDocumentDetail } from "@/lib/documents/queries";
-import { CHANNEL_LABELS, RECEIVED_AS, viewBlockedForLink } from "@/lib/validation/document";
+import { CHANNEL_LABELS, RECEIVED_LABEL, viewBlockedForLink } from "@/lib/validation/document";
 import { Badge, Card } from "@/components/ui";
 import { FormatBadge, formatDetail } from "@/components/format-badge";
 import { FileButtons } from "../file-buttons";
 import { ArchiveDocument, NewVersion } from "./document-controls";
 import { DispatchPanel, ReviewPanel } from "./review-panel";
-import { documentState, isReadyToDispatch } from "@/lib/documents/state";
+import { documentState, isReadyToDispatch, isReturnable, paperBadge } from "@/lib/documents/state";
 import { istDate } from "@/lib/documents/period";
 import { reviewHistoryFor } from "@/lib/review/queries";
 import { packetsForDocument } from "@/lib/dispatch/queries";
@@ -21,7 +21,6 @@ import { ActivityCard, CARD_LIMIT } from "./activity-card";
 // Document page (spec AC-11): details, current file (View/Download), versions, activity; edit, new version,
 // archive (Admin/Manager). RLS: a document the user can't see is Not Found (AC-12).
 
-const RECEIVED_LABEL = Object.fromEntries(RECEIVED_AS.map((r) => [r.value, r.label]));
 const CHANNEL_LABEL = CHANNEL_LABELS; // 10: includes "Upload link"
 const when = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const date = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" });
@@ -36,27 +35,29 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
   const d = await getDocumentDetail(id);
   if (!d) notFound();
   const current = d.versions.find((v) => v.id === d.currentVersionId);
+  const returnable = isReturnable(d); // 12: what 07 called an original
+  const paper = paperBadge(d);
   const archived = !!d.archivedAt;
   // 07 (AC-13): review history + packets; the Review panel shows the review state alone (not the dispatch state).
   const [history, packets, feed] = await Promise.all([
-    reviewHistoryFor(d.id), d.receivedAs === "original" ? packetsForDocument(d.id) : Promise.resolve([]),
+    reviewHistoryFor(d.id), returnable ? packetsForDocument(d.id) : Promise.resolve([]),
     loadFeed({ ...NO_FILTERS, document: d.id }, null, CARD_LIMIT), // 08 AC-10
   ]);
   const today = istDate();
   const live = packets.find((p) => p.removedAt === null) ?? null;
   const stateInput = {
-    archived, clientId: d.client?.id ?? null, docTypeId: d.docTypeId, receivedAs: d.receivedAs, status: d.status,
-    reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
+    archived, clientId: d.client?.id ?? null, docTypeId: d.docTypeId, receivedAs: d.receivedAs, returnable: d.returnable, status: d.status,
+    reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason, correctionKind: d.correctionKind,
     dispatchedOn: live?.dispatchedOn ?? null, dispatchMethod: live?.method ?? null,
   };
-  const reviewState = documentState({ ...stateInput, receivedAs: "hard_copy", dispatchedOn: null }, today);
+  const reviewState = documentState({ ...stateInput, receivedAs: "hard_copy", returnable: false, dispatchedOn: null }, today);
   const canUndo = canManageCatalogue(me.role);
   const label = `${d.typeName ?? "Document"}${d.periodLabel ? ` · ${d.periodLabel}` : ""} (${d.docCode})`;
 
   return (
     <div className="mx-auto max-w-[1000px] space-y-5">
       <nav aria-label="Breadcrumb" className="text-[13.5px] text-ink-3">
-        {d.client ? <Link href={`/clients/${d.client.id}?tab=documents`} className="hover:underline">{d.client.name}</Link> : <Link href="/inbox" className="hover:underline">Inbox</Link>}
+        {d.client ? <Link href={`/clients/${d.client.id}?tab=documents`} className="hover:underline">{d.client.name}</Link> : <Link href="/inbox" className="hover:underline">Untagged documents</Link>}
         {" "}/ {d.docCode}
       </nav>
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -64,8 +65,8 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
           <h1 className="text-[22px] font-semibold leading-tight">{d.typeName ?? "Unclassified document"}{d.periodLabel ? ` · ${d.periodLabel}` : ""}</h1>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-ink-2">
             <span>{d.docCode}</span>
-            {d.receivedAs !== "soft_copy" && <Badge tone={d.receivedAs === "original" ? "bad" : "warn"}>{RECEIVED_LABEL[d.receivedAs]}</Badge>}
-            {!d.classified && <Badge tone="warn">In Inbox</Badge>}
+            {paper && <Badge tone={paper.tone}>{paper.label}</Badge>}
+            {!d.classified && <Badge tone="warn">Untagged</Badge>}
             {d.channel === "upload_link" && <Badge tone="accent">From client link</Badge>}
             <FormatBadge preferred={d.notPreferred} />
             {archived && <Badge tone="muted">Archived</Badge>}
@@ -121,7 +122,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
           <ReviewPanel documentId={d.id} clientId={d.client?.id ?? null} label={label} canUndo={canUndoReview(me.role) && !archived}
             state={reviewState} reviewable={d.classified && !archived} status={d.status}
             history={history.map((h) => ({ ...h, atText: when.format(new Date(h.at)) }))} />
-          {d.receivedAs === "original" && d.classified && (
+          {returnable && d.classified && (
             <DispatchPanel documentId={d.id} clientId={d.client?.id ?? null} clientName={d.client?.name ?? null} label={label} canUndo={canUndo && !archived}
               packets={packets} ready={isReadyToDispatch(stateInput)} today={today} />
           )}
@@ -133,7 +134,8 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
               <Item label="Group">{d.groupName}</Item>
               <Item label="Period">{d.periodLabel ?? (d.typeName ? "Not needed" : null)}</Item>
               <Item label="GSTIN / TAN">{d.registrationNumber}</Item>
-              <Item label="Received as">{RECEIVED_LABEL[d.receivedAs]}</Item>
+              <Item label="Received as">{RECEIVED_LABEL[d.receivedAs]}{returnable ? " · returnable" : ""}</Item>
+              {d.receivedAs !== "soft_copy" && <Item label="Handed over by">{d.handedOverName}</Item>}
               <Item label="Channel">{CHANNEL_LABEL[d.channel] ?? d.channel}</Item>
               <Item label="Received on">{date.format(new Date(`${d.receivedOn}T00:00:00+05:30`))}</Item>
               <Item label="Received by">{d.receivedBy}</Item>

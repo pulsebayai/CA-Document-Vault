@@ -28,8 +28,8 @@ export const PERMISSIONS: readonly PermissionRow[] = [
   { id: "see_clients", label: "See clients and their documents", values: { admin: "all", manager: "all", staff: "all", limited: "assigned" } },
   { id: "manage_clients", label: "Add, edit and import clients", values: { ...yesAll, limited: "no" } },
   {
-    id: "add_documents", label: "Add documents and file the Inbox", values: { ...yesAll, limited: "assigned" },
-    labels: { limited: "Assigned + own Inbox" },
+    id: "add_documents", label: "Add documents and file untagged documents", values: { ...yesAll, limited: "assigned" },
+    labels: { limited: "Assigned + own untagged" },
   },
   { id: "propose_type", label: "Propose a new type while filing", values: { ...yesAll, limited: "no" } },
   { id: "review_dispatch", label: "Review, mark needs correction, dispatch originals", values: { ...yesAll, limited: "assigned" } },

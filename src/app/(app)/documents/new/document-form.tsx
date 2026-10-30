@@ -390,7 +390,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
           ) : (
             <p id={`${uid}-client-hint`} className="mt-1 text-[13px] text-ink-3">
               Not sure who this belongs to?{" "}
-              <button type="button" onClick={() => void save("inbox")} disabled={!ready || busy || uploading} className="text-accent hover:underline disabled:opacity-50">Leave it in inbox</button>
+              <button type="button" onClick={() => void save("inbox")} disabled={!ready || busy || uploading} className="text-accent hover:underline disabled:opacity-50">Leave it untagged</button>
             </p>
           )}
         </Row>
@@ -520,7 +520,7 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
         <Button type="submit" disabled={!ready || busy || uploading}>{saving === "vault" ? "Saving…" : existing?.classified ? "Save changes" : "Save to vault"}</Button>
         {!existing?.classified && !forItem && (
           <Button type="button" variant="secondary" disabled={!ready || busy || uploading} onClick={() => void save("inbox")}>
-            {saving === "inbox" ? "Saving…" : existing ? "Keep in inbox" : "Save to inbox"}
+            {saving === "inbox" ? "Saving…" : existing ? "Keep untagged" : "Save as untagged"}
           </Button>
         )}
       </div>
