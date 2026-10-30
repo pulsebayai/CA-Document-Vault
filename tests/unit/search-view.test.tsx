@@ -8,6 +8,7 @@ import type { DocumentHit, FilterOptions } from "@/lib/search/queries";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("@/lib/documents/actions", () => ({ getFileLink: vi.fn() })); // 12 (AC-18): rows show 03's file buttons (approved 2026-10-30)
 const searchDocuments = vi.fn();
 const documentFacets = vi.fn();
 const findClients = vi.fn();
@@ -80,7 +81,7 @@ describe("SearchView", () => {
     expect(screen.getByText("1 document")).toBeInTheDocument();
     const row = within(list).getByRole("listitem");
     expect(row).toHaveTextContent("DOC-FY26-27-00042 · Sales register · Aug 2026 · Acme Traders");
-    expect(within(row).getByRole("link")).toHaveAttribute("href", "/documents/d1");
+    expect(within(row).getByRole("link", { name: /^DOC-FY26-27-00042 ·/ })).toHaveAttribute("href", "/documents/d1");
   });
 
   it("facet counts label the filter options, and a value with no results is not offered (AC-7)", async () => {

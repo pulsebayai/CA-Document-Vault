@@ -8,6 +8,7 @@ import type { TodayData } from "@/lib/today/queries";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh: vi.fn() }) }));
+vi.mock("@/lib/documents/actions", () => ({ getFileLink: vi.fn() })); // 12 (AC-18): rows show 03's file buttons (approved 2026-10-30)
 // 07's row controls (step 9) call server actions; the view test only checks which control each row gets.
 vi.mock("@/lib/review/actions", () => ({ markReviewed: vi.fn(), markNeedsCorrection: vi.fn(), undoReview: vi.fn() }));
 vi.mock("@/lib/dispatch/actions", () => ({ createDispatch: vi.fn(), readyOriginals: vi.fn(async () => ({ ok: true, originals: [] })), undoDispatchItem: vi.fn() }));

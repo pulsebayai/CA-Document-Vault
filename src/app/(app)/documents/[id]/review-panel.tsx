@@ -45,6 +45,13 @@ export function ReviewPanel({ documentId, clientId, label, canUndo, state, revie
         <p className={`mt-2 break-words font-medium ${TONE[state.kind]}`} data-testid="review-state">
           {state.text}
         </p>
+        {/* 12 (AC-19): the Needs-correction message offers Edit (wrong details) — a wrong file gets a new version. */}
+        {reviewable && status === "needs_correction" && (
+          <p className="mt-1 text-[13.5px] text-ink-2">
+            <Link href={`/documents/${documentId}/assign`} className="font-medium text-accent underline">Edit details</Link>
+            {" "}or add a corrected file under Current file.
+          </p>
+        )}
         {reviewable && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {reviewNext && clientId && <ReviewControls documentId={documentId} clientId={clientId} label={label} onMessage={setMsg} />}

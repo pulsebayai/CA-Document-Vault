@@ -80,6 +80,8 @@ export type TodayDocRow = {
   label: string;
   /** "Received 2 Aug · waiting for review" · "Reviewed 12 Sep by Ravi" · "Needs correction · still to go back" */
   detail: string;
+  /** 12 (AC-18): To review rows — the current file (null = no file yet; absent = not loaded). Set by the query. */
+  file?: { versionId: string; mimeType: string; viewBlocked: boolean } | null;
 };
 /** 10: "Requested · Other · GST notice / order received" · "Needed by 30 May · for the new office lease". */
 export type TodayAskRow = {

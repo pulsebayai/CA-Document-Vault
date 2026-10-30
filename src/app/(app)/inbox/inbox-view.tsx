@@ -4,6 +4,7 @@ import type { InboxItem } from "@/lib/documents/queries";
 import { CHANNEL_LABELS, RECEIVED_LABEL as RECEIVED_LABEL_ALL } from "@/lib/validation/document";
 import { paperBadge } from "@/lib/documents/state";
 import { todayHref } from "@/lib/today/shape";
+import { FileButtons } from "../documents/file-buttons";
 
 // Untagged documents (was "Inbox"; 12 D2, route /inbox stays) — mockup 02, spec 03 AC-7: documents that still need a
 // client or a type, newest first.
@@ -54,6 +55,9 @@ export function InboxView({ items, now, saved, toReview }: { items: InboxItem[];
                     </p>
                   </div>
                   <span className="text-[13px] text-ink-3">{missing} · {waited(d.createdAt, now)}</span>
+                  {/* 12 (AC-18): 03's file buttons (View only for PDF/JPG/PNG; ≤ 60 s links after an RLS lookup). */}
+                  {d.file ? <FileButtons versionId={d.file.versionId} mimeType={d.file.mimeType} docCode={d.docCode} viewBlocked={d.file.viewBlocked} />
+                    : d.file === null ? <span className="text-[13px] text-ink-3">No file yet</span> : null}
                   <Link href={`/documents/${d.id}/assign`} aria-label={`Assign ${d.docCode}`}
                     className="inline-flex h-[30px] items-center rounded-[7px] bg-accent px-2.5 text-[13px] font-medium text-white hover:bg-[#264d8f]">Assign</Link>
                 </li>

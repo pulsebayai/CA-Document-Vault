@@ -63,6 +63,9 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
       )}
       {d.current && <FileButtons versionId={d.current.id} mimeType={d.current.mimeType} docCode={d.docCode}
         viewBlocked={Boolean(d.fromLink) && d.status !== "reviewed"} />}
+      {/* 12 (AC-19): Edit (Client › Documents lists non-archived documents only); back to this client after saving. */}
+      <Link href={`/documents/${d.id}/assign?from=${encodeURIComponent(`/clients/${clientId}`)}`} aria-label={`Edit ${d.docCode}`}
+        className="inline-flex h-[30px] items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas">Edit</Link>
       {/* Always mounted, so the result is announced even though the action that produced it has gone. */}
       <p role="status" aria-live="polite" className={`basis-full text-[13px] empty:hidden ${msg?.ok === false ? "text-bad" : "text-ok"}`}>{msg?.text ?? ""}</p>
     </li>

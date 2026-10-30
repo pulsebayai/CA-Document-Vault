@@ -137,7 +137,7 @@ test("AC-5, AC-6, AC-7, AC-11: results for the header text; a filter with counts
 
   await page.getByRole("combobox", { name: "Sort" }).selectOption("docid");
   await page.waitForURL(/\/documents\?sort=docid$/);
-  await results(page).filter({ hasText: classified.doc_code }).getByRole("link").click();
+  await results(page).filter({ hasText: classified.doc_code }).getByRole("link", { name: new RegExp(`^${classified.doc_code} ·`) }).click(); // 12 (AC-19): rows also have Edit
   await page.waitForURL(new RegExp(`/documents/${classified.id}$`));
   expect(urls.filter((u) => /zeb/i.test(decodeURIComponent(u)))).toEqual([]);
 });

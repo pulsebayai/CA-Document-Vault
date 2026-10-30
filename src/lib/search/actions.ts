@@ -55,7 +55,7 @@ export type SearchDocumentsResult = ({ ok: true; total: number; rows: DocumentHi
 export async function searchDocuments(input: { text?: string; filters?: unknown }): Promise<SearchDocumentsResult> {
   await requireStaff();
   try {
-    return { ok: true, ...(await searchDocumentsAs(toSearchInput(revalidate(input?.filters), input?.text))) };
+    return { ok: true, ...(await searchDocumentsAs(toSearchInput(revalidate(input?.filters), input?.text), { withFiles: true })) }; // 12 AC-18
   } catch (e) {
     return failure(e, "documents");
   }

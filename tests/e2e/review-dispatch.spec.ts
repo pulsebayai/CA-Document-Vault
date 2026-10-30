@@ -126,7 +126,9 @@ test("AC-13, AC-5, AC-10: the document page's Review and Dispatch panels; Admin/
   await expect(dispatch).toContainText("BD-77812");
   await expect(dispatch).toContainText("Ramesh (office manager)");
   await expect(dispatch).toContainText(`Also in this packet: ${doc.orig2.doc_code}`);
-  await expect(page.getByRole("button", { name: /Undo/ })).toHaveCount(0);
+  // 12 (AC-24, approved 2026-10-31): Staff may undo a review; Undo dispatch stays Admin/Manager only.
+  await expect(page.getByRole("button", { name: /Undo dispatch/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Undo review" })).toBeVisible();
 
   await signIn(page, u.manager.email, baseURL);
   await page.goto(`/documents/${doc.orig1.id}`);

@@ -41,8 +41,22 @@ export const normaliseTypeText = (s: string) => s.toLowerCase().replace(/[\s\-./
 
 const words = (s: string) => new Set(s.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3));
 
-const byName = (a: TypeOption, b: TypeOption) => a.name.localeCompare(b.name, "en", { sensitivity: "base" });
-const byGroupThenName = (a: TypeOption, b: TypeOption) => a.groupSort - b.groupSort || a.groupName.localeCompare(b.groupName) || byName(a, b);
+// One collator for every comparison (localeCompare with options builds a new one per call: too slow for 500 types).
+const collator = new Intl.Collator("en", { sensitivity: "base" });
+const byName = (a: TypeOption, b: TypeOption) => collator.compare(a.name, b.name);
+const byGroupThenName = (a: TypeOption, b: TypeOption) => a.groupSort - b.groupSort || collator.compare(a.groupName, b.groupName) || byName(a, b);
+
+// Normalised text per type object, computed once (the form passes the same objects on every keystroke).
+type Norm = { name: string; aliases: string[]; group: string };
+const normCache = new WeakMap<TypeOption, Norm>();
+function norm(t: TypeOption): Norm {
+  let n = normCache.get(t);
+  if (!n) {
+    n = { name: normaliseTypeText(t.name), aliases: t.aliases.map(normaliseTypeText), group: normaliseTypeText(t.groupName) };
+    normCache.set(t, n);
+  }
+  return n;
+}
 
 export function matchTypes(types: TypeOption[], text: string, opts: { limit?: number } = {}): TypeMatch {
   const limit = opts.limit ?? LIMIT;
@@ -58,9 +72,9 @@ export function matchTypes(types: TypeOption[], text: string, opts: { limit?: nu
   // AC-2/AC-3: name, aliases or group name contain the text; a name that starts with it ranks first.
   const hits: { type: TypeOption; rank: number }[] = [];
   for (const type of types) {
-    const name = normaliseTypeText(type.name);
-    if (name.startsWith(q)) hits.push({ type, rank: 0 });
-    else if (name.includes(q) || type.aliases.some((a) => normaliseTypeText(a).includes(q)) || normaliseTypeText(type.groupName).includes(q)) {
+    const n = norm(type);
+    if (n.name.startsWith(q)) hits.push({ type, rank: 0 });
+    else if (n.name.includes(q) || n.aliases.some((a) => a.includes(q)) || n.group.includes(q)) {
       hits.push({ type, rank: 1 });
     }
   }
@@ -87,7 +101,7 @@ function build(hits: { type: TypeOption; rank: number }[], limit: number): Pick<
     groups.set(h.type.groupId, g);
   }
   const ordered: TypeSection[] = [...groups.values()]
-    .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name))
+    .sort((a, b) => a.sort - b.sort || collator.compare(a.name, b.name))
     .map((g) => ({ kind: "group" as const, heading: g.name, rows: g.rows.sort(order).map(({ type }) => ({ type })) }));
   if (other.length) {
     other.sort((a, b) => a.rank - b.rank || byGroupThenName(a.type, b.type));

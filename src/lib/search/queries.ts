@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import type { DocumentChannel as Channel, ReceivedAs } from "@/lib/validation/document";
 import type { SearchInput } from "@/lib/validation/document-search";
+import { currentFiles, type CurrentFile } from "@/lib/documents/queries";
 
 // Spec 03b. Everything runs as the signed-in user: search_documents / search_document_facets / search_clients are
 // SECURITY INVOKER, so RLS decides what is visible. 03b deliberately calls search_clients directly (not through
@@ -38,6 +39,8 @@ export type DocumentHit = {
   /** 12: present (true) only on a returnable hard copy; correctionKind only when set. */
   returnable?: boolean;
   correctionKind?: string;
+  /** 12 (AC-18): present only on /documents rows that have a file (header suggestions don't load it). */
+  file?: CurrentFile;
 };
 
 export type FacetName = "group" | "received_as" | "channel" | "received_by" | "status" | "return" | "format";
@@ -81,12 +84,18 @@ const toHit = (r: Row): DocumentHit => ({
   ...(r.correction_kind ? { correctionKind: r.correction_kind } : {}),
 });
 
-export async function searchDocumentsAs(input: SearchInput): Promise<{ total: number; rows: DocumentHit[] }> {
+export async function searchDocumentsAs(input: SearchInput, opts: { withFiles?: boolean } = {}): Promise<{ total: number; rows: DocumentHit[] }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("search_documents", { p: input });
   if (error) fail("documents", error.code);
   const res = (data ?? { total: 0, rows: [] }) as { total: number; rows: Row[] };
-  return { total: Number(res.total) || 0, rows: (res.rows ?? []).map(toHit) };
+  const rows = (res.rows ?? []).map(toHit);
+  // 12 (AC-18): one RLS lookup for the page's current files (only the /documents page; not header suggestions).
+  if (opts.withFiles && rows.some((r) => r.fileName)) {
+    const files = await currentFiles(rows.filter((r) => r.fileName).map((r) => r.id));
+    for (const r of rows) { const f = files.get(r.id); if (f) r.file = f; }
+  }
+  return { total: Number(res.total) || 0, rows };
 }
 
 export async function documentFacetsAs(input: SearchInput): Promise<FacetValue[]> {

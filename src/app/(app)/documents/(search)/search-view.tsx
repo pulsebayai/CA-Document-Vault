@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FileButtons } from "../file-buttons";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Badge, Button, Card, PageHeader } from "@/components/ui";
@@ -334,6 +335,14 @@ function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolea
           <p className={`mt-0.5 break-words text-[13px] font-medium ${STATE_TONE[state.kind]}`}>{state.text}</p>
         )}
       </div>
+      {/* 12 (AC-18, AC-19): above the row's link overlay (relative z-10). */}
+      {!d.archived && (
+        <span className="relative z-10 flex flex-wrap items-center gap-1.5">
+          {d.file ? <FileButtons versionId={d.file.versionId} mimeType={d.file.mimeType} docCode={d.docCode} viewBlocked={d.file.viewBlocked} />
+            : !d.fileName ? <span className="text-[13px] text-ink-3">No file yet</span> : null}
+          <Link href={`/documents/${d.id}/assign`} aria-label={`Edit ${d.docCode}`} className="inline-flex h-[30px] items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas">Edit</Link>
+        </span>
+      )}
       <span className="flex shrink-0 gap-1.5">
         {paper && <Badge tone={paper.tone}>{paper.label}</Badge>}
         {d.archived && <Badge tone="muted">Archived</Badge>}

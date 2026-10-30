@@ -1,8 +1,8 @@
 // PostgREST select lists for the document lists — shared by the app (queries.ts) and the nightly volume test
 // (tests/rls/documents-perf.test.ts), so the test times exactly what the app runs (spec 03 NFR performance).
 
-export const INBOX_SELECT = `id, doc_code, received_as, returnable, handed_over_name, channel, remark, created_at,
-  creator:created_by (full_name), current:current_version_id (file_name), client:client_id (name), doc_type:doc_type_id (name)`;
+export const INBOX_SELECT = `id, doc_code, received_as, returnable, handed_over_name, channel, remark, created_at, status,
+  creator:created_by (full_name), current:current_version_id (id, file_name, mime_type), client:client_id (name), doc_type:doc_type_id (name)`;
 
 export const CLIENT_DOCUMENTS_SELECT = `id, doc_code, received_on, received_as, returnable, version_count, channel,
   receiver:received_by (full_name),

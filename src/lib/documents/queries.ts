@@ -114,13 +114,15 @@ export type InboxItem = {
   id: string; docCode: string; fileName: string | null; receivedAs: "soft_copy" | "hard_copy" | "original";
   /** 12: the client wants this hard copy back. */
   returnable?: boolean; handedOverName?: string | null;
+  /** 12 (AC-18): the current file for View / Download (null = no file yet). */
+  file?: CurrentFile | null;
   channel: string; remark: string | null; addedBy: string; createdAt: string;
   clientName: string | null; typeName: string | null;
 };
 
 type InboxRow = {
-  id: string; doc_code: string; received_as: InboxItem["receivedAs"]; returnable: boolean; handed_over_name: string | null; channel: string; remark: string | null; created_at: string;
-  creator: { full_name: string } | null; current: { file_name: string } | null;
+  id: string; doc_code: string; received_as: InboxItem["receivedAs"]; returnable: boolean; handed_over_name: string | null; channel: string; remark: string | null; created_at: string; status: string;
+  creator: { full_name: string } | null; current: { id: string; file_name: string; mime_type: string } | null;
   client: { name: string } | null; doc_type: { name: string } | null;
 };
 
@@ -137,6 +139,7 @@ export async function listInbox(onlyAddedBy: string | null, limit = 200): Promis
   }
   return ((data ?? []) as unknown as InboxRow[]).map((r) => ({
     id: r.id, docCode: r.doc_code, fileName: r.current?.file_name ?? null, receivedAs: r.received_as, returnable: r.returnable, handedOverName: r.handed_over_name, channel: r.channel,
+    file: r.current ? { versionId: r.current.id, mimeType: r.current.mime_type, viewBlocked: r.channel === "upload_link" && r.status !== "reviewed" } : null,
     remark: r.remark, addedBy: r.creator?.full_name ?? "—", createdAt: r.created_at,
     clientName: r.client?.name ?? null, typeName: r.doc_type?.name ?? null,
   }));
@@ -148,6 +151,36 @@ export async function toReviewCount(): Promise<number> {
   const { count } = await supabase.from("document").select("id", { count: "exact", head: true })
     .not("classified_at", "is", null).is("archived_at", null).eq("status", "received");
   return count ?? 0;
+}
+
+// ── 12 (AC-18): View / Download on list rows ───────────────────────────────
+/** A row's current file, for 03's FileButtons. `viewBlocked`: a client-link file not yet reviewed (10, D3). */
+export type CurrentFile = { versionId: string; mimeType: string; viewBlocked: boolean };
+
+/**
+ * Current files of the given documents, read as the signed-in user (RLS), in batches of 100 (URL length).
+ * Best effort, like Today's Upload links: a failed batch only loses those rows' buttons, and is logged (code only).
+ * A document with no file maps to null; one that couldn't be read is absent (so no "No file yet" on a failure).
+ */
+export async function currentFiles(ids: string[]): Promise<Map<string, CurrentFile | null>> {
+  const out = new Map<string, CurrentFile | null>();
+  if (ids.length === 0) return out;
+  const supabase = await createClient();
+  for (let i = 0; i < ids.length; i += 100) {
+    try {
+      const { data, error } = await supabase.from("document")
+        .select("id, channel, status, current:current_version_id (id, mime_type)").in("id", ids.slice(i, i + 100));
+      if (error) { console.error("documents.current_files_failed", { code: error.code ?? "unknown" }); continue; }
+      for (const r of (data ?? []) as unknown as Array<{ id: string; channel: string; status: string; current: { id: string; mime_type: string } | null }>) {
+        out.set(r.id, r.current
+          ? { versionId: r.current.id, mimeType: r.current.mime_type, viewBlocked: r.channel === "upload_link" && r.status !== "reviewed" }
+          : null);
+      }
+    } catch {
+      console.error("documents.current_files_failed", { code: "exception" });
+    }
+  }
+  return out;
 }
 
 /** Nav badge (AC-7): what this user's Inbox holds. */
