@@ -35,7 +35,7 @@ describe("TodayView", () => {
     expect(screen.getByText("Wednesday, 16 September 2026 · 1 client needs something")).toBeVisible();
     expect(screen.getByRole("button", { name: "3 Overdue" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "7 Due this week" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "4 In inbox" })).toHaveAttribute("href", "/inbox");
+    expect(screen.getByRole("link", { name: "4 Untagged" })).toHaveAttribute("href", "/inbox");
     const card = within(screen.getByRole("list", { name: "Clients that need something" })).getAllByRole("listitem")[0];
     expect(within(card).getByRole("link", { name: "Sankar Software Pvt Ltd" })).toHaveAttribute("href", "/clients/c1");
     expect(card).toHaveTextContent("Incharge Ravi · GST Priya");

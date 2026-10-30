@@ -23,7 +23,7 @@ describe("documentState: first match wins (spec order)", () => {
 
   it("2 In inbox when client or type is missing, whatever the status", () => {
     expect(documentState(filed({ docTypeId: null }), TODAY).kind).toBe("inbox");
-    expect(documentState(filed({ clientId: null, docTypeId: null, status: "reviewed" }), TODAY).text).toBe("In inbox");
+    expect(documentState(filed({ clientId: null, docTypeId: null, status: "reviewed" }), TODAY).text).toBe("Untagged"); // 12 (D2)
   });
 
   it("3 Dispatched <date> · <method> for an original in a live packet", () => {

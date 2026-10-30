@@ -58,15 +58,15 @@ describe("typing (AC-2, AC-3)", () => {
 
   it("matches the group name: 'banking' lists the group's plan types, then the others", () => {
     const r = matchTypes(TYPES, "banking");
-    expect(headings(r)).toEqual(["Banking", "Other types"]);
+    expect(headings(r)).toEqual(["Banking", "Not in existing category plan"]); // D4
     expect(r.sections[0].rows.map((x) => x.type.id)).toEqual(["prop", "bank"]);
     expect(r.sections[1].rows.map((x) => x.type.id)).toEqual(["loan"]);
     expect(r.sections[1].kind).toBe("other");
   });
 
-  it("plan types come first under their group headings; other types follow under one 'Other types' heading", () => {
+  it("plan types come first under their group headings; other types follow under one 'Not in existing category plan' heading (D4)", () => {
     const r = matchTypes(TYPES, "form");
-    expect(headings(r)).toEqual(["Income Tax", "Other types"]);
+    expect(headings(r)).toEqual(["Income Tax", "Not in existing category plan"]); // D4
     expect(r.sections[0].rows.map((x) => x.type.id)).toEqual(["26as"]);
     expect(r.sections[1].rows.map((x) => x.type.id)).toEqual(["f16", "26q"]);
   });

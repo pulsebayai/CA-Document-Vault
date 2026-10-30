@@ -48,10 +48,10 @@ describe("Add document — a file chosen before the page is interactive", () => 
     document.body.appendChild(container);
     const save = (label: string) => [...container.querySelectorAll("button")].find((b) => b.textContent === label)!;
     expect(save("Save to vault").disabled).toBe(true);
-    expect(save("Save to inbox").disabled).toBe(true);
+    expect(save("Save as untagged").disabled).toBe(true);
     await act(async () => { hydrateRoot(container, <DocumentForm {...props} />, { onRecoverableError: () => {} }); });
     expect(save("Save to vault").disabled).toBe(false);
-    expect(save("Save to inbox").disabled).toBe(false);
+    expect(save("Save as untagged").disabled).toBe(false);
   });
 
   it("does nothing when no file was chosen", async () => {
