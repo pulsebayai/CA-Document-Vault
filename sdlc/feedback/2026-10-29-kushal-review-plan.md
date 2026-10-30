@@ -11,7 +11,7 @@ These answer the questions in §4 (two rounds, 16:18 and 16:26). Where a decisio
 | Q | Decision | What it changes |
 |---|---|---|
 | Q1 | **DSC is a separate module under the client**, not a document type. **Reminder 1 month before expiry by default, configurable per client** (added 16:50) | New feature **14-dsc-tracking**: a DSC section on the client page with holder, class, issuer, expiry date and who holds the token. Reminders follow 06 (Today + Remind). A per-client setting, "Remind N days before DSC expiry" (default 30), in Client › Settings |
-| Q2 | **No password is stored. Tracking only** (first answer, "store the password", withdrawn at 16:26) | No secrets in the vault. The §5 password risk no longer applies. DSC drops to a medium-sized feature with no extra security design |
+| Q2 | ~~No password is stored~~ → **replaced by D5 (30 Oct): passwords ARE stored** | No secrets in the vault. The §5 password risk no longer applies. DSC drops to a medium-sized feature with no extra security design |
 | Q3 | **Reception marks receipt only; the scan is attached later from the Inbox. Reception staff use the Staff role** | Reception desk mode (A20) is a short "Log receipt" form: client, what was received, how many, **handed over by** (A4). It creates a hard-copy document with no file in the Inbox, and staff attach the scan from there. No new role, and no permission change |
 | Q4 | **Staff, Manager and Admin can edit details after filing, including group and document type. Staff can also undo a review** | Edit: no permission change (today's rule). **Undo review moves from Admin/Manager only to Staff+.** This changes 08's permission row "Undo a review or a dispatch": it splits into "Undo a review" (Staff+) and "Undo a dispatch" (Admin/Manager, unchanged), with RLS probes and tests. Limited stays as today |
 | Q5 | **A "My clients" default filter is enough** | A16a stays. **A16b (hard access restriction) is dropped** |
@@ -36,6 +36,20 @@ These answer the questions in §4 (two rounds, 16:18 and 16:26). Where a decisio
   - **drop 1** = Phase 1 + custody + reception;
   - **drop 2** = DSC + All documents.
 - Raja and Kushal to confirm the date.
+
+### Decisions — 30 Oct, after Sankar's comments on the discussion note (Sidambara with Kushal + Sankar, 15:04)
+| # | Decision | Effect |
+|---|---|---|
+| D1 | **Handed over by = one text field** (a name), no kind dropdown | 12: spec AC-14 changes; migration C drops `handed_over_kind` (A already applied on dev) |
+| D2 | **Inbox is renamed "Untagged documents"** ("filing" means tax filing to a CA) | 12: replaces Q2 ("keep Inbox"). Every on-screen "Inbox" label changes; the route `/inbox` stays |
+| D3 | **"+ Propose a new type" stays inline for Staff, as today** | 12: no change |
+| D4 | The "Other types" heading in the type field reads **"Not in existing category plan"** | 12: spec AC-2 wording |
+| D5 | **DSC passwords ARE stored** (Kushal + Sankar; the firm keeps the password with the key fob today). **Replaces Q2.** Sankar's #7 adds: DSC in/out custody log, re-use of an existing DSC on return; required = holder name, expiry, password; rest optional | 14: needs encryption at rest, reveal-on-demand with a logged reveal, never in exports/search/logs, a security review, and written risk acceptance. [Likely] +3–5 days on 14 |
+| D6 | **Client upload links stay in R1** (feature 10, shipped) | none |
+| D7 | **Email moves to AWS SES (Mumbai) after 12, during staging/prod setup.** Reverses the 2026-10-01 Brevo decision | Staging/prod path: SES for sign-in codes (Supabase Auth SMTP) and the vault mailer. Architecture decision row at that time |
+| D8 | **Automatic client emails** on document received and on Ready to dispatch (Sankar #16), once on SES | New feature (proposed **16-client-notifications**). Changes the project rule "no automatic sends", so it needs its own intent. Release to confirm |
+| D9 | **Files stay in Supabase Storage** (private, Mumbai); no move to S3 | none |
+| — | Sankar #1 (trash bin), #6 (reception paper IDs with client code), #10 (Limited = my clients: already so), #14 (30-day "in office" flag) | #14 → 13. #6 → 13's intent (recommendation: DOC-ID + client code, no second ID). #1 → not decided |
 
 ## 1. Bottom line
 
