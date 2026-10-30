@@ -117,6 +117,21 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 ## Estimate
 [Uncertain] 5–7 working days incl. review (about 4–5 build sessions). Feature 13 starts after merge (it builds on Returnable); 14 can be planned in parallel.
 
+## Changes after Sankar's comments (decided 30 Oct 15:04, D1–D4; to approve with the test list below)
+- **Migration C** (`2026103011xxxx_intake_fixes_c.sql`):
+  - drops `document.handed_over_kind`, its type and the pair check;
+  - replaces `document_before_write`, `create_document` and `update_document` again (only the handed-over lines change).
+  - Applied on dev like A and B (md5 = file).
+- **New 12 tests that change** (written this week, now with a changed requirement):
+  - `handed-over.test.ts`, `handed-over-rules.test.ts`: the kind goes, the name stays;
+  - `type-match.test.ts`: heading "Other types" → "Not in existing category plan".
+- **"Inbox" → "Untagged documents" (D2): existing tests that assert the visible word "Inbox"** (route `/inbox` unchanged):
+  - e2e: `inbox.spec.ts` (18 mentions), `search.spec.ts` (4), `document-screenshots.spec.ts` (4), `add-document.spec.ts` (1);
+  - unit: `document-form-client-race.test.tsx` (7), `header-search.test.tsx` (2), `search-view.test.tsx` (2), `search-review.test.tsx` (1), `permissions.test.ts` (1, the row label "Add documents and file the Inbox").
+
+  Only the visible label in each assertion changes; no check is removed.
+- [Uncertain] +½–1 day for C and the rename.
+
 ## Deviations from plan
 - **Migration A data step (step 2):** the first apply on dev failed (`55006 pending trigger events`) and rolled back cleanly. 03's deferred soft-copy check queued events, and 03's trigger refuses changes to archived documents. Fix in the file: `document_before_write` is disabled for the one data statement, then `set constraints all immediate`, then re-enabled. Applied on dev 2026-10-30: 136 originals → 136 returnable hard copies, 0 left.
 - **Migration B** needed the user's confirmation in the Supabase tool (it drops and recreates `review_document` / `search_clients`); applied on dev 2026-10-30 11:1x after confirmation. **md5 = file for all 10 replaced functions.**

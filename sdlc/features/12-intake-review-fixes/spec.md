@@ -5,8 +5,8 @@ Screens: mockup 12 (Add document) + Sankar's prototype (cavault.pulsebay.com ›
 ## Decisions taken into this spec (intent open questions, recommended answers — confirm at this gate)
 | # | Question | Answer in this spec |
 |---|---|---|
-| Q1 | Handed over by | Kinds **Client's staff · Courier · Security · Other**, plus a **name, required for every kind** (1–120 chars) |
-| Q2 | Inbox name | Keep **"Inbox"**; new subtitle + a link to Today › To review |
+| Q1 | Handed over by | ~~Kinds + name~~ → **amended 30 Oct (D1): one text field, "Handed over by" (1–120 chars)** |
+| Q2 | Inbox name | ~~Keep "Inbox"~~ → **amended 30 Oct (D2): renamed "Untagged documents"**; the route `/inbox` stays; subtitle + link to Today › To review |
 | Q3 | "Wrong details" fix | ~~Any save~~ → **amended by plan R1:** reset by correction kind; remark / channel / received-by never reset (AC-23) |
 | Q4 | Undo review | **Staff, Manager and Admin**, any review, reason required, logged. Limited: no |
 | Q5 | "My clients" | Incharge **or** assigned to one of the client's groups or types (06's "Mine"). On by default for **Staff only** |
@@ -16,7 +16,7 @@ Screens: mockup 12 (Add document) + Sankar's prototype (cavault.pulsebay.com ›
 
 ### A. Document type field (Add document, Inbox › Assign, Edit)
 - **AC-1** Given a client is chosen, when staff focus the empty field, then they see only that client's plan types (active rows, approved + its proposed types), **grouped under group headings** in the catalogue's group order, each with its frequency on the right (prototype). No client chosen (Inbox): the list says "Type to search all types".
-- **AC-2** When staff type, matches come from the type's **name, its aliases (02) and its group's name**, case-insensitive, ignoring spaces, hyphens, dots and slashes ("3b", "gstr 3b", "GSTR3B" → GSTR-3B; "26q" → Form 26Q). The client's plan types come first, under their group headings. Every other approved, active type follows under one heading **"Other types"**, with its group name on the right in place of the frequency. Matches that start with the typed text come before matches that only contain it.
+- **AC-2** When staff type, matches come from the type's **name, its aliases (02) and its group's name**, case-insensitive, ignoring spaces, hyphens, dots and slashes ("3b", "gstr 3b", "GSTR3B" → GSTR-3B; "26q" → Form 26Q). The client's plan types come first, under their group headings. Every other approved, active type follows under one heading **"Not in existing category plan"** (D4, 30 Oct; was "Other types"), with its group name on the right in place of the frequency. Matches that start with the typed text come before matches that only contain it.
 - **AC-3** At most **8** rows are shown. More matches add a last line: "N more — keep typing to narrow". A group heading with no matching rows is not shown.
 - **AC-4** Keyboard: ↓/↑ move, Enter picks, Esc closes and restores the last pick, Tab leaves. It is an ARIA combobox (`role="combobox"`, `aria-expanded`, `aria-activedescendant`, listbox/option). axe shows no violations, and it works at 390 px wide.
 - **AC-5** No match: the list shows up to **3 close types** (sharing a word of ≥ 3 letters with the typed text), then **"+ Propose a new type… needs approval"** (prototype wording). Picking it opens 03's existing new-type step (group choice, suggestions, 05 queue). It is offered only to Staff+ with a client chosen, as today; Limited sees "No matching type".
@@ -38,17 +38,17 @@ Screens: mockup 12 (Add document) + Sankar's prototype (cavault.pulsebay.com ›
   The red "Original" badge becomes a **"Returnable"** badge (same tone).
 - **AC-12** A returnable document in a live dispatch packet can't change client, received as, or Returnable until its dispatch is undone (07's lock, extended to the flag).
 - **AC-13** `/documents`: the "Received as" facet shows Soft copy / Hard copy. A new **"Returnable"** filter shows returnable hard copies. An old link with `as=original` opens with Hard copy + Returnable.
-- **AC-14** **Handed over by** shows for hard copies: a kind (Client's staff · Courier · Security · Other) and a name (1–120 characters).
+- **AC-14** **Handed over by** (D1, 30 Oct: one text field) shows for hard copies: who brought it in, e.g. "Courier — Blue Dart" or "Client's accountant" (1–120 characters).
   - **Every staff screen** (server action) refuses a new hard copy, or a change to hard copy, without it.
-  - The **database** enforces the shape: both fields or neither, never on a soft copy, and once set they can be changed but not cleared.
-  - Existing hard copies with none show "Not recorded", and an unrelated edit doesn't force them to be filled.
+  - The **database** checks the shape: 1–120 characters, never on a soft copy, and once set it can be changed but not cleared.
+  - Existing hard copies with none show "Not recorded", and an unrelated edit doesn't force it to be filled.
 
-  *(Amended by plan R2, 2026-10-30: "required" is checked in the app, not as a database rule.)*
-- **AC-15** Handed over by shows on the document page and in the Inbox row ("handed over by Courier · <name>"). The name **never** goes into activity data, URLs or logs. Activity records only that the field changed.
+  *(Amended by plan R2 and by D1: the kind dropdown is gone; migration C drops `handed_over_kind`.)*
+- **AC-15** Handed over by shows on the document page and in the Untagged documents row ("handed over by <name>"). The name **never** goes into activity data, URLs or logs. Activity records only that the field changed.
 - **AC-16** Client upload links (10) are unchanged: soft copy, not returnable, no handed over by.
 
 ### C. Inbox and quick file access
-- **AC-17** Inbox subtitle: "Documents waiting for a client or a type. Filed documents to review are on **Today › To review** (N)." The link opens Today filtered to To review.
+- **AC-17** (D2, 30 Oct) **Inbox is renamed "Untagged documents"** everywhere staff see it: header nav ("Untagged" with its count), the page title, the Today count, "Save to inbox" → "Save as untagged", "Leave it in inbox" → "Leave it untagged", search's state filter ("Untagged"), the document page's link. The route stays `/inbox` (no broken bookmarks). Subtitle: "Documents waiting for a client or a type. Filed documents to review are on **Today › To review** (N)."
 - **AC-18** **View / Download** buttons on each Inbox row, `/documents` result row and Today "To review" row that has a file. They use 03's existing file buttons and rules:
   - View only for PDF, JPG and PNG;
   - a link upload is download-only until reviewed (10);
@@ -98,7 +98,7 @@ Screens: mockup 12 (Add document) + Sankar's prototype (cavault.pulsebay.com ›
 - `document.returnable boolean not null default false`; check: returnable → `received_as = 'hard_copy'`.
 - Data step: `update document set received_as = 'hard_copy', returnable = true where received_as = 'original'` (under 03's write flag; no activity). Then add check `received_as <> 'original'`. The enum value stays: Postgres can't drop it without rebuilding every dependent function.
 - `create type handed_over_kind as enum ('client_staff', 'courier', 'security', 'other')`.
-  - `document.handed_over_kind` null, `document.handed_over_name text` null; both set or both null; length 1–120.
+  - `document.handed_over_name text` null; length 1–120 (D1: the kind column added by migration A is dropped by migration C).
   - Soft copy → both null. Required by `document_before_write` on insert as hard copy, and on a change to hard copy. Can't go from set to null.
 - `create type correction_kind as enum ('file', 'details')`; `document.correction_kind` (set by `review_document`, cleared with the review); `document_review.correction_kind`.
 - `document_before_write`:
