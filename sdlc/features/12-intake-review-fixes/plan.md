@@ -97,7 +97,7 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 - [x] 8. **Needs correction kind** (dialog, panel text, matching action). — proof: unit `review-actions`; e2e Wrong details → Edit → To review
 - [x] 9. **Lists:** `/documents` 20/page + Returnable filter; Client › Documents pages per card. — proof: e2e parts locally
 - [x] 10. **My clients** (toggle, default on for Staff, URL flag). — proof: `clients-mine` RLS + `clients-list` timing; e2e part
-- [ ] 11. **Docs:** architecture.md (6 items + superseding decision row), ui-reference deviations; Settings › Users rows. — proof: review
+- [x] 11. **Docs:** architecture.md (6 items + superseding decision row), ui-reference deviations; Settings › Users rows. — proof: review
 - [ ] 12. **Full verification:** lint, typecheck, unit, RLS (dev), new/changed e2e locally; push → PR CI; **RUN_SLOW** Regression on the branch preview (asked before dispatch); `sdlc-reviewer`; fix Important findings failing-first → PR with the AC table. — proof: CI green + RUN_SLOW green + AC table
 
 ## Risks
@@ -195,3 +195,5 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 - Next step: step 9 (/documents 20 per page + Returnable filter; Client › Documents pages per card).
 - Later: steps 9–10 done. `/documents` 20 per page with "N–M of T" (page_size 20; SQL default/cap stay 50) and "Returnable only"; Client › Documents cards newest received first, 20 per page with Previous / Next and "N–M of T", Select all = the pages shown; My clients toggle (Staff on, Admin/Manager off, Limited none; URL flag). `intake-fixes.spec.ts` now 12; clients, expected, screenshots, expected-screenshots, type-governance, import, bulk, client-documents, search, search-screenshots, client-edit, client-plan, today, today-documents, upload-link-requested, review-dispatch, users, activity green locally. Unit 568/568; RLS clients-mine 5/5.
 - Next step: step 11 (docs).
+- Later: step 11 done. architecture.md: header line, a "12" block under the document model (returnable + legacy input rule + data-step pattern, handed over by, correction kinds + reset rule, Staff undo review, list paging + `currentFiles`, "Untagged" naming, My clients, type field), shown-state note, the 2026-09-28 row marked superseded, two decision rows. ui-reference.md: 9 deviation rows. Settings › Users rows come from `permissions.ts` (step 4).
+- Next step: step 12 (full verification → push → PR CI → RUN_SLOW → sdlc-reviewer → PR), each push / dispatch / PR asked first.
