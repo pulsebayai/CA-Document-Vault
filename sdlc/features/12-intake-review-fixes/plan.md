@@ -90,8 +90,8 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 - [x] 1. **Failing tests first (RLS + unit)** for AC-8–16, 21–24, 27: `returnable`, `handed-over`, `correction-kind`, `clients-mine`, and the changed rows above. — proof: they fail for the expected reason on dev
 - [x] 2. **Migration A** (schema, data step, trigger, create/update). — proof: step-1 RLS files for A pass on dev; the documents / review-dispatch / type-governance / link files pass unedited
 - [x] 3. **Migration B** (review kind, undo, dispatch, search, today, clients). — proof: all step-1 RLS files pass; role-matrix, document-search, today-documents and upload-link RLS files green
-- [ ] 4. **Lib layer** (validation, state, review, dispatch, search parse, permissions, activity sentences, today shape). — proof: unit suite green; `document-state` / `today-shape` / `dispatch-dialog` unedited
-- [ ] 5. **Type field:** `matchTypes` + `type-combobox` (ARIA, keyboard, cap, close matches, propose) + aliases loaded. — proof: `type-match` + `type-combobox` unit; benchmark 500 types < 16 ms
+- [x] 4. **Lib layer** (validation, state, review, dispatch, search parse, permissions, activity sentences, today shape). — proof: unit suite green; `document-state` / `today-shape` / `dispatch-dialog` unedited
+- [x] 5. **Type field:** `matchTypes` + `type-combobox` (ARIA, keyboard, cap, close matches, propose) + aliases loaded. — proof: `type-match` + `type-combobox` unit; benchmark 500 types < 16 ms
 - [ ] 6. **Document form:** type field in; received as + Returnable + handed over by; confirmation line; Assign / Edit pages. — proof: unit form tests; e2e `document-type-field.spec` locally
 - [ ] 7. **Inbox + file buttons + Edit entry points** (Inbox, `/documents`, Today, client rows, Needs-correction message). — proof: e2e `intake-fixes.spec` (Inbox part) locally
 - [ ] 8. **Needs correction kind** (dialog, panel text, matching action). — proof: unit `review-actions`; e2e Wrong details → Edit → To review
@@ -141,6 +141,8 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
   - `review-actions.test.ts:45` asserts "Undo is Admin/Manager only" with a Staff user. AC-24 changes this, as in the approved `review-dispatch.test.ts:127`.
 
   Both are left unedited until approved.
+- **Migration C** (D1: one "Handed over by" field) applied on dev 2026-10-30 ≈ 15:15 after the user confirmed in the Supabase tool; md5 = file for `document_before_write`, `create_document`, `update_document`; `handed_over_kind` column and type gone.
+- **More existing tests changed for D2 (approved by the user 2026-10-30, after 15:09):** label-only, beyond the list above: `document-form-hydration.test.tsx` ("Save to inbox" ×2), `document-state.test.ts` ("In inbox"), `selection-bar.test.tsx` ("(in inbox)" ×2, "— in inbox"), `today-view.test.tsx` ("4 In inbox"). Step 4's proof "document-state unedited" therefore holds for the returnable logic only. Also approved: one "Handed over by" fill line in the three e2e tests that save a new hard copy through the form (`add-document.spec` ×2, `inbox.spec` ×1), added in step 6.
 - **Legacy URL `as=original`** is accepted by `parseDocumentSearchParams` (AC-13), so `document-search.test.ts` (unit) stays unedited.
 
 ## Session log
@@ -165,3 +167,9 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 - Blocked / failing: nightly 40975613618 (RLS, cause under investigation by the user). Until 12 merges, nightlies also fail the approved 'Original' assertions, now that A + B are on dev (user accepted).
 - Next step: approval of the 2 extra test rows. Then the remaining step 4 (query selects: returnable / handed over / correction kind; dispatch ready list; document page + inbox labels), then step 5 (type field).
 - Decisions made (cross-cutting → flag for architecture.md): migration data steps that touch archived documents disable `document_before_write` for that statement + `set constraints all immediate` (pattern to note).
+
+### 2026-10-30 (build session 1, continued)
+- Done: migration C on dev (md5 = file); D1 tests + `validateHandedOver` (one field); step 4 (selects/mappers carry returnable, handed over by, correction kind; `paperBadge`; document page Dispatch card follows returnable; Untagged page title/subtitle with Today › To review (N); visible "Inbox" → "Untagged" everywhere, route kept); step 5 (`matchTypes`, `TypeCombobox`, aliases + group order loaded). Unit suite 55 files green; RLS handed-over / correction-kind / returnable 31/31 on dev.
+- In progress: step 6 (the combobox replaces the type `<select>` in the document form).
+- Blocked / failing: step 6 changes how existing tests pick a type (a `<select>` becomes a combobox) — not on the approved list; asked.
+- Next step: step 6 after the answer.
