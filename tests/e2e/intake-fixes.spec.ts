@@ -95,3 +95,35 @@ test("AC-18: Today's To review rows have Download (and View for a PDF)", async (
   await expect(page.getByRole("button", { name: `View ${docs.filed.doc_code}` })).toBeVisible();
   await expect(page.getByRole("button", { name: `Download ${docs.filed.doc_code}` })).toBeVisible();
 });
+
+// Step 8 — Needs correction kinds (spec AC-21 … AC-23).
+test("AC-21, AC-22: Wrong file offers Upload corrected file first", async ({ page, baseURL }) => {
+  await signIn(page, staff.email, baseURL);
+  await page.goto(`/clients/${clientId}`);
+  const row = page.getByRole("listitem").filter({ hasText: docs.paper.doc_code });
+  await row.getByRole("button", { name: new RegExp(`^Needs correction: .*${docs.paper.doc_code}`) }).click();
+  const dialog = page.getByRole("dialog", { name: /Needs correction/ });
+  await dialog.getByLabel("Reason").fill("Unsigned copy");
+  await dialog.getByRole("button", { name: "Mark needs correction" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("Choose wrong file or wrong details.");
+  await dialog.getByRole("radio", { name: /Wrong file/ }).check();
+  await dialog.getByRole("button", { name: "Mark needs correction" }).click();
+  await expect(row).toContainText("Needs correction · wrong file · Unsigned copy");
+  await page.goto(`/documents/${docs.paper.id}`);
+  const actions = page.getByTestId("correction-actions");
+  await expect(actions.getByRole("link")).toHaveText(["Upload corrected file", "Edit details"]);
+});
+
+test("AC-22, AC-23: Wrong details → Edit details → a changed received-on date sends it back to To review", async ({ page, baseURL }) => {
+  await signIn(page, staff.email, baseURL);
+  await page.goto(`/documents/${docs.wrong.id}`);
+  const actions = page.getByTestId("correction-actions");
+  await expect(actions.getByRole("link")).toHaveText(["Edit details", "Upload corrected file"]);
+  await actions.getByRole("link", { name: "Edit details" }).click();
+  await expect(page.getByRole("button", { name: "Save changes" })).toBeEnabled(); // form is interactive
+  await page.getByLabel("Received on").fill("2026-05-01");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await page.waitForURL(new RegExp(`/documents/${docs.wrong.id}\\?saved=`));
+  await expect(page.getByTestId("review-state")).toHaveText("To review");
+  await expect(page.getByRole("list", { name: "Review history" })).toContainText("changed it — back to To review");
+});

@@ -89,7 +89,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
 
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-5">
-          <Card className="p-5">
+          <Card className="p-5" id="current-file">
             <h2 className="font-semibold">Current file</h2>
             {current ? (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -120,7 +120,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
 
         <div className="space-y-5">
           <ReviewPanel documentId={d.id} clientId={d.client?.id ?? null} label={label} canUndo={canUndoReview(me.role) && !archived}
-            state={reviewState} reviewable={d.classified && !archived} status={d.status}
+            state={reviewState} reviewable={d.classified && !archived} status={d.status} correctionKind={d.correctionKind}
             history={history.map((h) => ({ ...h, atText: when.format(new Date(h.at)) }))} />
           {returnable && d.classified && (
             <DispatchPanel documentId={d.id} clientId={d.client?.id ?? null} clientName={d.client?.name ?? null} label={label} canUndo={canUndo && !archived}
