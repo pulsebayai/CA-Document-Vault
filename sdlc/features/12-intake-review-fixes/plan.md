@@ -92,7 +92,7 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 - [x] 3. **Migration B** (review kind, undo, dispatch, search, today, clients). — proof: all step-1 RLS files pass; role-matrix, document-search, today-documents and upload-link RLS files green
 - [x] 4. **Lib layer** (validation, state, review, dispatch, search parse, permissions, activity sentences, today shape). — proof: unit suite green; `document-state` / `today-shape` / `dispatch-dialog` unedited
 - [x] 5. **Type field:** `matchTypes` + `type-combobox` (ARIA, keyboard, cap, close matches, propose) + aliases loaded. — proof: `type-match` + `type-combobox` unit; benchmark 500 types < 16 ms
-- [ ] 6. **Document form:** type field in; received as + Returnable + handed over by; confirmation line; Assign / Edit pages. — proof: unit form tests; e2e `document-type-field.spec` locally
+- [x] 6. **Document form:** type field in; received as + Returnable + handed over by; confirmation line; Assign / Edit pages. — proof: unit form tests; e2e `document-type-field.spec` locally
 - [ ] 7. **Inbox + file buttons + Edit entry points** (Inbox, `/documents`, Today, client rows, Needs-correction message). — proof: e2e `intake-fixes.spec` (Inbox part) locally
 - [ ] 8. **Needs correction kind** (dialog, panel text, matching action). — proof: unit `review-actions`; e2e Wrong details → Edit → To review
 - [ ] 9. **Lists:** `/documents` 20/page + Returnable filter; Client › Documents pages per card. — proof: e2e parts locally
@@ -143,6 +143,8 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
   Both are left unedited until approved.
 - **Migration C** (D1: one "Handed over by" field) applied on dev 2026-10-30 ≈ 15:15 after the user confirmed in the Supabase tool; md5 = file for `document_before_write`, `create_document`, `update_document`; `handed_over_kind` column and type gone.
 - **More existing tests changed for D2 (approved by the user 2026-10-30, after 15:09):** label-only, beyond the list above: `document-form-hydration.test.tsx` ("Save to inbox" ×2), `document-state.test.ts` ("In inbox"), `selection-bar.test.tsx` ("(in inbox)" ×2, "— in inbox"), `today-view.test.tsx` ("4 In inbox"). Step 4's proof "document-state unedited" therefore holds for the returnable logic only. Also approved: one "Handed over by" fill line in the three e2e tests that save a new hard copy through the form (`add-document.spec` ×2, `inbox.spec` ×1), added in step 6.
+- **Type field changes how existing tests pick a type (approved by the user 2026-10-30):** a `<select>` became a combobox. Only the pick/read step changed (type the name, pick the option; the field shows the name): e2e `add-document` ×4, `inbox`, `expected`, `format-preferences`, `document-screenshots`, `upload-link-today`, `upload-link-requested`; unit `document-form-client-race` ×3. New helpers `pickType` / `typeFieldValue` in `tests/e2e/helpers.ts`. The listbox is named "Matching types" so `getByLabel("Document type")` still finds only the field.
+- **Untagged subtitle link** is underlined: axe `link-in-text-block` failed locally on the first run.
 - **Legacy URL `as=original`** is accepted by `parseDocumentSearchParams` (AC-13), so `document-search.test.ts` (unit) stays unedited.
 
 ## Session log
@@ -173,3 +175,4 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 - In progress: step 6 (the combobox replaces the type `<select>` in the document form).
 - Blocked / failing: step 6 changes how existing tests pick a type (a `<select>` becomes a combobox) — not on the approved list; asked.
 - Next step: step 6 after the answer.
+- Later the same day: step 6 done. Server actions require "Handed over by" for a new hard copy (and on a change to hard copy) and send `returnable` + `handed_over_name`; the form has the type-ahead field, Returnable, Handed over by and the "Moves from … to …" line (AC-20); the document page shows "Not recorded". Unit 565/565; changed e2e run locally against a production build: 45/45 green (add-document AC-1 took 27–28 s of its 30 s limit from the session; dev latency, watch in CI). Next: step 7 (Untagged file buttons + Edit entry points).
