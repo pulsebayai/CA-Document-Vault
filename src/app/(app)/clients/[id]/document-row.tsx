@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { ClientDocument } from "@/lib/documents/queries";
-import { documentState, heldDays, nextAction, paperBadge, type ShownStateKind } from "@/lib/documents/state";
+import { custodyAction, documentState, heldDays, inOfficeDays, nextAction, paperBadge, type ShownStateKind } from "@/lib/documents/state";
+import { CustodyButton, InOfficeBadge } from "../../documents/custody-controls";
 import { Badge } from "@/components/ui";
 import { FormatBadge } from "@/components/format-badge";
 import { RowCheckbox } from "@/components/selection-bar";
@@ -37,6 +38,7 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
   const held = heldDays({ ...input, receivedOn: d.receivedOn }, today);
   const paper = paperBadge(d); // 12
   const action = nextAction(state);
+  const custodyNext = action ? null : custodyAction(input); // 13 (AC-9): Mark in office / Ready to dispatch after the review
   const label = `${d.typeName}${d.periodLabel ? ` · ${d.periodLabel}` : ""} (${d.docCode})`;
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
@@ -55,10 +57,12 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
           {d.fromLink && <Badge tone="accent">From client link</Badge>}
           <FormatBadge preferred={d.notPreferred} />
           {held !== null && <span className="text-ink-3">· Held {held} day{held === 1 ? "" : "s"}</span>}
+          <InOfficeBadge days={inOfficeDays(input, today)} />
         </p>
         <p className={`mt-0.5 break-words text-[13px] font-medium ${TONE[state.kind]}`} data-testid="doc-state">{state.text}</p>
       </div>
       {action === "review" && <ReviewControls documentId={d.id} clientId={clientId} label={label} onMessage={setMsg} />}
+      {custodyNext && <CustodyButton documentId={d.id} clientId={clientId} step={custodyNext} label={label} onMessage={setMsg} />}
       {action === "dispatch" && (
         <DispatchDialog clientId={clientId} clientName={clientName} documentId={d.id} label={label} today={today} onMessage={(text) => setMsg({ ok: true, text })} />
       )}

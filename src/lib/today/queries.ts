@@ -14,7 +14,9 @@ export class TodayError extends Error {
 export type TodayData = {
   today: string; counts: { overdue: number; dueWeek: number; toReview: number; ready: number;
     /** 10 — optional so 06's view tests (which build this type) stay unedited. */
-    requested?: number; requestedLater?: number };
+    requested?: number; requestedLater?: number;
+    /** 13 — optional for the same reason: To place in office, In office > 30 days. */
+    toPlace?: number; held?: number };
   /** Cards in scope and filter (all pages): "N clients need something". */
   clients: number; cards: TodayCard[]; hasMore: boolean;
 };
@@ -77,7 +79,8 @@ export async function todayDataAs(scope: Scope, show: Show | null, page: number)
   return {
     today: last.today,
     counts: { overdue: last.counts.overdue, dueWeek: last.counts.due_week, toReview: last.counts.to_review ?? 0, ready: last.counts.ready ?? 0,
-      requested: last.counts.requested ?? 0, requestedLater: last.counts.requested_later ?? 0 },
+      requested: last.counts.requested ?? 0, requestedLater: last.counts.requested_later ?? 0,
+      toPlace: last.counts.to_place ?? 0, held: last.counts.held ?? 0 }, // 13
     clients: last.clients ?? cards.length, cards, hasMore: last.has_more,
   };
 }

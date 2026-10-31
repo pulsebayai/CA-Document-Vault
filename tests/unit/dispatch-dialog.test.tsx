@@ -8,6 +8,7 @@ import type { ClientDocument } from "@/lib/documents/queries";
 
 const readyOriginals = vi.fn();
 const createDispatch = vi.fn();
+vi.mock("@/lib/custody/actions", () => ({ markCustody: vi.fn(), undoCustody: vi.fn() })); // 13 (AC-9): rows show the custody button (approved 2026-10-31)
 vi.mock("@/lib/dispatch/actions", () => ({ readyOriginals, createDispatch, undoDispatchItem: vi.fn() }));
 const markReviewed = vi.fn(async () => ({ ok: true as const, message: "Marked reviewed." }));
 vi.mock("@/lib/review/actions", () => ({ markReviewed, markNeedsCorrection: vi.fn(), undoReview: vi.fn() }));

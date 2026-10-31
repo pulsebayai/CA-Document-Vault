@@ -180,12 +180,12 @@ test("AC-14: /documents Status and Return filters round-trip through the URL as 
   await expect(results.getByRole("listitem")).toHaveCount(2);
   await expect(results.getByRole("listitem").filter({ hasText: doc.sent.doc_code })).toContainText("Dispatched 10 May · Hand delivery");
   await expect(results.getByRole("listitem").filter({ hasText: doc.orig2.doc_code })).toContainText("· Courier");
-  await expect(page.getByRole("button", { name: "Remove filter Return: Dispatched" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove filter Custody: Dispatched" })).toBeVisible(); // 13: renamed (approved 2026-10-31)
 
   await page.getByRole("combobox", { name: "Custody" }).selectOption({ value: "ready" }); // 13: "Return" renamed (approved 2026-10-31)
   await expect(page).toHaveURL(/return=ready/);
   await expect(results).toContainText(doc.orig1.doc_code);
-  await page.getByRole("combobox", { name: "Return" }).selectOption({ value: "" });
+  await page.getByRole("combobox", { name: "Custody" }).selectOption({ value: "" }); // 13: renamed (approved 2026-10-31)
   await page.getByRole("combobox", { name: "Status" }).selectOption({ value: "needs_correction" });
   await expect(page).toHaveURL(/status=needs_correction/);
   await expect(results.getByRole("listitem")).toHaveCount(1);

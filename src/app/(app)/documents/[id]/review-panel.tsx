@@ -133,7 +133,7 @@ export function DispatchPanel({ documentId, clientId, clientName, label, canUndo
           </>
         ) : (
           <div className="mt-2 space-y-3">
-            <p className="text-[13.5px] text-ink-2">{ready ? "Ready to dispatch — this original still needs to go back to the client." : "Not ready yet — review it first."}</p>
+            <p className="text-[13.5px] text-ink-2">{ready ? "Ready to dispatch — this original still needs to go back to the client." : "Not ready yet — review it, then mark it in office and Ready to dispatch (Custody)."}</p>
             {ready && clientId && (
               <DispatchDialog clientId={clientId} clientName={clientName} documentId={documentId} label={label} today={today}
                 onMessage={(text) => setMsg({ ok: true, text })} />

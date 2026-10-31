@@ -83,7 +83,7 @@ export const isReadyToDispatch = (d: DocumentStateInput) =>
 
 /** 13 (spec AC-11): a filed, live hard copy with a review decision and no custody step yet ("To place in office"). */
 export const isToPlace = (d: DocumentStateInput) =>
-  !d.archived && isFiled(d) && isHardCopy(d) && !d.custody && hasDecision(d);
+  !d.archived && isFiled(d) && isHardCopy(d) && !d.custody && !d.dispatchedOn && hasDecision(d);
 
 /** 13 (spec AC-9): the next custody click: Mark in office, then Ready to dispatch (returnable only); otherwise none. */
 export function custodyAction(d: DocumentStateInput): "in_office" | "ready" | null {

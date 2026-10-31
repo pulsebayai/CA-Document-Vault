@@ -13,7 +13,8 @@ import { SEARCH_TEXT_EVENT, handOffSearchText } from "@/components/header-search
 import { documentFacets, findClients, searchDocuments } from "@/lib/search/actions";
 import type { ClientHit, DocumentHit, FacetName, FacetValue, FilterOptions, PickerClient } from "@/lib/search/queries";
 import { CHANNEL_LABELS, RECEIVED_LABEL as RECEIVED_LABEL_ALL } from "@/lib/validation/document";
-import { documentState, type ShownStateKind, paperBadge } from "@/lib/documents/state";
+import { custodyAction, documentState, inOfficeDays, type ShownStateKind, paperBadge } from "@/lib/documents/state";
+import { CustodyButton, InOfficeBadge } from "../custody-controls";
 import { istDate } from "@/lib/documents/period";
 import {
   DEFAULT_FILTERS, DOC_FORMATS, DOC_RETURNS, DOC_STATES, DOC_STATUSES, PAGE_SIZE, SEARCH_TEXT_KEY, SORTS, SUGGEST_DEBOUNCE_MS, filtersToQuery,
@@ -336,19 +337,28 @@ const STATE_TONE: Record<ShownStateKind, string> = {
 
 /** 07 AC-14: the shown state of a result row (same order as Client › Documents). */
 export function rowState(d: DocumentHit, today: string) {
-  return documentState({
+  return documentState(rowInput(d), today);
+}
+
+/** The state input of a result row (shared by the shown state and 13's next custody step). */
+function rowInput(d: DocumentHit) {
+  return {
     archived: d.archived, clientId: d.clientId, docTypeId: d.docTypeId ?? (d.typeName ? "filed" : null), receivedAs: d.receivedAs,
     returnable: d.returnable, correctionKind: d.correctionKind, // 12
     status: d.status, reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
     dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod,
     custody: d.custody ?? null, inOfficeAt: d.inOfficeAt ?? null, // 13
-  }, today);
+  };
 }
 
 function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolean; onToggle: () => void }) {
   const { what, who, how } = rowText(d);
-  const state = rowState(d, istDate());
+  const today = istDate();
+  const state = rowState(d, today);
   const paper = paperBadge(d); // 12
+  const custodyNext = custodyAction(rowInput(d)); // 13 (AC-9)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const label = `${what} (${d.docCode})`;
   return (
     <li className="relative flex flex-wrap items-center gap-3 px-5 py-3.5 hover:bg-canvas">
       <RowCheckbox docCode={d.docCode} checked={selected} onChange={onToggle} />
@@ -369,6 +379,7 @@ function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolea
         <span className="relative z-10 flex flex-wrap items-center gap-1.5">
           {d.file ? <FileButtons versionId={d.file.versionId} mimeType={d.file.mimeType} docCode={d.docCode} viewBlocked={d.file.viewBlocked} />
             : !d.fileName ? <span className="text-[13px] text-ink-3">No file yet</span> : null}
+          {custodyNext && <CustodyButton documentId={d.id} clientId={d.clientId} step={custodyNext} label={label} onMessage={setMsg} />}
           <Link href={`/documents/${d.id}/assign`} aria-label={`Edit ${d.docCode}`} className="inline-flex h-[30px] items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas">Edit</Link>
         </span>
       )}
@@ -377,7 +388,10 @@ function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolea
         {d.archived && <Badge tone="muted">Archived</Badge>}
         {d.channel === "upload_link" && <Badge tone="accent">From client link</Badge>}
         <FormatBadge preferred={d.notPreferred} />
+        <InOfficeBadge days={inOfficeDays(rowInput(d), today)} />
       </span>
+      {/* 13: the custody click's result; always mounted so it is announced after the refresh. */}
+      <p role="status" aria-live="polite" className={`relative z-10 basis-full text-[13px] empty:hidden ${msg?.ok === false ? "text-bad" : "text-ok"}`}>{msg?.text ?? ""}</p>
     </li>
   );
 }

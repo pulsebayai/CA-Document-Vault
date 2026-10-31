@@ -62,12 +62,13 @@ Each replaced function is copied from its latest definition (12's migrations B/C
 | e2e `today-documents.spec.ts` | beforeAll | `mustMarkReady` for the reviewed original |
 
 | RLS `review-dispatch.test.ts` | ≈ 461, 529 | row type + the TS-state input add `custody` (approved 2026-10-31, step 1) |
-| e2e `review-dispatch.spec.ts` | 182 | the filter is selected by the name "Custody" (approved 2026-10-31, step 1) |
+| e2e `review-dispatch.spec.ts` | 182, 183, 188 | the filter is selected, its chip found and cleared by the name "Custody" (182 approved in step 1; 183, 188 in step 8) |
 | unit `search-review.test.tsx` | 23 (fixture), 77 | `hit()` carries `custody: "ready"` (within the approved 37–64 change); chip label "Custody: Dispatched" (approved 2026-10-31, step 1) |
 
 | unit `document-state.test.ts` | 102 | the reviewed original expecting "Mark dispatched" gets `custody: "ready"` (approved 2026-10-31, step 4) |
 | unit `dispatch-dialog.test.tsx` | ≈ 117, 127 | "Reviewed copy, no action" uses a soft copy (a hard copy now offers Mark in office); "Ready original" gets `custody: "ready"` (approved 2026-10-31, step 4) |
 | unit `permissions.test.ts` | 23 | two new rows (planned, additive) |
+| unit `dispatch-dialog`, `search-review`, `search-view`, `today-view` | mocks | one `vi.mock("@/lib/custody/actions")` line each: rows render the custody button (approved 2026-10-31, steps 5 and 7) |
 
 [Likely] a few more show up when step 1's failing tests run against the full suite; each is added here and asked before it is changed. `today-view.test.tsx` needs no change: the two new counts are optional in its type. Tests that create or dispatch documents without asserting Ready stay unedited (S2).
 
@@ -77,11 +78,11 @@ Each replaced function is copied from its latest definition (12's migrations B/C
 - [x] 2. **Migration A** (2026-10-31: applied on dev; backfill 125 ready + 561 in office = the counts predicted beforehand; 0 placeable hard copies left; every live packet Ready; md5 = file) (schema, history table, trigger, data step, purge). — proof: `custody-migration` passes on dev; documents / review-dispatch / returnable / correction-kind / link files pass unedited except the approved setups; md5 = file
 - [x] 3. **Migration B** (2026-10-31: applied on dev; 10 functions md5 = file; step-1 RLS + review-dispatch, today-documents, returnable, document-search, correction-kind, upload-links-today, documents, today, role-matrix green on dev) (functions). — proof: every step-1 RLS file passes; role-matrix, document-search, today-documents, upload-links-today green; md5 = file
 - [x] 4. **Lib layer** (2026-10-31: unit 581/581, lint + typecheck clean; `/documents` Custody filter + held checkbox done early) (state, custody actions, search/today parsing, permissions, activity sentences). — proof: unit suite green
-- [ ] 5. **Document page Custody panel + row actions + dispatch dialog.** — proof: e2e `custody.spec` (page part) locally; axe
-- [ ] 6. **Bulk on `/documents` and Client › Documents; Custody filter + held.** — proof: e2e `custody.spec` (bulk + filter) locally
-- [ ] 7. **Today: To place in office, In office > 30 days.** — proof: `custody-today` RLS; unit today-view; e2e `today-documents` locally
-- [ ] 8. **Log receipt** (page, form, confirmation, links). — proof: `log-receipt` RLS; e2e `log-receipt.spec` locally (390 px, axe)
-- [ ] 9. **Metric** on Settings › Collection. — proof: `custody-metric` RLS
+- [x] 5. **Document page Custody panel + row actions + dispatch dialog.** — proof: e2e `custody.spec` (page part) locally; axe
+- [x] 6. **Bulk on `/documents` and Client › Documents; Custody filter + held.** — proof: e2e `custody.spec` (bulk + filter) locally
+- [x] 7. **Today: To place in office, In office > 30 days.** — proof: `custody-today` RLS; unit today-view; e2e `today-documents` locally
+- [x] 8. **Log receipt** (page, form, confirmation, links). — proof: `log-receipt` RLS; e2e `log-receipt.spec` locally (390 px, axe)
+- [x] 9. **Metric** on Settings › Collection. — proof: `custody-metric` RLS
 - [ ] 10. **Docs:** architecture.md, ui-reference.md, Settings › Users rows. — proof: review
 - [ ] 11. **Full verification:** lint, typecheck, unit, full RLS on dev, new/changed e2e locally; push → PR CI (asked first); dispatch Regression `only` = the new RLS files (migration rule; asked first); `sdlc-reviewer`; fix Important findings failing-first → PR with the AC table. — proof: CI green + AC table
 
@@ -111,3 +112,11 @@ All ACs mapped to passing tests in the PR table; PR CI green; RLS quick check on
 - Migration B `20261031100100_custody_b.sql` on dev: create_dispatch 904b02d8…, search_documents df944569…, search_document_facets dcd77e32…, today_items a7251a39…, set_custody 720bba6b…, undo_custody c9aa9501…, log_receipt 0e910690…, custody_metric 43fa19db…, custody_state 2fe7f029…, custody_held 9537e893… (md5 = file).
 - Fixed on the way: a fixture-label clash ("cm-manager" is also 12's clients-mine label → "cmig-"); a comma swallowed by a comment in the facets copy (caught in review before applying).
 - RLS on dev: all step-1 files + 10 affected existing files green (≈ 330 tests). Unit 581/581.
+
+### 2026-10-31 (build session 1: steps 5–9)
+- Screens: Custody card on the document page (step, who/when, next click, Undo with no reason), row buttons on Client › Documents, `/documents` and Today's To place rows, bulk Mark in office / Ready to dispatch in 08's selection bar (≤ 200 per chunk, skipped DOC-IDs with reasons), Today counts To place in office / In office > 30 days (rows on request), `/documents` Custody filter + "In office over 30 days", Log receipt (`/documents/receipt`; links from Untagged documents, Today and Add document), Settings › Collection "Hard copies" figures.
+- Found by a test and fixed in the code: "To place" didn't exclude a document already in a dispatch packet (state.ts).
+- New tests: unit `custody-controls`, `bulk-custody`, `today-custody`, `receipt-validation` (+ `custody-state` from step 1); e2e `custody.spec` (5) and `log-receipt.spec` (2), green locally.
+- Existing e2e green locally after the approved edits: review-dispatch, today-documents, bulk, collection, intake-fixes, client-documents, search, today, inbox, add-document (56 tests).
+- Test edits approved in this session part: 4 mock lines (dispatch-dialog, search-review, search-view, today-view); review-dispatch.spec lines 183, 188.
+- Unit 599/599; lint and typecheck clean.
