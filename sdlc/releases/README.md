@@ -51,3 +51,12 @@ The automated proof is `tests/rls/role-matrix.test.ts` (every cell of `src/lib/a
 6. Admin: everything, including Users and "Add financial year".
 7. Bulk: on `/documents`, select 3 documents → **Download zip** saves `vault-documents-<date>.zip` with `<DOC-ID> <file>` entries; **Mark reviewed** on a mixed selection shows the skipped DOC-IDs. Time a 30-file / ~100 MB zip on office broadband (< 60 s, 08 AC-15).
 Record pass/fail per step in the release record's manual checklist.
+
+## DSC passwords (14; R1, staging and prod)
+Before any real DSC password is entered on prod:
+1. **Key per environment:** generate a 32-byte key on the owner's machine (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`), set `DSC_ENC_KEYS=1:<key>` and `DSC_KEY_ID=1` in that environment's Vercel project (server-only; Production and Preview). Never reuse the dev key; never the public test key (the app refuses it in production).
+2. **Key backup:** the same value stored in the owner's password manager, outside Vercel. A lost key makes every stored password unreadable.
+3. **Round trip on staging:** add a DSC with a dummy PIN, Show password shows it, Activity › Password reveals lists the reveal; a Limited user sees the DSC but no Show password.
+4. **Written risk acceptance** by Kushal Associates (intent "Risks"): anyone with a Staff, Manager or Admin login can reveal every client's PIN; every reveal is logged. Filed in `sdlc/releases/R1/`.
+5. **Weekly reveal check during the pilot:** an Admin or Manager opens Activity › Password reveals and confirms each reveal was expected.
+6. **Key rotation (when needed):** add `2:<new key>` to `DSC_ENC_KEYS`, set `DSC_KEY_ID=2`, re-encrypt with a one-off server script (decrypt by the old id, save through `dsc_save`), then remove `1:`. Not automated in R1.
