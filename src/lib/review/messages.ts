@@ -7,6 +7,8 @@ const MESSAGES: Array<[RegExp, string]> = [
   [/NOT_CLASSIFIED/, "File the document (client and type) before reviewing it."],
   [/REASON_REQUIRED/, "Give a reason (up to 500 characters)."],
   [/ROLE_REQUIRED: sign in/, "Your session has ended. Sign in again."],
+  // 12 (AC-24): Staff can undo a review now; a refused undo is a dispatch undo (Admin/Manager) or a Limited user.
+  [/ROLE_REQUIRED: only Admin, Manager or Staff/, "Your role can't undo a review."],
   [/ROLE_REQUIRED/, "Only an Admin or Manager can undo this."],
   [/RECIPIENT_REQUIRED/, "Enter who received it (up to 120 characters)."],
   [/DATE_REQUIRED/, "Enter the date dispatched."],
@@ -16,6 +18,7 @@ const MESSAGES: Array<[RegExp, string]> = [
   [/NOT_ELIGIBLE|ALREADY_DISPATCHED|dispatch_item_live_key/, "Some originals are no longer ready to dispatch. The list has been refreshed — check the ticks and save again."],
   [/NO_DOCUMENTS/, "Tick at least one original."],
   [/NOT_DISPATCHED/, "This original is no longer in a packet. The page has been refreshed."],
+  [/DISPATCHED/, "This document is in a dispatch packet. Undo the dispatch first, then the review."], // 12 D (review N-6)
   [/RECEIVED_ON_FUTURE/, "Received on can't be in the future."],
   [/ARCHIVED/, "Unarchive the document before changing it."],
   [/NOT_FOUND/, "Not found — it may have been moved or you may no longer have access."],

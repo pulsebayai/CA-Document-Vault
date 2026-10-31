@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ClientDocument } from "@/lib/documents/queries";
 import { openForCards, type ExpectedItem } from "@/lib/expected/shape";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Button, Card } from "@/components/ui";
 import { SelectAll, SelectionBar, useSelection } from "@/components/selection-bar";
 import type { ReviewTarget } from "@/components/bulk-review-dialog";
 import { DocumentRow } from "./document-row";
@@ -18,6 +18,8 @@ import { LogCallButton, RemindButton, type ReminderProps } from "../remind-dialo
 
 /** Mockup 10 caps a card ("10 more · Show all"); the rest are one click away on the Expected tab. */
 export const CARD_OPEN_LIMIT = 5;
+/** 12 (AC-26): received documents per card page. */
+export const CARD_PAGE_SIZE = 20;
 
 /** 08 AC-3: what Mark reviewed would do with a received document (preview; the database decides). */
 export function clientReviewTarget(d: ClientDocument): ReviewTarget {
@@ -68,16 +70,29 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
     .map((g) => ({
       ...g,
       open: open.filter((i) => i.groupId === g.id),
+      // 12 (AC-26, Q6): newest received first (then newest DOC-ID), 20 per page per card.
       docs: shown.filter((d) => d.groupId === g.id).sort((a, b) =>
-        a.typeName.localeCompare(b.typeName) || (b.periodStart ?? "").localeCompare(a.periodStart ?? "") || b.receivedOn.localeCompare(a.receivedOn)),
+        b.receivedOn.localeCompare(a.receivedOn) || b.docCode.localeCompare(a.docCode)),
     }))
     // A collected group with nothing open and no documents gets an "All caught up" card — for the current FY only:
     // in a past FY the client may not have been collected for that group at all (review nit 6).
     .filter((g) => g.docs.length || g.open.length || (fy === currentFy && planIds.has(g.id)));
-  // 08 AC-1: received documents only (expected rows aren't selectable); per view — FY or group change starts empty.
-  const selection = useSelection(`${fy}|${group}`);
-  const shownIds = byGroup.flatMap((g) => g.docs.map((d) => d.id));
-  const selectedItems = byGroup.flatMap((g) => g.docs).filter((d) => selection.ids.has(d.id)).map(clientReviewTarget);
+  // 12 (AC-26): each card's page; an FY or group change starts again at page 1.
+  const viewKey = `${fy}|${group}`;
+  const [pageState, setPageState] = useState<{ key: string; pages: Record<string, number> }>({ key: viewKey, pages: {} });
+  const pageOf = (groupId: string) => (pageState.key === viewKey ? pageState.pages[groupId] ?? 1 : 1);
+  const setPage = (groupId: string, n: number) =>
+    setPageState((cur) => ({ key: viewKey, pages: { ...(cur.key === viewKey ? cur.pages : {}), [groupId]: n } }));
+  const paged = byGroup.map((g) => {
+    const pages = Math.max(1, Math.ceil(g.docs.length / CARD_PAGE_SIZE));
+    const page = Math.min(pageOf(g.id), pages);
+    return { ...g, page, pages, pageDocs: g.docs.slice((page - 1) * CARD_PAGE_SIZE, page * CARD_PAGE_SIZE) };
+  });
+  // 08 AC-1: received documents only (expected rows aren't selectable); per view — FY, group or page change starts
+  // empty. 12 (AC-26): Select all = the documents on the pages shown.
+  const selection = useSelection(`${viewKey}|${paged.map((g) => g.page).join(",")}`);
+  const shownIds = paged.flatMap((g) => g.pageDocs.map((d) => d.id));
+  const selectedItems = paged.flatMap((g) => g.pageDocs).filter((d) => selection.ids.has(d.id)).map(clientReviewTarget);
 
   return (
     <div className="space-y-4">
@@ -104,7 +119,7 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
         </Card>
       ) : (
         <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-          {byGroup.map((g) => (
+          {paged.map((g) => (
             <Card key={g.id}>
               <section aria-labelledby={`grp-${g.id}`}>
                 <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-3">
@@ -128,11 +143,18 @@ export function DocumentsView({ clientId, documents, currentFy, expected = [], p
                 )}
                 {g.docs.length > 0 && (
                   <ul aria-label={`${g.name} documents`} className="divide-y divide-line">
-                    {g.docs.map((d) => (
+                    {g.pageDocs.map((d) => (
                       <DocumentRow key={d.id} d={d} clientId={clientId} clientName={clientName} today={today ?? indiaToday()}
                         selected={selection.ids.has(d.id)} onToggle={() => selection.toggle(d.id)} />
                     ))}
                   </ul>
+                )}
+                {g.pages > 1 && (
+                  <nav aria-label={`${g.name} pages`} className="flex items-center justify-end gap-2 border-t border-line px-5 py-2.5 text-[13.5px]">
+                    <Button type="button" size="sm" variant="secondary" disabled={g.page <= 1} onClick={() => setPage(g.id, g.page - 1)}>Previous</Button>
+                    <span>{(g.page - 1) * CARD_PAGE_SIZE + 1}–{Math.min(g.page * CARD_PAGE_SIZE, g.docs.length)} of {g.docs.length}</span>
+                    <Button type="button" size="sm" variant="secondary" disabled={g.page >= g.pages} onClick={() => setPage(g.id, g.page + 1)}>Next</Button>
+                  </nav>
                 )}
                 {g.open.length === 0 && g.docs.length === 0 && (
                   <p className="px-5 py-4 text-[13.5px] text-ink-2">All caught up for FY {fy}</p>

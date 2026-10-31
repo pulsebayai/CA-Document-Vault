@@ -8,6 +8,7 @@ import type { TodayData } from "@/lib/today/queries";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push, refresh: vi.fn() }) }));
+vi.mock("@/lib/documents/actions", () => ({ getFileLink: vi.fn() })); // 12 (AC-18): rows show 03's file buttons (approved 2026-10-30)
 // 07's row controls (step 9) call server actions; the view test only checks which control each row gets.
 vi.mock("@/lib/review/actions", () => ({ markReviewed: vi.fn(), markNeedsCorrection: vi.fn(), undoReview: vi.fn() }));
 vi.mock("@/lib/dispatch/actions", () => ({ createDispatch: vi.fn(), readyOriginals: vi.fn(async () => ({ ok: true, originals: [] })), undoDispatchItem: vi.fn() }));
@@ -35,7 +36,7 @@ describe("TodayView", () => {
     expect(screen.getByText("Wednesday, 16 September 2026 · 1 client needs something")).toBeVisible();
     expect(screen.getByRole("button", { name: "3 Overdue" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByRole("button", { name: "7 Due this week" })).toBeVisible();
-    expect(screen.getByRole("link", { name: "4 In inbox" })).toHaveAttribute("href", "/inbox");
+    expect(screen.getByRole("link", { name: "4 Untagged" })).toHaveAttribute("href", "/inbox");
     const card = within(screen.getByRole("list", { name: "Clients that need something" })).getAllByRole("listitem")[0];
     expect(within(card).getByRole("link", { name: "Sankar Software Pvt Ltd" })).toHaveAttribute("href", "/clients/c1");
     expect(card).toHaveTextContent("Incharge Ravi · GST Priya");
@@ -88,7 +89,7 @@ describe("TodayView", () => {
     expect(rows).toHaveTextContent("GST · Invoices · Jul 2026 DOC-FY26-27-00087");
     expect(rows).toHaveTextContent("Received 2 Aug · waiting for review");
     expect(within(rows).getByRole("button", { name: "Mark reviewed: DOC-FY26-27-00087 GST · Invoices · Jul 2026" })).toBeVisible();
-    expect(rows).toHaveTextContent("ROC · Signed annual return · FY 2025-26 DOC-FY26-27-00111 Original");
+    expect(rows).toHaveTextContent("ROC · Signed annual return · FY 2025-26 DOC-FY26-27-00111 Returnable"); // 12 (spec AC-11): badge renamed
     expect(rows).toHaveTextContent("Reviewed 12 Sep by Ravi");
     expect(within(rows).getByRole("button", { name: "Mark dispatched: DOC-FY26-27-00111 ROC · Signed annual return · FY 2025-26" })).toBeVisible();
     // Document rows have no Remind / Upload (those are for expected rows).

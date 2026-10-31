@@ -66,3 +66,16 @@ export async function signIn(page: Page, email: string, baseURL: string | undefi
   await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
   sessions.set(key, (await context.cookies()).filter((c) => AUTH_COOKIE.test(c.name)));
 }
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+
+/** 12 (spec AC-1 … AC-4): the Document type field is a type-ahead combobox — type the name, pick its option. */
+export async function pickType(page: Page, name: string) {
+  const field = page.getByRole("combobox", { name: "Document type" });
+  await field.fill(name);
+  await page.getByRole("listbox", { name: "Matching types" }).getByRole("option", { name: new RegExp(`^${escapeRe(name)}`) }).first().click();
+  await expect(field).toHaveValue(name);
+}
+
+/** 12: the Document type field shows the chosen type's name. */
+export const typeFieldValue = (name: string) => new RegExp(`^${escapeRe(name)}$`);

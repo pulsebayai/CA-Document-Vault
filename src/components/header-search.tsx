@@ -50,7 +50,7 @@ function toOptions(res: Ok | null, text: string): Option[] {
   for (const d of res?.documents ?? []) {
     out.push({
       kind: "document", key: `d-${d.id}`, id: d.id, archived: d.archived,
-      label: join([d.docCode, d.typeName ?? "No type", d.periodLabel ?? d.periodCode, d.clientName ?? "Inbox", d.fileName]),
+      label: join([d.docCode, d.typeName ?? "No type", d.periodLabel ?? d.periodCode, d.clientName ?? "Untagged", d.fileName]),
     });
   }
   if (text.length >= MIN_SUGGEST_CHARS) out.push({ kind: "all", key: "all", label: `See all results for “${text}”` });

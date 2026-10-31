@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import type { DocumentChannel as Channel, ReceivedAs } from "@/lib/validation/document";
 import type { SearchInput } from "@/lib/validation/document-search";
+import { currentFiles, type CurrentFile } from "@/lib/documents/queries";
 
 // Spec 03b. Everything runs as the signed-in user: search_documents / search_document_facets / search_clients are
 // SECURITY INVOKER, so RLS decides what is visible. 03b deliberately calls search_clients directly (not through
@@ -35,6 +36,11 @@ export type DocumentHit = {
   dispatchMethod?: string | null;
   /** 11 (spec AC-16): present only when the document was filed outside the preference that applied. */
   notPreferred?: string[] | null;
+  /** 12: present (true) only on a returnable hard copy; correctionKind only when set. */
+  returnable?: boolean;
+  correctionKind?: string;
+  /** 12 (AC-18): present only on /documents rows that have a file (header suggestions don't load it). */
+  file?: CurrentFile;
 };
 
 export type FacetName = "group" | "received_as" | "channel" | "received_by" | "status" | "return" | "format";
@@ -50,6 +56,7 @@ type Row = {
   doc_type_id?: string | null; reviewed_at?: string | null; reviewed_by_name?: string | null; correction_reason?: string | null;
   dispatched_on?: string | null; dispatch_method?: string | null;
   format_ok?: boolean | null; format_preferred?: string[] | null; // 11
+  returnable?: boolean; correction_kind?: string | null; // 12
 };
 
 export class SearchError extends Error {
@@ -73,14 +80,22 @@ const toHit = (r: Row): DocumentHit => ({
   docTypeId: r.doc_type_id ?? null, reviewedAt: r.reviewed_at ?? null, reviewedByName: r.reviewed_by_name ?? null,
   correctionReason: r.correction_reason ?? null, dispatchedOn: r.dispatched_on ?? null, dispatchMethod: r.dispatch_method ?? null,
   ...(r.format_ok === false ? { notPreferred: r.format_preferred ?? null } : {}), // 11: key absent otherwise (shape unchanged)
+  ...(r.returnable ? { returnable: true } : {}), // 12: keys absent otherwise (shape unchanged)
+  ...(r.correction_kind ? { correctionKind: r.correction_kind } : {}),
 });
 
-export async function searchDocumentsAs(input: SearchInput): Promise<{ total: number; rows: DocumentHit[] }> {
+export async function searchDocumentsAs(input: SearchInput, opts: { withFiles?: boolean } = {}): Promise<{ total: number; rows: DocumentHit[] }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("search_documents", { p: input });
   if (error) fail("documents", error.code);
   const res = (data ?? { total: 0, rows: [] }) as { total: number; rows: Row[] };
-  return { total: Number(res.total) || 0, rows: (res.rows ?? []).map(toHit) };
+  const rows = (res.rows ?? []).map(toHit);
+  // 12 (AC-18): one RLS lookup for the page's current files (only the /documents page; not header suggestions).
+  if (opts.withFiles && rows.some((r) => r.fileName)) {
+    const files = await currentFiles(rows.filter((r) => r.fileName).map((r) => r.id));
+    for (const r of rows) { const f = files.get(r.id); if (f) r.file = f; }
+  }
+  return { total: Number(res.total) || 0, rows };
 }
 
 export async function documentFacetsAs(input: SearchInput): Promise<FacetValue[]> {

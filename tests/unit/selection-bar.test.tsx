@@ -101,7 +101,7 @@ describe("selection (AC-1)", () => {
 
 describe("Mark reviewed (AC-3)", () => {
   it("confirm text counts what will be reviewed and why others are skipped", () => {
-    expect(confirmText([doc(1), doc(2), doc(3, "in_inbox"), doc(4, "in_inbox")])).toBe("Mark 2 documents reviewed? 2 will be skipped (in inbox).");
+    expect(confirmText([doc(1), doc(2), doc(3, "in_inbox"), doc(4, "in_inbox")])).toBe("Mark 2 documents reviewed? 2 will be skipped (untagged).");
     expect(confirmText([doc(1)])).toBe("Mark 1 document reviewed?");
     expect(confirmText([doc(1, "already_reviewed"), doc(2, "archived")])).toBe("None of the 2 documents can be marked reviewed (already reviewed, archived).");
   });
@@ -125,13 +125,13 @@ describe("Mark reviewed (AC-3)", () => {
     await user.click(screen.getByRole("checkbox", { name: "Select all on this page" }));
     await user.click(screen.getByRole("button", { name: /Mark reviewed/ }));
     const dialog = screen.getByRole("dialog", { name: "Mark reviewed" });
-    expect(within(dialog).getByText("Mark 249 documents reviewed? 1 will be skipped (in inbox).")).toBeInTheDocument();
+    expect(within(dialog).getByText("Mark 249 documents reviewed? 1 will be skipped (untagged).")).toBeInTheDocument();
     await user.click(within(dialog).getByRole("button", { name: "Mark 249 documents reviewed" }));
     await waitFor(() => expect(within(dialog).getByText("248 reviewed · 2 skipped")).toBeInTheDocument());
     expect(markReviewedBulk.mock.calls.map((c) => (c[0] as string[]).length)).toEqual([200, 50]);
     const skipped = within(dialog).getByRole("list", { name: "Skipped documents" });
     expect(skipped).toHaveTextContent("DOC-FY26-27-00011 — already reviewed");
-    expect(skipped).toHaveTextContent("DOC-FY26-27-00250 — in inbox");
+    expect(skipped).toHaveTextContent("DOC-FY26-27-00250 — untagged");
     expect(refresh).toHaveBeenCalled();
     await user.click(within(dialog).getByRole("button", { name: "Done" }));
     expect(screen.getByRole("checkbox", { name: "Select all on this page" })).not.toBeChecked();

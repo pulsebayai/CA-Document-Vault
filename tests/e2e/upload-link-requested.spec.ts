@@ -5,7 +5,7 @@ import "../support/setup-env";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import { createDocumentOffice, TINY, typeId } from "../support/documents";
 import { T, bankOnlyClient, generateAsOf } from "../support/expected";
-import { signIn } from "./helpers";
+import { signIn, typeFieldValue } from "./helpers";
 
 // Feature 10 step 9 — Client › Requested (spec AC-16, AC-18): the tab with its count, Upload (Add document pre-filled
 // and linked to the item), Cancel with a reason, Reopen, and Send again by WhatsApp (open items carried over).
@@ -75,7 +75,7 @@ test("AC-16: Upload opens Add document pre-filled; saving files it for the item,
   await page.goto(`/clients/${client}?tab=requested`);
   await itemRow(page, "for the new office lease").getByRole("link", { name: `Upload ${T.notice}` }).click();
   await expect(page.getByRole("heading", { name: "Add document" })).toBeVisible();
-  await expect(page.getByLabel("Document type").locator("option:checked")).toContainText(T.notice);
+  await expect(page.getByRole("combobox", { name: "Document type" })).toHaveValue(typeFieldValue(T.notice)); // 12: type-ahead field
   await page.locator('input[type="file"]').setInputFiles({ name: "lease-notice.pdf", mimeType: "application/pdf", buffer: TINY.pdf.bytes });
   await expect(page.getByText("Uploaded", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Save to vault" }).click();

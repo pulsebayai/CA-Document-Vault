@@ -303,7 +303,7 @@ describe("classify and edit (AC-8, AC-11)", () => {
     expect(r2.error?.message ?? "").toMatch(/SOFT_COPY_NEEDS_FILE/);
     const r3 = await as.staff.rpc("update_document", { p_id: d.id, p: { channel: "courier", remark: "left at reception", received_as: "original" } });
     expect(r3.error).toBeNull();
-    expect((await documentRow(d.id)).received_as).toBe("original");
+    expect(await documentRow(d.id)).toMatchObject({ received_as: "hard_copy", returnable: true }); // 12 (spec AC-10): legacy 'original' input
   });
 
   it("Limited users can edit documents they can see, and can't move one to a client they can't see", async () => {

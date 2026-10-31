@@ -35,16 +35,23 @@ type Props = {
   busy?: boolean;
   /** Header buttons (Add client for Staff+). */
   actions?: ReactNode;
+  /** 12 (AC-27): "My clients" is on — an empty result means none of the user's clients, not an empty office. */
+  mineOnly?: boolean;
 };
 
 /** Presentational Clients list: data comes in as props, no fetching (keeps it unit-testable). */
-export function ClientsView({ clients, total, matched = total, filtered = false, firstIndex = 0, toolbar, pager, busy = false, actions }: Props) {
-  const showRange = filtered || matched > clients.length;
+export function ClientsView({ clients, total, matched = total, filtered = false, firstIndex = 0, toolbar, pager, busy = false, actions, mineOnly = false }: Props) {
+  const showRange = filtered || mineOnly || matched > clients.length;
   return (
     <>
       <PageHeader title="Clients" subtitle={`${total} ${total === 1 ? "client" : "clients"}`} actions={actions} />
       {toolbar}
-      {clients.length === 0 && !filtered ? (
+      {clients.length === 0 && mineOnly && !filtered ? (
+        <Card className="px-6 py-12 text-center">
+          <p className="font-medium">None of your clients</p>
+          <p className="mt-1 text-ink-2">You aren&apos;t the incharge or assigned staff of any client yet. Switch off My clients to see all {total} {total === 1 ? "client" : "clients"}.</p>
+        </Card>
+      ) : clients.length === 0 && !filtered && !mineOnly ? (
         <Card className="px-6 py-12 text-center">
           <p className="font-medium">No clients yet</p>
           <p className="mt-1 text-ink-2">Add a client or import a CSV to get started.</p>

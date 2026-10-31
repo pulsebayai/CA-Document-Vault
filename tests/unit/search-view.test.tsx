@@ -8,6 +8,7 @@ import type { DocumentHit, FilterOptions } from "@/lib/search/queries";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("@/lib/documents/actions", () => ({ getFileLink: vi.fn() })); // 12 (AC-18): rows show 03's file buttons (approved 2026-10-30)
 const searchDocuments = vi.fn();
 const documentFacets = vi.fn();
 const findClients = vi.fn();
@@ -49,7 +50,7 @@ describe("helpers", () => {
   it("rowText shows type · period, the client or Inbox, and how it came in", () => {
     expect(rowText(hit())).toEqual({ what: "Sales register · Aug 2026", who: "Acme Traders", how: "GST · Received 5 Aug 2026 by Asha · Email · sales-aug.pdf" });
     expect(rowText(hit({ clientName: null, typeName: null, groupName: null, periodLabel: null, periodCode: null, fileName: null, receivedAs: "hard_copy" })))
-      .toEqual({ what: "No type", who: "Inbox", how: "Received 5 Aug 2026 by Asha · Email · Hard copy — no file" });
+      .toEqual({ what: "No type", who: "Untagged", how: "Received 5 Aug 2026 by Asha · Email · Hard copy — no file" });
   });
 
   it("activeChips names each filter and its value, using facet labels for people", () => {
@@ -80,7 +81,7 @@ describe("SearchView", () => {
     expect(screen.getByText("1 document")).toBeInTheDocument();
     const row = within(list).getByRole("listitem");
     expect(row).toHaveTextContent("DOC-FY26-27-00042 · Sales register · Aug 2026 · Acme Traders");
-    expect(within(row).getByRole("link")).toHaveAttribute("href", "/documents/d1");
+    expect(within(row).getByRole("link", { name: /^DOC-FY26-27-00042 ·/ })).toHaveAttribute("href", "/documents/d1");
   });
 
   it("facet counts label the filter options, and a value with no results is not offered (AC-7)", async () => {
@@ -139,7 +140,7 @@ describe("SearchView", () => {
     searchDocuments.mockResolvedValue({ ok: true, total: 120, rows: [hit()] });
     const user = userEvent.setup();
     view({ page: 2 });
-    expect(await screen.findByText("Page 2 of 3")).toBeInTheDocument();
+    expect(await screen.findByText("21–40 of 120")).toBeInTheDocument(); // 12 (AC-25, approved 2026-10-31): 20 per page
     await user.click(screen.getByRole("button", { name: "Next" }));
     expect(push).toHaveBeenLastCalledWith("/documents?page=3", { scroll: false });
   });

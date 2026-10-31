@@ -68,7 +68,7 @@ describe("searchDocuments / documentFacets (AC-5…AC-8)", () => {
     rpc.mockResolvedValue({ data: { total: 1, rows: [row] }, error: null });
     const r = await searchDocuments({ text: " hdfc ", filters: { client: A, channel: "fax", from: "2026-13-01", page: 2, sort: "docid", evil: "x" } });
     expect(rpcCall("search_documents")![1]).toEqual({
-      p: { text: "hdfc", filters: { client_id: A }, include_archived: false, sort: "docid", page: 2 },
+      p: { text: "hdfc", filters: { client_id: A }, include_archived: false, sort: "docid", page: 2, page_size: 20 }, // 12 (AC-25, approved 2026-10-31)
     });
     expect(r).toMatchObject({ ok: true, total: 1 });
   });
@@ -76,7 +76,7 @@ describe("searchDocuments / documentFacets (AC-5…AC-8)", () => {
   it("tolerates missing input", async () => {
     rpc.mockResolvedValue({ data: { total: 0, rows: [] }, error: null });
     expect(await searchDocuments({})).toEqual({ ok: true, total: 0, rows: [] });
-    expect(rpcCall("search_documents")![1]).toEqual({ p: { filters: {}, include_archived: false, sort: "received", page: 1 } });
+    expect(rpcCall("search_documents")![1]).toEqual({ p: { filters: {}, include_archived: false, sort: "received", page: 1, page_size: 20 } }); // 12 (AC-25)
   });
 
   it("facets use the same input and fill in a missing label", async () => {

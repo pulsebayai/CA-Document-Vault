@@ -8,7 +8,7 @@ import { T, expectedFor, expectedItem, generateAsOf } from "../support/expected"
 import { testGstin, testPan } from "../support/test-data";
 import { istDate } from "@/lib/documents/period";
 import { shortDate } from "@/lib/expected/schedule";
-import { signIn } from "./helpers";
+import { signIn, typeFieldValue } from "./helpers";
 
 // Feature 04 step 5 — Client › Expected (spec AC-13) with Waive (AC-9), Undo (AC-10), Reopen (AC-11) and
 // Upload → Add document pre-filled → linked on save (AC-8). Own is_test office, reset every run.
@@ -132,7 +132,7 @@ test("AC-8 + AC-11: Upload pre-fills Add document (0 choices); saving links it �
   await page.getByRole("link", { name: `Upload ${label}` }).click();
   await expect(page.getByRole("heading", { name: "Add document" })).toBeVisible();
   await expect(page.getByText("Expected Traders")).toBeVisible();
-  await expect(page.getByLabel("Document type").locator("option:checked")).toHaveText(new RegExp(`^${T.sales.replace(/[/]/g, "\\/")}`));
+  await expect(page.getByRole("combobox", { name: "Document type" })).toHaveValue(typeFieldValue(T.sales)); // 12: type-ahead field
   await expect(page.getByRole("radio", { name: "Month" })).toBeChecked();
   await expect(page.getByRole("combobox", { name: "Month" }).locator("option:checked")).toHaveText("Jun 2026");
   await expect(page.getByLabel("GSTIN")).toHaveValue(g1Id);
@@ -227,17 +227,20 @@ test("AC-15: Clients list shows 'N overdue · N due today'; the Has overdue chip
   expect(overdue).toBeGreaterThan(0);
   await signIn(page, u.staff.email, baseURL);
   await page.goto("/clients");
+  // 12 (AC-27, approved 2026-10-31): Staff start on My clients; Expected Traders is another user's client.
+  await page.getByRole("button", { name: "My clients" }).click();
   const list = page.getByRole("list", { name: "Clients" });
   const traders = list.getByRole("listitem", { name: "Expected Traders" });
   await expect(traders).toContainText(`${overdue} overdue · ${dueToday} due today`);
   await expect(list.getByRole("listitem", { name: "Caught Up Co" })).not.toContainText(/overdue|due today/);
 
   const chip = page.getByRole("button", { name: "Has overdue" });
+  const urlBeforeChip = page.url();
   await chip.click();
   await expect(chip).toHaveAttribute("aria-pressed", "true");
   await expect(list.getByRole("listitem", { name: "Caught Up Co" })).toHaveCount(0);
   await expect(traders).toBeVisible();
-  expect(new URL(page.url()).search).toBe(""); // filters never go in the URL (02 AC-7)
+  expect(page.url()).toBe(urlBeforeChip); // filters never go in the URL (02 AC-7); 12: only My clients is a URL flag
   expect(await seriousAxe(page)).toEqual([]);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);

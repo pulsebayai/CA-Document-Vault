@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FileButtons } from "../documents/file-buttons";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Card } from "@/components/ui";
@@ -58,7 +59,7 @@ export function TodayView({ data, inbox, scope, show, page }: {
         <Count n={data.counts.requested ?? 0} label="Requested" tone="text-ink" pressed={show === "requested"}
           onClick={() => go(scope, show === "requested" ? null : "requested")} />
         <Link href="/inbox" className="flex items-baseline gap-2 rounded-xl bg-panel px-4 py-3 shadow-card hover:bg-canvas">
-          <span className="text-[22px] font-semibold">{inbox}</span>{" "}<span className="text-[13.5px] text-ink-2">In inbox</span>
+          <span className="text-[22px] font-semibold">{inbox}</span>{" "}<span className="text-[13.5px] text-ink-2">Untagged</span>
         </Link>
       </div>
 
@@ -157,11 +158,13 @@ function ClientCard({ card: c, today, onMessage }: { card: TodayCard; today: str
                 <p className="break-words">
                   {d.title}{" "}
                   <span className="rounded bg-canvas px-1.5 py-0.5 font-mono text-[12px] text-ink-2">{d.docCode}</span>
-                  {d.original && <>{" "}<span className="rounded-full bg-bad-soft px-2 py-0.5 text-[12px] font-medium text-bad">Original</span></>}
+                  {d.original && <>{" "}<span className="rounded-full bg-bad-soft px-2 py-0.5 text-[12px] font-medium text-bad">Returnable</span></>}
                 </p>
                 <p className="mt-0.5 text-[13px] text-ink-3">{d.detail}</p>
               </div>
               <span className={`text-[13px] ${d.kind === "ready" ? "text-warn" : "text-ink-2"}`}>{d.label}</span>
+              {d.kind === "to_review" && (d.file ? <FileButtons versionId={d.file.versionId} mimeType={d.file.mimeType} docCode={d.docCode} viewBlocked={d.file.viewBlocked} />
+                : d.file === null ? <span className="text-[13px] text-ink-3">No file yet</span> : null)}
               {d.kind === "to_review"
                 ? <ReviewControls documentId={d.id} clientId={c.clientId} label={`${d.docCode} ${d.title}`} onMessage={onMessage} />
                 : <DispatchDialog clientId={c.clientId} clientName={c.name} documentId={d.id} label={`${d.docCode} ${d.title}`} today={today}

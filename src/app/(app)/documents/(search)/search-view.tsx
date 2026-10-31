@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FileButtons } from "../file-buttons";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Badge, Button, Card, PageHeader } from "@/components/ui";
@@ -11,8 +12,8 @@ import type { ReviewTarget } from "@/components/bulk-review-dialog";
 import { SEARCH_TEXT_EVENT, handOffSearchText } from "@/components/header-search";
 import { documentFacets, findClients, searchDocuments } from "@/lib/search/actions";
 import type { ClientHit, DocumentHit, FacetName, FacetValue, FilterOptions, PickerClient } from "@/lib/search/queries";
-import { CHANNEL_LABELS, RECEIVED_AS } from "@/lib/validation/document";
-import { documentState, type ShownStateKind } from "@/lib/documents/state";
+import { CHANNEL_LABELS, RECEIVED_LABEL as RECEIVED_LABEL_ALL } from "@/lib/validation/document";
+import { documentState, type ShownStateKind, paperBadge } from "@/lib/documents/state";
 import { istDate } from "@/lib/documents/period";
 import {
   DEFAULT_FILTERS, DOC_FORMATS, DOC_RETURNS, DOC_STATES, DOC_STATUSES, PAGE_SIZE, SEARCH_TEXT_KEY, SORTS, SUGGEST_DEBOUNCE_MS, filtersToQuery,
@@ -22,7 +23,7 @@ import {
 // Spec 03b AC-5…AC-9, AC-11 — the results page. Filters are the URL (router.push); the text is this tab's session
 // storage (the header writes it, this page reads and writes it). Searches and facet counts are server actions (POST).
 
-const RECEIVED_LABEL: Record<string, string> = Object.fromEntries(RECEIVED_AS.map((r) => [r.value, r.label]));
+const RECEIVED_LABEL: Record<string, string> = RECEIVED_LABEL_ALL; // 12: legacy "original" reads as Hard copy
 const CHANNEL_LABEL = CHANNEL_LABELS; // 10: includes "Upload link"
 const STATUS_LABEL: Record<string, string> = Object.fromEntries(DOC_STATUSES.map((s) => [s.value, s.label]));
 const STATE_LABEL: Record<string, string> = Object.fromEntries(DOC_STATES.map((s) => [s.value, s.label]));
@@ -73,6 +74,8 @@ export function activeChips(f: DocumentFilters, o: FilterOptions, facets: FacetV
   add("state", "Show", f.state ? STATE_LABEL[f.state] : null);
   if (f.return) chips.push({ key: "return", label: `Return: ${RETURN_LABEL[f.return]}` }); // 07
   if (f.format) chips.push({ key: "format", label: `Format: ${FORMAT_LABEL[f.format]}` }); // 11
+  // 12 (AC-13): an old `as=original` link means hard copy + returnable, so it shows the Returnable chip too.
+  if (f.returnable || f.as === "original") chips.push({ key: "returnable", label: "Returnable: Yes" });
   if (f.archived) chips.push({ key: "archived", label: "Including archived" });
   return chips;
 }
@@ -82,6 +85,7 @@ export function withoutFilter(f: DocumentFilters, key: keyof DocumentFilters): D
   const next: DocumentFilters = { ...f, page: 1, [key]: key === "archived" ? false : null };
   if (key === "return") delete next.return; // 07: optional key (absent, not null)
   if (key === "format") delete next.format; // 11: optional key too
+  if (key === "returnable") { delete next.returnable; if (next.as === "original") next.as = "hard_copy"; } // 12: optional key; legacy link
   if (key === "group") next.type = null;
   if (key === "fy") next.period = null;
   if (key === "client") next.registration = null;
@@ -91,7 +95,7 @@ export function withoutFilter(f: DocumentFilters, key: keyof DocumentFilters): D
 /** Row text (AC-5): what it is, whose it is, and how it came in. */
 export function rowText(d: DocumentHit) {
   const what = [d.typeName ?? "No type", d.periodLabel ?? d.periodCode].filter(Boolean).join(" · ");
-  const who = d.clientName ?? "Inbox";
+  const who = d.clientName ?? "Untagged";
   const file = d.fileName ?? `${RECEIVED_LABEL[d.receivedAs] ?? d.receivedAs} — no file`;
   const how = [
     d.groupName, `Received ${shortDate(d.receivedOn)}${d.receivedByName ? ` by ${d.receivedByName}` : ""}`,
@@ -164,6 +168,12 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
     if (v === "ready" || v === "dispatched") next.return = v; else delete next.return;
     go(next);
   };
+  const setReturnable = (v: string | null) => { // 12 (AC-13)
+    const next: DocumentFilters = { ...filters, page: 1 };
+    if (v === "1") next.returnable = "1"; else delete next.returnable;
+    if (next.as === "original") { next.as = "hard_copy"; if (v === "1") next.returnable = "1"; } // legacy link → today's filters
+    go(next);
+  };
   const setFormat = (v: string | null) => { // 11 (spec AC-21)
     const next: DocumentFilters = { ...filters, page: 1 };
     if (v === "not_preferred") next.format = v; else delete next.format;
@@ -234,7 +244,12 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
           <Select label="Format" value={filters.format ?? null} onChange={(v) => setFormat(v)}
             options={facetOptions("format", (v) => FORMAT_LABEL[v] ?? v, filters.format ?? null)} />
           <Select label="Show" value={filters.state} onChange={(v) => set({ state: v as DocumentFilters["state"] })}
-            options={DOC_STATES.map((s) => ({ value: s.value, label: s.label }))} allLabel="Show: classified and Inbox" />
+            options={DOC_STATES.map((s) => ({ value: s.value, label: s.label }))} allLabel="Show: classified and untagged" />
+          {/* 12 (AC-13): a checkbox like "Include archived" (a combobox named "Returnable" would also match "Return"). */}
+          <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">
+            <input type="checkbox" checked={filters.returnable === "1" || filters.as === "original"} onChange={(e) => setReturnable(e.target.checked ? "1" : null)} className="h-4 w-4 accent-accent" />
+            Returnable only
+          </label>
           <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">
             <input type="checkbox" checked={filters.archived} onChange={(e) => set({ archived: e.target.checked })} className="h-4 w-4 accent-accent" />
             Include archived
@@ -290,7 +305,8 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
           {pages > 1 && (
             <nav aria-label="Pages" className="mt-4 flex items-center justify-end gap-2 text-[13.5px]">
               <Button type="button" size="sm" variant="secondary" disabled={filters.page <= 1} onClick={() => go({ ...filters, page: filters.page - 1 })}>Previous</Button>
-              <span>Page {filters.page} of {pages}</span>
+              {/* 12 (AC-25): "21–40 of 120" */}
+              <span>{(filters.page - 1) * PAGE_SIZE + 1}–{Math.min(filters.page * PAGE_SIZE, ok.total)} of {ok.total}</span>
               <Button type="button" size="sm" variant="secondary" disabled={filters.page >= pages} onClick={() => go({ ...filters, page: filters.page + 1 })}>Next</Button>
             </nav>
           )}
@@ -309,6 +325,7 @@ const STATE_TONE: Record<ShownStateKind, string> = {
 export function rowState(d: DocumentHit, today: string) {
   return documentState({
     archived: d.archived, clientId: d.clientId, docTypeId: d.docTypeId ?? (d.typeName ? "filed" : null), receivedAs: d.receivedAs,
+    returnable: d.returnable, correctionKind: d.correctionKind, // 12
     status: d.status, reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
     dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod,
   }, today);
@@ -317,6 +334,7 @@ export function rowState(d: DocumentHit, today: string) {
 function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolean; onToggle: () => void }) {
   const { what, who, how } = rowText(d);
   const state = rowState(d, istDate());
+  const paper = paperBadge(d); // 12
   return (
     <li className="relative flex flex-wrap items-center gap-3 px-5 py-3.5 hover:bg-canvas">
       <RowCheckbox docCode={d.docCode} checked={selected} onChange={onToggle} />
@@ -332,8 +350,16 @@ function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolea
           <p className={`mt-0.5 break-words text-[13px] font-medium ${STATE_TONE[state.kind]}`}>{state.text}</p>
         )}
       </div>
+      {/* 12 (AC-18, AC-19): above the row's link overlay (relative z-10). */}
+      {!d.archived && (
+        <span className="relative z-10 flex flex-wrap items-center gap-1.5">
+          {d.file ? <FileButtons versionId={d.file.versionId} mimeType={d.file.mimeType} docCode={d.docCode} viewBlocked={d.file.viewBlocked} />
+            : !d.fileName ? <span className="text-[13px] text-ink-3">No file yet</span> : null}
+          <Link href={`/documents/${d.id}/assign`} aria-label={`Edit ${d.docCode}`} className="inline-flex h-[30px] items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas">Edit</Link>
+        </span>
+      )}
       <span className="flex shrink-0 gap-1.5">
-        {d.receivedAs !== "soft_copy" && <Badge tone={d.receivedAs === "original" ? "bad" : "warn"}>{RECEIVED_LABEL[d.receivedAs]}</Badge>}
+        {paper && <Badge tone={paper.tone}>{paper.label}</Badge>}
         {d.archived && <Badge tone="muted">Archived</Badge>}
         {d.channel === "upload_link" && <Badge tone="accent">From client link</Badge>}
         <FormatBadge preferred={d.notPreferred} />

@@ -12,7 +12,7 @@ export function AppHeader({ me, inboxCount, unreadNotifications = 0 }: { me: Cur
   // Settings is for everyone from 02: the catalogue is readable by all staff (AC-6); Users stays Admin only.
   const nav = [
     { href: "/today", label: "Today" },
-    { href: "/inbox", label: "Inbox", count: inboxCount },
+    { href: "/inbox", label: "Untagged", count: inboxCount }, // 12 (D2): Inbox renamed "Untagged documents"; route /inbox stays
     { href: "/clients", label: "Clients" },
     { href: "/activity", label: "Activity" }, // 08: every role (Limited sees its own actions and its clients)
     { href: "/settings/catalogue", label: "Settings" },
@@ -29,7 +29,7 @@ export function AppHeader({ me, inboxCount, unreadNotifications = 0 }: { me: Cur
       </Link>
       <nav aria-label="Main" className="flex min-w-0 items-center gap-1 overflow-x-auto">
         {nav.map((n) => (
-          // AC-7: count badge (Staff+: all Inbox items; Limited: their own — RLS). Named "Inbox, 3 waiting".
+          // AC-7: count badge (Staff+: all Inbox items; Limited: their own — RLS). Named "Untagged, 3 waiting".
           <NavLink key={n.href} href={n.href} label={"count" in n && n.count ? `${n.label}, ${n.count} waiting` : undefined}>
             {n.label}
             {"count" in n && n.count ? <span aria-hidden className="ml-1.5 inline-grid min-w-5 place-items-center rounded-full bg-bad px-1.5 text-xs font-semibold text-white">{n.count}</span> : null}

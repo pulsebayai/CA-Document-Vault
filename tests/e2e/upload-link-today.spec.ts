@@ -4,7 +4,7 @@ import "../support/setup-env";
 import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { createDocumentOffice, typeId } from "../support/documents";
 import { T, bankOnlyClient, generateAsOf } from "../support/expected";
-import { signIn } from "./helpers";
+import { signIn, typeFieldValue } from "./helpers";
 
 // Feature 10 step 10 — Today (spec AC-17, D7): the requester sees the Requested count, a requested row with Upload
 // (Add document pre-filled for the item), and the note for items with no date soon. The incharge doesn't.
@@ -54,7 +54,7 @@ test("AC-17: the requester's Today shows the Requested count, the overdue row wi
   await row.getByRole("link", { name: /^Upload Requested/ }).click();
   await expect(page.getByRole("heading", { name: "Add document" })).toBeVisible();
   await expect(page).toHaveURL(/item=[0-9a-f-]{36}/);
-  await expect(page.getByLabel("Document type").locator("option:checked")).toContainText(T.notice);
+  await expect(page.getByRole("combobox", { name: "Document type" })).toHaveValue(typeFieldValue(T.notice)); // 12: type-ahead field
 });
 
 test("AC-17: the incharge's Today (Mine) doesn't show someone else's request", async ({ page, baseURL }) => {

@@ -81,8 +81,9 @@ test("AC-1, AC-2, AC-11, AC-12: rows show their state and the next action; Mark 
   await dialog.getByRole("button", { name: "Mark needs correction" }).click();
   await expect(dialog.getByRole("alert")).toContainText("Give a reason");
   await dialog.getByLabel("Reason").fill("Statement is for the wrong account");
+  await dialog.getByRole("radio", { name: /Wrong details/ }).check(); // 12 (AC-21, approved 2026-10-31): the kind is asked
   await dialog.getByRole("button", { name: "Mark needs correction" }).click();
-  await expect(rowOf(page, doc.fix.doc_code)).toContainText("Needs correction · Statement is for the wrong account");
+  await expect(rowOf(page, doc.fix.doc_code)).toContainText("Needs correction · wrong details · Statement is for the wrong account");
   await expect(rowOf(page, doc.fix.doc_code).getByRole("button", { name: /Mark reviewed/ })).toBeVisible();
   await noSidewaysScroll(page);
 });
@@ -126,7 +127,9 @@ test("AC-13, AC-5, AC-10: the document page's Review and Dispatch panels; Admin/
   await expect(dispatch).toContainText("BD-77812");
   await expect(dispatch).toContainText("Ramesh (office manager)");
   await expect(dispatch).toContainText(`Also in this packet: ${doc.orig2.doc_code}`);
-  await expect(page.getByRole("button", { name: /Undo/ })).toHaveCount(0);
+  // 12 (AC-24, approved 2026-10-31): Staff may undo a review; Undo dispatch stays Admin/Manager only.
+  await expect(page.getByRole("button", { name: /Undo dispatch/ })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Undo review" })).toBeVisible();
 
   await signIn(page, u.manager.email, baseURL);
   await page.goto(`/documents/${doc.orig1.id}`);
@@ -183,7 +186,7 @@ test("AC-14: /documents Status and Return filters round-trip through the URL as 
   await page.getByRole("combobox", { name: "Status" }).selectOption({ value: "needs_correction" });
   await expect(page).toHaveURL(/status=needs_correction/);
   await expect(results.getByRole("listitem")).toHaveCount(1);
-  await expect(results).toContainText("Needs correction · Statement is for the wrong account");
+  await expect(results).toContainText("Needs correction · wrong details · Statement is for the wrong account"); // 12 (AC-21, approved 2026-10-31)
   expect(page.url()).not.toMatch(/wrong|account|Ramesh/i);
   expect(await seriousAxe(page)).toEqual([]);
 });

@@ -1,6 +1,7 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
+import { currentFiles } from "@/lib/documents/queries";
 import { toTodayCard, uploadHref, type Scope, type Show, type TodayCard, type TodayRaw } from "./shape";
 
 // Feature 06 — Today data (AC-2…AC-5): one call to today_items() as the signed-in user (RLS applies).
@@ -66,6 +67,12 @@ export async function todayDataAs(scope: Scope, show: Show | null, page: number)
       q.set("from", `/clients/${c.clientId}?tab=requested`);
       a.uploadHref = `/documents/new?${q.toString()}`;
     }
+  }
+  // 12 (AC-18): View / Download on To review rows — one RLS lookup for their current files.
+  const reviewRows = cards.flatMap((c) => c.docs.filter((d) => d.kind === "to_review"));
+  if (reviewRows.length > 0) {
+    const files = await currentFiles(reviewRows.map((d) => d.id));
+    for (const d of reviewRows) if (files.has(d.id)) d.file = files.get(d.id) ?? null;
   }
   return {
     today: last.today,

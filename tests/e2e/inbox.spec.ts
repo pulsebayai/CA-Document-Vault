@@ -3,7 +3,7 @@ import { expect, test, type Page } from "./fixtures";
 import "../support/setup-env";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import { createDocumentOffice, mustCreateDocument, uploadObject } from "../support/documents";
-import { signIn } from "./helpers";
+import { pickType, signIn } from "./helpers";
 
 // Feature 03 step 6 — Inbox, Assign and the nav count (mockup 02; spec AC-7 … AC-9).
 
@@ -37,14 +37,14 @@ async function seriousAxe(page: Page) {
   const axe = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa"]).analyze();
   return axe.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? "")).map((v) => v.id);
 }
-const inboxLink = (page: Page) => page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /^Inbox/ });
-const items = (page: Page) => page.getByRole("list", { name: "Inbox" }).getByRole("listitem");
+const inboxLink = (page: Page) => page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: /^Untagged/ });
+const items = (page: Page) => page.getByRole("list", { name: "Untagged documents" }).getByRole("listitem");
 
 test("AC-7, AC-9: staff see every unclassified document, newest first, with what's missing and how long it waited", async ({ page, baseURL }) => {
   await signIn(page, staff.email, baseURL);
-  await expect(inboxLink(page)).toHaveAccessibleName(/Inbox, 4 waiting/);
+  await expect(inboxLink(page)).toHaveAccessibleName(/Untagged, 4 waiting/);
   await inboxLink(page).click();
-  await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Untagged documents" })).toBeVisible();
   await expect(items(page)).toHaveCount(4);
   await expect(items(page).first()).toContainText(docs.limitedOwn.doc_code); // newest first
   const courier = items(page).filter({ hasText: docs.courier.doc_code });
@@ -58,7 +58,7 @@ test("AC-7, AC-9: staff see every unclassified document, newest first, with what
 
 test("AC-9: a Limited user sees only the Inbox items they added", async ({ page, baseURL }) => {
   await signIn(page, limited.email, baseURL);
-  await expect(inboxLink(page)).toHaveAccessibleName(/Inbox, 1 waiting/);
+  await expect(inboxLink(page)).toHaveAccessibleName(/Untagged, 1 waiting/);
   await page.goto("/inbox");
   await expect(items(page)).toHaveCount(1);
   await expect(items(page).first()).toContainText(docs.limitedOwn.doc_code);
@@ -80,14 +80,14 @@ test("AC-8: Assign opens the form with what is known; client + type files it and
 
   await page.getByRole("combobox", { name: "Client", exact: true }).fill("Inbox Tr");
   await page.getByRole("listbox", { name: "Matching clients" }).getByRole("button", { name: /Inbox Traders/ }).click();
-  await page.getByLabel("Document type").selectOption({ label: "Form 16 from employer · Income Tax" });
+  await pickType(page, "Form 16 from employer"); // 12: type-ahead field
   await page.getByRole("button", { name: "Save to vault" }).click();
 
   await page.waitForURL(/\/inbox\?saved=/);
   await expect(page.getByRole("status").filter({ hasText: "saved" })).toContainText(docs.courier.doc_code);
   await expect(items(page)).toHaveCount(3);
   await expect(page.getByRole("link", { name: `Assign ${docs.courier.doc_code}` })).toHaveCount(0);
-  await expect(inboxLink(page)).toHaveAccessibleName(/Inbox, 3 waiting/);
+  await expect(inboxLink(page)).toHaveAccessibleName(/Untagged, 3 waiting/);
   const { data } = await adminClient().from("document").select("classified_at, client_id, doc_type_id").eq("id", docs.courier.id).single();
   expect(data!.classified_at).not.toBeNull();
   expect(data!.client_id).not.toBeNull();
@@ -99,10 +99,11 @@ test("AC-4: a document added from the Inbox (header button) comes back to the In
   await page.getByRole("banner").getByRole("link", { name: "Add document" }).click();
   // Wait for the form: on a deployed preview the page takes ~1 s, and "Hard copy" also labels Inbox rows (run 36455393633).
   await expect(page.getByRole("heading", { name: "Add document" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save to inbox" })).toBeEnabled(); // form is interactive
+  await expect(page.getByRole("button", { name: "Save as untagged" })).toBeEnabled(); // form is interactive
   await page.locator("label").filter({ has: page.getByRole("radio", { name: "Hard copy" }) }).click(); // the radio is sr-only
   await expect(page.getByRole("radio", { name: "Hard copy" })).toBeChecked();
-  await page.getByRole("button", { name: "Save to inbox" }).click();
+  await page.getByLabel("Handed over by").fill("Client's accountant"); // 12 (AC-14, approved 2026-10-30)
+  await page.getByRole("button", { name: "Save as untagged" }).click();
   await page.waitForURL(/\/inbox\?saved=/);
   const saved = await page.getByRole("status").filter({ hasText: "saved" }).innerText();
   const code = /DOC-FY\d{2}-\d{2}-\d{5}/.exec(saved)![0];
@@ -115,8 +116,8 @@ test("AC-7: an empty Inbox says so", async ({ page, baseURL }) => {
   try {
     await signIn(page, u.email, baseURL);
     await page.goto("/inbox");
-    await expect(page.getByText("Inbox is empty — everything received has a client and a type.")).toBeVisible();
-    await expect(inboxLink(page)).toHaveAccessibleName("Inbox");
+    await expect(page.getByText("No untagged documents — everything received has a client and a type.")).toBeVisible();
+    await expect(inboxLink(page)).toHaveAccessibleName("Untagged");
   } finally {
     await retireStaff([u.id]);
   }

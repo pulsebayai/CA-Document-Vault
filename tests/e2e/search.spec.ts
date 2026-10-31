@@ -71,7 +71,7 @@ test("AC-3: a DOC-ID the user can't open says so and stays put", async ({ page, 
   expect(page.url()).toBe(before);
   await box(page).fill("zeb");
   await expect(group(page, "Documents").getByRole("option")).toHaveCount(1); // only the Inbox item Limited added
-  await expect(group(page, "Documents").getByRole("option")).toContainText("Inbox");
+  await expect(group(page, "Documents").getByRole("option")).toContainText("Untagged"); // 12 (D2)
 });
 
 test("AC-4, AC-11: Enter opens /documents; the text goes through session storage and never into any URL", async ({ page, baseURL }) => {
@@ -137,7 +137,7 @@ test("AC-5, AC-6, AC-7, AC-11: results for the header text; a filter with counts
 
   await page.getByRole("combobox", { name: "Sort" }).selectOption("docid");
   await page.waitForURL(/\/documents\?sort=docid$/);
-  await results(page).filter({ hasText: classified.doc_code }).getByRole("link").click();
+  await results(page).filter({ hasText: classified.doc_code }).getByRole("link", { name: new RegExp(`^${classified.doc_code} ·`) }).click(); // 12 (AC-19): rows also have Edit
   await page.waitForURL(new RegExp(`/documents/${classified.id}$`));
   expect(urls.filter((u) => /zeb/i.test(decodeURIComponent(u)))).toEqual([]);
 });
@@ -148,7 +148,7 @@ test("AC-9, AC-10: no match offers to clear; a Limited user sees only what they 
   await box(page).press("Enter");
   await page.waitForURL(/\/documents$/);
   await expect(results(page)).toHaveCount(1); // only the Inbox item they added
-  await expect(results(page)).toContainText("Inbox");
+  await expect(results(page)).toContainText("Untagged"); // 12 (D2)
   await page.getByRole("searchbox", { name: "Search documents" }).fill("zeb nothing-like-this");
   await expect(page.getByText("No documents match.")).toBeVisible();
   await page.getByRole("button", { name: "Clear search text" }).click();

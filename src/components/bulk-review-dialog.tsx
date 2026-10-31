@@ -14,14 +14,14 @@ export type SkipReason = Exclude<BulkReviewItem["reason"], null>;
 export type ReviewTarget = { id: string; docCode: string; skip: SkipReason | null };
 
 export const SKIP_TEXT: Record<SkipReason, string> = {
-  already_reviewed: "already reviewed", needs_correction: "needs correction", in_inbox: "in inbox",
+  already_reviewed: "already reviewed", needs_correction: "needs correction", in_inbox: "untagged",
   archived: "archived", not_found: "not found",
 };
 export const CHUNK = 200;
 
 const docs = (n: number) => `${n} document${n === 1 ? "" : "s"}`;
 
-/** "Mark 48 documents reviewed? 2 will be skipped (in inbox)." */
+/** "Mark 48 documents reviewed? 2 will be skipped (untagged)." */
 export function confirmText(targets: ReviewTarget[]): string {
   const eligible = targets.filter((t) => !t.skip).length;
   const skipped = targets.filter((t) => t.skip);
@@ -81,7 +81,7 @@ export function BulkReviewDialog({ targets, open, onClose }: { targets: ReviewTa
       {phase.kind === "confirm" && (
         <div>
           <p>{confirmText(targets)}</p>
-          <p className="mt-2 text-[13.5px] text-ink-2">Only an Admin or Manager can undo a review, one document at a time.</p>
+          <p className="mt-2 text-[13.5px] text-ink-2">A review can be undone one document at a time, from the document page.</p>
           <div className="mt-5 flex justify-end gap-2">
             <Button variant="secondary" onClick={close}>Cancel</Button>
             <Button onClick={start} disabled={eligible.length === 0}>Mark {docs(eligible.length)} reviewed</Button>

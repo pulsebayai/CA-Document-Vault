@@ -246,7 +246,8 @@ describe("filters (AC-6) and result rows (AC-5)", () => {
     expect(row).toMatchObject({
       id: f.sales, client_id: clientA, client_name: "Search client A", doc_type_id: t.sales,
       type_name: "Sales invoices / sales register", group_id: g.sales, period_code: "2026-08", registration_id: gstinA,
-      received_as: "original", channel: "courier", received_on: "2026-08-05", received_by: u.staff.id,
+      received_as: "hard_copy", returnable: true, // 12 (spec AC-9/10, approved 2026-10-30): the original is a returnable hard copy
+      channel: "courier", received_on: "2026-08-05", received_by: u.staff.id,
       received_by_name: "Test search-staff", status: "received", remark: "zqf one", file_name: null, archived_at: null,
     });
     expect(row.doc_code).toMatch(/^DOC-FY\d{2}-\d{2}-\d{5,}$/);
@@ -342,14 +343,14 @@ describe("facet counts (AC-7)", () => {
       expect(r.total, `${x.facet}=${x.value}`).toBe(x.n);
     }
     const byAs = Object.fromEntries(facetOf(fs, "received_as").map((x) => [x.value, x.n]));
-    expect(byAs).toEqual({ original: 1, hard_copy: 3 });
+    expect(byAs).toEqual({ hard_copy: 4 }); // 12 (spec AC-13): the original is a returnable hard copy
     expect(facetOf(fs, "group").reduce((sum, x) => sum + x.n, 0)).toBe(3); // Inbox documents have no group
   });
 
   it("a facet ignores its own filter but applies the others", async () => {
     const fs = await facets("staff", { text: "zqf", filters: { channel: "courier" } });
     expect(facetOf(fs, "channel").length).toBe(4); // still offers the other channels
-    expect(facetOf(fs, "received_as").map((x) => [x.value, x.n])).toEqual([["original", 1]]); // narrowed by channel
+    expect(facetOf(fs, "received_as").map((x) => [x.value, x.n])).toEqual([["hard_copy", 1]]); // narrowed by channel; 12 (AC-13)
   });
 
   it("received by uses staff names, and marks deactivated staff (inactive)", async () => {

@@ -87,12 +87,37 @@ export function sanitiseFileName(name: string, fallbackExt = ""): string {
   return `${base}${suffix}`.slice(0, MAX_NAME);
 }
 
+/** 12 (spec AC-8): staff choose Soft copy or Hard copy; "Returnable" is a checkbox on hard copies. */
 export const RECEIVED_AS = [
   { value: "soft_copy", label: "Soft copy" },
   { value: "hard_copy", label: "Hard copy" },
-  { value: "original", label: "Original" },
 ] as const;
-export type ReceivedAs = (typeof RECEIVED_AS)[number]["value"];
+/** "original" is legacy input only (older callers, old links): the database stores it as hard copy + returnable. */
+export const LEGACY_ORIGINAL = "original" as const;
+export type ReceivedAs = (typeof RECEIVED_AS)[number]["value"] | typeof LEGACY_ORIGINAL;
+/** Labels for every value a row may carry, legacy included (12 stores none as "original"). */
+export const RECEIVED_LABEL: Readonly<Record<string, string>> = { soft_copy: "Soft copy", hard_copy: "Hard copy", original: "Hard copy" };
+
+/** 12 (spec AC-14, decision D1): who handed a hard copy in — one text field. */
+export const MAX_HANDED_OVER_NAME = 120;
+
+/**
+ * 12 (spec AC-14, plan R2, D1): "Handed over by" is required on every staff screen for a new hard copy or a change to
+ * hard copy, and can't be cleared once set. A soft copy never carries it. Legacy "original" input isn't asked for it.
+ * The database checks only the shape; this is the rule the server actions apply.
+ */
+export function validateHandedOver(
+  input: { receivedAs?: unknown; handedOverName?: unknown },
+  ctx: { existing: { receivedAs: string; handedOverName: string | null } | null },
+): { data: { handedOverName: string | null } | null; errors: FieldIssue[] } {
+  const receivedAs = str(input.receivedAs);
+  if (receivedAs !== "hard_copy") return { data: { handedOverName: null }, errors: [] };
+  const name = str(input.handedOverName);
+  const required = !ctx.existing || ctx.existing.receivedAs !== "hard_copy" || ctx.existing.handedOverName !== null;
+  if (name.length > MAX_HANDED_OVER_NAME) return { data: null, errors: [{ field: "handedOverName", message: "Too long (120 characters max)." }] };
+  if (!name && required) return { data: null, errors: [{ field: "handedOverName", message: "Say who handed it over." }] };
+  return { data: { handedOverName: name || null }, errors: [] };
+}
 
 export const CHANNELS = [
   { value: "whatsapp", label: "WhatsApp" },
@@ -112,10 +137,13 @@ export const viewBlockedForLink = (d: { channel: string; status: string }) => d.
 
 export type DocumentMetaInput = {
   receivedAs?: unknown; channel?: unknown; receivedOn?: unknown; remark?: unknown;
+  returnable?: unknown; handedOverName?: unknown; // 12
   clientId?: unknown; docTypeId?: unknown; periodId?: unknown; registrationId?: unknown;
 };
 export type ValidDocumentMeta = {
   receivedAs: ReceivedAs; channel: DocumentChannel; receivedOn: string; remark: string | null;
+  /** 12: only ever true on a hard copy (or legacy "original" input, which the database maps). */
+  returnable: boolean;
   clientId: string | null; docTypeId: string | null; periodId: string | null; registrationId: string | null;
 };
 
@@ -137,7 +165,7 @@ export function validateDocumentMeta(
   const errors: FieldIssue[] = [];
 
   const receivedAs = str(input.receivedAs) as ReceivedAs;
-  if (!RECEIVED_AS.some((r) => r.value === receivedAs)) errors.push({ field: "receivedAs", message: "Choose how it was received." });
+  if (!RECEIVED_AS.some((r) => r.value === receivedAs) && receivedAs !== LEGACY_ORIGINAL) errors.push({ field: "receivedAs", message: "Choose how it was received." });
   else if (receivedAs === "soft_copy" && !ctx.hasFile) errors.push({ field: "file", message: "Add the file — a soft copy needs one." });
 
   const channel = str(input.channel) as DocumentChannel;
@@ -161,12 +189,14 @@ export function validateDocumentMeta(
     else { ids[k] = null; errors.push({ field: k, message: "Choose again from the list." }); }
   }
   if (ctx.target === "vault") {
-    if (!ids.clientId && !errors.some((e) => e.field === "clientId")) errors.push({ field: "clientId", message: "Choose a client, or save to inbox." });
-    if (!ids.docTypeId && !errors.some((e) => e.field === "docTypeId")) errors.push({ field: "docTypeId", message: "Choose a document type, or save to inbox." });
+    if (!ids.clientId && !errors.some((e) => e.field === "clientId")) errors.push({ field: "clientId", message: "Choose a client, or save as untagged." });
+    if (!ids.docTypeId && !errors.some((e) => e.field === "docTypeId")) errors.push({ field: "docTypeId", message: "Choose a document type, or save as untagged." });
   }
 
   if (errors.length) return { data: null, errors };
-  return { data: { receivedAs, channel, receivedOn, remark: remark || null, ...ids }, errors };
+  const returnable = receivedAs === LEGACY_ORIGINAL
+    || (receivedAs === "hard_copy" && (input.returnable === true || ["true", "on", "1"].includes(str(input.returnable)))); // 12
+  return { data: { receivedAs, channel, receivedOn, remark: remark || null, returnable, ...ids }, errors };
 }
 
 // ── Feature 07: review & dispatch (mirrors review_document / undo_review / create_dispatch) ──────────────

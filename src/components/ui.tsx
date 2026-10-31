@@ -14,8 +14,8 @@ export function Button({ variant = "primary", size = "md", className = "", ...pr
   return <button className={`${base} ${variants[variant]} ${sizing} ${className}`} {...props} />;
 }
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-xl bg-panel shadow-card ${className}`}>{children}</div>;
+export function Card({ children, className = "", id }: { children: ReactNode; className?: string; id?: string }) {
+  return <div id={id} className={`rounded-xl bg-panel shadow-card ${className}`}>{children}</div>;
 }
 
 export function Badge({ tone, children }: { tone: "ok" | "warn" | "bad" | "muted" | "accent"; children: ReactNode }) {
@@ -26,7 +26,7 @@ export function Badge({ tone, children }: { tone: "ok" | "warn" | "bad" | "muted
   return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${tones[tone]}`}>{children}</span>;
 }
 
-export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: string; actions?: ReactNode }) {
+export function PageHeader({ title, subtitle, actions }: { title: string; subtitle?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
       <div>

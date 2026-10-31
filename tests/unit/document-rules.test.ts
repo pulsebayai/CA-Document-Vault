@@ -117,7 +117,8 @@ describe("validateDocumentMeta (AC-1, AC-4)", () => {
   const uuid = "3f1b1c7e-8a52-4a3e-9d7b-2c1e5f6a7b8c";
 
   it("lists received-as and channel options in the agreed order", () => {
-    expect(RECEIVED_AS.map((r) => r.label)).toEqual(["Soft copy", "Hard copy", "Original"]);
+    // 12 (spec AC-8, approved 2026-10-30): "Original" became a Returnable checkbox on hard copies.
+    expect(RECEIVED_AS.map((r) => r.label)).toEqual(["Soft copy", "Hard copy"]);
     expect(CHANNELS.map((c) => c.label)).toEqual(["WhatsApp", "Email", "Hand delivery", "Courier", "Portal download", "Other"]);
   });
 

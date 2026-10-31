@@ -28,12 +28,14 @@ export const PERMISSIONS: readonly PermissionRow[] = [
   { id: "see_clients", label: "See clients and their documents", values: { admin: "all", manager: "all", staff: "all", limited: "assigned" } },
   { id: "manage_clients", label: "Add, edit and import clients", values: { ...yesAll, limited: "no" } },
   {
-    id: "add_documents", label: "Add documents and file the Inbox", values: { ...yesAll, limited: "assigned" },
-    labels: { limited: "Assigned + own Inbox" },
+    id: "add_documents", label: "Add documents and file untagged documents", values: { ...yesAll, limited: "assigned" },
+    labels: { limited: "Assigned + own untagged" },
   },
   { id: "propose_type", label: "Propose a new type while filing", values: { ...yesAll, limited: "no" } },
   { id: "review_dispatch", label: "Review, mark needs correction, dispatch originals", values: { ...yesAll, limited: "assigned" } },
-  { id: "undo_review_dispatch", label: "Undo a review or a dispatch", values: managers },
+  // 12 (spec AC-24): split — Staff can undo a review; undoing a dispatch stays Admin/Manager.
+  { id: "undo_review", label: "Undo a review", values: { ...yesAll, limited: "no" } },
+  { id: "undo_dispatch", label: "Undo a dispatch", values: managers },
   { id: "archive", label: "Archive or unarchive documents and clients", values: managers },
   { id: "waive", label: "Waive an expected document", values: { ...yesAll, limited: "no" } },
   { id: "reopen", label: "Reopen an expected document", values: { ...yesAll, limited: "assigned" } },

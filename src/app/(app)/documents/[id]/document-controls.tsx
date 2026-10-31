@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState, useTransition } from "react";
+import { useId, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { addVersionAction, archiveDocumentAction, startUpload, unarchiveDocumentAction } from "@/lib/documents/actions";
 import { putFile } from "@/lib/documents/upload-client";
 import { ACCEPT_ATTRIBUTE, validateFile } from "@/lib/validation/document";
@@ -13,6 +13,8 @@ import { Button } from "@/components/ui";
  * 07 AC-4: for a Needs-correction document (`correction`), it also asks when the corrected file arrived (default
  * today, India) — that date replaces received on, so metric 1 counts from when the right file came in.
  */
+const noSubscribe = () => () => {};
+
 export function NewVersion({ documentId, correction, preferred }: {
   documentId: string; correction?: { today: string };
   /** 11 (spec AC-19): the preference that applies; shown before the upload and checked after it (never blocks). */
@@ -22,6 +24,9 @@ export function NewVersion({ documentId, correction, preferred }: {
   const uid = useId();
   const input = useRef<HTMLInputElement>(null);
   const [receivedOn, setReceivedOn] = useState(correction?.today ?? "");
+  // 12 (found by a fast local run): a date typed before the page is interactive was reset to today by hydration,
+  // so the corrected file kept the wrong date. The controls are disabled in server HTML and during hydration.
+  const ready = useSyncExternalStore(noSubscribe, () => true, () => false);
   const [state, setState] = useState<{ status: "idle" } | { status: "uploading"; progress: number } | { status: "error"; error: string } | { status: "done"; preferredOk: boolean }>({ status: "idle" });
 
   async function choose(file: File | undefined) {
@@ -49,7 +54,7 @@ export function NewVersion({ documentId, correction, preferred }: {
     <div>
       {correction && (
         <label className="mb-3 block max-w-xs text-[13.5px] font-medium">Corrected file received on
-          <input type="date" value={receivedOn} max={correction.today} onChange={(e) => setReceivedOn(e.target.value)}
+          <input type="date" value={receivedOn} max={correction.today} disabled={!ready} onChange={(e) => setReceivedOn(e.target.value)}
             className="mt-1 w-full rounded-[9px] border border-line-2 bg-panel px-3 py-2 text-[14px] outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft" />
           <span className="mt-1 block text-[12.5px] font-normal text-ink-3">Replaces the received-on date, and sends it back to To review.</span>
         </label>
@@ -58,7 +63,7 @@ export function NewVersion({ documentId, correction, preferred }: {
       <label htmlFor={`${uid}-v`} className="inline-flex h-[30px] cursor-pointer items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas">
         Upload new version
       </label>
-      <input ref={input} id={`${uid}-v`} type="file" accept={ACCEPT_ATTRIBUTE} className="sr-only"
+      <input ref={input} id={`${uid}-v`} type="file" accept={ACCEPT_ATTRIBUTE} className="sr-only" disabled={!ready}
         aria-describedby={preferred ? `${uid}-pref` : undefined} onChange={(e) => void choose(e.target.files?.[0])} />
       </div>
       {preferred && <p id={`${uid}-pref`} className="mt-1 text-[12.5px] text-ink-3">{formatLabel(preferred)} preferred for this client.</p>}
@@ -98,7 +103,7 @@ export function ArchiveDocument({ id, docCode, archived }: { id: string; docCode
       <dialog ref={dialog} aria-labelledby="doc-archive-title" className="m-auto w-full max-w-md rounded-xl p-0 shadow-card backdrop:bg-ink/30">
         <div className="space-y-4 p-6">
           <h2 id="doc-archive-title" className="text-lg font-semibold">Archive {docCode}?</h2>
-          <p className="text-[13.5px] text-ink-2">It leaves the Inbox and client lists. The DOC-ID and files are kept, and an Admin or Manager can unarchive it.</p>
+          <p className="text-[13.5px] text-ink-2">It leaves Untagged documents and client lists. The DOC-ID and files are kept, and an Admin or Manager can unarchive it.</p>
           <label className="block text-[13.5px] font-medium">Reason
             <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} rows={2} required
               className="mt-1 w-full rounded-[9px] border border-line-2 bg-panel px-3 py-2 outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft" />

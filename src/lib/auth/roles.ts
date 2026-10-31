@@ -25,6 +25,11 @@ export function canManageCatalogue(role: Role): boolean {
   return role === "admin" || role === "manager";
 }
 
+/** 12 (spec AC-24): Staff, Manager and Admin can undo a review; undoing a dispatch stays canManageCatalogue. */
+export function canUndoReview(role: Role): boolean {
+  return role !== "limited";
+}
+
 /** Spec 02 AC-5: only Admin adds a financial year (the DB function checks the same). */
 export function canAddFinancialYear(role: Role): boolean {
   return role === "admin";

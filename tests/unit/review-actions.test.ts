@@ -42,10 +42,12 @@ describe("review actions", () => {
     expect(rpc).toHaveBeenCalledWith("review_document", { p_id: D, p_outcome: "needs_correction", p_reason: "Blurred" });
   });
 
-  it("Undo is Admin/Manager only (the database checks again)", async () => {
+  // 12 (spec AC-24, approved 2026-10-30): Staff can undo a review; Limited can't.
+  it("Undo is Staff, Manager and Admin — not Limited (the database checks again)", async () => {
+    me.role = "limited";
     expect(await undoReview({ id: D, reason: "Mistake" })).toMatchObject({ ok: false, stale: false });
     expect(rpc).not.toHaveBeenCalled();
-    me.role = "manager";
+    me.role = "staff";
     rpc.mockResolvedValue({ error: null });
     expect((await undoReview({ id: D, reason: "Mistake" })).ok).toBe(true);
     expect(rpc).toHaveBeenCalledWith("undo_review", { p_id: D, p_reason: "Mistake" });

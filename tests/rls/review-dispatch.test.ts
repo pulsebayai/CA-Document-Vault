@@ -124,10 +124,11 @@ describe("undo review (AC-5)", () => {
     }
   });
 
-  it("Staff and Limited can't undo — the database refuses it", async () => {
+  // 12 (spec AC-24, approved 2026-10-30): Staff can now undo a review; Limited still can't.
+  it("Limited can't undo — the database refuses it", async () => {
     const d = await filed();
     await mustReview(as.staff, d.id);
-    for (const k of ["staff", "limited"] as const) {
+    for (const k of ["limited"] as const) {
       expect((await undoReview(as[k], d.id, "Mistake")).error?.message ?? "").toMatch(/ROLE_REQUIRED/);
     }
     expect(await statusOf(d.id)).toBe("reviewed");
@@ -350,7 +351,8 @@ describe("dispatch packets (AC-8, AC-9)", () => {
   });
 
   it("an archived client's originals can still be dispatched", async () => {
-    const { data: docs } = await adminClient().from("document").select("id").eq("client_id", clientC).eq("received_as", "original");
+    // 12 (spec AC-9): originals are stored as returnable hard copies.
+    const { data: docs } = await adminClient().from("document").select("id").eq("client_id", clientC).eq("returnable", true);
     const o = docs![0].id as string;
     expect(await statusOf(o)).toBe("reviewed");
     expect((await createDispatch(as.staff, { client_id: clientC, document_ids: [o], dispatched_on: "2026-05-12" })).error).toBeNull();
@@ -393,7 +395,7 @@ describe("a dispatched original keeps its client and stays an original (PR #25 r
       const r = await as.staff.rpc("update_document", { p_id: d, p: patch });
       expect(r.error?.message ?? "").toMatch(/DISPATCHED/);
     }
-    expect(await documentRow(d)).toMatchObject({ client_id: clientA, received_as: "original" });
+    expect(await documentRow(d)).toMatchObject({ client_id: clientA, received_as: "hard_copy", returnable: true }); // 12 (AC-9/12)
     expect((await as.staff.rpc("update_document", { p_id: d, p: { remark: "Sent with covering letter" } })).error).toBeNull();
     expect((await as.manager.rpc("undo_dispatch_item", { p_document_id: d, p_reason: "Wrong client" })).error).toBeNull();
     expect((await as.staff.rpc("update_document", { p_id: d, p: { client_id: clientB } })).error).toBeNull();
@@ -456,7 +458,7 @@ describe("/documents search: Status values and the Return filter (AC-14)", () =>
   const ids = {} as Record<"toReview" | "reviewed" | "fix" | "ready" | "readyFix" | "sent" | "softReviewed", string>;
   type Row = { id: string; status: string; reviewed_at: string | null; reviewed_by_name: string | null; correction_reason: string | null;
     dispatched_on: string | null; dispatch_method: string | null; return_state: string | null; client_id: string | null;
-    doc_type_id: string | null; received_as: string; archived_at: string | null };
+    doc_type_id: string | null; received_as: string; archived_at: string | null; returnable: boolean }; // 12: returnable (approved 2026-10-31)
   const search = async (filters: Record<string, unknown>) => {
     const { data, error } = await as.staff.rpc("search_documents", { p: { filters: { client_id: clientS, ...filters } } });
     if (error) throw new Error(error.message);
@@ -524,6 +526,7 @@ describe("/documents search: Status values and the Return filter (AC-14)", () =>
     expect(rows.length).toBe(Object.keys(ids).length);
     for (const r of rows) {
       const d = { archived: r.archived_at !== null, clientId: r.client_id, docTypeId: r.doc_type_id, receivedAs: r.received_as,
+        returnable: r.returnable, // 12 (AC-11, approved 2026-10-31): the row's Returnable flag
         status: r.status, reviewedAt: r.reviewed_at, reviewedByName: r.reviewed_by_name, correctionReason: r.correction_reason,
         dispatchedOn: r.dispatched_on, dispatchMethod: r.dispatch_method };
       expect(isReadyToDispatch(d), r.id).toBe(r.return_state === "ready");

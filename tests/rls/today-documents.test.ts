@@ -96,7 +96,7 @@ describe("Today document rows (AC-2, AC-5; 07 states)", () => {
     expect(r).toMatchObject({ kind: "to_review", group: "Banking", type: T.bank, period: "Mar 2026", received_as: "hard_copy",
       received_on: "2026-03-10", reviewed_on: null, reviewed_by: null, needs_correction: false });
     expect(r.doc_code).toMatch(/^DOC-FY\d{2}-\d{2}-\d{5}$/);
-    expect(rows.find((x) => x.document_id === d.ready)).toMatchObject({ kind: "ready", received_as: "original", reviewed_by: "Test tdd-s1", needs_correction: false });
+    expect(rows.find((x) => x.document_id === d.ready)).toMatchObject({ kind: "ready", received_as: "hard_copy", returnable: true, reviewed_by: "Test tdd-s1", needs_correction: false }); // 12 (AC-11)
     expect(rows.find((x) => x.document_id === d.ready)!.reviewed_on).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(rows.find((x) => x.document_id === d.fixCopy)).toMatchObject({ kind: "ready", needs_correction: true });
   });

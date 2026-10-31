@@ -78,14 +78,16 @@ const PROBES: Record<string, Probe> = {
     const dispatch = await rpc(who, "create_dispatch", { p: { client_id: c, document_ids: [original.id], dispatched_on: "2026-09-01", method: "hand_delivery", recipient_name: "Matrix" } });
     return both(ok(review), ok(dispatch), "review_dispatch");
   },
-  undo_review_dispatch: async (who, c) => {
+  // 12 (spec AC-24, approved 2026-10-30): "Undo a review or a dispatch" split into two rows.
+  undo_review: async (who, c) => {
     const reviewed = await fileOn(c);
     await mustReview(as.staff, reviewed.id);
+    return ok(await rpc(who, "undo_review", { p_id: reviewed.id, p_reason: "Matrix" }));
+  },
+  undo_dispatch: async (who, c) => {
     const original = await mustCreateOriginal(as.staff, { client_id: c, doc_type_id: ids.bank, period_id: ids.apr, received_on: "2026-05-02" }, as.staff);
     await mustDispatch(as.staff, { client_id: c, document_ids: [original.id], dispatched_on: "2026-09-01" });
-    const a = await rpc(who, "undo_review", { p_id: reviewed.id, p_reason: "Matrix" });
-    const b = await rpc(who, "undo_dispatch_item", { p_document_id: original.id, p_reason: "Matrix" });
-    return both(ok(a), ok(b), "undo_review_dispatch");
+    return ok(await rpc(who, "undo_dispatch_item", { p_document_id: original.id, p_reason: "Matrix" }));
   },
   archive: async (who, c) => {
     const doc = await fileOn(c);
