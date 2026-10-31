@@ -97,10 +97,10 @@ export function ReceiptForm({ initialClient, initialTypes, periods, today }: {
     setDone(r);
   }
 
+  /** The next paper usually comes from the same client (pre-PR review nit 8): keep the client, clear the rest. */
   function another() {
     setDone(null); setDocTypeId(""); setPeriodId(""); setCount("1"); setHandedOverName(""); setReturnable(false);
     setReceivedOn(today); setChannel("hand_delivery"); setRemark("");
-    void pickClient(null);
   }
 
   const fe = (f: string) => fieldErrors[f];
@@ -200,7 +200,7 @@ export function ReceiptForm({ initialClient, initialTypes, periods, today }: {
             aria-required="true" placeholder="e.g. Client's accountant, or Courier — Blue Dart" className={control} {...described("handedOverName")} />
           {err("handedOverName")}
           <label className="mt-2 flex items-start gap-2 text-[13.5px]">
-            <input type="checkbox" checked={returnable} onChange={(e) => setReturnable(e.target.checked)} className="mt-1 size-4 accent-[var(--color-accent,#2B5BA8)]" />
+            <input type="checkbox" checked={returnable} onChange={(e) => setReturnable(e.target.checked)} className="mt-1 h-4 w-4 accent-accent" />
             <span>Returnable <span className="text-ink-3">— the client wants these back</span></span>
           </label>
         </Row>

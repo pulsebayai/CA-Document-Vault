@@ -83,7 +83,7 @@ Each replaced function is copied from its latest definition (12's migrations B/C
 - [x] 7. **Today: To place in office, In office > 30 days.** — proof: `custody-today` RLS; unit today-view; e2e `today-documents` locally
 - [x] 8. **Log receipt** (page, form, confirmation, links). — proof: `log-receipt` RLS; e2e `log-receipt.spec` locally (390 px, axe)
 - [x] 9. **Metric** on Settings › Collection. — proof: `custody-metric` RLS
-- [ ] 10. **Docs:** architecture.md, ui-reference.md, Settings › Users rows. — proof: review
+- [x] 10. **Docs:** architecture.md, ui-reference.md, Settings › Users rows. — proof: review
 - [ ] 11. **Full verification:** lint, typecheck, unit, full RLS on dev, new/changed e2e locally; push → PR CI (asked first); dispatch Regression `only` = the new RLS files (migration rule; asked first); `sdlc-reviewer`; fix Important findings failing-first → PR with the AC table. — proof: CI green + AC table
 
 ## Risks
@@ -99,6 +99,10 @@ All ACs mapped to passing tests in the PR table; PR CI green; RLS quick check on
 [Uncertain] 3–5 working days (2 build sessions + review). Most of the risk is in the two `today_items` / search replacements and Log receipt's form.
 
 ## Deviations from plan
+- **Files:** the Custody card is `documents/custody-controls.tsx` (planned `custody-panel.tsx`); `receipt-form.test.tsx` became `receipt-validation.test.ts` + the e2e `log-receipt.spec`; `reset_test_office` is unchanged (the `document_custody` FK cascades); `documents-view.tsx`, `dispatch-dialog.tsx` and `lib/dispatch/actions.ts` needed no change (the dialog already lists `return=ready`). Unplanned but small: `review-panel.tsx` (Dispatch hint), `lib/documents/queries.ts` + `selects.ts` (custody fields), `lib/custody/queries.ts` (metric), `lib/documents/db-messages.ts` (moved out of `actions.ts` so it can be unit-tested, I-1).
+- **Data step:** the backfill uses the `'backfill'` value of `app.doc_custody` (service role only) instead of 12's disable-trigger pattern, so archived rows go through the trigger normally.
+- **Migration C `20261031180000_custody_c.sql`** (pre-PR review): `custody_backfill` refuses non-test offices (I-3); `custody_metric` leaves backfilled documents out (I-2); `set_custody` locks in ID order (nit 3); `document_custody.at` defaults to `clock_timestamp()` (S2's two implied rows in one transaction had the same `now()`, found by `custody.test.ts`). Applied on dev as two migrations (`custody_c`, `custody_c_history_clock`); the file is one.
+- **Known, not changed:** `search_document_facets` computes three unused columns (nit 4); one live region per `/documents` row (nit 9); To place in SQL relies on "live packet ⇒ Ready" instead of excluding packets (nit 2, holds by construction: `create_dispatch` sets Ready); the backfill sets `in_office_at = reviewed_at`, so returnable copies reviewed > 30 days before the staging/prod replay show "In office > 30 days" on day one (nit 6: tell the pilot).
 - **Today rows for To place / In office > 30 days come only when their count is clicked** (Sidambara 2026-10-31, step 1; like 10's "requested later"). Spec AC-11 said "open rows per client card like Ready to dispatch"; the default list stays To review + Ready to dispatch, so `today-documents.test.ts`'s "nothing to do" row stays unedited.
 - **Migration data step is a function** `public.custody_backfill(p_office)` (service role only, idempotent), so `custody-migration.test.ts` can run it on its own test office; migration A calls it for every office.
 
@@ -120,3 +124,10 @@ All ACs mapped to passing tests in the PR table; PR CI green; RLS quick check on
 - Existing e2e green locally after the approved edits: review-dispatch, today-documents, bulk, collection, intake-fixes, client-documents, search, today, inbox, add-document (56 tests).
 - Test edits approved in this session part: 4 mock lines (dispatch-dialog, search-review, search-view, today-view); review-dispatch.spec lines 183, 188.
 - Unit 599/599; lint and typecheck clean.
+
+### 2026-10-31 (steps 10–11)
+- Step 10: architecture.md (13 block, decision row, matrix 23 rows, `app.doc_custody`), ui-reference.md (7 rows). Settings › Users reads `permissions.ts` (2 rows).
+- Step 11 local: full RLS on dev — 54 files green (≈ 770 tests; skips = RUN_SLOW); unit 602/602; lint, typecheck, build clean; e2e locally: custody, log-receipt, review-dispatch, today-documents, bulk, collection, intake-fixes, client-documents, search, today, inbox, add-document, document/today/search screenshots, upload-link-review, users, activity (77 tests).
+- Pre-PR review (sdlc-reviewer): no blockers. I-1 custody edit refusals now have plain messages (`document-db-messages.test.ts`, failing first); I-2 metric leaves backfilled documents out and I-3 backfill refuses non-test offices (both failing first on dev, then migration C). While the I-3 test was still red it called the backfill on a non-test dev office; it changed nothing (that office had no reviewed hard copies). Nits 1, 3, 8 (keep the client, error name, accent class), 10, 11 fixed; 2, 4, 6, 9 recorded above.
+- I-4 Today timing (dev, `e2e office governance-perf`, 1,000 documents, admin, warm): `today_items('everyone')` 76–120 ms (first call 491 ms cold), `show = to_place` 21–24 ms. No before-figure: 12's function was replaced in migration B; at volume Today is K3 (14–20 s) and is re-timed with the K3 fix, as for 10.
+- Migration C md5 = file: custody_backfill 1d6a7c96…, set_custody 62df4cb2…, custody_metric 37821761….

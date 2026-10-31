@@ -92,6 +92,18 @@ describe("custody backfill (AC-17)", () => {
   });
 });
 
+describe("after the migration (pre-PR review I-3)", () => {
+  // The data step ran once in the migration; afterwards the function serves test offices only, so a stray service-role
+  // call can't silently place a real office's documents (no history, no person). Skipped where no real office exists
+  // (CI's local stack has test offices only).
+  it("custody_backfill refuses an office that isn't a test office", async () => {
+    const { data: real } = await adminClient().from("office").select("id").eq("is_test", false).limit(1).maybeSingle();
+    if (!real) return;
+    const { error } = await adminClient().rpc("custody_backfill", { p_office: real.id });
+    expect(error?.message ?? "").toMatch(/NOT_TEST_OFFICE/);
+  });
+});
+
 describe("after the real migration (every office on this database)", () => {
   it("every document in a live dispatch packet is Ready", async () => {
     const { data: items, error } = await adminClient().from("dispatch_item").select("document_id").is("removed_at", null).limit(1000);

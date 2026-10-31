@@ -60,7 +60,7 @@ Source decisions: intent Q1–Q6 (Sidambara 2026-10-31); Kushal review Q3, Q8 (+
 
 ### E. Metric and roles
 - **AC-18** `custody_metric(from, to)` (Admin/Manager) on Settings › Collection: % of hard copies reviewed in the range that reached In office within 2 working days (success metric 1); median days Ready → Dispatched (metric 2); returnable documents now in office > 30 days. Migrated rows (no `*_by`) are excluded from the timing figures.
-- **AC-19** Permissions matrix (08): two rows, each probed per role: "**Move a hard copy** (in office, ready)" and "**Undo a custody step**": all four roles (Limited: for clients they can see). 22 → 24 rows.
+- **AC-19** Permissions matrix (08): two rows, each probed per role: "**Move a hard copy** (in office, ready)" and "**Undo a custody step**": all four roles (Limited: for clients they can see). 21 → 23 rows.
 
 ### F. Unchanged behaviour (regression)
 - **AC-20** Everything in the intent's "must not change" holds: 07's review flow and history; 12's reset rules; dispatch packets (one live packet per document, recipient required, undo Admin/Manager); metric 1; soft copies and link uploads. The full suite stays green; the only test changes are those listed below, each approved before it is made.

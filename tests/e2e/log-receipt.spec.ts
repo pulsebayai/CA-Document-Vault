@@ -78,7 +78,8 @@ test("AC-14, AC-16: no type → untagged for the client; the form fits 390 px", 
   await page.getByRole("button", { name: "Log receipt" }).click();
   await expect(page.getByRole("status")).toHaveText("Logged 1 paper for Receipt Traders");
   await page.getByRole("button", { name: "Log another receipt" }).click();
-  await expect(page.getByRole("combobox", { name: "Client", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Change" })).toBeVisible(); // the client stays chosen for the next paper
+  await expect(page.getByLabel("Handed over by (required)")).toHaveValue("");
   const { count } = await adminClient().from("document").select("id", { count: "exact", head: true }).eq("client_id", clientId).is("doc_type_id", null);
   expect(count).toBe(1);
 });

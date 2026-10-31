@@ -38,7 +38,9 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
   const held = heldDays({ ...input, receivedOn: d.receivedOn }, today);
   const paper = paperBadge(d); // 12
   const action = nextAction(state);
-  const custodyNext = action ? null : custodyAction(input); // 13 (AC-9): Mark in office / Ready to dispatch after the review
+  // 13 (AC-9, S1): Mark in office / Ready to dispatch after the review — next to the review actions of a Needs-correction
+  // copy too (pre-PR review nit 1); not when the row's action is Dispatch (it is Ready already).
+  const custodyNext = action === "dispatch" ? null : custodyAction(input);
   const label = `${d.typeName}${d.periodLabel ? ` · ${d.periodLabel}` : ""} (${d.docCode})`;
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">

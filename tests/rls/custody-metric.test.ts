@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createStaff, retireStaff, signedInClient } from "../support/db";
+import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import {
   createDocumentOffice, mustCreateDocument, mustDispatch, mustMarkReady, mustReview, mustSetCustody, periodId, typeId,
 } from "../support/documents";
@@ -53,6 +53,16 @@ describe("custody_metric (AC-18)", () => {
     const { data, error } = await as.manager.rpc("custody_metric", { p_from: istToday(), p_to: istToday() });
     expect(error).toBeNull();
     expect(data as Metric).toEqual({ reviewed: 4, placed_2d: 2, ready_to_dispatched_median_days: 0, held_now: 0 });
+  });
+
+  // Pre-PR review I-2 (spec AC-18): documents placed by the migration (no person, no history row) are left out of the
+  // placement figure, so it doesn't start near 0% after the replay. Runs after the case above: the backfill places
+  // the one reviewed copy nobody marked in office.
+  it("documents placed by the migration's backfill are left out of the placement figure", async () => {
+    const { error } = await adminClient().rpc("custody_backfill", { p_office: officeId });
+    expect(error).toBeNull();
+    const { data } = await as.manager.rpc("custody_metric", { p_from: istToday(), p_to: istToday() });
+    expect(data as Metric).toMatchObject({ reviewed: 3, placed_2d: 2 });
   });
 
   it("a range with nothing in it returns zeros and a null median", async () => {

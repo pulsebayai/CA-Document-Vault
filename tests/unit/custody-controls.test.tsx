@@ -52,6 +52,12 @@ describe("row custody click (AC-9)", () => {
     expect(within(plain).queryByRole("button", { name: /Mark in office|Ready to dispatch/ })).toBeNull();
   });
 
+  it("S1: a Needs-correction hard copy offers Mark in office next to its review actions (pre-PR review nit 1)", () => {
+    const li = row(doc({ status: "needs_correction", correctionReason: "Wrong year" }));
+    expect(within(li).getByRole("button", { name: /^Mark reviewed/ })).toBeInTheDocument();
+    expect(within(li).getByRole("button", { name: /^Mark in office: Bank statement/ })).toBeInTheDocument();
+  });
+
   it("a skipped document says why", async () => {
     markCustody.mockResolvedValue({ ok: true, message: "0 marked in office · 1 skipped (not reviewed yet).", done: [], skipped: [{ id: D, reason: "NOT_REVIEWED" }] });
     const li = row(doc());
