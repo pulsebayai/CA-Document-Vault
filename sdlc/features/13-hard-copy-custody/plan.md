@@ -64,7 +64,7 @@ Each replaced function is copied from its latest definition (12's migrations B/C
 [Likely] a few more show up when step 1's failing tests run against the full suite; each is added here and asked before it is changed. Tests that create or dispatch documents without asserting Ready stay unedited (S2).
 
 ## Steps
-- [ ] 0. **Setup + checkpoint.** Commit this plan; 13 ∥ 14 parallel planning checkpoint (14 needs its intent → spec → plan first; locks and overlap decided there); roadmap PR on main: 13 in progress, locks. — proof: roadmap PR merged (docs-only CI)
+- [x] 0. **Setup + checkpoint.** (roadmap PR #15 merged 2026-10-31) Commit this plan; 13 ∥ 14 parallel planning checkpoint (14 needs its intent → spec → plan first; locks and overlap decided there); roadmap PR on main: 13 in progress, locks. — proof: roadmap PR merged (docs-only CI)
 - [ ] 1. **Failing tests first (RLS + unit)** for AC-1–12, 13–15, 17–19, plus the table above. — proof: they fail for the expected reason on dev
 - [ ] 2. **Migration A** (schema, history table, trigger, data step, purge). — proof: `custody-migration` passes on dev; documents / review-dispatch / returnable / correction-kind / link files pass unedited except the approved setups; md5 = file
 - [ ] 3. **Migration B** (functions). — proof: every step-1 RLS file passes; role-matrix, document-search, today-documents, upload-links-today green; md5 = file
