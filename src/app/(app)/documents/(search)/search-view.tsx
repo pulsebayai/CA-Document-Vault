@@ -74,7 +74,8 @@ export function activeChips(f: DocumentFilters, o: FilterOptions, facets: FacetV
   add("state", "Show", f.state ? STATE_LABEL[f.state] : null);
   if (f.return) chips.push({ key: "return", label: `Return: ${RETURN_LABEL[f.return]}` }); // 07
   if (f.format) chips.push({ key: "format", label: `Format: ${FORMAT_LABEL[f.format]}` }); // 11
-  if (f.returnable) chips.push({ key: "returnable", label: "Returnable: Yes" }); // 12 (AC-13)
+  // 12 (AC-13): an old `as=original` link means hard copy + returnable, so it shows the Returnable chip too.
+  if (f.returnable || f.as === "original") chips.push({ key: "returnable", label: "Returnable: Yes" });
   if (f.archived) chips.push({ key: "archived", label: "Including archived" });
   return chips;
 }
@@ -84,7 +85,7 @@ export function withoutFilter(f: DocumentFilters, key: keyof DocumentFilters): D
   const next: DocumentFilters = { ...f, page: 1, [key]: key === "archived" ? false : null };
   if (key === "return") delete next.return; // 07: optional key (absent, not null)
   if (key === "format") delete next.format; // 11: optional key too
-  if (key === "returnable") delete next.returnable; // 12: optional key too
+  if (key === "returnable") { delete next.returnable; if (next.as === "original") next.as = "hard_copy"; } // 12: optional key; legacy link
   if (key === "group") next.type = null;
   if (key === "fy") next.period = null;
   if (key === "client") next.registration = null;
@@ -170,6 +171,7 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
   const setReturnable = (v: string | null) => { // 12 (AC-13)
     const next: DocumentFilters = { ...filters, page: 1 };
     if (v === "1") next.returnable = "1"; else delete next.returnable;
+    if (next.as === "original") { next.as = "hard_copy"; if (v === "1") next.returnable = "1"; } // legacy link → today's filters
     go(next);
   };
   const setFormat = (v: string | null) => { // 11 (spec AC-21)
@@ -245,7 +247,7 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
             options={DOC_STATES.map((s) => ({ value: s.value, label: s.label }))} allLabel="Show: classified and untagged" />
           {/* 12 (AC-13): a checkbox like "Include archived" (a combobox named "Returnable" would also match "Return"). */}
           <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">
-            <input type="checkbox" checked={filters.returnable === "1"} onChange={(e) => setReturnable(e.target.checked ? "1" : null)} className="h-4 w-4 accent-accent" />
+            <input type="checkbox" checked={filters.returnable === "1" || filters.as === "original"} onChange={(e) => setReturnable(e.target.checked ? "1" : null)} className="h-4 w-4 accent-accent" />
             Returnable only
           </label>
           <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">

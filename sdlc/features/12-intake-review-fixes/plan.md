@@ -156,6 +156,16 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 - **`matchTypes` speed:** the 500-type check failed on its first full run (localeCompare with options builds a collator per call). Fixed in the code: one shared `Intl.Collator` + normalised text cached per type object; ≈ 1.6 ms per search (budget 16 ms). The test is unchanged.
 - **File buttons on lists** use one RLS lookup per page (`currentFiles`, batches of 100, best effort like Today's Upload links) instead of changing `search_documents` / `today_items`: no migration. Header suggestions don't load files.
 - **Untagged subtitle link** is underlined: axe `link-in-text-block` failed locally on the first run.
+- **The two extra test rows above were approved by the user on 2026-10-30 at 15:09** ("yes" to the two earlier test edits): `document-search.test.ts:249` and `review-actions.test.ts:45` (pre-PR review I-3 asked for this record).
+- **Pre-PR review (sdlc-reviewer, 2026-10-31): no blockers; 4 Important, 10 nits.**
+  - I-1 fixed failing-first: with My clients on, an empty list says "None of your clients … Switch off My clients to see all N clients" (`ClientsView mineOnly`; new unit `clients-mine.test.tsx`), not "No clients yet".
+  - I-2 fixed: the planned e2e `document-type-field.spec.ts` (6 tests: plan types under group headings with axe while the list is open, aliases + "Not in existing category plan", keyboard pick + Esc, propose row, 390 px, AC-20 "Moves from … / Review will reset").
+  - I-3: approval recorded above.
+  - I-4 fixed: architecture.md's reset rule now says every Needs-correction / Reviewed document keeps 07's rule, and Wrong details adds the received-as / Returnable / received-on / handed-over changes (matches the trigger and AC-23).
+  - Nits fixed: N-1 (a legacy `as=original` link shows "Returnable only" ticked + the chip, in the view; the parse result pinned by `document-search.test.ts` is unchanged), N-2 (server actions treat legacy `original` as a hard copy for Handed over by), N-3 (combobox: polite `role="status"` line with the count / no-match text; the active option scrolls into view), N-5 ("(required)" + `aria-required` on Handed over by), N-8 (`toReviewCount` skips archived clients, like `today_items`), N-9 (an Edit that moves the document to another client returns to the new client).
+  - **N-6 decided by the user (2026-10-31): refuse.** Migration D (`20261031090000_intake_fixes_d.sql`) replaces `undo_review`: `DISPATCHED` while the document is in a live packet, for every role; undo the dispatch first. Applied on dev after the user confirmed (md5 = file `ad4c4fc8…`). The document page shows a disabled "Undo review" with "Undo the dispatch first." Failing-first RLS test in `correction-kind.test.ts`.
+  - Follow-ups (not in 12): N-4 a way to clear the type field on Assign; N-7 add `returnable` / `handed_over_name` to the trigger's ARCHIVED and merge tuples (defence in depth; only `update_document` writes them and it refuses archived documents); N-10 "originals" wording left in the dispatch dialog, review messages and the permissions label.
+- **`review-dispatch.test.ts:528` (TS/SQL state cross-check)** passes the row's `returnable` (+ its type), approved by the user 2026-10-31: since 12 the row says hard copy and Returnable is separate.
 - **Legacy URL `as=original`** is accepted by `parseDocumentSearchParams` (AC-13), so `document-search.test.ts` (unit) stays unedited.
 
 ## Session log
@@ -197,3 +207,7 @@ Two files (A then B), applied to dev through the CLI / SQL editor with md5 = fil
 - Next step: step 11 (docs).
 - Later: step 11 done. architecture.md: header line, a "12" block under the document model (returnable + legacy input rule + data-step pattern, handed over by, correction kinds + reset rule, Staff undo review, list paging + `currentFiles`, "Untagged" naming, My clients, type field), shown-state note, the 2026-09-28 row marked superseded, two decision rows. ui-reference.md: 9 deviation rows. Settings › Users rows come from `permissions.ts` (step 4).
 - Next step: step 12 (full verification → push → PR CI → RUN_SLOW → sdlc-reviewer → PR), each push / dispatch / PR asked first.
+
+### 2026-10-31 (step 12, local part)
+- Done: lint, typecheck, unit 570/570, build. Full RLS on dev: 720 passed, 17 skipped (RUN_SLOW), 1 failed (the approved cross-check line, fixed; the 4 affected files then 140/140 after migration D). sdlc-reviewer: no blockers; Important findings fixed (see Deviations). New/changed e2e locally: document-type-field 6/6, intake-fixes 12/12, add-document, inbox, search, review-dispatch, clients, expected, client-documents green.
+- Not yet (the user chose "Not yet" for CI): push → draft PR → PR CI; RUN_SLOW Regression on the branch preview; PR description with the AC table; Regression `only` = 12's RLS files on dev (migration rule).

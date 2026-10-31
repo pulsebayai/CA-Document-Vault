@@ -458,7 +458,7 @@ describe("/documents search: Status values and the Return filter (AC-14)", () =>
   const ids = {} as Record<"toReview" | "reviewed" | "fix" | "ready" | "readyFix" | "sent" | "softReviewed", string>;
   type Row = { id: string; status: string; reviewed_at: string | null; reviewed_by_name: string | null; correction_reason: string | null;
     dispatched_on: string | null; dispatch_method: string | null; return_state: string | null; client_id: string | null;
-    doc_type_id: string | null; received_as: string; archived_at: string | null };
+    doc_type_id: string | null; received_as: string; archived_at: string | null; returnable: boolean }; // 12: returnable (approved 2026-10-31)
   const search = async (filters: Record<string, unknown>) => {
     const { data, error } = await as.staff.rpc("search_documents", { p: { filters: { client_id: clientS, ...filters } } });
     if (error) throw new Error(error.message);
@@ -526,6 +526,7 @@ describe("/documents search: Status values and the Return filter (AC-14)", () =>
     expect(rows.length).toBe(Object.keys(ids).length);
     for (const r of rows) {
       const d = { archived: r.archived_at !== null, clientId: r.client_id, docTypeId: r.doc_type_id, receivedAs: r.received_as,
+        returnable: r.returnable, // 12 (AC-11, approved 2026-10-31): the row's Returnable flag
         status: r.status, reviewedAt: r.reviewed_at, reviewedByName: r.reviewed_by_name, correctionReason: r.correction_reason,
         dispatchedOn: r.dispatched_on, dispatchMethod: r.dispatch_method };
       expect(isReadyToDispatch(d), r.id).toBe(r.return_state === "ready");

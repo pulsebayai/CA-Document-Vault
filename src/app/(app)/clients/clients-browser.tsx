@@ -111,7 +111,7 @@ export function ClientsBrowser({ initial, staff, canAdd, mine }: {
   ) : undefined;
 
   return (
-    <ClientsView clients={data.rows} total={data.total} matched={data.matched} filtered={filtered}
+    <ClientsView clients={data.rows} total={data.total} matched={data.matched} filtered={filtered} mineOnly={!!filters.mine}
       firstIndex={(filters.page - 1) * PAGE_SIZE} toolbar={toolbar} pager={pager} busy={pending}
       actions={canAdd ? (
         <span className="flex gap-2">

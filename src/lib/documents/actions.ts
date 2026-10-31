@@ -123,7 +123,8 @@ export async function saveDocument(input: SaveDocumentInput): Promise<SaveDocume
   const file = input?.file ?? null;
   const v = validateDocumentMeta(input ?? {}, { target, hasFile: !!file, today: istDate() });
   // 12 (AC-14, R2): every staff screen asks who handed a new hard copy in.
-  const h = validateHandedOver({ receivedAs: input?.receivedAs, handedOverName: input?.handedOverName }, { existing: null });
+  // Legacy "original" input is a hard copy too (review N-2): it needs Handed over by like any new hard copy.
+  const h = validateHandedOver({ receivedAs: input?.receivedAs === "original" ? "hard_copy" : input?.receivedAs, handedOverName: input?.handedOverName }, { existing: null });
   if (!v.data || !h.data) {
     return { ok: false, error: "Check the highlighted fields.", fieldErrors: Object.fromEntries([...v.errors, ...h.errors].map((e) => [e.field, e.message])) };
   }
@@ -227,7 +228,7 @@ export async function updateDocumentAction(input: UpdateDocumentInput): Promise<
   const v = validateDocumentMeta(input, { target, hasFile: doc.version_count > 0, today: istDate(), existingChannel: doc.channel });
   // 12 (AC-14): needed when it becomes a hard copy; once recorded it can be changed, not cleared; older hard copies
   // without it can be edited without it.
-  const h = validateHandedOver({ receivedAs: input?.receivedAs, handedOverName: input?.handedOverName },
+  const h = validateHandedOver({ receivedAs: input?.receivedAs === "original" ? "hard_copy" : input?.receivedAs, handedOverName: input?.handedOverName },
     { existing: { receivedAs: doc.received_as, handedOverName: doc.handed_over_name } });
   if (!v.data || !h.data) {
     return { ok: false, error: "Check the highlighted fields.", fieldErrors: Object.fromEntries([...v.errors, ...h.errors].map((e) => [e.field, e.message])) };

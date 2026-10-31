@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { matchTypes, type TypeOption as MatchOption } from "@/lib/types/match";
 import { FREQUENCY_LABEL, type Frequency } from "@/lib/validation/catalogue";
 
@@ -56,6 +56,17 @@ export function TypeCombobox({ id, types, value, onChange, disabled, invalid, de
   const rows: Row[] = [...groups.flatMap((g) => g.rows), ...(proposeRow ? [{ kind: "propose" as const, key: "__propose__" }] : [])];
   const optId = (r: Row) => `${uid}-opt-${r.key}`;
   const activeRow = open && active >= 0 && active < rows.length ? rows[active] : null;
+  // Review N-3: keep the active option visible while moving with the keyboard.
+  const activeId = activeRow ? optId(activeRow) : null;
+  useEffect(() => {
+    if (activeId) document.getElementById(activeId)?.scrollIntoView?.({ block: "nearest" });
+  }, [activeId]);
+  // Review N-3 (WCAG 4.1.3): what the list says, announced politely while it is open.
+  const typeCount = rows.filter((r) => r.kind === "type").length;
+  const statusText = !open || disabled ? ""
+    : result.searchAll ? "Type to search all types."
+    : result.noMatch ? (typeCount ? `No matching type. ${typeCount} close ${typeCount === 1 ? "type" : "types"}.` : "No matching type.")
+    : `${typeCount} ${typeCount === 1 ? "type" : "types"}${result.more ? `, ${result.more} more — keep typing to narrow` : ""}.`;
 
   function close(restore: boolean) {
     setOpen(false);
@@ -153,6 +164,7 @@ export function TypeCombobox({ id, types, value, onChange, disabled, invalid, de
         {result.searchAll && <p className="px-3 py-2 text-[13px] text-ink-3">Type to search all types</p>}
         {result.noMatch && !proposeRow && <p className="px-3 py-2 text-[13px] text-ink-3">No matching type</p>}
       </div>
+      <p role="status" aria-live="polite" className="sr-only">{statusText}</p>
     </div>
   );
 }

@@ -18,6 +18,7 @@ const MESSAGES: Array<[RegExp, string]> = [
   [/NOT_ELIGIBLE|ALREADY_DISPATCHED|dispatch_item_live_key/, "Some originals are no longer ready to dispatch. The list has been refreshed — check the ticks and save again."],
   [/NO_DOCUMENTS/, "Tick at least one original."],
   [/NOT_DISPATCHED/, "This original is no longer in a packet. The page has been refreshed."],
+  [/DISPATCHED/, "This document is in a dispatch packet. Undo the dispatch first, then the review."], // 12 D (review N-6)
   [/RECEIVED_ON_FUTURE/, "Received on can't be in the future."],
   [/ARCHIVED/, "Unarchive the document before changing it."],
   [/NOT_FOUND/, "Not found — it may have been moved or you may no longer have access."],

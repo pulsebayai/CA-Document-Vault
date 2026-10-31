@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { mustInsertClient } from "../support/catalogue";
 import {
-  activityFor, createDocumentOffice, documentRow, mustCreateDocument, mustReview, periodId, reviewHistory, typeId, undoReview,
+  activityFor, createDocumentOffice, documentRow, mustCreateDocument, mustDispatch, mustReview, periodId, reviewHistory, typeId, undoReview,
 } from "../support/documents";
 import { T } from "../support/expected";
 
@@ -133,5 +133,23 @@ describe("undo review (AC-24)", () => {
     const d = await filed();
     await mustReview(as.staff, d.id);
     expect((await undoReview(as.staff, d.id, "  ")).error?.message ?? "").toMatch(/REASON_REQUIRED/);
+  });
+});
+
+// Pre-PR review N-6 (decided by the user 2026-10-31): a review can't be undone while the document is in a live
+// dispatch packet — undo the dispatch first (Admin/Manager), then the review. Applies to every role.
+describe("undo review while dispatched (N-6)", () => {
+  it("is refused with DISPATCHED for Staff and Manager; after the dispatch is undone, it works", async () => {
+    const d = await filed({ received_as: "hard_copy", returnable: true });
+    await mustReview(as.staff, d.id);
+    await mustDispatch(as.staff, { client_id: client, document_ids: [d.id], dispatched_on: "2026-05-10" });
+    for (const k of ["staff", "manager"] as const) {
+      expect((await undoReview(as[k], d.id, "Mistake")).error?.message ?? "", k).toMatch(/DISPATCHED/);
+    }
+    expect(await documentRow(d.id)).toMatchObject({ status: "reviewed" });
+    const { error } = await as.manager.rpc("undo_dispatch_item", { p_document_id: d.id, p_reason: "Came back" });
+    expect(error).toBeNull();
+    expect((await undoReview(as.staff, d.id, "Reviewed the wrong copy")).error).toBeNull();
+    expect(await documentRow(d.id)).toMatchObject({ status: "received" });
   });
 });

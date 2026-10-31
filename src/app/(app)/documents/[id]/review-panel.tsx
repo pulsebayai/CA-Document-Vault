@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Card } from "@/components/ui";
+import { Button, Card } from "@/components/ui";
 import { Modal } from "@/components/dialog";
 import { undoReview, type ReviewActionResult } from "@/lib/review/actions";
 import { undoDispatchItem } from "@/lib/dispatch/actions";
@@ -31,10 +31,12 @@ type Common = { documentId: string; clientId: string | null; clientName?: string
 /** History rows with their time already formatted on the server (no date/time formatting in the browser: hydration). */
 export type ReviewEventView = ReviewEvent & { atText: string };
 
-export function ReviewPanel({ documentId, clientId, label, canUndo, state, reviewable, status, history, correctionKind }: Common & {
+export function ReviewPanel({ documentId, clientId, label, canUndo, state, reviewable, status, history, correctionKind, dispatched = false }: Common & {
   state: ShownState; reviewable: boolean; status: string; history: ReviewEventView[];
   /** 12 (AC-22): wrong file | wrong details (null: marked before 12). */
   correctionKind?: string | null;
+  /** 12 D (review N-6): in a live dispatch packet — the review can't be undone until the dispatch is. */
+  dispatched?: boolean;
 }) {
   const router = useRouter();
   const [msg, setMsg] = useState<RowMessage | null>(null);
@@ -61,7 +63,13 @@ export function ReviewPanel({ documentId, clientId, label, canUndo, state, revie
         {reviewable && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {reviewNext && clientId && <ReviewControls documentId={documentId} clientId={clientId} label={label} onMessage={setMsg} />}
-            {canUndo && status !== "received" && (
+            {canUndo && status !== "received" && dispatched && (
+              <span className="flex flex-wrap items-center gap-2">
+                <Button type="button" size="sm" variant="secondary" disabled aria-describedby={`undo-dispatch-first-${documentId}`}>Undo review</Button>
+                <span id={`undo-dispatch-first-${documentId}`} className="text-[13px] text-ink-3">Undo the dispatch first.</span>
+              </span>
+            )}
+            {canUndo && status !== "received" && !dispatched && (
               <Modal trigger="Undo review" title={`Undo review: ${label}`} triggerVariant="button">
                 {(close) => (
                   <ReasonForm intro="It goes back to To review. The history keeps what happened." submit="Undo review" close={close}

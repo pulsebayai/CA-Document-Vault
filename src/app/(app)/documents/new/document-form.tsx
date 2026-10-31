@@ -78,6 +78,8 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
   // 12 (AC-8, AC-14): Returnable and who handed a hard copy in.
   const [returnable, setReturnable] = useState(existing ? !!existing.returnable || existing.receivedAs === "original" : false);
   const [handedOverName, setHandedOverName] = useState(existing?.handedOverName ?? "");
+  // 12 (AC-14, review N-5): required for a new hard copy, a change to hard copy, or once recorded (mirrors validateHandedOver).
+  const handedRequired = !existing || (existing.receivedAs !== "hard_copy" && existing.receivedAs !== "original") || !!existing.handedOverName;
   function onReceivedAs(v: ReceivedAs) {
     setReceivedAs(v);
     if (v !== "hard_copy") setReturnable(false); // AC-8: Soft copy hides and clears it
@@ -310,7 +312,10 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
     });
     setSaving(null);
     if (!r.ok) { setError(r.error); setFieldErrors(r.fieldErrors); return; }
-    router.push(`${returnTo}${returnTo.includes("?") ? "&" : "?"}saved=${encodeURIComponent(r.docCode)}`); // AC-4: back where the user came from
+    // 12 (review N-9): an edit that moved the document to another client returns to the new client, not the old one.
+    const back = existing?.client && client && client.id !== existing.client.id && returnTo === `/clients/${existing.client.id}`
+      ? `/clients/${client.id}` : returnTo;
+    router.push(`${back}${back.includes("?") ? "&" : "?"}saved=${encodeURIComponent(r.docCode)}`); // AC-4: back where the user came from
   }
 
   const busy = saving !== null;
@@ -387,8 +392,11 @@ export function DocumentForm({ initialClient, initialTypes, periods, groups, tod
                 <span><span className="font-medium">Returnable</span> <span className="text-ink-3">— the client wants this back</span></span>
               </label>
               <div>
-                <label htmlFor={`${uid}-handed`} className="block text-[13.5px] font-medium">Handed over by</label>
+                <label htmlFor={`${uid}-handed`} className="block text-[13.5px] font-medium">
+                  Handed over by{handedRequired && <span className="font-normal text-ink-3"> (required)</span>}
+                </label>
                 <input id={`${uid}-handed`} value={handedOverName} onChange={(e) => setHandedOverName(e.target.value)} maxLength={120} autoComplete="off"
+                  aria-required={handedRequired}
                   className={`mt-1 ${control}`} {...described("handedOverName", `${uid}-handed-hint`)} />
                 {errText("handedOverName")}
                 <p id={`${uid}-handed-hint`} className="mt-1 text-[13px] text-ink-3">Who brought it in, e.g. Courier — Blue Dart, or Client&apos;s accountant.</p>

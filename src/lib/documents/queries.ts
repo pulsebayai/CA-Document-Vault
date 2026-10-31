@@ -148,8 +148,9 @@ export async function listInbox(onlyAddedBy: string | null, limit = 200): Promis
 /** 12 (AC-17): filed documents waiting for review (Today › To review, everyone), for the Untagged page's subtitle. */
 export async function toReviewCount(): Promise<number> {
   const supabase = await createClient();
-  const { count } = await supabase.from("document").select("id", { count: "exact", head: true })
-    .not("classified_at", "is", null).is("archived_at", null).eq("status", "received");
+  // Review N-8: like today_items, documents of archived clients don't count.
+  const { count } = await supabase.from("document").select("id, client!inner(archived_at)", { count: "exact", head: true })
+    .not("classified_at", "is", null).is("archived_at", null).eq("status", "received").is("client.archived_at", null);
   return count ?? 0;
 }
 

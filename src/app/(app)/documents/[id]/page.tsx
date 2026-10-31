@@ -120,7 +120,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
 
         <div className="space-y-5">
           <ReviewPanel documentId={d.id} clientId={d.client?.id ?? null} label={label} canUndo={canUndoReview(me.role) && !archived}
-            state={reviewState} reviewable={d.classified && !archived} status={d.status} correctionKind={d.correctionKind}
+            state={reviewState} reviewable={d.classified && !archived} status={d.status} correctionKind={d.correctionKind} dispatched={!!live}
             history={history.map((h) => ({ ...h, atText: when.format(new Date(h.at)) }))} />
           {returnable && d.classified && (
             <DispatchPanel documentId={d.id} clientId={d.client?.id ?? null} clientName={d.client?.name ?? null} label={label} canUndo={canUndo && !archived}
