@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { Badge, Button, Card } from "@/components/ui";
 import { FieldError, Modal, inputCls } from "@/components/dialog";
 import {
@@ -225,8 +224,9 @@ export function Reveal({ id, holder }: { id: string; holder: string }) {
   );
 }
 
+// No router.refresh() after an action: every DSC action calls revalidatePath, so its response already carries the
+// re-rendered page (Next server-actions guide). A second refresh cancelled that response mid-stream (step 11).
 function useSubmit<T extends { ok: boolean; error?: string; fieldErrors?: Fe }>(onDone: () => void) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [fe, setFe] = useState<Fe>({});
@@ -236,7 +236,6 @@ function useSubmit<T extends { ok: boolean; error?: string; fieldErrors?: Fe }>(
     const r = await fn();
     if (!r.ok) { setError(r.error ?? "Couldn't save."); setFe(r.fieldErrors ?? {}); return; }
     onDone();
-    router.refresh();
   });
   return { pending, error, fe, run };
 }
@@ -389,14 +388,13 @@ function ArchiveForm({ clientId, id, onDone }: { clientId: string; id: string; o
 }
 
 function UnarchiveButton({ clientId, id, holder }: { clientId: string; id: string; holder: string }) {
-  const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
     <span className="flex items-center gap-2">
       <Button size="sm" variant="secondary" disabled={pending} aria-label={`Unarchive ${holder}'s DSC`} onClick={() => start(async () => {
         const r = await unarchiveDsc({ id, clientId });
-        if (!r.ok) setError(r.error); else router.refresh();
+        if (!r.ok) setError(r.error);
       })}>{pending ? "Unarchiving…" : "Unarchive"}</Button>
       {error && <span role="alert" className="text-[13px] text-bad">{error}</span>}
     </span>

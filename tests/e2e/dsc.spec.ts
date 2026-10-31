@@ -147,6 +147,9 @@ test("AC-4: Change password needs it twice; the reveal shows the new one", async
 test("AC-5: a Manager archives with a reason and unarchives; Staff sees no Archive", async ({ page, baseURL }) => {
   await signIn(page, u.staff.email, baseURL);
   await page.goto(`/clients/${clientId}?tab=dsc`);
+  // Wait for the card first, so the absence check means something (and the render isn't cut off mid-stream).
+  await expect(card(page, "Ravi Director").getByRole("button", { name: /^Edit/ })).toBeVisible();
+  await page.waitForLoadState("networkidle");
   await expect(card(page, "Ravi Director").getByRole("button", { name: /Archive/ })).toHaveCount(0);
 
   await signIn(page, u.manager.email, baseURL);
