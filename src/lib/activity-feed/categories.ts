@@ -11,6 +11,8 @@ export const ACTIVITY_CATEGORIES = [
   { id: "clients_plans", label: "Clients & plans" },
   { id: "catalogue", label: "Catalogue" },
   { id: "users", label: "Users" },
+  { id: "dsc", label: "DSCs" }, // 14
+  { id: "password_reveals", label: "Password reveals" }, // 14 AC-12: reveals only, for the weekly check
   { id: "sign_ins", label: "Sign-ins" },
 ] as const;
 

@@ -118,6 +118,10 @@ jobs:
     env:
       # Feature 10: upload links in e2e point at CI's own build.
       APP_PUBLIC_URL: http://localhost:3000
+      # Feature 14: the PUBLIC, test-only DSC key (src/lib/dsc/crypto.ts TEST_KEY; refused in production). Not a secret:
+      # PR CI's local stacks hold only test data, and PR CI uses no secrets (chore ci-speed).
+      DSC_ENC_KEYS: "test:AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
+      DSC_KEY_ID: test
       # The app is built once below; Playwright only starts it (playwright.config.ts).
       E2E_PREBUILT: "1"
       # The browser accepts the local stack's self-signed cert (playwright.config.ts). Never set for hosted targets.

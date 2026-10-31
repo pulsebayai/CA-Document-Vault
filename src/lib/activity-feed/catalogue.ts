@@ -69,6 +69,20 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   "upload_request_item.cancelled": fixed("reminders", "cancelled a requested document"),
   "upload_request_item.reopened": fixed("reminders", "reopened a requested document"),
   "upload_request_item.filed": fixed("documents", "filed a requested document"),
+  // DSCs (14): IDs only (data: client_id; updated also `fields`). Never the holder, a custody name or the password.
+  "dsc.created": fixed("dsc", "added a DSC"),
+  "dsc.updated": {
+    category: "dsc",
+    text: (r) => (Array.isArray(r.data.fields) && r.data.fields.length === 1 && r.data.fields[0] === "expires_on"
+      ? "renewed a DSC (new expiry date)" : "edited a DSC"),
+  },
+  "dsc.password_changed": fixed("dsc", "changed a DSC password"),
+  "dsc.password_revealed": fixed("password_reveals", "revealed a DSC password"),
+  "dsc.given_out": fixed("dsc", "gave out a DSC"),
+  "dsc.received_back": fixed("dsc", "received a DSC back"),
+  "dsc.archived": fixed("dsc", "archived a DSC"),
+  "dsc.unarchived": fixed("dsc", "unarchived a DSC"),
+  "dsc.remind_days_set": { category: "dsc", text: (r) => `set DSC expiry reminders to ${plural(num(r.data.remind_days), "day")} before expiry` },
   // Clients & plans (02, 04)
   "client.created": fixed("clients_plans", "added a client"),
   "client.imported": { category: "clients_plans", text: (r) => `imported ${plural(num(r.data.count), "client")}` },

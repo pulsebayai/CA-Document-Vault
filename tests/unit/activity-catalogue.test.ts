@@ -88,8 +88,13 @@ describe("activity catalogue (AC-6)", () => {
 
   it("categories match the spec's filter list, in order", () => {
     expect(ACTIVITY_CATEGORIES.map((c) => c.label)).toEqual([
-      "Documents", "Review & dispatch", "Expected", "Reminders", "Clients & plans", "Catalogue", "Users", "Sign-ins",
+      // 14 spec AC-12 (approved Sidambara 2026-11-01): "DSCs" and "Password reveals" added; no existing category changed.
+      "Documents", "Review & dispatch", "Expected", "Reminders", "Clients & plans", "Catalogue", "Users", "DSCs", "Password reveals", "Sign-ins",
     ]);
+  });
+
+  it("Password reveals holds only reveals (14 AC-12)", () => {
+    expect(actionsFor("password_reveals")).toEqual(["dsc.password_revealed"]);
   });
 });
 

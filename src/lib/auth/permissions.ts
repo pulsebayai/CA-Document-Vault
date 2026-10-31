@@ -50,6 +50,11 @@ export const PERMISSIONS: readonly PermissionRow[] = [
   { id: "change_plans", label: "Change collection plans (add, remove types/groups)", values: { ...yesAll, limited: "no" } },
   // 11 (spec AC-6): "Any format is fine for this client" on a plan row — Staff+, like plan changes.
   { id: "format_exception", label: "Set a client's format exception", values: { ...yesAll, limited: "no" } },
+  // 14 spec AC-13 (approved Sidambara 2026-10-31): DSC records, reveal, custody, archive.
+  { id: "manage_dsc", label: "Add and edit DSCs", values: { ...yesAll, limited: "no" } },
+  { id: "reveal_dsc", label: "Reveal a DSC password", values: { ...yesAll, limited: "no" } },
+  { id: "log_dsc_custody", label: "Log DSC custody", values: { ...yesAll, limited: "assigned" } },
+  { id: "archive_dsc", label: "Archive a DSC", values: managers },
   { id: "assign_pause", label: "Assign incharge and group staff, pause and resume", values: managers },
   { id: "manage_catalogue", label: "Manage catalogue, approve proposed types, Settings › Collection", values: managers },
   { id: "add_financial_year", label: "Add a financial year", values: { admin: "yes", manager: "no", staff: "no", limited: "no" } },

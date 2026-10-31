@@ -6,6 +6,7 @@ import { groupId, insertClient } from "../support/catalogue";
 import { createDocument, createDocumentOffice, mustCreateDocument, mustCreateOriginal, mustDispatch, mustReview, periodId, typeId } from "../support/documents";
 import { T, bankOnlyClient, expectedFor, generateAsOf, planRow } from "../support/expected";
 import { insertActivity, visibleActivity } from "../support/activity";
+import { FAKE_CT, newDsc } from "../support/dsc";
 import { PERMISSIONS, type Cell } from "@/lib/auth/permissions";
 import { ROLES, type Role } from "@/lib/auth/roles";
 
@@ -104,6 +105,33 @@ const PROBES: Record<string, Probe> = {
     const r = await rpc(as.staff, "set_custody", { p_ids: [original.id], p_step: "in_office" });
     if (r.error) throw new Error(`setup: ${r.error.message}`);
     return ok(await rpc(who, "undo_custody", { p_id: original.id }));
+  },
+  // 14 spec AC-13 (approved Sidambara 2026-10-31): four rows added; no existing probe changed.
+  manage_dsc: async (who, c) => {
+    const made = await rpc(who, "dsc_save", { p: newDsc(c) });
+    if (made.error) return false;
+    const edit = await rpc(who, "dsc_save", { p: { id: made.data, holder_name: "Matrix holder", expires_on: "2028-01-31" } });
+    return both(true, ok(edit), "manage_dsc (add · edit)");
+  },
+  reveal_dsc: async (who, c) => {
+    const made = await rpc(as.staff, "dsc_save", { p: newDsc(c) });
+    if (made.error) throw new Error(`setup: ${made.error.message}`);
+    const r = await rpc(who, "dsc_reveal", { p_id: made.data });
+    return !r.error && r.data === FAKE_CT;
+  },
+  log_dsc_custody: async (who, c) => {
+    const made = await rpc(as.staff, "dsc_save", { p: newDsc(c) });
+    if (made.error) throw new Error(`setup: ${made.error.message}`);
+    const out = ok(await rpc(who, "dsc_custody_log", { p: { dsc_id: made.data, direction: "out", person_name: "Matrix", on_date: "2026-10-01" } }));
+    const back = out ? ok(await rpc(who, "dsc_custody_log", { p: { dsc_id: made.data, direction: "in", person_name: "Matrix", on_date: "2026-10-02" } })) : false;
+    return both(out, back, "log_dsc_custody (out · in)");
+  },
+  archive_dsc: async (who, c) => {
+    const made = await rpc(as.staff, "dsc_save", { p: newDsc(c) });
+    if (made.error) throw new Error(`setup: ${made.error.message}`);
+    const a = ok(await rpc(who, "dsc_archive", { p_id: made.data, p_reason: "Matrix" }));
+    const b = a ? ok(await rpc(who, "dsc_unarchive", { p_id: made.data })) : false;
+    return both(a, b, "archive_dsc (archive · unarchive)");
   },
   archive: async (who, c) => {
     const doc = await fileOn(c);
