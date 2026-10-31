@@ -61,11 +61,15 @@ Each replaced function is copied from its latest definition (12's migrations B/C
 | e2e `review-dispatch.spec.ts` | beforeAll; 172 | `mustMarkReady` after the reviews, and after the re-review at 172 |
 | e2e `today-documents.spec.ts` | beforeAll | `mustMarkReady` for the reviewed original |
 
-[Likely] a few more show up when step 1's failing tests run against the full suite; each is added here and asked before it is changed. Tests that create or dispatch documents without asserting Ready stay unedited (S2).
+| RLS `review-dispatch.test.ts` | ≈ 461, 529 | row type + the TS-state input add `custody` (approved 2026-10-31, step 1) |
+| e2e `review-dispatch.spec.ts` | 182 | the filter is selected by the name "Custody" (approved 2026-10-31, step 1) |
+| unit `search-review.test.tsx` | 23 (fixture), 77 | `hit()` carries `custody: "ready"` (within the approved 37–64 change); chip label "Custody: Dispatched" (approved 2026-10-31, step 1) |
+
+[Likely] a few more show up when step 1's failing tests run against the full suite; each is added here and asked before it is changed. `today-view.test.tsx` needs no change: the two new counts are optional in its type. Tests that create or dispatch documents without asserting Ready stay unedited (S2).
 
 ## Steps
 - [x] 0. **Setup + checkpoint.** (roadmap PR #15 merged 2026-10-31) Commit this plan; 13 ∥ 14 parallel planning checkpoint (14 needs its intent → spec → plan first; locks and overlap decided there); roadmap PR on main: 13 in progress, locks. — proof: roadmap PR merged (docs-only CI)
-- [ ] 1. **Failing tests first (RLS + unit)** for AC-1–12, 13–15, 17–19, plus the table above. — proof: they fail for the expected reason on dev
+- [x] 1. **Failing tests first (RLS + unit)** (2026-10-31: 25 RLS + 11 unit fail for the expected reason — missing functions/columns) for AC-1–12, 13–15, 17–19, plus the table above. — proof: they fail for the expected reason on dev
 - [ ] 2. **Migration A** (schema, history table, trigger, data step, purge). — proof: `custody-migration` passes on dev; documents / review-dispatch / returnable / correction-kind / link files pass unedited except the approved setups; md5 = file
 - [ ] 3. **Migration B** (functions). — proof: every step-1 RLS file passes; role-matrix, document-search, today-documents, upload-links-today green; md5 = file
 - [ ] 4. **Lib layer** (state, custody actions, search/today parsing, permissions, activity sentences). — proof: unit suite green
@@ -90,6 +94,8 @@ All ACs mapped to passing tests in the PR table; PR CI green; RLS quick check on
 [Uncertain] 3–5 working days (2 build sessions + review). Most of the risk is in the two `today_items` / search replacements and Log receipt's form.
 
 ## Deviations from plan
+- **Today rows for To place / In office > 30 days come only when their count is clicked** (Sidambara 2026-10-31, step 1; like 10's "requested later"). Spec AC-11 said "open rows per client card like Ready to dispatch"; the default list stays To review + Ready to dispatch, so `today-documents.test.ts`'s "nothing to do" row stays unedited.
+- **Migration data step is a function** `public.custody_backfill(p_office)` (service role only, idempotent), so `custody-migration.test.ts` can run it on its own test office; migration A calls it for every office.
 
 ## Session log
 ### 2026-10-31

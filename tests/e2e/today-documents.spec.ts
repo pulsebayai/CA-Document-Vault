@@ -2,7 +2,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "./fixtures";
 import "../support/setup-env";
 import { createStaff, retireStaff, signedInClient } from "../support/db";
-import { createDocumentOffice, mustCreateDocument, mustCreateOriginal, periodId, typeId } from "../support/documents";
+import { createDocumentOffice, mustCreateDocument, mustCreateOriginal, mustMarkReady, periodId, typeId } from "../support/documents";
 import { T, bankOnlyClient, generateAsOf } from "../support/expected";
 import { signIn } from "./helpers";
 
@@ -25,7 +25,8 @@ test.beforeAll(async () => {
   client = await bankOnlyClient(asStaff, officeId, { name: "Delta Docs", incharge_id: u.staff.id });
   const bank = await typeId(officeId, T.bank);
   await mustCreateDocument(asStaff, { client_id: client, doc_type_id: bank, period_id: await periodId(officeId, "2026-02"), received_on: "2026-03-10", received_as: "hard_copy" });
-  await mustCreateOriginal(asStaff, { client_id: client, doc_type_id: bank, period_id: await periodId(officeId, "2026-01"), received_on: "2026-03-05" }, asStaff);
+  const original = await mustCreateOriginal(asStaff, { client_id: client, doc_type_id: bank, period_id: await periodId(officeId, "2026-01"), received_on: "2026-03-05" }, asStaff);
+  await mustMarkReady(asStaff, original.id); // 13 (plan test list, approved 2026-10-31): Ready to dispatch is a stored step
 });
 test.afterAll(async () => { await retireStaff(Object.values(u).map((x) => x.id)); });
 test.describe.configure({ mode: "serial" });

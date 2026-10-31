@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import { groupId } from "../support/catalogue";
 import {
-  createDocumentOffice, mustCreateDocument, mustCreateOriginal, mustDispatch, mustReview, periodId, typeId,
+  createDocumentOffice, mustCreateDocument, mustCreateOriginal, mustDispatch, mustMarkReady, mustReview, periodId, typeId,
 } from "../support/documents";
 import { T, bankOnlyClient, generateAsOf, mustRpc, rpc, type TodayDocCounts, type TodayDocRow } from "../support/expected";
 
@@ -56,6 +56,9 @@ beforeAll(async () => {
   d.ready = (await mustCreateOriginal(as.s1, await doc(alpha, "2025-04", "2026-03-11"), as.s1)).id;
   d.fixCopy = (await mustCreateOriginal(as.s1, await doc(alpha, "2026-02", "2026-03-09"))).id;
   await mustReview(as.s1, d.fixCopy, "needs_correction", "Pages missing");
+  // 13 (plan test list, approved 2026-10-31): Ready to dispatch is a stored step.
+  await mustMarkReady(as.s1, d.ready);
+  await mustMarkReady(as.s1, d.fixCopy);
   d.sent = (await mustCreateOriginal(as.s1, await doc(alpha, "2026-01", "2026-03-08"), as.s1)).id;
   await mustDispatch(as.s1, { client_id: alpha, document_ids: [d.sent], dispatched_on: "2026-03-12" });
   d.done = (await mustCreateDocument(as.s1, { ...(await doc(alpha, "2025-12", "2026-03-07")), received_as: "hard_copy" })).id;

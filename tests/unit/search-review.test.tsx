@@ -24,7 +24,9 @@ const hit = (over: Partial<DocumentHit> = {}): DocumentHit => ({
   id: "d1", docCode: "DOC-FY26-27-00042", clientId: C, clientName: "Acme Traders", clientCode: "C0007", typeName: "Form 16",
   groupName: "Income Tax", periodCode: "2025-26", periodLabel: "FY 2025-26", receivedAs: "original", channel: "courier",
   receivedOn: "2026-08-05", receivedByName: "Asha", status: "reviewed", fileName: null, archived: false,
-  docTypeId: "t1", reviewedAt: "2026-08-06T06:00:00Z", reviewedByName: "Ravi", correctionReason: null, dispatchedOn: null, dispatchMethod: null, ...over,
+  docTypeId: "t1", reviewedAt: "2026-08-06T06:00:00Z", reviewedByName: "Ravi", correctionReason: null, dispatchedOn: null, dispatchMethod: null,
+  custody: "ready", inOfficeAt: "2026-08-07T06:00:00Z", // 13 (plan test list, approved 2026-10-31): Ready is a stored step
+  ...over,
 });
 
 beforeEach(() => {
@@ -34,6 +36,8 @@ beforeEach(() => {
   documentFacets.mockReset().mockResolvedValue({ ok: true, facets: [
     { facet: "status", value: "received", label: "received", n: 3 },
     { facet: "status", value: "reviewed", label: "reviewed", n: 2 },
+    { facet: "return", value: "to_place", label: "to_place", n: 2 }, // 13: the Custody filter's four values
+    { facet: "return", value: "in_office", label: "in_office", n: 4 },
     { facet: "return", value: "ready", label: "ready", n: 1 },
     { facet: "return", value: "dispatched", label: "dispatched", n: 1 },
   ] });
@@ -41,19 +45,22 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("/documents Status and Return (AC-14)", () => {
-  it("offers To review · Reviewed with counts, and Ready to dispatch · Dispatched", async () => {
+  // 13 (plan test list, approved 2026-10-31): "Return" is named "Custody" and lists four values.
+  it("offers To review · Reviewed with counts, and To place · In office · Ready to dispatch · Dispatched", async () => {
     render(<SearchView filters={DEFAULT_FILTERS} options={options} />);
     await screen.findByRole("list", { name: "Documents" });
     expect(screen.getByRole("option", { name: "Status: To review (3)" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Return: Ready to dispatch (1)" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "Return: Dispatched (1)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Custody: To place in office (2)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Custody: Document in office (4)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Custody: Ready to dispatch (1)" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Custody: Dispatched (1)" })).toBeInTheDocument();
   });
 
-  it("choosing Return writes an enum to the URL; choosing To review also shows filed documents only", async () => {
+  it("choosing Custody writes an enum to the URL; choosing To review also shows filed documents only", async () => {
     const user = userEvent.setup();
     render(<SearchView filters={DEFAULT_FILTERS} options={options} />);
     await screen.findByRole("list", { name: "Documents" });
-    await user.selectOptions(screen.getByRole("combobox", { name: "Return" }), "ready");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Custody" }), "ready");
     expect(push).toHaveBeenLastCalledWith("/documents?return=ready", { scroll: false });
     await user.selectOptions(screen.getByRole("combobox", { name: "Status" }), "received");
     expect(push).toHaveBeenLastCalledWith("/documents?status=received&state=classified", { scroll: false });
@@ -65,9 +72,9 @@ describe("/documents Status and Return (AC-14)", () => {
     expect(screen.getByText("Dispatched 20 Aug · Courier")).toBeInTheDocument();
   });
 
-  it("the Return chip and its removal", () => {
+  it("the Custody chip and its removal", () => {
     const f: DocumentFilters = { ...DEFAULT_FILTERS, return: "dispatched" };
-    expect(activeChips(f, options, []).map((c) => c.label)).toEqual(["Return: Dispatched"]);
+    expect(activeChips(f, options, []).map((c) => c.label)).toEqual(["Custody: Dispatched"]); // 13: "Return" renamed (approved 2026-10-31)
     const next = withoutFilter(f, "return");
     expect("return" in next).toBe(false);
     expect(activeChips(DEFAULT_FILTERS, options, [])).toEqual([]);

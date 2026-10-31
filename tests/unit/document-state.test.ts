@@ -33,10 +33,11 @@ describe("documentState: first match wins (spec order)", () => {
       .toBe("Dispatched 30 Dec 2025 · Client collected");
   });
 
-  it("4 Ready to dispatch: a reviewed or Needs-correction original not yet sent", () => {
-    expect(documentState(filed({ receivedAs: "original", status: "reviewed" }), TODAY).kind).toBe("ready");
-    expect(documentState(filed({ receivedAs: "original", status: "needs_correction", correctionReason: "Wrong year" }), TODAY).text).toBe("Ready to dispatch");
-    expect(documentState(filed({ receivedAs: "original" }), TODAY).kind).toBe("to_review"); // not reviewed yet
+  // 13 (plan test list, approved 2026-10-31): Ready to dispatch is a stored custody step, not derived from the review.
+  it("4 Ready to dispatch: a reviewed or Needs-correction original marked ready, not yet sent", () => {
+    expect(documentState(filed({ receivedAs: "original", status: "reviewed", custody: "ready" }), TODAY).kind).toBe("ready");
+    expect(documentState(filed({ receivedAs: "original", status: "needs_correction", correctionReason: "Wrong year", custody: "ready" }), TODAY).text).toBe("Ready to dispatch");
+    expect(documentState(filed({ receivedAs: "original", custody: "ready" }), TODAY).kind).toBe("to_review"); // not reviewed (again) yet
   });
 
   it("5 Needs correction · <reason>", () => {
@@ -63,14 +64,21 @@ describe("predicates shared with Today (06) and the SQL", () => {
     }
   });
 
-  it("Ready to dispatch = filed, live original, reviewed or Needs correction, not dispatched", () => {
-    expect(isReadyToDispatch(filed({ receivedAs: "original", status: "reviewed" }))).toBe(true);
-    expect(isReadyToDispatch(filed({ receivedAs: "original", status: "needs_correction" }))).toBe(true);
+  // 13 (plan test list, approved 2026-10-31): inputs carry the stored custody step.
+  it("Ready to dispatch = filed, live original, reviewed or Needs correction, marked ready, not dispatched", () => {
+    expect(isReadyToDispatch(filed({ receivedAs: "original", status: "reviewed", custody: "ready" }))).toBe(true);
+    expect(isReadyToDispatch(filed({ receivedAs: "original", status: "needs_correction", custody: "ready" }))).toBe(true);
     for (const d of [
-      filed({ receivedAs: "hard_copy", status: "reviewed" }), filed({ receivedAs: "soft_copy", status: "reviewed" }),
-      filed({ receivedAs: "original" }), filed({ receivedAs: "original", status: "reviewed", archived: true }),
-      filed({ receivedAs: "original", status: "reviewed", dispatchedOn: "2026-09-01" }), filed({ receivedAs: "original", status: "reviewed", docTypeId: null }),
+      filed({ receivedAs: "hard_copy", status: "reviewed", custody: "ready" }), filed({ receivedAs: "soft_copy", status: "reviewed", custody: "ready" }),
+      filed({ receivedAs: "original", custody: "ready" }), filed({ receivedAs: "original", status: "reviewed", archived: true, custody: "ready" }),
+      filed({ receivedAs: "original", status: "reviewed", dispatchedOn: "2026-09-01", custody: "ready" }),
+      filed({ receivedAs: "original", status: "reviewed", docTypeId: null, custody: "ready" }),
     ]) expect(isReadyToDispatch(d)).toBe(false);
+  });
+
+  it("13: a reviewed original not marked ready (or only in office) is not Ready to dispatch", () => {
+    expect(isReadyToDispatch(filed({ receivedAs: "original", status: "reviewed" }))).toBe(false);
+    expect(isReadyToDispatch(filed({ receivedAs: "original", status: "reviewed", custody: "in_office" }))).toBe(false);
   });
 });
 
@@ -132,9 +140,10 @@ describe("validateDispatch (AC-8)", () => {
 });
 
 describe("/documents Status and Return values (AC-14)", () => {
-  it("offers To review · Reviewed · Needs correction, and Ready to dispatch · Dispatched", () => {
+  // 13 (plan test list, approved 2026-10-31): "Return" becomes "Custody" with four values; return=ready keeps its URL.
+  it("offers To review · Reviewed · Needs correction, and To place · In office · Ready to dispatch · Dispatched", () => {
     expect(DOC_STATUSES.map((s) => s.label)).toEqual(["To review", "Reviewed", "Needs correction"]);
-    expect(DOC_RETURNS.map((s) => s.value)).toEqual(["ready", "dispatched"]);
+    expect(DOC_RETURNS.map((s) => s.value)).toEqual(["to_place", "in_office", "ready", "dispatched"]);
   });
   it("round-trips the new values through the URL (enums only, no text)", () => {
     const f = { ...DEFAULT_FILTERS, status: "needs_correction" as const, return: "ready" as const };
