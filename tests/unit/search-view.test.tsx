@@ -8,6 +8,7 @@ import type { DocumentHit, FilterOptions } from "@/lib/search/queries";
 
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
+vi.mock("@/lib/custody/actions", () => ({ markCustody: vi.fn(), undoCustody: vi.fn() })); // 13 (AC-9): rows show the custody button (approved 2026-10-31)
 vi.mock("@/lib/documents/actions", () => ({ getFileLink: vi.fn() })); // 12 (AC-18): rows show 03's file buttons (approved 2026-10-30)
 const searchDocuments = vi.fn();
 const documentFacets = vi.fn();

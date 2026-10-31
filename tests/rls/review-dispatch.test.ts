@@ -4,7 +4,7 @@ import { adminClient, createStaff, retireStaff, signedInClient } from "../suppor
 import { DENIED, createCatalogueOffice, mustInsertClient } from "../support/catalogue";
 import {
   activityFor, createDispatch, createDocumentOffice, createSoftCopy, documentRow, liveDispatchItem, mustCreateDocument,
-  mustCreateOriginal, mustDispatch, mustReview, periodId, reviewDocument, reviewHistory, typeId, undoReview, uploadObject,
+  mustCreateOriginal, mustDispatch, mustMarkReady, mustReview, periodId, reviewDocument, reviewHistory, typeId, undoReview, uploadObject,
 } from "../support/documents";
 import { T } from "../support/expected";
 import { documentState, isReadyToDispatch, isToReview } from "@/lib/documents/state";
@@ -458,7 +458,8 @@ describe("/documents search: Status values and the Return filter (AC-14)", () =>
   const ids = {} as Record<"toReview" | "reviewed" | "fix" | "ready" | "readyFix" | "sent" | "softReviewed", string>;
   type Row = { id: string; status: string; reviewed_at: string | null; reviewed_by_name: string | null; correction_reason: string | null;
     dispatched_on: string | null; dispatch_method: string | null; return_state: string | null; client_id: string | null;
-    doc_type_id: string | null; received_as: string; archived_at: string | null; returnable: boolean }; // 12: returnable (approved 2026-10-31)
+    doc_type_id: string | null; received_as: string; archived_at: string | null; returnable: boolean; // 12: returnable (approved 2026-10-31)
+    custody: "in_office" | "ready" | null }; // 13: stored custody step (approved 2026-10-31)
   const search = async (filters: Record<string, unknown>) => {
     const { data, error } = await as.staff.rpc("search_documents", { p: { filters: { client_id: clientS, ...filters } } });
     if (error) throw new Error(error.message);
@@ -480,6 +481,9 @@ describe("/documents search: Status values and the Return filter (AC-14)", () =>
     ids.ready = (await mustCreateOriginal(as.staff, base, as.staff)).id;
     ids.readyFix = (await mustCreateOriginal(as.staff, base)).id;
     await mustReview(as.staff, ids.readyFix, "needs_correction", "Wrong year");
+    // 13 (plan test list, approved 2026-10-31): Ready to dispatch is a stored step.
+    await mustMarkReady(as.staff, ids.ready);
+    await mustMarkReady(as.staff, ids.readyFix);
     ids.sent = (await mustCreateOriginal(as.staff, base, as.staff)).id;
     await mustDispatch(as.staff, { client_id: clientS, document_ids: [ids.sent], dispatched_on: "2026-05-12", method: "courier" });
     ids.softReviewed = (await createSoftCopy(as.staff, officeId, base)).id;
@@ -528,7 +532,8 @@ describe("/documents search: Status values and the Return filter (AC-14)", () =>
       const d = { archived: r.archived_at !== null, clientId: r.client_id, docTypeId: r.doc_type_id, receivedAs: r.received_as,
         returnable: r.returnable, // 12 (AC-11, approved 2026-10-31): the row's Returnable flag
         status: r.status, reviewedAt: r.reviewed_at, reviewedByName: r.reviewed_by_name, correctionReason: r.correction_reason,
-        dispatchedOn: r.dispatched_on, dispatchMethod: r.dispatch_method };
+        dispatchedOn: r.dispatched_on, dispatchMethod: r.dispatch_method,
+        custody: r.custody }; // 13 (approved 2026-10-31): Ready to dispatch is a stored step
       expect(isReadyToDispatch(d), r.id).toBe(r.return_state === "ready");
       expect(documentState(d, "2026-10-01").kind === "dispatched", r.id).toBe(r.return_state === "dispatched");
       expect(isToReview(d), r.id).toBe(r.status === "received");

@@ -35,6 +35,13 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   "document.reviewed": { category: "review_dispatch", text: (r) => `reviewed ${doc(r)}` },
   "document.needs_correction": { category: "review_dispatch", text: (r) => `marked ${doc(r)} as needs correction` },
   "document.review_undone": { category: "review_dispatch", text: (r) => `undid the review of ${doc(r)}` },
+  // 13: hard-copy custody (data: client_id, doc_type_id; undo also `step`).
+  "document.in_office": { category: "review_dispatch", text: (r) => `marked ${doc(r)} as in the office` },
+  "document.ready": { category: "review_dispatch", text: (r) => `marked ${doc(r)} ready to dispatch` },
+  "document.custody_undone": {
+    category: "review_dispatch",
+    text: (r) => (r.data?.step === "ready" ? `undid Ready to dispatch for ${doc(r)}` : `undid Document in office for ${doc(r)}`),
+  },
   "dispatch.created": {
     category: "review_dispatch",
     text: (r) => `dispatched ${plural(Array.isArray(r.data.document_ids) ? r.data.document_ids.length : 1, "original")}`,

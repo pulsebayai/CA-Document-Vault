@@ -36,6 +36,9 @@ export const PERMISSIONS: readonly PermissionRow[] = [
   // 12 (spec AC-24): split — Staff can undo a review; undoing a dispatch stays Admin/Manager.
   { id: "undo_review", label: "Undo a review", values: { ...yesAll, limited: "no" } },
   { id: "undo_dispatch", label: "Undo a dispatch", values: managers },
+  // 13 (spec AC-19, Q5): hard-copy custody — every role, Limited on their clients; undo needs no reason (S3).
+  { id: "move_custody", label: "Mark a hard copy in office or ready to dispatch", values: { ...yesAll, limited: "assigned" } },
+  { id: "undo_custody", label: "Undo a custody step", values: { ...yesAll, limited: "assigned" } },
   { id: "archive", label: "Archive or unarchive documents and clients", values: managers },
   { id: "waive", label: "Waive an expected document", values: { ...yesAll, limited: "no" } },
   { id: "reopen", label: "Reopen an expected document", values: { ...yesAll, limited: "assigned" } },

@@ -10,7 +10,8 @@ import { FormatBadge, formatDetail } from "@/components/format-badge";
 import { FileButtons } from "../file-buttons";
 import { ArchiveDocument, NewVersion } from "./document-controls";
 import { DispatchPanel, ReviewPanel } from "./review-panel";
-import { documentState, isReadyToDispatch, isReturnable, paperBadge } from "@/lib/documents/state";
+import { custodyAction, documentState, inOfficeDays, isReadyToDispatch, isReturnable, paperBadge } from "@/lib/documents/state";
+import { CustodyPanel, type CustodyPanelView } from "../custody-controls";
 import { istDate } from "@/lib/documents/period";
 import { reviewHistoryFor } from "@/lib/review/queries";
 import { packetsForDocument } from "@/lib/dispatch/queries";
@@ -49,8 +50,21 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
     archived, clientId: d.client?.id ?? null, docTypeId: d.docTypeId, receivedAs: d.receivedAs, returnable: d.returnable, status: d.status,
     reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason, correctionKind: d.correctionKind,
     dispatchedOn: live?.dispatchedOn ?? null, dispatchMethod: live?.method ?? null,
+    custody: d.custody.step, inOfficeAt: d.custody.inOfficeAt, // 13
   };
-  const reviewState = documentState({ ...stateInput, receivedAs: "hard_copy", returnable: false, dispatchedOn: null }, today);
+  const reviewState = documentState({ ...stateInput, receivedAs: "hard_copy", returnable: false, dispatchedOn: null, custody: null }, today);
+  // 13 (spec AC-9): the Custody card for a filed hard copy. Dates are formatted here (server), never in the browser.
+  const custody: CustodyPanelView | null = d.receivedAs === "hard_copy" && d.classified ? {
+    step: d.custody.step,
+    inOfficeText: d.custody.inOfficeAt ? date.format(new Date(d.custody.inOfficeAt)) : null, inOfficeBy: d.custody.inOfficeBy,
+    readyText: d.custody.readyAt ? date.format(new Date(d.custody.readyAt)) : null, readyBy: d.custody.readyBy,
+    returnable: returnable, next: archived ? null : custodyAction(stateInput),
+    hint: archived ? null
+      : d.status === "received" ? (d.custody.step ? "Review it again to move it on." : "Review it first, then mark it in office.")
+      : live ? "In a dispatch packet. Undo the dispatch to change this." : null,
+    canUndo: !archived && !live && !!d.custody.step,
+    inOfficeDays: inOfficeDays(stateInput, today),
+  } : null;
   const canUndo = canManageCatalogue(me.role);
   const label = `${d.typeName ?? "Document"}${d.periodLabel ? ` · ${d.periodLabel}` : ""} (${d.docCode})`;
 
@@ -122,6 +136,7 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
           <ReviewPanel documentId={d.id} clientId={d.client?.id ?? null} label={label} canUndo={canUndoReview(me.role) && !archived}
             state={reviewState} reviewable={d.classified && !archived} status={d.status} correctionKind={d.correctionKind} dispatched={!!live}
             history={history.map((h) => ({ ...h, atText: when.format(new Date(h.at)) }))} />
+          {custody && <CustodyPanel documentId={d.id} clientId={d.client?.id ?? null} label={label} view={custody} />}
           {returnable && d.classified && (
             <DispatchPanel documentId={d.id} clientId={d.client?.id ?? null} clientName={d.client?.name ?? null} label={label} canUndo={canUndo && !archived}
               packets={packets} ready={isReadyToDispatch(stateInput)} today={today} />

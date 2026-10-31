@@ -42,8 +42,13 @@ export const DOC_STATUSES = [
   { value: "needs_correction", label: "Needs correction" },
 ] as const;export type DocStatus = (typeof DOC_STATUSES)[number]["value"];
 
-/** 07 AC-14: originals waiting to go back, or already sent (search_documents' `return` filter). */
+/**
+ * 13 (spec AC-12): the Custody filter (search_documents' `return` filter, whose name and URL key are kept so 07's
+ * links still work). Was 07's two values, ready and dispatched.
+ */
 export const DOC_RETURNS = [
+  { value: "to_place", label: "To place in office" },
+  { value: "in_office", label: "Document in office" },
   { value: "ready", label: "Ready to dispatch" },
   { value: "dispatched", label: "Dispatched" },
 ] as const;
@@ -73,6 +78,8 @@ export type DocumentFilters = {
   format?: DocFormat;
   /** 12 (AC-13): returnable hard copies only ("1"); optional for the same reason. */
   returnable?: "1";
+  /** 13 (AC-12): returnable documents in office over 30 days ("1"); optional for the same reason. */
+  held?: "1";
   archived: boolean;
   sort: Sort;
   page: number;
@@ -85,7 +92,7 @@ export const DEFAULT_FILTERS: DocumentFilters = Object.freeze({
 
 /** URL keys in the order they are written. */
 const UUID_KEYS = ["client", "group", "type", "fy", "period", "registration"] as const;
-const URL_ORDER = ["client", "group", "type", "fy", "period", "registration", "as", "channel", "by", "from", "to", "status", "state", "return", "format", "returnable", "archived", "sort", "page"] as const;
+const URL_ORDER = ["client", "group", "type", "fy", "period", "registration", "as", "channel", "by", "from", "to", "status", "state", "return", "format", "returnable", "held", "archived", "sort", "page"] as const;
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -117,6 +124,7 @@ export function parseDocumentSearchParams(params: Params): DocumentFilters {
   const fmt = oneOf(DOC_FORMATS, get("format"));
   if (fmt) f.format = fmt;
   if (get("returnable") === "1") f.returnable = "1"; // 12 (AC-13)
+  if (get("held") === "1") f.held = "1"; // 13 (AC-12)
   f.sort = oneOf(SORTS, get("sort")) ?? "received";
   f.archived = get("archived") === "1";
   const page = get("page");
@@ -155,7 +163,7 @@ export function parseDocId(text: string | null | undefined): string | null {
 
 export type SearchInput = {
   text?: string;
-  filters: Record<string, string>;
+  filters: Record<string, string | boolean>;
   include_archived: boolean;
   sort: Sort;
   page: number;
@@ -167,14 +175,15 @@ const RPC_KEYS: Record<Exclude<(typeof URL_ORDER)[number], "archived" | "sort" |
   registration: "registration_id", as: "received_as", channel: "channel", by: "received_by",
   from: "from", to: "to", status: "status", state: "state", return: "return", format: "format",
   returnable: "returnable", // 12: search_documents reads "1" / "true"
+  held: "held", // 13: sent as true
 };
 
 /** The `p` argument for search_documents / search_document_facets. */
 export function toSearchInput(f: DocumentFilters, text: string | null | undefined): SearchInput {
-  const filters: Record<string, string> = {};
+  const filters: Record<string, string | boolean> = {};
   for (const [k, rpcKey] of Object.entries(RPC_KEYS) as [keyof typeof RPC_KEYS, string][]) {
     const v = f[k];
-    if (typeof v === "string" && v) filters[rpcKey] = v;
+    if (typeof v === "string" && v) filters[rpcKey] = k === "held" ? true : v;
   }
   const t = normaliseSearchText(text);
   return { ...(t ? { text: t } : {}), filters, include_archived: f.archived, sort: f.sort, page: f.page };

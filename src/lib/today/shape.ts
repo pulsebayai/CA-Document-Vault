@@ -5,7 +5,7 @@ import { remindedShort } from "@/lib/reminders/shape";
 // Feature 06 — Today (spec AC-2…AC-5): URL enums and the view model from today_items(). Pure; unit-tested.
 
 export const SCOPES = ["mine", "everyone"] as const;
-export const SHOWS = ["overdue", "due_week", "to_review", "ready", "requested"] as const;
+export const SHOWS = ["overdue", "due_week", "to_review", "ready", "requested", "to_place", "held"] as const; // 13: to_place, held
 export type Scope = (typeof SCOPES)[number];
 export type Show = (typeof SHOWS)[number];
 
@@ -39,10 +39,13 @@ export type TodayRowRaw = {
 };
 /** Step 9 (07's states): a filed document To review, or an original Ready to dispatch (migration 2). */
 export type TodayDocRowRaw = {
-  document_id: string; kind: "to_review" | "ready"; doc_code: string; group: string; type: string; period: string | null;
+  /** 13: "to_place" and "held" rows come only when that count is chosen (show=to_place | held). */
+  document_id: string; kind: "to_review" | "ready" | "to_place" | "held"; doc_code: string; group: string; type: string; period: string | null;
   received_as: string; received_on: string; reviewed_on: string | null; reviewed_by: string | null; needs_correction: boolean;
   /** 12: returnable hard copy (absent on rows written before 12; legacy received_as "original" counts too). */
   returnable?: boolean;
+  /** 13: India date it was marked in office (null when not placed). */
+  in_office_on?: string | null;
 };
 /** 10 (AC-17): an open ad-hoc requested item with a needed-by date that has passed or falls within 7 days. */
 export type TodayAskRowRaw = {
@@ -52,10 +55,12 @@ export type TodayAskRowRaw = {
 export type TodayCardRaw = {
   client_id: string; name: string; incharge: string | null; assignees: Array<{ group: string; name: string }>;
   overdue: number; due_week: number; to_review?: number; ready?: number; requested?: number; requested_overdue?: number;
+  to_place?: number; held?: number; // 13
   rows: Array<TodayRowRaw | TodayDocRowRaw | TodayAskRowRaw>;
 };
 export type TodayRaw = {
-  today: string; counts: { overdue: number; due_week: number; to_review?: number; ready?: number; requested?: number; requested_later?: number };
+  today: string; counts: { overdue: number; due_week: number; to_review?: number; ready?: number; requested?: number; requested_later?: number;
+    to_place?: number; held?: number }; // 13
   clients?: number; cards: TodayCardRaw[]; has_more: boolean;
 };
 
@@ -111,14 +116,21 @@ export function toAskRow(r: TodayAskRowRaw, today: string): TodayAskRow {
   };
 }
 
+const DOC_LABEL: Record<TodayDocRowRaw["kind"], string> = {
+  to_review: "To review", ready: "Ready to dispatch", to_place: "To place in office", held: "In office > 30 days", // 13
+};
+
 export function toDocRow(r: TodayDocRowRaw, today: string): TodayDocRow {
+  const reviewed = ["Reviewed", r.reviewed_on ? shortDate(r.reviewed_on, today) : null, r.reviewed_by ? `by ${r.reviewed_by}` : null].filter(Boolean).join(" ");
   const detail = r.kind === "to_review"
     ? `Received ${shortDate(r.received_on, today)} · waiting for review`
-    : r.needs_correction ? "Needs correction · original still to go back"
-    : ["Reviewed", r.reviewed_on ? shortDate(r.reviewed_on, today) : null, r.reviewed_by ? `by ${r.reviewed_by}` : null].filter(Boolean).join(" ");
+    : r.kind === "held" && r.in_office_on ? `In office since ${shortDate(r.in_office_on, today)} · still to go back` // 13
+    : r.needs_correction ? (r.kind === "to_place" ? "Needs correction · not in office yet" : "Needs correction · original still to go back")
+    : r.kind === "to_place" ? `${reviewed} · not in office yet` // 13
+    : reviewed;
   return {
     id: r.document_id, kind: r.kind, title: [r.group, r.type, r.period].filter(Boolean).join(" · "), docCode: r.doc_code,
-    original: r.returnable === true || r.received_as === "original", label: r.kind === "to_review" ? "To review" : "Ready to dispatch", detail,
+    original: r.returnable === true || r.received_as === "original", label: DOC_LABEL[r.kind], detail,
   };
 }
 

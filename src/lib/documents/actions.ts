@@ -4,6 +4,7 @@ import { setPlanTypeAnyFormat } from "@/lib/plan/actions";
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { documentDbError } from "./db-messages";
 import { requireStaff } from "@/lib/auth/staff";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -86,32 +87,6 @@ export type SaveDocumentResult =
   | { ok: true; id: string; docCode: string }
   | { ok: false; error: string; fieldErrors: Record<string, string> };
 
-/** DB rule codes → plain messages (never the DB text: it can echo values). */
-const DB_MESSAGES: Array<[RegExp, string, string?]> = [
-  [/SOFT_COPY_NEEDS_FILE/, "Add the file — a soft copy needs one.", "file"],
-  [/ITEM_STATE/, "This requested document was cancelled. Go back to Requested and check it."], // 10
-  [/ITEM_MISMATCH/, "A requested document is filed with the client, type and period that were requested. Go back to Requested and check it."], // 10
-  [/DECLASSIFY/, "A filed document keeps a client and a type. Change them instead of clearing them.", "clientId"],
-  [/CLIENT_ARCHIVED/, "This client is archived. Choose another client.", "clientId"],
-  [/PERIOD_KIND/, "This period doesn't suit the document type. Choose another period.", "periodId"],
-  [/PERIOD_OFFICE/, "Choose the period again.", "periodId"],
-  [/REGISTRATION_MISMATCH/, "Choose one of this client's active registrations for this type.", "registrationId"],
-  [/TYPE_NOT_OFFERED|TYPE_OFFICE/, "This document type isn't offered for this client. Choose another.", "docTypeId"],
-  [/CLIENT_OFFICE|row-level security/, "You can't add documents for this client.", "clientId"],
-  [/RECEIVED_ON_FUTURE/, "Received on can't be in the future.", "receivedOn"],
-  [/OBJECT_MISSING|FILE_TYPE|PATH/, "The upload didn't finish. Please add the file again.", "file"],
-  [/DISPATCHED/, "This document is in a dispatch packet. Undo the dispatch on the document page before changing its client, how it was received or Returnable.", "clientId"], // 07, 12
-  [/RETURNABLE_HARD_COPY/, "Only a hard copy can be returnable.", "returnable"], // 12
-  [/HANDED_OVER_CLEAR/, "Say who handed it over — it can be changed but not cleared.", "handedOverName"], // 12
-  [/HANDED_OVER_NAME|HANDED_OVER_SOFT_COPY/, "Check who handed it over (up to 120 characters, hard copies only).", "handedOverName"], // 12
-  [/ARCHIVED/, "Unarchive the document before changing it."],
-  [/NOT_FOUND/, "Document not found."],
-];
-function dbError(message: string | undefined): { error: string; fieldErrors: Record<string, string> } {
-  const hit = DB_MESSAGES.find(([re]) => re.test(message ?? ""));
-  if (!hit) return { error: "Couldn't save the document. Please try again.", fieldErrors: {} };
-  return { error: hit[1], fieldErrors: hit[2] ? { [hit[2]]: hit[1] } : {} };
-}
 
 /**
  * Step 3 of the upload flow: re-validate everything, confirm the uploaded object (size + type), then one
@@ -152,7 +127,7 @@ export async function saveDocument(input: SaveDocumentInput): Promise<SaveDocume
     : await supabase.rpc("create_document", { p });
   if (error) {
     console.error("documents.save_failed", { code: error.code });
-    return { ok: false, ...dbError(error.message) };
+    return { ok: false, ...documentDbError(error.message) };
   }
   const saved = data as { id: string; doc_code: string };
   revalidatePath("/inbox");
@@ -241,7 +216,7 @@ export async function updateDocumentAction(input: UpdateDocumentInput): Promise<
   } });
   if (error) {
     console.error("documents.update_failed", { code: error.code });
-    return { ok: false, ...dbError(error.message) };
+    return { ok: false, ...documentDbError(error.message) };
   }
   revalidatePath("/inbox");
   revalidatePath(`/documents/${doc.id}`);
@@ -277,7 +252,7 @@ export async function addVersionAction(documentId: string, file: UploadedFile, r
   }, ...(on ? { p_received_on: on } : {}) });
   if (error) {
     console.error("documents.version_failed", { code: error.code });
-    return { ok: false, error: dbError(error.message).error };
+    return { ok: false, error: documentDbError(error.message).error };
   }
   revalidatePath(`/documents/${documentId}`);
   return { ok: true };

@@ -73,3 +73,23 @@ export async function markReviewedBulk(documentIds: string[]): Promise<BulkRevie
   revalidatePath("/today");
   return { ok: true, results: (data ?? []) as BulkReviewItem[] };
 }
+
+export type BulkCustodyResult = { ok: true; done: string[]; skipped: Array<{ id: string; reason: string }> } | { ok: false; error: string };
+
+/** 13 (spec AC-9): one chunk (≤ 200) of Mark in office / Ready to dispatch; each document done or skipped with a reason. */
+export async function markCustodyBulk(documentIds: string[], step: "in_office" | "ready"): Promise<BulkCustodyResult> {
+  await requireStaff();
+  const parsed = ids(200).safeParse(documentIds);
+  if (!parsed.success || (step !== "in_office" && step !== "ready")) return { ok: false, error: "Invalid request." };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("set_custody", { p_ids: parsed.data, p_step: step });
+  if (error) {
+    logFail("custody", error.code);
+    return { ok: false, error: "Couldn't update these documents. Please try again." };
+  }
+  revalidatePath("/documents");
+  revalidatePath("/clients/[id]", "page");
+  revalidatePath("/today");
+  const r = data as { done: string[]; skipped: Array<{ id: string; reason: string }> };
+  return { ok: true, done: r.done, skipped: r.skipped };
+}
