@@ -47,6 +47,7 @@ Branch: `feat/14-dsc-tracking` · Locks: none — **additive-only migration exce
 ## Deviations from plan
 - **D-1 (step 1): a ninth activity action, `dsc.remind_days_set`** (entity client, `{client_id, remind_days}`): the spec lists eight, but every mutation writes activity (architecture rule), and the remind-days setting is one. One more sentence in the catalogue.
 - **D-2 (step 1): custody dates can't be in the future** (office date, `DATE_IN_FUTURE`), like 13's received-on rule; the spec didn't say.
+- **D-4 (step 3, Sidambara 2026-11-01): `dsc_due` timing = round trip < 1 s** (02's clients-list rule), not 300 ms round trip: the session's bare round trip to dev is ~300 ms. The spec's 300 ms stays as the database's own time, recorded here from a server measurement (`explain analyze`).
 - **D-3 (step 1): writes only through the `dsc_*` functions** (flag `app.dsc_write`), not plain Staff+ insert/update policies as the spec's data model reads: a direct update could otherwise change the password or the record without its activity row. Same pattern as 07's `document_review` and 04's `expected_doc`.
 
 ## Session log
