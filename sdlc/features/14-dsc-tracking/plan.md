@@ -23,8 +23,8 @@ Branch: `feat/14-dsc-tracking` · Locks: none — **additive-only migration exce
 **Existing tests that change:** none (spec AC-14). `role-matrix` / `permissions` gain rows only.
 
 ## Steps
-- [ ] 0. **Setup + checkpoint** (shared with 13): commit this plan; roadmap PR on main (13 + 14 in progress, locks, merge order). — proof: roadmap PR merged
-- [ ] 1. **Failing tests first** (unit crypto + RLS files). — proof: they fail for the expected reason on dev
+- [x] 0. **Setup + checkpoint** (shared with 13): commit this plan; roadmap PR on main (13 + 14 in progress, locks, merge order). — proof: roadmap PR merged
+- [x] 1. **Failing tests first** (unit crypto + RLS files). — proof: they fail for the expected reason on dev
 - [ ] 2. **Crypto module + key fence + env.** Dev key generated and added to dev Vercel (server-only) and `.env.local` by the owner (I give the command; the key never passes through chat). — proof: `dsc-crypto` green; lint fence test
 - [ ] 3. **Migration.** — proof: RLS files green on dev; md5 = file; schema fingerprint shows only new objects
 - [ ] 4. **Lib layer** (actions, queries, permissions, sentences). — proof: unit green
@@ -45,8 +45,12 @@ Branch: `feat/14-dsc-tracking` · Locks: none — **additive-only migration exce
 [Uncertain] 5–7 working days incl. the security review (intent said 6–9; the additive-only scope and Today-only reminders trim it).
 
 ## Deviations from plan
+- **D-1 (step 1): a ninth activity action, `dsc.remind_days_set`** (entity client, `{client_id, remind_days}`): the spec lists eight, but every mutation writes activity (architecture rule), and the remind-days setting is one. One more sentence in the catalogue.
+- **D-2 (step 1): custody dates can't be in the future** (office date, `DATE_IN_FUTURE`), like 13's received-on rule; the spec didn't say.
+- **D-3 (step 1): writes only through the `dsc_*` functions** (flag `app.dsc_write`), not plain Staff+ insert/update policies as the spec's data model reads: a direct update could otherwise change the password or the record without its activity row. Same pattern as 07's `document_review` and 04's `expected_doc`.
 
 ## Session log
 ### 2026-10-31
 - Intent approved (Q1–Q7; reveal = Staff+, widest option, risk noted). Spec approved (T1–T5). Plan approved.
 - **13 ∥ 14 checkpoint (approved):** schema + architecture locks → 13; 14 under the additive-only exception, its architecture items written at its merge; merge order = whichever is green first, the second merges main in and re-runs the suite; shared spots additive only (`permissions.ts`, `role-matrix.test.ts`, activity catalogue, `today-view.tsx`, client tabs). Build order: 13 first, 14 while 13 waits for CI/review.
+- **Build started (Sidambara, 31 Oct 23:44).** main (13) merged into the branch. Step 1: `tests/support/dsc.ts` (contract), unit `dsc-crypto` (incl. the ESLint fence), `dsc-validation`, `dsc-expiry`; RLS `dsc`, `dsc-reveal`, `dsc-due` (incl. the 1,000 × 3 timing seed, every run like 02's `clients-list`); additive rows in `permissions.test.ts` and probes in `role-matrix.test.ts`. All fail for the expected reason on dev (missing module / `Could not find the function public.dsc_save`). `reset_test_office` deletes clients, so `on delete cascade` from `dsc` covers the purge with no change to it (checked on dev).
