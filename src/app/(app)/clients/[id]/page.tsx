@@ -18,6 +18,9 @@ import { clientRemindersAs, itemHistoryAs } from "@/lib/reminders/queries";
 import { RemindersList } from "./reminders-list";
 import { openRequestedCount, requestedAs } from "@/lib/upload-links/requested";
 import { RequestedView } from "./requested-view";
+import { clientDscs, liveDscCount, remindDaysFor } from "@/lib/dsc/queries";
+import { DscView } from "./dsc-view";
+import { DscRemindCard } from "./dsc-remind-card";
 
 /**
  * Client page (mockups 10–11; 02 AC-18, 03 AC-10, 04 AC-13/14): header and tabs Documents (default, 04 AC-14) ·
@@ -36,8 +39,10 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   // 04 AC-14: Documents is the default tab (?tab=documents still works for 03's links); Settings is ?tab=settings.
   // 04 AC-13: Expected, with the open count (Due + Overdue, every FY) on the tab, whichever tab is shown.
   // 10 AC-16: Requested (ad-hoc items + the client's upload links), with the open count on the tab.
-  const tab = sp.tab === "settings" ? "settings" : sp.tab === "expected" ? "expected" : sp.tab === "requested" ? "requested" : "documents";
-  const [plan, docCount, documents, expected, fys, planGroups, requestedCount] = await Promise.all([
+  // 14 AC-1: DSC, with the live count on the tab.
+  const tab = sp.tab === "settings" ? "settings" : sp.tab === "expected" ? "expected" : sp.tab === "requested" ? "requested"
+    : sp.tab === "dsc" ? "dsc" : "documents";
+  const [plan, docCount, documents, expected, fys, planGroups, requestedCount, dscCount, dscs, remindDays] = await Promise.all([
     tab === "settings" ? getClientPlan(c.id) : null,
     countClientDocuments(c.id),
     tab === "documents" ? listClientDocuments(c.id) : [],
@@ -45,6 +50,9 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
     tab !== "settings" ? listFinancialYears() : [],
     tab === "documents" ? listPlanGroups(c.id) : [],
     openRequestedCount(c.id),
+    liveDscCount(c.id),
+    tab === "dsc" ? clientDscs(c.id, me.officeId) : null,
+    tab === "settings" ? remindDaysFor(c.id) : null,
   ]);
   const requested = tab === "requested" ? await requestedAs(c.id, expected.today) : null;
   // 06 AC-12: each expected row's reminder history; the Expected tab also lists the client's reminders.
@@ -90,11 +98,12 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
         </p>
       )}
 
-      {/* 10: four tabs don't fit 390 px — the row scrolls sideways inside itself (relative: 02's sr-only rule). */}
+      {/* 10: four (14: five) tabs don't fit 390 px — the row scrolls sideways inside itself (relative: 02's sr-only rule). */}
       <nav aria-label="Client sections" className="relative overflow-x-auto border-b border-line">
         <ul className="flex gap-1 whitespace-nowrap">
           {([["documents", `Documents`, `/clients/${c.id}`], ["expected", "Expected", `/clients/${c.id}?tab=expected`],
             ["requested", "Requested", `/clients/${c.id}?tab=requested`],
+            ["dsc", "DSC", `/clients/${c.id}?tab=dsc`],
             ["settings", "Settings", `/clients/${c.id}?tab=settings`]] as const).map(([key, label, href]) => (
             <li key={key}>
               <Link href={href} aria-current={tab === key ? "page" : undefined}
@@ -102,6 +111,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                 {label}{key === "documents" && <span className="ml-1 text-ink-3">{docCount}</span>}
                 {key === "expected" && <span className="ml-1 text-ink-3">{expected.open}</span>}
                 {key === "requested" && <span className="ml-1 text-ink-3">{requestedCount}</span>}
+                {key === "dsc" && <span className="ml-1 text-ink-3">{dscCount}</span>}
               </Link>
             </li>
           ))}
@@ -130,6 +140,13 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
           <RequestedView clientId={c.id} data={requested!} today={expected.today}
             perms={{ canAct: !c.archived, meId: me.id, isManager: canManageCatalogue(me.role), mobile: c.mobile, hasEmail: !!c.email }} />
         </div>
+      ) : tab === "dsc" ? (
+        <div>
+          <h2 className="sr-only">Digital signatures (DSC)</h2>
+          <DscView clientId={c.id} data={dscs!}
+            perms={{ canEdit: me.role !== "limited" && !c.archived, canReveal: me.role !== "limited",
+              canArchive: canManageCatalogue(me.role) && !c.archived, canCustody: !c.archived }} />
+        </div>
       ) : (
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div>
@@ -153,6 +170,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             <Item label="Previous reference">{c.previousReference}</Item>
           </dl>
         </Card>
+        <DscRemindCard clientId={c.id} days={remindDays ?? 30} canEdit={canEdit} />
         <Card className="p-5">
           <h2 className="font-semibold">Client reminders</h2>
           <p className="mt-2 text-[13.5px] text-ink-2">

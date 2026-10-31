@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { FileButtons } from "../documents/file-buttons";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Card } from "@/components/ui";
 import { DispatchDialog } from "../clients/[id]/dispatch-dialog";
 import { CustodyButton } from "../documents/custody-controls";
@@ -20,8 +20,10 @@ import { MAX_PAGE, todayHref, type Scope, type Show, type TodayCard } from "@/li
 
 const LONG_DATE = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 
-export function TodayView({ data, inbox, scope, show, page }: {
+export function TodayView({ data, inbox, scope, show, page, dsc }: {
   data: TodayData; inbox: number; scope: Scope; show: Show | null; page: number;
+  /** 14 AC-11 (T2): the "DSC expiring" section, built from its own call (dsc_due), shown above the client cards. */
+  dsc?: ReactNode;
 }) {
   const router = useRouter();
   const go = (s: Scope, f: Show | null) => router.push(todayHref(s, f));
@@ -81,6 +83,8 @@ export function TodayView({ data, inbox, scope, show, page }: {
           {data.counts.requestedLater} requested {data.counts.requestedLater === 1 ? "document has" : "documents have"} no needed-by date in the next 7 days — see each client&apos;s Requested tab.
         </p>
       )}
+
+      {dsc}
 
       <div role="status" aria-live="polite" className="empty:hidden">
         {message && <p className={`mb-4 rounded-lg px-4 py-3 text-[13.5px] ${message.ok ? "bg-ok-soft text-ok" : "bg-bad-soft text-bad"}`}>{message.text}</p>}
