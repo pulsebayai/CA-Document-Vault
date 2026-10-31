@@ -84,7 +84,7 @@ Each replaced function is copied from its latest definition (12's migrations B/C
 - [x] 8. **Log receipt** (page, form, confirmation, links). — proof: `log-receipt` RLS; e2e `log-receipt.spec` locally (390 px, axe)
 - [x] 9. **Metric** on Settings › Collection. — proof: `custody-metric` RLS
 - [x] 10. **Docs:** architecture.md, ui-reference.md, Settings › Users rows. — proof: review
-- [ ] 11. **Full verification:** lint, typecheck, unit, full RLS on dev, new/changed e2e locally; push → PR CI (asked first); dispatch Regression `only` = the new RLS files (migration rule; asked first); `sdlc-reviewer`; fix Important findings failing-first → PR with the AC table. — proof: CI green + AC table
+- [x] 11. **Full verification:** lint, typecheck, unit, full RLS on dev, new/changed e2e locally; push → PR CI (asked first); dispatch Regression `only` = the new RLS files (migration rule; asked first); `sdlc-reviewer`; fix Important findings failing-first → PR with the AC table. — proof: CI green + AC table
 
 ## Risks
 - **Function copies drift** (six replaced functions, one with 12's changes only a day old). Mitigation: copy from the latest file, mark changed lines, diff in review, schema fingerprint.
@@ -131,3 +131,7 @@ All ACs mapped to passing tests in the PR table; PR CI green; RLS quick check on
 - Pre-PR review (sdlc-reviewer): no blockers. I-1 custody edit refusals now have plain messages (`document-db-messages.test.ts`, failing first); I-2 metric leaves backfilled documents out and I-3 backfill refuses non-test offices (both failing first on dev, then migration C). While the I-3 test was still red it called the backfill on a non-test dev office; it changed nothing (that office had no reviewed hard copies). Nits 1, 3, 8 (keep the client, error name, accent class), 10, 11 fixed; 2, 4, 6, 9 recorded above.
 - I-4 Today timing (dev, `e2e office governance-perf`, 1,000 documents, admin, warm): `today_items('everyone')` 76–120 ms (first call 491 ms cold), `show = to_place` 21–24 ms. No before-figure: 12's function was replaced in migration B; at volume Today is K3 (14–20 s) and is re-timed with the K3 fix, as for 10.
 - Migration C md5 = file: custody_backfill 1d6a7c96…, set_custody 62df4cb2…, custody_metric 37821761….
+
+### 2026-10-31 (PR and merge)
+- PR #16: CI 41215418432 green on bfb7488 (local Supabase: unit, RLS, 3 e2e shards). The dev Regression `only` = 13's RLS files was not run (owner's choice); RUN_SLOW deferred to after 13–16.
+- Merged by Sidambara's OK (merge 35ebe5d); main CI 41216148924 green. Locks released (roadmap PR).
