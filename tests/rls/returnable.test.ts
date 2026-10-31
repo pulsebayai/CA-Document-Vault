@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import { mustInsertClient } from "../support/catalogue";
 import {
-  createDispatch, createDocumentOffice, createSoftCopy, documentRow, mustCreateDocument, mustDispatch, mustReview, periodId, typeId,
+  createDispatch, createDocumentOffice, createSoftCopy, documentRow, mustCreateDocument, mustDispatch, mustMarkReady, mustReview, periodId, typeId,
 } from "../support/documents";
 import { T, mustRpc } from "../support/expected";
 
@@ -118,6 +118,7 @@ describe("search and Today follow returnable (AC-11, AC-13)", () => {
     ready = (await hard({ received_as: "hard_copy", returnable: true, received_on: "2026-05-03" })).id;
     plainReviewed = (await hard({ received_as: "hard_copy", received_on: "2026-05-03" })).id;
     await mustReview(as.staff, ready);
+    await mustMarkReady(as.staff, ready); // 13 (plan test list, approved 2026-10-31): Ready is a stored step
     await mustReview(as.staff, plainReviewed);
   });
 

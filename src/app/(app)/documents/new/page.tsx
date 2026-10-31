@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { z } from "zod";
 import { requireStaff } from "@/lib/auth/staff";
 import { istDate } from "@/lib/documents/period";
@@ -24,7 +25,7 @@ export default async function NewDocumentPage({ searchParams }: PageProps<"/docu
   const item = client && prefill && typeof sp.item === "string" && z.uuid().safeParse(sp.item).success ? sp.item : null;
   return (
     <div className="mx-auto max-w-[815px]">
-      <PageHeader title="Add document" />
+      <PageHeader title="Add document" actions={<Link href="/documents/receipt" className="text-[13.5px] text-accent underline">Paper at the desk? Log receipt</Link>} />
       <DocumentForm initialClient={client} initialTypes={types} periods={periods} groups={groups} today={istDate()}
         canPropose={me.role !== "limited"} returnTo={safeReturn(sp.from, client?.id)} prefill={prefill} requestItemId={item}
         itemLocks={item ? { period: typeof sp.period === "string", registration: typeof sp.registration === "string" } : undefined} />

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Card } from "@/components/ui";
 import { DispatchDialog } from "../clients/[id]/dispatch-dialog";
+import { CustodyButton } from "../documents/custody-controls";
 import { ReviewControls } from "../clients/[id]/review-controls";
 import type { TodayData } from "@/lib/today/queries";
 import { LogCallButton, RemindButton } from "../clients/remind-dialog";
@@ -58,9 +59,21 @@ export function TodayView({ data, inbox, scope, show, page }: {
         {/* 10 AC-17: open requested (ad-hoc) documents in scope; dated ones are rows, the rest only counted (D7). */}
         <Count n={data.counts.requested ?? 0} label="Requested" tone="text-ink" pressed={show === "requested"}
           onClick={() => go(scope, show === "requested" ? null : "requested")} />
+        {/* 13 (AC-11, S4): hard copies to place, and returnable ones in office over 30 days. Their rows come only when
+            the count is chosen (Sidambara 2026-10-31); the default list stays To review + Ready to dispatch. */}
+        {data.counts.toPlace !== undefined && (
+          <Count n={data.counts.toPlace} label="To place in office" tone="text-ink" pressed={show === "to_place"}
+            onClick={() => go(scope, show === "to_place" ? null : "to_place")} />
+        )}
+        {data.counts.held !== undefined && (
+          <Count n={data.counts.held} label="In office > 30 days" tone="text-bad" pressed={show === "held"}
+            onClick={() => go(scope, show === "held" ? null : "held")} />
+        )}
         <Link href="/inbox" className="flex items-baseline gap-2 rounded-xl bg-panel px-4 py-3 shadow-card hover:bg-canvas">
           <span className="text-[22px] font-semibold">{inbox}</span>{" "}<span className="text-[13.5px] text-ink-2">Untagged</span>
         </Link>
+        {/* 13 (AC-13): the desk's way in. */}
+        <Link href="/documents/receipt" className="flex items-center rounded-xl bg-panel px-4 py-3 text-[13.5px] font-medium text-accent shadow-card hover:bg-canvas">Log receipt</Link>
       </div>
 
       {(data.counts.requestedLater ?? 0) > 0 && (show === "requested" || show === null) && (
@@ -162,13 +175,18 @@ function ClientCard({ card: c, today, onMessage }: { card: TodayCard; today: str
                 </p>
                 <p className="mt-0.5 text-[13px] text-ink-3">{d.detail}</p>
               </div>
-              <span className={`text-[13px] ${d.kind === "ready" ? "text-warn" : "text-ink-2"}`}>{d.label}</span>
+              <span className={`text-[13px] ${d.kind === "ready" ? "text-warn" : d.kind === "held" ? "text-bad" : "text-ink-2"}`}>{d.label}</span>
               {d.kind === "to_review" && (d.file ? <FileButtons versionId={d.file.versionId} mimeType={d.file.mimeType} docCode={d.docCode} viewBlocked={d.file.viewBlocked} />
                 : d.file === null ? <span className="text-[13px] text-ink-3">No file yet</span> : null)}
               {d.kind === "to_review"
                 ? <ReviewControls documentId={d.id} clientId={c.clientId} label={`${d.docCode} ${d.title}`} onMessage={onMessage} />
-                : <DispatchDialog clientId={c.clientId} clientName={c.name} documentId={d.id} label={`${d.docCode} ${d.title}`} today={today}
-                    onMessage={(text) => onMessage({ ok: true, text })} />}
+                : d.kind === "to_place" // 13
+                  ? <CustodyButton documentId={d.id} clientId={c.clientId} step="in_office" label={`${d.docCode} ${d.title}`} onMessage={onMessage} />
+                  : d.kind === "held" // 13: in office or ready — the document page has its next step
+                    ? <Link href={`/documents/${d.id}`} aria-label={`Open ${d.docCode}`}
+                        className="inline-flex h-[30px] items-center rounded-[7px] border border-line-2 bg-panel px-2.5 text-[13px] font-medium hover:bg-canvas">Open</Link>
+                    : <DispatchDialog clientId={c.clientId} clientName={c.name} documentId={d.id} label={`${d.docCode} ${d.title}`} today={today}
+                        onMessage={(text) => onMessage({ ok: true, text })} />}
             </li>
           ))}
         </ul>

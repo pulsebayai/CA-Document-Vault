@@ -3,7 +3,7 @@ import { expect, test, type Page } from "./fixtures";
 import "../support/setup-env";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import {
-  createSoftCopy, createDocumentOffice, mustCreateDocument, mustCreateOriginal, mustDispatch, mustReview, periodId, typeId,
+  createSoftCopy, createDocumentOffice, mustCreateDocument, mustCreateOriginal, mustDispatch, mustMarkReady, mustReview, periodId, typeId,
 } from "../support/documents";
 import { T } from "../support/expected";
 import { signIn } from "./helpers";
@@ -36,6 +36,9 @@ test.beforeAll(async () => {
   doc.fix = await mustCreateDocument(asStaff, { client_id: clientId, doc_type_id: bank, period_id: jul, received_as: "hard_copy", received_on: "2026-08-04" });
   doc.orig1 = await mustCreateOriginal(asStaff, { client_id: clientId, doc_type_id: form16, period_id: fy, received_on: "2026-06-12" }, asStaff);
   doc.orig2 = await mustCreateOriginal(asStaff, { client_id: clientId, doc_type_id: form16, period_id: fy, received_on: "2026-06-20", remark: "Second copy" }, asStaff);
+  // 13 (plan test list, approved 2026-10-31): Ready to dispatch is a stored step.
+  await mustMarkReady(asStaff, doc.orig1.id);
+  await mustMarkReady(asStaff, doc.orig2.id);
   doc.soft = await createSoftCopy(asStaff, officeId, { client_id: clientId, doc_type_id: bank, period_id: await periodId(officeId, "2026-06"), received_on: "2026-07-02" });
   await mustReview(asStaff, doc.soft.id, "needs_correction", "Wrong account number");
   doc.sent = await mustCreateOriginal(asStaff, { client_id: clientId, doc_type_id: form16, period_id: fy, received_on: "2026-05-02" }, asStaff);
@@ -177,12 +180,12 @@ test("AC-14: /documents Status and Return filters round-trip through the URL as 
   await expect(results.getByRole("listitem")).toHaveCount(2);
   await expect(results.getByRole("listitem").filter({ hasText: doc.sent.doc_code })).toContainText("Dispatched 10 May · Hand delivery");
   await expect(results.getByRole("listitem").filter({ hasText: doc.orig2.doc_code })).toContainText("· Courier");
-  await expect(page.getByRole("button", { name: "Remove filter Return: Dispatched" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Remove filter Custody: Dispatched" })).toBeVisible(); // 13: renamed (approved 2026-10-31)
 
-  await page.getByRole("combobox", { name: "Return" }).selectOption({ value: "ready" });
+  await page.getByRole("combobox", { name: "Custody" }).selectOption({ value: "ready" }); // 13: "Return" renamed (approved 2026-10-31)
   await expect(page).toHaveURL(/return=ready/);
   await expect(results).toContainText(doc.orig1.doc_code);
-  await page.getByRole("combobox", { name: "Return" }).selectOption({ value: "" });
+  await page.getByRole("combobox", { name: "Custody" }).selectOption({ value: "" }); // 13: renamed (approved 2026-10-31)
   await page.getByRole("combobox", { name: "Status" }).selectOption({ value: "needs_correction" });
   await expect(page).toHaveURL(/status=needs_correction/);
   await expect(results.getByRole("listitem")).toHaveCount(1);

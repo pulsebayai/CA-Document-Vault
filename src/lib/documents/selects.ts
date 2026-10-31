@@ -11,4 +11,4 @@ export const CLIENT_DOCUMENTS_SELECT = `id, doc_code, received_on, received_as, 
   current:current_version_id (id, mime_type),
   status, reviewed_at, correction_reason, correction_kind, reviewer:reviewed_by (full_name),
   packets:dispatch_item (removed_at, dispatch:dispatch_id (dispatched_on, method)),
-  format_ok, format_preferred`; // 07: review state + live packet · 11: the format check (badge) · 12: returnable, correction kind
+  format_ok, format_preferred, custody, in_office_at`; // 07: review state + live packet · 11: the format check (badge) · 12: returnable, correction kind · 13: custody

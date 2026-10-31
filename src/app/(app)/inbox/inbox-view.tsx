@@ -28,7 +28,13 @@ export function InboxView({ items, now, saved, toReview }: { items: InboxItem[];
       <PageHeader title="Untagged documents"
         subtitle={<>Documents waiting for a client or a type. Filed documents to review are on{" "}
           <Link href={todayHref("everyone", "to_review")} className="text-accent underline">Today › To review</Link>{toReview !== undefined ? ` (${toReview})` : ""}.</>}
-        actions={<Link href="/documents/new?from=/inbox" className="inline-flex items-center rounded-[9px] bg-accent px-3.5 py-2 font-medium text-white hover:bg-[#264d8f]">Add document</Link>} />
+        actions={(
+          <span className="flex flex-wrap gap-2">
+            {/* 13 (AC-13): reception logs paper here; the scan is attached later from this list. */}
+            <Link href="/documents/receipt" className="inline-flex items-center rounded-[9px] border border-line-2 bg-panel px-3.5 py-2 font-medium hover:bg-canvas">Log receipt</Link>
+            <Link href="/documents/new?from=/inbox" className="inline-flex items-center rounded-[9px] bg-accent px-3.5 py-2 font-medium text-white hover:bg-[#264d8f]">Add document</Link>
+          </span>
+        )} />
       {saved && <p role="status" className="mb-4 rounded-lg bg-ok-soft px-4 py-3 text-[13.5px] text-ok"><strong className="font-semibold">{saved}</strong> saved.</p>}
       {items.length === 0 ? (
         <Card className="px-6 py-10 text-center">

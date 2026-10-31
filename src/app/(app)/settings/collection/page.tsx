@@ -10,6 +10,7 @@ import { chasingMetricAs } from "@/lib/reminders/queries";
 import { catalogueMetricAs, formatMetricAs } from "@/lib/catalogue/queries";
 import { sharePct } from "@/lib/validation/formats";
 import { linkMetricAs } from "@/lib/upload-links/queries";
+import { custodyMetricAs, placedPct } from "@/lib/custody/queries";
 
 // Feature 04 step 8 — Settings › Collection (spec AC-16, architecture change 5): product metric 1 (on-time
 // completeness) for the last 30 days, per group, plus "Overdue now" and when the daily job last ran.
@@ -18,6 +19,7 @@ import { linkMetricAs } from "@/lib/upload-links/queries";
 // Feature 05 (AC-16): product metric 3, catalogue convergence, as of now, plus the proposal queue's age.
 // Feature 10 (AC-23): upload links — share received by link, time to review, corrections, ad-hoc turnaround.
 // Feature 11 (AC-24): preferred formats — share filed in a preferred format, warned link uploads, review time, exceptions.
+// Feature 13 (AC-18): hard-copy custody — placed in office within 2 working days, Ready → Dispatched, held > 30 days.
 
 const WINDOW_DAYS = 30;
 const stamp = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
@@ -27,8 +29,9 @@ export default async function CollectionPage() {
   if (!canManageCatalogue(me.role)) notFound();
   const today = await todayForOffice(me.officeId);
   const from = addDays(today, -(WINDOW_DAYS - 1));
-  const [m, chase, cat, link, fmt] = await Promise.all([
+  const [m, chase, cat, link, fmt, cus] = await Promise.all([
     collectionMetricAs(from, today), chasingMetricAs(from, today), catalogueMetricAs(), linkMetricAs(from, today), formatMetricAs(from, today),
+    custodyMetricAs(from, today),
   ]);
   const { link: fLink, staff: fStaff } = fmt.applied;
   const tiles: Array<[string, string, string?]> = [
@@ -120,6 +123,25 @@ export default async function CollectionPage() {
             ))}
           </dl>
         )}
+      </section>
+
+      <section aria-labelledby="custody-h" className="space-y-3">
+        <h3 id="custody-h" className="font-semibold">Hard copies</h3>
+        <dl aria-label="Hard copy figures" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {([
+            ["Placed in office within 2 working days", placedPct(cus) === null ? "—" : `${placedPct(cus)}%`,
+              cus.reviewed ? `${cus.placed_2d} of ${cus.reviewed} reviewed` : "no hard copies reviewed"],
+            ["Ready → dispatched (median)", cus.ready_to_dispatched_median_days === null ? "—" : `${cus.ready_to_dispatched_median_days} ${cus.ready_to_dispatched_median_days === 1 ? "day" : "days"}`, "dispatched in these days"],
+            ["In office over 30 days", String(cus.held_now), "returnable, now"],
+          ] as Array<[string, string, string?]>).map(([label, value, note]) => (
+            <Card key={label} className="px-4 py-3">
+              <dt className="text-[13px] text-ink-3">{label}</dt>
+              <dd className="mt-1 text-[22px] font-semibold leading-tight">{value}</dd>
+              {note && <dd className="text-[12.5px] text-ink-3">{note}</dd>}
+            </Card>
+          ))}
+        </dl>
+        {cus.held_now > 0 && <p className="text-[13.5px]"><Link href="/documents?held=1" className="text-accent hover:underline">See the documents in office over 30 days</Link></p>}
       </section>
 
       <section aria-labelledby="catalogue-h" className="space-y-3">

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import type { ClientDocument } from "@/lib/documents/queries";
-import { documentState, heldDays, nextAction, paperBadge, type ShownStateKind } from "@/lib/documents/state";
+import { custodyAction, documentState, heldDays, inOfficeDays, nextAction, paperBadge, type ShownStateKind } from "@/lib/documents/state";
+import { CustodyButton, InOfficeBadge } from "../../documents/custody-controls";
 import { Badge } from "@/components/ui";
 import { FormatBadge } from "@/components/format-badge";
 import { RowCheckbox } from "@/components/selection-bar";
@@ -19,7 +20,7 @@ const day = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", y
 
 const TONE: Record<ShownStateKind, string> = {
   archived: "text-ink-3", inbox: "text-ink-3", dispatched: "text-ok", ready: "text-accent",
-  needs_correction: "text-bad", reviewed: "text-ok", to_review: "text-warn",
+  needs_correction: "text-bad", in_office: "text-ok", reviewed: "text-ok", to_review: "text-warn", // 13: in_office
 };
 
 export function DocumentRow({ d, clientId, clientName, today, selected, onToggle }: {
@@ -31,11 +32,15 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
   const input = { archived: false, clientId, docTypeId: d.typeName ? "filed" : null, receivedAs: d.receivedAs, status: d.status,
     returnable: d.returnable, correctionKind: d.correctionKind, // 12
     reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
-    dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod };
+    dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod,
+    custody: d.custody ?? null, inOfficeAt: d.inOfficeAt ?? null }; // 13
   const state = documentState(input, today);
   const held = heldDays({ ...input, receivedOn: d.receivedOn }, today);
   const paper = paperBadge(d); // 12
   const action = nextAction(state);
+  // 13 (AC-9, S1): Mark in office / Ready to dispatch after the review — next to the review actions of a Needs-correction
+  // copy too (pre-PR review nit 1); not when the row's action is Dispatch (it is Ready already).
+  const custodyNext = action === "dispatch" ? null : custodyAction(input);
   const label = `${d.typeName}${d.periodLabel ? ` · ${d.periodLabel}` : ""} (${d.docCode})`;
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-3">
@@ -54,10 +59,12 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
           {d.fromLink && <Badge tone="accent">From client link</Badge>}
           <FormatBadge preferred={d.notPreferred} />
           {held !== null && <span className="text-ink-3">· Held {held} day{held === 1 ? "" : "s"}</span>}
+          <InOfficeBadge days={inOfficeDays(input, today)} />
         </p>
         <p className={`mt-0.5 break-words text-[13px] font-medium ${TONE[state.kind]}`} data-testid="doc-state">{state.text}</p>
       </div>
       {action === "review" && <ReviewControls documentId={d.id} clientId={clientId} label={label} onMessage={setMsg} />}
+      {custodyNext && <CustodyButton documentId={d.id} clientId={clientId} step={custodyNext} label={label} onMessage={setMsg} />}
       {action === "dispatch" && (
         <DispatchDialog clientId={clientId} clientName={clientName} documentId={d.id} label={label} today={today} onMessage={(text) => setMsg({ ok: true, text })} />
       )}

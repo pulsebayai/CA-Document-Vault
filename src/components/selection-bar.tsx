@@ -5,6 +5,7 @@ import { Button } from "@/components/ui";
 import { MAX_ZIP_FILES } from "@/lib/bulk/links-core";
 import { ZipDownload } from "@/components/zip-download";
 import { BulkReviewDialog, type ReviewTarget } from "@/components/bulk-review-dialog";
+import { BulkCustodyDialog } from "@/components/bulk-custody-dialog";
 
 // Feature 08 AC-1 — select documents on a page, then act on them. Selection is per page (D2): it empties when the
 // page's key (filters, page, tab) changes, so what you act on is what you see. The bar is announced (aria-live)
@@ -53,9 +54,9 @@ export function RowCheckbox({ docCode, checked, onChange }: { docCode: string; c
 
 export const ZIP_CAP_TEXT = "Up to 100 files / 300 MB per zip; narrow the filter.";
 
-/** "N selected · Download zip · Mark reviewed · Clear". `items` = the selected rows, in page order. */
+/** "N selected · Download zip · Mark reviewed · Mark in office · Ready to dispatch · Clear". `items` = the selected rows, in page order. */
 export function SelectionBar({ items, onClear }: { items: ReviewTarget[]; onClear: () => void }) {
-  const [dialog, setDialog] = useState<"zip" | "review" | null>(null);
+  const [dialog, setDialog] = useState<"zip" | "review" | "in_office" | "ready" | null>(null);
   const n = items.length;
   const tooMany = n > MAX_ZIP_FILES;
   return (
@@ -75,6 +76,9 @@ export function SelectionBar({ items, onClear }: { items: ReviewTarget[]; onClea
                 <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="m5 12 4 4 10-10" /></svg>
                 Mark reviewed
               </Button>
+              {/* 13 (AC-9): custody steps on the selection; the database skips what doesn't qualify and says why. */}
+              <Button size="sm" variant="secondary" onClick={() => setDialog("in_office")}>Mark in office</Button>
+              <Button size="sm" variant="secondary" onClick={() => setDialog("ready")}>Ready to dispatch</Button>
               <Button size="sm" variant="secondary" onClick={onClear}>Clear</Button>
               {tooMany && <p id="zip-cap" className="basis-full text-[13px] text-ink-2">{ZIP_CAP_TEXT}</p>}
             </>
@@ -83,6 +87,8 @@ export function SelectionBar({ items, onClear }: { items: ReviewTarget[]; onClea
       </div>
       <ZipDownload targets={items} open={dialog === "zip"} onClose={() => setDialog(null)} />
       <BulkReviewDialog targets={items} open={dialog === "review"} onClose={(changed) => { setDialog(null); if (changed) onClear(); }} />
+      <BulkCustodyDialog step={dialog === "in_office" || dialog === "ready" ? dialog : null} targets={items}
+        open={dialog === "in_office" || dialog === "ready"} onClose={(changed) => { setDialog(null); if (changed) onClear(); }} />
     </>
   );
 }

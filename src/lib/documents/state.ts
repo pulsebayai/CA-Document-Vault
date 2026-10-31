@@ -4,7 +4,9 @@ import { daysBetween, shortDate } from "@/lib/expected/schedule";
 // file rather than repeating the order. The SQL side (search_documents' `return_state`, the "to review" and
 // "ready to dispatch" counts) must select the same rows; tests/rls/review-dispatch.test.ts checks the two agree.
 //   1 Archived · 2 In inbox · 3 Dispatched <date> · <method> · 4 Ready to dispatch · 5 Needs correction · <reason>
-//   6 Reviewed <date> by <name> · 7 To review
+//   6 Document in office (13) · 7 Reviewed <date> by <name> · 8 To review
+// 13: Ready to dispatch is a stored custody step (document.custody), not derived from the review. The SQL mirror is
+// private.custody_state (search's `return_state`); tests/rls/custody.test.ts checks the two agree.
 
 export const REVIEW_STATUSES = ["received", "reviewed", "needs_correction"] as const;
 export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
@@ -34,7 +36,15 @@ export type DocumentStateInput = {
   returnable?: boolean | null;
   /** 12: Needs correction kind (wrong file | wrong details), when given. */
   correctionKind?: "file" | "details" | string | null;
+  /** 13: the stored custody step (null = not placed in office). */
+  custody?: CustodyStep | null;
+  /** 13: when it was marked in office (timestamptz). */
+  inOfficeAt?: string | null;
 };
+
+export type CustodyStep = "in_office" | "ready";
+/** 13 (spec AC-10, Sankar #14): a returnable document in office for more than this many days is flagged. */
+export const HELD_AFTER_DAYS = 30;
 
 /** 12 (spec AC-11): what 07 called an "original" is now a returnable hard copy; "original" is legacy input only. */
 export const isReturnable = (d: Pick<DocumentStateInput, "receivedAs" | "returnable">) =>
@@ -50,6 +60,7 @@ export type ShownState =
   | { kind: "dispatched"; text: string; on: string; method: string }
   | { kind: "ready"; text: string }
   | { kind: "needs_correction"; text: string; reason: string }
+  | { kind: "in_office"; text: string }
   | { kind: "reviewed"; text: string; at: string | null; by: string | null }
   | { kind: "to_review"; text: string };
 export type ShownStateKind = ShownState["kind"];
@@ -60,10 +71,26 @@ export const isFiled = (d: Pick<DocumentStateInput, "clientId" | "docTypeId">) =
 /** "To review": filed, live, status received. Same rule as Today's count (06). */
 export const isToReview = (d: DocumentStateInput) => !d.archived && isFiled(d) && d.status === "received";
 
-/** "Ready to dispatch": a filed, live original, reviewed or Needs correction, not in a live packet (SQL `return_state = 'ready'`). */
+const hasDecision = (d: Pick<DocumentStateInput, "status">) => d.status === "reviewed" || d.status === "needs_correction";
+const isHardCopy = (d: Pick<DocumentStateInput, "receivedAs">) => d.receivedAs === "hard_copy" || d.receivedAs === "original";
+
+/**
+ * "Ready to dispatch": a filed, live returnable copy marked Ready (13: stored), reviewed or Needs correction, not in a
+ * live packet (SQL `return_state = 'ready'`).
+ */
 export const isReadyToDispatch = (d: DocumentStateInput) =>
-  !d.archived && isFiled(d) && isReturnable(d) && !d.dispatchedOn
-  && (d.status === "reviewed" || d.status === "needs_correction");
+  !d.archived && isFiled(d) && isReturnable(d) && !d.dispatchedOn && d.custody === "ready" && hasDecision(d);
+
+/** 13 (spec AC-11): a filed, live hard copy with a review decision and no custody step yet ("To place in office"). */
+export const isToPlace = (d: DocumentStateInput) =>
+  !d.archived && isFiled(d) && isHardCopy(d) && !d.custody && !d.dispatchedOn && hasDecision(d);
+
+/** 13 (spec AC-9): the next custody click: Mark in office, then Ready to dispatch (returnable only); otherwise none. */
+export function custodyAction(d: DocumentStateInput): "in_office" | "ready" | null {
+  if (isToPlace(d)) return "in_office";
+  if (!d.archived && isFiled(d) && d.custody === "in_office" && isReturnable(d) && hasDecision(d) && !d.dispatchedOn) return "ready";
+  return null;
+}
 
 const istDay = (at: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(new Date(at));
 
@@ -81,6 +108,7 @@ export function documentState(d: DocumentStateInput, today: string): ShownState 
     const kind = d.correctionKind === "file" ? "wrong file" : d.correctionKind === "details" ? "wrong details" : null; // 12 (AC-21)
     return { kind: "needs_correction", text: ["Needs correction", kind, reason || null].filter(Boolean).join(" · "), reason };
   }
+  if (d.status === "reviewed" && d.custody && isHardCopy(d)) return { kind: "in_office", text: "Document in office" }; // 13
   if (d.status === "reviewed") {
     const at = d.reviewedAt ? shortDate(istDay(d.reviewedAt), today) : null;
     const by = d.reviewedByName ?? null;
@@ -94,6 +122,15 @@ export function heldDays(d: DocumentStateInput & { receivedOn: string }, today: 
   if (d.archived || !isReturnable(d) || d.dispatchedOn) return null;
   return Math.max(daysBetween(d.receivedOn, today), 0);
 }
+
+/** 13 (spec AC-10): office days since it was marked in office, for a returnable copy in custody not yet dispatched. */
+export function inOfficeDays(d: DocumentStateInput, today: string): number | null {
+  if (d.archived || !isReturnable(d) || !d.custody || d.dispatchedOn || !d.inOfficeAt) return null;
+  return Math.max(daysBetween(istDay(d.inOfficeAt), today), 0);
+}
+
+/** 13: "In office > 30 days" (Sankar #14). */
+export const isHeld = (d: DocumentStateInput, today: string) => (inOfficeDays(d, today) ?? 0) > HELD_AFTER_DAYS;
 
 /** Which row action a user gets next (AC-12). Undo actions live on the document page only. */
 export function nextAction(state: ShownState): "review" | "dispatch" | null {

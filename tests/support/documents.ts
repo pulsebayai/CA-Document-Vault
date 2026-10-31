@@ -229,3 +229,42 @@ export async function liveDispatchItem(documentId: string) {
     dispatch: { id: string; client_id: string; dispatched_on: string; method: string; courier_name: string | null;
       tracking_no: string | null; recipient_name: string; created_by: string } };
 }
+
+// ── 13 hard-copy custody (spec AC-1 … AC-9) ──────────────────────────────────────────────────────────────────────
+// Contract (written before migrations A/B, plan step 1):
+//   set_custody(p_ids uuid[], p_step 'in_office' | 'ready') → { done: uuid[], skipped: [{ id, reason }] }, ≤ 200 IDs,
+//     reasons NOT_FOUND · ARCHIVED · NOT_CLASSIFIED · SOFT_COPY · NOT_REVIEWED · NOT_RETURNABLE · NOT_IN_OFFICE · ALREADY;
+//   undo_custody(p_id) → void (Ready → In office → not placed); DISPATCHED while in a live packet.
+//   document.custody ('in_office' | 'ready' | null), in_office_at/by, ready_at/by; history in document_custody.
+export type CustodyStep = "in_office" | "ready";
+export type CustodyResult = { done: string[]; skipped: Array<{ id: string; reason: string }> };
+
+export async function setCustody(as: SupabaseClient, ids: string[], step: CustodyStep) {
+  const res = await as.rpc("set_custody", { p_ids: ids, p_step: step });
+  return res as { data: CustodyResult | null; error: { message: string } | null };
+}
+
+/** Marks documents with one step and fails unless every one was done. */
+export async function mustSetCustody(as: SupabaseClient, ids: string[], step: CustodyStep) {
+  const { data, error } = await setCustody(as, ids, step);
+  if (error) throw new Error(error.message);
+  if (data!.skipped.length) throw new Error(`custody ${step} skipped: ${JSON.stringify(data!.skipped)}`);
+  return data!;
+}
+
+/** 13 (plan P2): a reviewed returnable hard copy → Document in office → Ready to dispatch. */
+export async function mustMarkReady(as: SupabaseClient, id: string) {
+  await mustSetCustody(as, [id], "in_office");
+  await mustSetCustody(as, [id], "ready");
+}
+
+export async function undoCustody(as: SupabaseClient, id: string) {
+  return (await as.rpc("undo_custody", { p_id: id })) as { error: { message: string } | null };
+}
+
+/** Custody history of a document as the service role sees it, oldest first. */
+export async function custodyHistory(documentId: string) {
+  const { data, error } = await adminClient().from("document_custody").select("*").eq("document_id", documentId).order("at").order("id");
+  if (error) throw error;
+  return data as Array<{ id: string; office_id: string; document_id: string; step: string; implied: boolean; actor_id: string | null; at: string }>;
+}
