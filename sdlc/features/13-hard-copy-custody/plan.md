@@ -65,14 +65,18 @@ Each replaced function is copied from its latest definition (12's migrations B/C
 | e2e `review-dispatch.spec.ts` | 182 | the filter is selected by the name "Custody" (approved 2026-10-31, step 1) |
 | unit `search-review.test.tsx` | 23 (fixture), 77 | `hit()` carries `custody: "ready"` (within the approved 37–64 change); chip label "Custody: Dispatched" (approved 2026-10-31, step 1) |
 
+| unit `document-state.test.ts` | 102 | the reviewed original expecting "Mark dispatched" gets `custody: "ready"` (approved 2026-10-31, step 4) |
+| unit `dispatch-dialog.test.tsx` | ≈ 117, 127 | "Reviewed copy, no action" uses a soft copy (a hard copy now offers Mark in office); "Ready original" gets `custody: "ready"` (approved 2026-10-31, step 4) |
+| unit `permissions.test.ts` | 23 | two new rows (planned, additive) |
+
 [Likely] a few more show up when step 1's failing tests run against the full suite; each is added here and asked before it is changed. `today-view.test.tsx` needs no change: the two new counts are optional in its type. Tests that create or dispatch documents without asserting Ready stay unedited (S2).
 
 ## Steps
 - [x] 0. **Setup + checkpoint.** (roadmap PR #15 merged 2026-10-31) Commit this plan; 13 ∥ 14 parallel planning checkpoint (14 needs its intent → spec → plan first; locks and overlap decided there); roadmap PR on main: 13 in progress, locks. — proof: roadmap PR merged (docs-only CI)
 - [x] 1. **Failing tests first (RLS + unit)** (2026-10-31: 25 RLS + 11 unit fail for the expected reason — missing functions/columns) for AC-1–12, 13–15, 17–19, plus the table above. — proof: they fail for the expected reason on dev
-- [ ] 2. **Migration A** (schema, history table, trigger, data step, purge). — proof: `custody-migration` passes on dev; documents / review-dispatch / returnable / correction-kind / link files pass unedited except the approved setups; md5 = file
-- [ ] 3. **Migration B** (functions). — proof: every step-1 RLS file passes; role-matrix, document-search, today-documents, upload-links-today green; md5 = file
-- [ ] 4. **Lib layer** (state, custody actions, search/today parsing, permissions, activity sentences). — proof: unit suite green
+- [x] 2. **Migration A** (2026-10-31: applied on dev; backfill 125 ready + 561 in office = the counts predicted beforehand; 0 placeable hard copies left; every live packet Ready; md5 = file) (schema, history table, trigger, data step, purge). — proof: `custody-migration` passes on dev; documents / review-dispatch / returnable / correction-kind / link files pass unedited except the approved setups; md5 = file
+- [x] 3. **Migration B** (2026-10-31: applied on dev; 10 functions md5 = file; step-1 RLS + review-dispatch, today-documents, returnable, document-search, correction-kind, upload-links-today, documents, today, role-matrix green on dev) (functions). — proof: every step-1 RLS file passes; role-matrix, document-search, today-documents, upload-links-today green; md5 = file
+- [x] 4. **Lib layer** (2026-10-31: unit 581/581, lint + typecheck clean; `/documents` Custody filter + held checkbox done early) (state, custody actions, search/today parsing, permissions, activity sentences). — proof: unit suite green
 - [ ] 5. **Document page Custody panel + row actions + dispatch dialog.** — proof: e2e `custody.spec` (page part) locally; axe
 - [ ] 6. **Bulk on `/documents` and Client › Documents; Custody filter + held.** — proof: e2e `custody.spec` (bulk + filter) locally
 - [ ] 7. **Today: To place in office, In office > 30 days.** — proof: `custody-today` RLS; unit today-view; e2e `today-documents` locally
@@ -100,3 +104,10 @@ All ACs mapped to passing tests in the PR table; PR CI green; RLS quick check on
 ## Session log
 ### 2026-10-31
 - Intent approved (Q1–Q6), spec approved (S1–S5), plan approved (P1, P2, test list). Sequencing: plan 14 now (intent → spec → plan), then the 13 ∥ 14 checkpoint, then build.
+
+### 2026-10-31 (build session 1: steps 1–4)
+- Step 1: 5 new RLS files + 1 unit file, failing for the expected reason; approved setup edits applied. Three more test lines approved during step 1, three more during step 4 (table above).
+- Migration A `20261031100000_custody_a.sql` on dev: `document_before_write` fcefcfdc…, `custody_backfill` c525a64a… (md5 = file). Before: 125 hard copies predicted Ready (incl. 72 in live packets), 561 In office. After: 125 / 561, none left.
+- Migration B `20261031100100_custody_b.sql` on dev: create_dispatch 904b02d8…, search_documents df944569…, search_document_facets dcd77e32…, today_items a7251a39…, set_custody 720bba6b…, undo_custody c9aa9501…, log_receipt 0e910690…, custody_metric 43fa19db…, custody_state 2fe7f029…, custody_held 9537e893… (md5 = file).
+- Fixed on the way: a fixture-label clash ("cm-manager" is also 12's clients-mine label → "cmig-"); a comma swallowed by a comment in the facets copy (caught in review before applying).
+- RLS on dev: all step-1 files + 10 affected existing files green (≈ 330 tests). Unit 581/581.

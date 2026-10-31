@@ -39,6 +39,9 @@ export type DocumentHit = {
   /** 12: present (true) only on a returnable hard copy; correctionKind only when set. */
   returnable?: boolean;
   correctionKind?: string;
+  /** 13: present only when the hard copy has a custody step (in office · ready) and when it was marked in office. */
+  custody?: "in_office" | "ready";
+  inOfficeAt?: string;
   /** 12 (AC-18): present only on /documents rows that have a file (header suggestions don't load it). */
   file?: CurrentFile;
 };
@@ -57,6 +60,7 @@ type Row = {
   dispatched_on?: string | null; dispatch_method?: string | null;
   format_ok?: boolean | null; format_preferred?: string[] | null; // 11
   returnable?: boolean; correction_kind?: string | null; // 12
+  custody?: "in_office" | "ready" | null; in_office_at?: string | null; // 13
 };
 
 export class SearchError extends Error {
@@ -82,6 +86,8 @@ const toHit = (r: Row): DocumentHit => ({
   ...(r.format_ok === false ? { notPreferred: r.format_preferred ?? null } : {}), // 11: key absent otherwise (shape unchanged)
   ...(r.returnable ? { returnable: true } : {}), // 12: keys absent otherwise (shape unchanged)
   ...(r.correction_kind ? { correctionKind: r.correction_kind } : {}),
+  ...(r.custody ? { custody: r.custody } : {}), // 13: keys absent otherwise (shape unchanged)
+  ...(r.in_office_at ? { inOfficeAt: r.in_office_at } : {}),
 });
 
 export async function searchDocumentsAs(input: SearchInput, opts: { withFiles?: boolean } = {}): Promise<{ total: number; rows: DocumentHit[] }> {

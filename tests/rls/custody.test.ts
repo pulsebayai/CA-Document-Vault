@@ -162,9 +162,9 @@ describe("dispatch (AC-6, S2)", () => {
   it("dispatch eligibility is otherwise 07/12's: a plain hard copy or a To review returnable copy is refused", async () => {
     const plain = await reviewed(hard());
     await mustSetCustody(as.staff, [plain.id], "in_office");
-    expect((await createDispatch(as.staff, { client_id: client, document_ids: [plain.id] })).error?.message ?? "").toMatch(/NOT_ELIGIBLE/);
+    expect((await createDispatch(as.staff, { client_id: client, document_ids: [plain.id], dispatched_on: "2026-05-10" })).error?.message ?? "").toMatch(/NOT_ELIGIBLE/);
     const toReview = await returnable();
-    expect((await createDispatch(as.staff, { client_id: client, document_ids: [toReview.id] })).error?.message ?? "").toMatch(/NOT_ELIGIBLE/);
+    expect((await createDispatch(as.staff, { client_id: client, document_ids: [toReview.id], dispatched_on: "2026-05-10" })).error?.message ?? "").toMatch(/NOT_ELIGIBLE/);
     expect(await documentRow(toReview.id)).toMatchObject({ custody: null });
   });
 });
@@ -211,9 +211,9 @@ describe("custody survives a review reset and edits (AC-5, AC-7, S5)", () => {
     await mustMarkReady(as.staff, r.id);
     expect((await update(r.id, { period_id: may })).error).toBeNull();
     expect(await documentRow(r.id)).toMatchObject({ status: "received", custody: "ready" });
-    expect((await createDispatch(as.staff, { client_id: client, document_ids: [r.id] })).error?.message ?? "").toMatch(/NOT_ELIGIBLE/);
+    expect((await createDispatch(as.staff, { client_id: client, document_ids: [r.id], dispatched_on: "2026-05-10" })).error?.message ?? "").toMatch(/NOT_ELIGIBLE/);
     await mustReview(as.staff, r.id);
-    expect((await mustDispatch(as.staff, { client_id: client, document_ids: [r.id] })).id).toBeTruthy();
+    expect((await mustDispatch(as.staff, { client_id: client, document_ids: [r.id], dispatched_on: "2026-05-10" })).id).toBeTruthy();
   });
 
   it("undo review keeps the custody step too", async () => {

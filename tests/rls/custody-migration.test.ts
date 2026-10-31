@@ -32,8 +32,8 @@ const snapshot = async (id: string) => {
 
 beforeAll(async () => {
   officeId = await createDocumentOffice("custody-migration");
-  u.manager = await createStaff(officeId, "cm-manager", "manager");
-  u.staff = await createStaff(officeId, "cm-staff", "staff");
+  u.manager = await createStaff(officeId, "cmig-manager", "manager");
+  u.staff = await createStaff(officeId, "cmig-staff", "staff");
   for (const k of Object.keys(u) as Who[]) as[k] = await signedInClient(u[k].email);
   const client = await bankOnlyClient(as.staff, officeId, { name: "Migration client", incharge_id: u.staff.id });
   const base = { client_id: client, doc_type_id: await typeId(officeId, T.bank), period_id: await periodId(officeId, "2026-04"),

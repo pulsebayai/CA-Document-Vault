@@ -89,6 +89,22 @@ const PROBES: Record<string, Probe> = {
     await mustDispatch(as.staff, { client_id: c, document_ids: [original.id], dispatched_on: "2026-09-01" });
     return ok(await rpc(who, "undo_dispatch_item", { p_document_id: original.id, p_reason: "Matrix" }));
   },
+  // 13 (spec AC-19): custody steps — every role, Limited only on clients they can see (set_custody skips NOT_FOUND).
+  move_custody: async (who, c) => {
+    const original = await mustCreateOriginal(as.staff, { client_id: c, doc_type_id: ids.bank, period_id: ids.apr, received_on: "2026-05-02" }, as.staff);
+    const done = async (step: string) => {
+      const r = await rpc(who, "set_custody", { p_ids: [original.id], p_step: step });
+      return !r.error && ((r.data as { done: string[] }).done ?? []).length === 1;
+    };
+    const inOffice = await done("in_office");
+    return both(inOffice, inOffice ? await done("ready") : false, "move_custody");
+  },
+  undo_custody: async (who, c) => {
+    const original = await mustCreateOriginal(as.staff, { client_id: c, doc_type_id: ids.bank, period_id: ids.apr, received_on: "2026-05-02" }, as.staff);
+    const r = await rpc(as.staff, "set_custody", { p_ids: [original.id], p_step: "in_office" });
+    if (r.error) throw new Error(`setup: ${r.error.message}`);
+    return ok(await rpc(who, "undo_custody", { p_id: original.id }));
+  },
   archive: async (who, c) => {
     const doc = await fileOn(c);
     const a = ok(await rpc(who, "archive_document", { p_id: doc.id, p_reason: "Matrix" }));

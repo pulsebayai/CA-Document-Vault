@@ -99,7 +99,7 @@ describe("next action on Client › Documents (AC-12)", () => {
   it("Mark reviewed on To review and Needs correction; Mark dispatched on Ready; nothing otherwise", () => {
     expect(nextAction(documentState(filed(), TODAY))).toBe("review");
     expect(nextAction(documentState(filed({ status: "needs_correction", correctionReason: "x" }), TODAY))).toBe("review");
-    expect(nextAction(documentState(filed({ receivedAs: "original", status: "reviewed" }), TODAY))).toBe("dispatch");
+    expect(nextAction(documentState(filed({ receivedAs: "original", status: "reviewed", custody: "ready" }), TODAY))).toBe("dispatch"); // 13 (approved 2026-10-31)
     expect(nextAction(documentState(filed({ status: "reviewed" }), TODAY))).toBeNull();
     expect(nextAction(documentState(filed({ receivedAs: "original", status: "reviewed", dispatchedOn: "2026-09-01" }), TODAY))).toBeNull();
     expect(nextAction(documentState(filed({ archived: true }), TODAY))).toBeNull();

@@ -72,7 +72,8 @@ export function activeChips(f: DocumentFilters, o: FilterOptions, facets: FacetV
   add("to", "To", f.to ? shortDate(f.to) : null);
   add("status", "Status", f.status ? STATUS_LABEL[f.status] : null);
   add("state", "Show", f.state ? STATE_LABEL[f.state] : null);
-  if (f.return) chips.push({ key: "return", label: `Return: ${RETURN_LABEL[f.return]}` }); // 07
+  if (f.return) chips.push({ key: "return", label: `Custody: ${RETURN_LABEL[f.return]}` }); // 07 · 13: "Return" renamed Custody
+  if (f.held) chips.push({ key: "held", label: "In office over 30 days" }); // 13 (AC-12)
   if (f.format) chips.push({ key: "format", label: `Format: ${FORMAT_LABEL[f.format]}` }); // 11
   // 12 (AC-13): an old `as=original` link means hard copy + returnable, so it shows the Returnable chip too.
   if (f.returnable || f.as === "original") chips.push({ key: "returnable", label: "Returnable: Yes" });
@@ -85,6 +86,7 @@ export function withoutFilter(f: DocumentFilters, key: keyof DocumentFilters): D
   const next: DocumentFilters = { ...f, page: 1, [key]: key === "archived" ? false : null };
   if (key === "return") delete next.return; // 07: optional key (absent, not null)
   if (key === "format") delete next.format; // 11: optional key too
+  if (key === "held") delete next.held; // 13: optional key too
   if (key === "returnable") { delete next.returnable; if (next.as === "original") next.as = "hard_copy"; } // 12: optional key; legacy link
   if (key === "group") next.type = null;
   if (key === "fy") next.period = null;
@@ -165,7 +167,13 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
   const set = (patch: Partial<DocumentFilters>) => go({ ...filters, page: 1, ...patch });
   const setReturn = (v: string | null) => {
     const next: DocumentFilters = { ...filters, page: 1 };
-    if (v === "ready" || v === "dispatched") next.return = v; else delete next.return;
+    const ret = DOC_RETURNS.find((r) => r.value === v)?.value; // 13: to_place · in_office · ready · dispatched
+    if (ret) next.return = ret; else delete next.return;
+    go(next);
+  };
+  const setHeld = (on: boolean) => { // 13 (AC-12)
+    const next: DocumentFilters = { ...filters, page: 1 };
+    if (on) next.held = "1"; else delete next.held;
     go(next);
   };
   const setReturnable = (v: string | null) => { // 12 (AC-13)
@@ -239,7 +247,8 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
           {/* 07: "To review" (received) also matches Inbox documents in the database, so choosing it also shows filed only. */}
           <Select label="Status" value={filters.status} onChange={(v) => set({ status: v as DocumentFilters["status"], ...(v === "received" && !filters.state ? { state: "classified" as const } : {}) })}
             options={facetOptions("status", (v) => STATUS_LABEL[v] ?? v, filters.status)} />
-          <Select label="Return" value={filters.return ?? null} onChange={(v) => setReturn(v)}
+          {/* 13 (AC-12): 07's "Return" filter, renamed; its URL key stays `return` so older links keep working. */}
+          <Select label="Custody" value={filters.return ?? null} onChange={(v) => setReturn(v)}
             options={facetOptions("return", (v) => RETURN_LABEL[v] ?? v, filters.return ?? null)} />
           <Select label="Format" value={filters.format ?? null} onChange={(v) => setFormat(v)}
             options={facetOptions("format", (v) => FORMAT_LABEL[v] ?? v, filters.format ?? null)} />
@@ -249,6 +258,10 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
           <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">
             <input type="checkbox" checked={filters.returnable === "1" || filters.as === "original"} onChange={(e) => setReturnable(e.target.checked ? "1" : null)} className="h-4 w-4 accent-accent" />
             Returnable only
+          </label>
+          <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">
+            <input type="checkbox" checked={filters.held === "1"} onChange={(e) => setHeld(e.target.checked)} className="h-4 w-4 accent-accent" />
+            In office over 30 days
           </label>
           <label className="flex h-9 cursor-pointer items-center gap-2 rounded-full border border-line-2 bg-panel px-3 text-[13.5px]">
             <input type="checkbox" checked={filters.archived} onChange={(e) => set({ archived: e.target.checked })} className="h-4 w-4 accent-accent" />
@@ -318,7 +331,7 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
 
 const STATE_TONE: Record<ShownStateKind, string> = {
   archived: "text-ink-3", inbox: "text-ink-3", dispatched: "text-ok", ready: "text-accent",
-  needs_correction: "text-bad", reviewed: "text-ok", to_review: "text-warn",
+  needs_correction: "text-bad", in_office: "text-ok", reviewed: "text-ok", to_review: "text-warn", // 13: in_office
 };
 
 /** 07 AC-14: the shown state of a result row (same order as Client › Documents). */
@@ -328,6 +341,7 @@ export function rowState(d: DocumentHit, today: string) {
     returnable: d.returnable, correctionKind: d.correctionKind, // 12
     status: d.status, reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
     dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod,
+    custody: d.custody ?? null, inOfficeAt: d.inOfficeAt ?? null, // 13
   }, today);
 }
 

@@ -116,15 +116,17 @@ describe("DocumentRow (AC-11, AC-12)", () => {
     expect(within(li).getByRole("button", { name: /Mark reviewed/ })).toBeInTheDocument();
   });
 
+  // 13 (approved 2026-10-31): a reviewed hard copy now offers "Mark in office" (spec AC-9), so this case uses a soft copy.
   it("Reviewed copy: text only, no action, no held days", () => {
-    const li = row(doc({ status: "reviewed", reviewedByName: "Ravi", reviewedAt: "2026-09-02T06:00:00Z" }));
+    const li = row(doc({ receivedAs: "soft_copy", status: "reviewed", reviewedByName: "Ravi", reviewedAt: "2026-09-02T06:00:00Z" }));
     expect(li).toHaveTextContent("Reviewed 2 Sep by Ravi");
     expect(within(li).queryByRole("button")).toBeNull();
     expect(li).not.toHaveTextContent("Held");
   });
 
   it("Ready original: Mark dispatched + Held N days", () => {
-    const li = row(doc({ receivedAs: "original", status: "reviewed", reviewedByName: "Ravi", reviewedAt: "2026-09-02T06:00:00Z" }));
+    const li = row(doc({ receivedAs: "original", status: "reviewed", reviewedByName: "Ravi", reviewedAt: "2026-09-02T06:00:00Z",
+      custody: "ready" })); // 13 (approved 2026-10-31): Ready is a stored step
     expect(li).toHaveTextContent("Ready to dispatch");
     expect(li).toHaveTextContent("Held 30 days");
     expect(within(li).getByRole("button", { name: /Mark dispatched/ })).toBeInTheDocument();

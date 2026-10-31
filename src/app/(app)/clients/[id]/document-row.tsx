@@ -19,7 +19,7 @@ const day = new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", y
 
 const TONE: Record<ShownStateKind, string> = {
   archived: "text-ink-3", inbox: "text-ink-3", dispatched: "text-ok", ready: "text-accent",
-  needs_correction: "text-bad", reviewed: "text-ok", to_review: "text-warn",
+  needs_correction: "text-bad", in_office: "text-ok", reviewed: "text-ok", to_review: "text-warn", // 13: in_office
 };
 
 export function DocumentRow({ d, clientId, clientName, today, selected, onToggle }: {
@@ -31,7 +31,8 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
   const input = { archived: false, clientId, docTypeId: d.typeName ? "filed" : null, receivedAs: d.receivedAs, status: d.status,
     returnable: d.returnable, correctionKind: d.correctionKind, // 12
     reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
-    dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod };
+    dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod,
+    custody: d.custody ?? null, inOfficeAt: d.inOfficeAt ?? null }; // 13
   const state = documentState(input, today);
   const held = heldDays({ ...input, receivedOn: d.receivedOn }, today);
   const paper = paperBadge(d); // 12

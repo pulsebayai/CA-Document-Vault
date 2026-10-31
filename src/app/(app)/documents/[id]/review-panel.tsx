@@ -24,7 +24,7 @@ const OUTCOME: Record<ReviewEvent["outcome"], string> = {
 };
 const TONE: Record<ShownState["kind"], string> = {
   archived: "text-ink-3", inbox: "text-ink-3", dispatched: "text-ok", ready: "text-accent",
-  needs_correction: "text-bad", reviewed: "text-ok", to_review: "text-warn",
+  needs_correction: "text-bad", in_office: "text-ok", reviewed: "text-ok", to_review: "text-warn", // 13: in_office
 };
 
 type Common = { documentId: string; clientId: string | null; clientName?: string | null; label: string; canUndo: boolean };

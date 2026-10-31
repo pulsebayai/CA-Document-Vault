@@ -237,6 +237,8 @@ export type ClientDocument = {
   // 07: review state and the live packet (documentState() in ./state.ts).
   status: string; reviewedAt: string | null; reviewedByName: string | null; correctionReason: string | null;
   dispatchedOn: string | null; dispatchMethod: string | null;
+  /** 13: the stored custody step and when it was marked in office. */
+  custody?: "in_office" | "ready" | null; inOfficeAt?: string | null;
 };
 
 type ClientDocRow = {
@@ -249,6 +251,7 @@ type ClientDocRow = {
   status: string; reviewed_at: string | null; correction_reason: string | null; correction_kind: string | null; reviewer: { full_name: string } | null;
   packets: Array<{ removed_at: string | null; dispatch: { dispatched_on: string; method: string } | null }> | null;
   format_ok: boolean | null; format_preferred: string[] | null;
+  custody: "in_office" | "ready" | null; in_office_at: string | null; // 13
 };
 
 /**
@@ -274,6 +277,7 @@ export async function listClientDocuments(clientId: string): Promise<ClientDocum
     correctionKind: r.correction_kind, versionCount: r.version_count, current: r.current ? { id: r.current.id, mimeType: r.current.mime_type } : null,
     proposed: r.doc_type!.status === "proposed", fromLink: r.channel === "upload_link",
     notPreferred: r.format_ok === false ? r.format_preferred : null,
+    custody: r.custody, inOfficeAt: r.in_office_at, // 13
     ...reviewFields(r),
   }));
 }
@@ -313,6 +317,8 @@ export type DocumentDetail = DocumentForForm & {
   status: string; reviewedAt: string | null; reviewedByName: string | null; correctionReason: string | null;
   /** 12: Wrong file / Wrong details (null on older corrections). */
   correctionKind: string | null;
+  /** 13: custody step with who/when (who = null for steps set when custody started). */
+  custody: { step: "in_office" | "ready" | null; inOfficeAt: string | null; inOfficeBy: string | null; readyAt: string | null; readyBy: string | null };
   versions: { id: string; versionNo: number; fileName: string; mimeType: string; sizeBytes: number; uploadedAt: string; uploadedBy: string }[];
 };
 
@@ -323,6 +329,7 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
   const [doc, versions] = await Promise.all([
     supabase.from("document").select(`created_at, archived_at, archive_reason, current_version_id, format_ok, format_preferred,
         status, reviewed_at, correction_reason, correction_kind, reviewer:reviewed_by (full_name),
+        custody, in_office_at, ready_at, in_office_person:in_office_by (full_name), ready_person:ready_by (full_name),
         receiver:received_by (full_name), creator:created_by (full_name),
         doc_type:doc_type_id (name, preferred_formats, doc_group:doc_group_id (name)), period:period_id (label), registration:registration_id (number)`)
       .eq("id", id).single(),
@@ -334,6 +341,8 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
     created_at: string; archived_at: string | null; archive_reason: string | null; current_version_id: string | null;
     format_ok: boolean | null; format_preferred: string[] | null;
     status: string; reviewed_at: string | null; correction_reason: string | null; correction_kind: string | null; reviewer: { full_name: string } | null;
+    custody: "in_office" | "ready" | null; in_office_at: string | null; ready_at: string | null; // 13
+    in_office_person: { full_name: string } | null; ready_person: { full_name: string } | null;
     receiver: { full_name: string } | null; creator: { full_name: string } | null;
     doc_type: { name: string; preferred_formats: string[] | null; doc_group: { name: string } | null } | null; period: { label: string } | null;
     registration: { number: string } | null;
@@ -353,6 +362,8 @@ export async function getDocumentDetail(id: string): Promise<DocumentDetail | nu
     notPreferred: d.format_ok === false ? d.format_preferred : null,
     status: d.status, reviewedAt: d.reviewed_at, reviewedByName: d.reviewer?.full_name ?? null, correctionReason: d.correction_reason,
     correctionKind: d.correction_kind,
+    custody: { step: d.custody, inOfficeAt: d.in_office_at, inOfficeBy: d.in_office_person?.full_name ?? null,
+      readyAt: d.ready_at, readyBy: d.ready_person?.full_name ?? null }, // 13
     versions: ((versions.data ?? []) as unknown as Array<{ id: string; version_no: number; file_name: string; mime_type: string; size_bytes: number; uploaded_at: string; uploader: { full_name: string } | null }>)
       .map((v) => ({ id: v.id, versionNo: v.version_no, fileName: v.file_name, mimeType: v.mime_type, sizeBytes: v.size_bytes, uploadedAt: v.uploaded_at, uploadedBy: v.uploader?.full_name ?? "—" })),
   };

@@ -49,8 +49,9 @@ export default async function DocumentPage({ params, searchParams }: PageProps<"
     archived, clientId: d.client?.id ?? null, docTypeId: d.docTypeId, receivedAs: d.receivedAs, returnable: d.returnable, status: d.status,
     reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason, correctionKind: d.correctionKind,
     dispatchedOn: live?.dispatchedOn ?? null, dispatchMethod: live?.method ?? null,
+    custody: d.custody.step, inOfficeAt: d.custody.inOfficeAt, // 13
   };
-  const reviewState = documentState({ ...stateInput, receivedAs: "hard_copy", returnable: false, dispatchedOn: null }, today);
+  const reviewState = documentState({ ...stateInput, receivedAs: "hard_copy", returnable: false, dispatchedOn: null, custody: null }, today);
   const canUndo = canManageCatalogue(me.role);
   const label = `${d.typeName ?? "Document"}${d.periodLabel ? ` · ${d.periodLabel}` : ""} (${d.docCode})`;
 
