@@ -1,7 +1,9 @@
 // @vitest-environment node
 import { randomBytes } from "node:crypto";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ESLint } from "eslint";
+
+vi.mock("server-only", () => ({}));
 import {
   CIPHERTEXT_PATTERN, DscKeyError, TEST_KEY, TEST_KEY_ID, decryptSecret, encryptSecret, keyIdOf,
 } from "@/lib/dsc/crypto";
