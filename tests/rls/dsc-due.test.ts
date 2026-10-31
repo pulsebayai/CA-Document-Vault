@@ -5,6 +5,7 @@ import { createCatalogueOffice } from "../support/catalogue";
 import { createDocumentOffice } from "../support/documents";
 import { bankOnlyClient } from "../support/expected";
 import { testPan } from "../support/test-data";
+import { isDue } from "@/lib/dsc/expiry";
 import { archiveDsc, dscDue, logCustody, mustSaveDsc, newDsc, setRemindDays, setTestToday } from "../support/dsc";
 
 // Feature 14 — Today's "DSC expiring" (spec AC-10, AC-11, T2, T3; NFR Performance). Written before the migration
@@ -95,6 +96,13 @@ describe("dsc_due (AC-11)", () => {
     expect(await ids(as.staff, "mine")).toEqual([d.b40, d.b50]);
     await setTestToday(officeId, TODAY);
     expect((await setRemindDays(as.staff, clientB, 45)).error).toBeNull();
+  });
+
+  it("N-7: the TS rule (isDue) agrees with dsc_due on every row and on the first DSC outside the window", async () => {
+    const r = await dscDue(as.staff, "everyone");
+    for (const row of r.rows) expect(isDue(row.expires_on, TODAY, row.remind_days), row.holder_name).toBe(true);
+    expect(isDue("2026-12-01", TODAY, 30)).toBe(false); // d.a31, which dsc_due leaves out
+    expect(r.rows.map((x) => x.id)).not.toContain(d.a31);
   });
 
   it("an unknown scope is refused", async () => {

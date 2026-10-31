@@ -226,3 +226,33 @@ describe("Privacy (AC-12, NFR)", () => {
     for (const s of [HOLDER, PERSON, "Client director", "For GST filing", "Token 77", FAKE_CT, FAKE_CT_2, "ktest."]) expect(text).not.toContain(s);
   });
 });
+
+describe("Step 10 review fixes", () => {
+  it("I-1: a custody move can't be dated before the previous move", async () => {
+    const id = await save(as.staff);
+    expect((await logCustody(as.staff, { dsc_id: id, direction: "out", person_name: PERSON, on_date: "2026-10-20" })).error).toBeNull();
+    expect(err(await logCustody(as.staff, { dsc_id: id, direction: "in", person_name: PERSON, on_date: "2026-10-05" }))).toMatch(/DATE_BEFORE_LAST_MOVE/);
+    expect((await logCustody(as.staff, { dsc_id: id, direction: "in", person_name: PERSON, on_date: "2026-10-20" })).error).toBeNull(); // same day is fine
+  });
+
+  it("I-4: a DSC that is out can't be archived until it is received back", async () => {
+    const id = await save(as.staff);
+    await logCustody(as.staff, { dsc_id: id, direction: "out", person_name: PERSON, on_date: "2026-10-01" });
+    expect(err(await archiveDsc(as.manager, id, "Closed"))).toMatch(/DSC_OUT/);
+    await logCustody(as.staff, { dsc_id: id, direction: "in", person_name: PERSON, on_date: "2026-10-02" });
+    expect((await archiveDsc(as.manager, id, "Closed")).error).toBeNull();
+  });
+
+  it("I-3: an archived client's DSCs are read-only (edit, password, custody, remind days refused; reveal still works)", async () => {
+    const gone = await bankOnlyClient(as.staff, officeId, { name: "DSC client to archive", incharge_id: u.staff.id });
+    const id = await save(as.staff, {}, gone);
+    const r = await as.manager.from("client").update({ archived_at: new Date().toISOString(), archive_reason: "Test" }).eq("id", gone).select("id");
+    expect(r.error).toBeNull();
+    expect(err(await saveDsc(as.staff, { id, holder_name: "Changed", expires_on: "2030-01-01" }))).toMatch(/CLIENT_ARCHIVED/);
+    expect(err(await saveDsc(as.staff, { id, password_ct: FAKE_CT_2 }))).toMatch(/CLIENT_ARCHIVED/);
+    expect(err(await logCustody(as.staff, { dsc_id: id, direction: "out", person_name: PERSON, on_date: "2026-10-01" }))).toMatch(/CLIENT_ARCHIVED/);
+    expect(err(await setRemindDays(as.staff, gone, 45))).toMatch(/CLIENT_ARCHIVED/);
+    expect((await dscRow(id)).holder_name).toBe(HOLDER);
+    expect((await as.staff.rpc("dsc_reveal", { p_id: id })).data).toBe(FAKE_CT);
+  });
+});

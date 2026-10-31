@@ -42,6 +42,7 @@ export async function clientDscs(clientId: string, officeId: string): Promise<Cl
     supabase.from("client_dsc_setting").select("remind_days").eq("client_id", clientId).maybeSingle(),
   ]);
   if (list.error) fail("list", list.error.code);
+  if (setting.error) fail("setting", setting.error.code); // review N-3: never show the default in place of a saved value
   const records = ((list.data ?? []) as unknown as Row[]).map((r): DscRecord => ({
     id: r.id, holderName: r.holder_name, dscClass: r.dsc_class, issuer: r.issuer, tokenNote: r.token_note,
     expiresOn: r.expires_on, passwordSetAt: r.password_set_at, archivedAt: r.archived_at, archiveReason: r.archive_reason,
@@ -57,18 +58,22 @@ export async function clientDscs(clientId: string, officeId: string): Promise<Cl
   };
 }
 
-/** Live DSCs for the tab label ("DSC N", AC-1). */
-export async function liveDscCount(clientId: string): Promise<number> {
+/** Live DSCs for the tab label ("DSC N", AC-1). null when it can't be read: the other tabs must still load (review N-2). */
+export async function liveDscCount(clientId: string): Promise<number | null> {
   const supabase = await createClient();
   const { count, error } = await supabase.from("dsc").select("id", { count: "exact", head: true })
     .eq("client_id", clientId).is("archived_at", null);
-  if (error) fail("count", error.code);
+  if (error) {
+    console.error("dsc.count_failed", { code: error.code ?? "unknown", requestId: randomUUID() });
+    return null;
+  }
   return count ?? 0;
 }
 
 export async function remindDaysFor(clientId: string): Promise<number> {
   const supabase = await createClient();
-  const { data } = await supabase.from("client_dsc_setting").select("remind_days").eq("client_id", clientId).maybeSingle();
+  const { data, error } = await supabase.from("client_dsc_setting").select("remind_days").eq("client_id", clientId).maybeSingle();
+  if (error) fail("setting", error.code);
   return (data?.remind_days as number | undefined) ?? DEFAULT_REMIND_DAYS;
 }
 
@@ -77,11 +82,14 @@ export type DueDsc = {
   expiresOn: string; daysLeft: number; remindDays: number; outTo: string | null; outSince: string | null;
 };
 
-/** Today's "DSC expiring" (AC-11): its own call, today_items untouched (T2). */
+/** Today's "DSC expiring" (AC-11): its own call, today_items untouched (T2). A failure hides the card, never Today (N-2). */
 export async function dscDue(scope: "mine" | "everyone"): Promise<{ count: number; rows: DueDsc[] }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("dsc_due", { p_scope: scope });
-  if (error) fail("due", error.code);
+  if (error) {
+    console.error("dsc.due_failed", { code: error.code ?? "unknown", requestId: randomUUID() });
+    return { count: 0, rows: [] };
+  }
   const r = data as { count: number; rows: Array<Record<string, unknown>> };
   return {
     count: r.count,

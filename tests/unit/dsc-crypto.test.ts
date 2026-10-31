@@ -114,6 +114,28 @@ describe("DSC password encryption (AC-6)", () => {
   });
 });
 
+describe("step 10 security review", () => {
+  it("I-1: the public test key is refused in production under any key ID, not only 'test'", () => {
+    const disguised = { DSC_ENC_KEYS: `k1:${TEST_KEY}`, DSC_KEY_ID: "k1" };
+    expect(decryptSecret(encryptSecret("dev", disguised), disguised)).toBe("dev"); // fine outside production
+    expect(code(() => encryptSecret("x", { ...disguised, APP_ENV: "production" }))).toBe("TEST_KEY_IN_PRODUCTION");
+    expect(code(() => encryptSecret("x", { ...disguised, VERCEL_ENV: "production" }))).toBe("TEST_KEY_IN_PRODUCTION");
+  });
+
+  it("N-7: a key that isn't strict base64 of 32 bytes is refused (no silently ignored characters)", () => {
+    expect(code(() => encryptSecret("x", env({ DSC_ENC_KEYS: `1:${k1}!!` })))).toBe("KEY_INVALID");
+    expect(code(() => encryptSecret("x", env({ DSC_ENC_KEYS: `1:${k1.slice(0, 10)} ${k1.slice(10)}` })))).toBe("KEY_INVALID");
+  });
+
+  it("AC-6: a failed decrypt logs nothing and its error carries no secret", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const ct = encryptSecret("plain-secret", env());
+    expect(() => decryptSecret(ct, env({ DSC_ENC_KEYS: `1:${k2}` }))).toThrow(/^DSC_CRYPTO_BAD_CIPHERTEXT$/);
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+});
+
 describe("key fence (spec FR: only crypto.ts reads DSC_ENC_KEYS)", () => {
   const eslint = new ESLint();
   const lint = async (filePath: string) => {

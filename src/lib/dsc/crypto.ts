@@ -1,5 +1,5 @@
 import "server-only";
-import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, randomBytes, timingSafeEqual } from "node:crypto";
 
 // Feature 14 (spec AC-6, Q3; architecture "Secrets at rest") — DSC token PINs / passwords are encrypted HERE, in the
 // server, before they reach the database, and decrypted here only after dsc_reveal (which checks the role and the
@@ -26,6 +26,10 @@ export class DscKeyError extends Error {
 export const TEST_KEY_ID = "test";
 /** Public, test-only key (32 zero-to-31 bytes). Never valid in production. */
 export const TEST_KEY = Buffer.from(Array.from({ length: 32 }, (_, i) => i)).toString("base64");
+const TEST_BYTES = Buffer.from(TEST_KEY, "base64");
+/** Strict standard base64 of exactly 32 bytes (Buffer.from would silently skip stray characters). */
+const KEY_TEXT = /^[A-Za-z0-9+/]{43}=$/;
+const TAG_BYTES = 16;
 
 /** Same shape the database checks (dsc.password_ct). */
 export const CIPHERTEXT_PATTERN = /^k[a-z0-9]{1,16}\.[A-Za-z0-9_-]{16}\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{2,600}$/;
@@ -40,8 +44,10 @@ function keyring(env: Env): Map<string, Buffer> {
   for (const part of raw.split(",")) {
     const at = part.indexOf(":");
     const id = part.slice(0, at).trim();
-    const key = Buffer.from(part.slice(at + 1).trim(), "base64");
-    if (at < 1 || !KEY_ID.test(id) || key.length !== 32 || ring.has(id)) throw new DscKeyError("KEY_INVALID");
+    const text = part.slice(at + 1).trim();
+    if (at < 1 || !KEY_ID.test(id) || !KEY_TEXT.test(text) || ring.has(id)) throw new DscKeyError("KEY_INVALID");
+    const key = Buffer.from(text, "base64");
+    if (key.length !== 32) throw new DscKeyError("KEY_INVALID");
     ring.set(id, key);
   }
   return ring;
@@ -55,7 +61,8 @@ function keyFor(id: string, env: Env): Buffer {
   const ring = keyring(env);
   const key = ring.get(id);
   if (!key) throw new DscKeyError("KEY_UNKNOWN");
-  if (id === TEST_KEY_ID && production(env)) throw new DscKeyError("TEST_KEY_IN_PRODUCTION");
+  // Step 10 security review I-1: refused by its bytes too, so the public key can't reach production under another ID.
+  if (production(env) && (id === TEST_KEY_ID || timingSafeEqual(key, TEST_BYTES))) throw new DscKeyError("TEST_KEY_IN_PRODUCTION");
   return key;
 }
 
@@ -70,7 +77,7 @@ export function encryptSecret(plain: string, env: Env = process.env): string {
   if (!KEY_ID.test(id)) throw new DscKeyError("KEY_INVALID");
   const key = keyFor(id, env);
   const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
+  const cipher = createCipheriv("aes-256-gcm", key, iv, { authTagLength: TAG_BYTES });
   cipher.setAAD(aad(id));
   const body = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
   return `k${id}.${iv.toString("base64url")}.${cipher.getAuthTag().toString("base64url")}.${body.toString("base64url")}`;
@@ -87,21 +94,12 @@ export function decryptSecret(stored: string, env: Env = process.env): string {
   const key = keyFor(id, env);
   const [, ivText, tagText, bodyText] = stored.split(".");
   try {
-    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivText, "base64url"));
+    // authTagLength pins the 16-byte tag here too, not only in CIPHERTEXT_PATTERN (no truncated-tag forgeries).
+    const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivText, "base64url"), { authTagLength: TAG_BYTES });
     decipher.setAAD(aad(id));
     decipher.setAuthTag(Buffer.from(tagText, "base64url"));
     return Buffer.concat([decipher.update(Buffer.from(bodyText, "base64url")), decipher.final()]).toString("utf8");
   } catch {
     throw new DscKeyError("BAD_CIPHERTEXT");
-  }
-}
-
-/** Whether the server can encrypt right now (the UI hides Add / Reveal with a plain message when it can't). */
-export function cryptoReady(env: Env = process.env): boolean {
-  try {
-    encryptSecret("probe", env);
-    return true;
-  } catch {
-    return false;
   }
 }

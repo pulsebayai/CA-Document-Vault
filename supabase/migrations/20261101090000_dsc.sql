@@ -206,6 +206,10 @@ begin
     into d from public.dsc x where x.id = v_id for update; -- RLS
   if not found then raise exception 'NOT_FOUND: DSC' using errcode = 'P0002'; end if;
   if d.archived_at is not null then raise exception 'DSC_ARCHIVED: unarchive it first' using errcode = '22023'; end if;
+  -- Step 10 review I-3: an archived client's DSCs are read-only (like 03's archived = read-only).
+  if exists (select 1 from public.client cl where cl.id = d.client_id and cl.archived_at is not null) then
+    raise exception 'CLIENT_ARCHIVED: unarchive the client first' using errcode = '22023';
+  end if;
   if p ? 'client_id' and nullif(p ->> 'client_id', '')::uuid is distinct from d.client_id then
     raise exception 'DSC_CLIENT_FIXED: a DSC stays with its client' using errcode = '22023';
   end if;
@@ -252,11 +256,12 @@ declare
   d        public.dsc;
 begin
   if v_staff is null or v_office is null then raise exception 'ROLE_REQUIRED: sign in as active staff' using errcode = '42501'; end if;
-  select * into d from public.dsc x where x.id = p_id and x.office_id = v_office;
-  if not found then raise exception 'NOT_FOUND: DSC' using errcode = 'P0002'; end if;
+  -- Role before lookup (step 10 review N-4): a Limited caller learns nothing about which IDs exist.
   if not private.has_role(array['admin', 'manager', 'staff']::public.staff_role[]) then
     raise exception 'ROLE_REQUIRED: Staff, Manager or Admin' using errcode = '42501';
   end if;
+  select * into d from public.dsc x where x.id = p_id and x.office_id = v_office;
+  if not found then raise exception 'NOT_FOUND: DSC' using errcode = 'P0002'; end if;
   if not private.can_see_client(d.client_id) then raise exception 'NOT_FOUND: DSC' using errcode = 'P0002'; end if;
   if d.archived_at is not null then raise exception 'DSC_ARCHIVED: unarchive it first' using errcode = '22023'; end if;
   insert into public.activity (office_id, actor_id, action, entity_type, entity_id, data)
@@ -275,6 +280,7 @@ declare
   v_note   text := private.dsc_text(p, 'note', 200, 'DSC_NOTE');
   v_on     date := nullif(p ->> 'on_date', '')::date;
   v_last   public.dsc_direction;
+  v_last_on date;
   v_id     uuid;
   d        record;
 begin
@@ -284,11 +290,18 @@ begin
   if not found then raise exception 'NOT_FOUND: DSC' using errcode = 'P0002'; end if;
   perform set_config('app.dsc_write', '', true);
   if d.archived_at is not null then raise exception 'DSC_ARCHIVED: unarchive it first' using errcode = '22023'; end if;
+  if exists (select 1 from public.client c where c.id = d.client_id and c.archived_at is not null) then
+    raise exception 'CLIENT_ARCHIVED: unarchive the client first' using errcode = '22023';
+  end if;
   if v_dir is null or v_dir not in ('out', 'in') then raise exception 'DIRECTION_INVALID: out or in' using errcode = '22023'; end if;
   if v_person is null then raise exception 'DSC_PERSON: enter the name' using errcode = '22023'; end if;
   if v_on is null then raise exception 'DATE_REQUIRED: enter the date' using errcode = '22023'; end if;
   if v_on > private.office_today(d.office_id) then raise exception 'DATE_IN_FUTURE: the date can''t be in the future' using errcode = '22023'; end if;
-  select h.direction into v_last from public.dsc_custody h where h.dsc_id = d.id order by h.at desc, h.id desc limit 1;
+  select h.direction, h.on_date into v_last, v_last_on from public.dsc_custody h where h.dsc_id = d.id order by h.at desc, h.id desc limit 1;
+  -- Step 10 review I-1: moves stay in date order, so "With X since <date>" and the log read right.
+  if v_last_on is not null and v_on < v_last_on then
+    raise exception 'DATE_BEFORE_LAST_MOVE: the date can''t be before the last move' using errcode = '22023';
+  end if;
   if v_dir = 'out' and v_last = 'out' then raise exception 'DSC_ALREADY_OUT: record it as received back first' using errcode = '22023'; end if;
   if v_dir = 'in' and v_last is distinct from 'out' then raise exception 'DSC_NOT_OUT: the DSC is in the office' using errcode = '22023'; end if;
   perform set_config('app.dsc_custody', d.id::text, true);
@@ -320,6 +333,10 @@ begin
   select x.id, x.office_id, x.client_id, x.archived_at into d from public.dsc x where x.id = p_id for update;
   if not found then raise exception 'NOT_FOUND: DSC' using errcode = 'P0002'; end if;
   if d.archived_at is not null then raise exception 'ALREADY_ARCHIVED: the DSC is archived' using errcode = '22023'; end if;
+  -- Step 10 review I-4: a DSC that is out is received back first, so its return can still be logged.
+  if (select h.direction from public.dsc_custody h where h.dsc_id = d.id order by h.at desc, h.id desc limit 1) = 'out' then
+    raise exception 'DSC_OUT: record it as received back first' using errcode = '22023';
+  end if;
   update public.dsc set archived_at = now(), archived_by = v_staff, archive_reason = v_reason where id = d.id;
   perform set_config('app.dsc_write', '', true);
   insert into public.activity (office_id, actor_id, action, entity_type, entity_id, data)
@@ -360,8 +377,9 @@ begin
   if p_days is null or p_days not between 1 and 180 then
     raise exception 'DAYS_INVALID: 1 to 180 days' using errcode = '22023';
   end if;
-  select x.id, x.office_id into c from public.client x where x.id = p_client_id; -- RLS
+  select x.id, x.office_id, x.archived_at into c from public.client x where x.id = p_client_id; -- RLS
   if not found then raise exception 'NOT_FOUND: client' using errcode = 'P0002'; end if;
+  if c.archived_at is not null then raise exception 'CLIENT_ARCHIVED: unarchive the client first' using errcode = '22023'; end if;
   select s.remind_days into v_old from public.client_dsc_setting s where s.client_id = c.id;
   if coalesce(v_old, 30) = p_days and v_old is not null then return; end if;
   perform set_config('app.dsc_write', c.id::text, true);

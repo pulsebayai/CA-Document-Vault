@@ -102,3 +102,26 @@ describe("dsc_reveal (AC-7, T5)", () => {
     expect(JSON.stringify(due.data ?? due.error)).not.toContain("ktest.");
   });
 });
+
+describe("Step 10 review fixes", () => {
+  it("N-4: Limited get ROLE_REQUIRED for any ID, so a reveal can't tell them whether a DSC exists", async () => {
+    const { error } = await revealDsc(as.limited, "00000000-0000-4000-8000-000000000000");
+    expect(error?.message ?? "").toMatch(/ROLE_REQUIRED/);
+  });
+
+  it("a direct call asking PostgREST to roll back still leaves its log row, or is refused (security suspicion 1)", async () => {
+    const id = await mustSaveDsc(as.staff, newDsc(client));
+    const { data: s } = await as.staff.auth.getSession();
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/dsc_reveal`, {
+      method: "POST",
+      headers: {
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, Authorization: `Bearer ${s.session!.access_token}`,
+        "Content-Type": "application/json", Prefer: "tx=rollback",
+      },
+      body: JSON.stringify({ p_id: id }),
+    });
+    const body = await res.text();
+    if (res.ok && body.includes("ktest.")) expect((await reveals(id)).length).toBe(1); // got the value → the log row must exist
+    else expect((await reveals(id)).length).toBeLessThanOrEqual(1);
+  });
+});

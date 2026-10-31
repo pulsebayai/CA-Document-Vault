@@ -3,6 +3,8 @@
 const MESSAGES: Array<[RegExp, string]> = [
   [/DSC_ALREADY_OUT/, "This DSC is already out. Record it as received back first."],
   [/DSC_NOT_OUT/, "This DSC is in the office, so it can't be received back."],
+  [/DATE_BEFORE_LAST_MOVE/, "The date can't be before the last move in the custody log."],
+  [/DSC_OUT/, "This DSC is out. Record it as received back before archiving it."],
   [/DSC_ARCHIVED/, "This DSC is archived. Unarchive it first."],
   [/CLIENT_ARCHIVED/, "This client is archived."],
   [/DSC_CLIENT_FIXED/, "A DSC stays with its client."],

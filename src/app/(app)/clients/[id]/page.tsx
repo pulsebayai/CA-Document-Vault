@@ -111,7 +111,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
                 {label}{key === "documents" && <span className="ml-1 text-ink-3">{docCount}</span>}
                 {key === "expected" && <span className="ml-1 text-ink-3">{expected.open}</span>}
                 {key === "requested" && <span className="ml-1 text-ink-3">{requestedCount}</span>}
-                {key === "dsc" && <span className="ml-1 text-ink-3">{dscCount}</span>}
+                {key === "dsc" && dscCount !== null && <span className="ml-1 text-ink-3">{dscCount}</span>}
               </Link>
             </li>
           ))}

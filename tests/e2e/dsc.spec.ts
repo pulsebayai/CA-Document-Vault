@@ -54,8 +54,8 @@ test("AC-1, AC-2, AC-3, AC-4: add a DSC, see its expiry status, renew it; axe; 3
   await dialog.getByLabel("Holder name").fill("Ravi Director");
   await dialog.getByLabel("Expiry date").fill(plusDays(20));
   await dialog.getByLabel("Token PIN / password").fill(PIN);
-  await dialog.getByRole("button", { name: "Show", exact: true }).click();
-  await expect(dialog.getByLabel("Token PIN / password")).toHaveAttribute("type", "text");
+  await dialog.getByRole("button", { name: "Show password" }).click();
+  await expect(dialog.getByRole("button", { name: "Show password" })).toHaveAttribute("aria-pressed", "true");
   await dialog.getByLabel("Class").selectOption("class3");
   await dialog.getByLabel("Issuer").fill("eMudhra");
   await dialog.getByRole("button", { name: "Add DSC" }).click();
@@ -89,7 +89,7 @@ test("AC-7: Show password reveals it for 30 seconds with Copy, then hides; Hide 
   await signIn(page, u.staff.email, baseURL);
   await page.goto(`/clients/${clientId}?tab=dsc`);
   const c = card(page, "Ravi Director");
-  await c.getByRole("button", { name: "Show the password of Ravi Director's DSC" }).click();
+  await c.getByRole("button", { name: "Show password of Ravi Director's DSC" }).click();
   await expect(c.getByTestId("dsc-password")).toHaveText(PIN);
   await expect(c.getByRole("status")).toHaveText("Password shown for 30 seconds.");
   await expect(c.getByRole("button", { name: "Copy" })).toBeVisible();
@@ -98,7 +98,7 @@ test("AC-7: Show password reveals it for 30 seconds with Copy, then hides; Hide 
   await expect(c.getByTestId("dsc-password")).toHaveCount(0);
   await expect(c.getByRole("status")).toHaveText("Password hidden.");
 
-  await c.getByRole("button", { name: "Show the password of Ravi Director's DSC" }).click();
+  await c.getByRole("button", { name: "Show password of Ravi Director's DSC" }).click();
   await expect(c.getByTestId("dsc-password")).toHaveText(PIN);
   await c.getByRole("button", { name: "Hide" }).click();
   await expect(c.getByTestId("dsc-password")).toHaveCount(0);
@@ -108,7 +108,7 @@ test("AC-8, AC-9: give out and receive back; the record is re-used and the log s
   await signIn(page, u.staff.email, baseURL);
   await page.goto(`/clients/${clientId}?tab=dsc`);
   const c = card(page, "Ravi Director");
-  await c.getByRole("button", { name: "Record Ravi Director's DSC as given out" }).click();
+  await c.getByRole("button", { name: "Give out Ravi Director's DSC" }).click();
   const out = page.getByRole("dialog", { name: "Give out: Ravi Director" });
   await out.getByLabel("Given to").fill("Client accountant");
   await out.getByLabel("Note").fill("For GST filing");
@@ -116,7 +116,7 @@ test("AC-8, AC-9: give out and receive back; the record is re-used and the log s
   await expect(out).toBeHidden();
   await expect(c).toContainText("With Client accountant since");
 
-  await c.getByRole("button", { name: "Record Ravi Director's DSC as received back" }).click();
+  await c.getByRole("button", { name: "Received back: Ravi Director's DSC" }).click();
   const back = page.getByRole("dialog", { name: "Received back: Ravi Director" });
   await expect(back.getByLabel("Received back from")).toHaveValue("Client accountant");
   await back.getByRole("button", { name: "Record received back" }).click();
@@ -131,7 +131,7 @@ test("AC-4: Change password needs it twice; the reveal shows the new one", async
   await signIn(page, u.staff.email, baseURL);
   await page.goto(`/clients/${clientId}?tab=dsc`);
   const c = card(page, "Ravi Director");
-  await c.getByRole("button", { name: "Change the password of Ravi Director's DSC" }).click();
+  await c.getByRole("button", { name: "Change password of Ravi Director's DSC" }).click();
   const d = page.getByRole("dialog", { name: "Change password: Ravi Director" });
   await d.getByLabel("New token PIN / password").fill(NEW_PIN);
   await d.getByLabel("Type it again").fill("something else");
@@ -140,7 +140,7 @@ test("AC-4: Change password needs it twice; the reveal shows the new one", async
   await d.getByLabel("Type it again").fill(NEW_PIN);
   await d.getByRole("button", { name: "Change password" }).click();
   await expect(d).toBeHidden();
-  await c.getByRole("button", { name: "Show the password of Ravi Director's DSC" }).click();
+  await c.getByRole("button", { name: "Show password of Ravi Director's DSC" }).click();
   await expect(c.getByTestId("dsc-password")).toHaveText(NEW_PIN);
 });
 
@@ -161,7 +161,7 @@ test("AC-5: a Manager archives with a reason and unarchives; Staff sees no Archi
   const c = card(page, "Ravi Director");
   await expect(c).toContainText("Archived");
   await expect(c).toContainText("Director resigned");
-  await expect(c.getByRole("button", { name: /Show the password/ })).toHaveCount(0);
+  await expect(c.getByRole("button", { name: /Show password/ })).toHaveCount(0);
   await c.getByRole("button", { name: "Unarchive Ravi Director's DSC" }).click();
   await expect(page.getByText("No DSCs yet.")).toHaveCount(0);
 });
@@ -177,8 +177,8 @@ test("T4: Limited sees the tab and logs custody, but can't add, edit or show the
   const c = card(page, "Lata Partner");
   await expect(c).toBeVisible();
   await expect(page.getByRole("button", { name: "Add DSC" })).toHaveCount(0);
-  await expect(c.getByRole("button", { name: /Show the password|Edit|Change the password/ })).toHaveCount(0);
-  await expect(c.getByRole("button", { name: "Record Lata Partner's DSC as given out" })).toBeVisible();
+  await expect(c.getByRole("button", { name: /Show password|Edit|Change password/ })).toHaveCount(0);
+  await expect(c.getByRole("button", { name: "Give out Lata Partner's DSC" })).toBeVisible();
 });
 
 test("AC-10, AC-11: remind days in Settings; Today shows DSC expiring on Mine, linked to the DSC tab", async ({ page, baseURL }) => {
@@ -188,6 +188,9 @@ test("AC-10, AC-11: remind days in Settings; Today shows DSC expiring on Mine, l
   if (error) throw error;
   await signIn(page, u.staff.email, baseURL);
   await page.goto("/today");
+  // Wait for the page itself, so the absence check means something (and the render isn't cut off mid-stream).
+  await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
+  await page.waitForLoadState("networkidle");
   await expect(page.getByRole("region", { name: /DSC expiring/ })).toHaveCount(0); // 40 days > the default 30
 
   await page.goto(`/clients/${clientId}?tab=settings`);
@@ -204,4 +207,5 @@ test("AC-10, AC-11: remind days in Settings; Today shows DSC expiring on Mine, l
   expect(await seriousAxe(page)).toEqual([]);
   await section.getByRole("link", { name: "Signature Traders" }).click();
   await expect(page).toHaveURL(new RegExp(`/clients/${clientId}\\?tab=dsc$`));
+  await expect(card(page, "Soon Expiring")).toContainText("Expires in 40 days");
 });

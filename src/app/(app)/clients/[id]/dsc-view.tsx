@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Badge, Button, Card } from "@/components/ui";
 import { FieldError, Modal, inputCls } from "@/components/dialog";
@@ -19,6 +19,17 @@ export type DscPerms = { canEdit: boolean; canReveal: boolean; canArchive: boole
 type Fe = Record<string, string | undefined>;
 
 export const REVEAL_SECONDS = 30;
+
+/**
+ * Step 10 security review I-2: a client's PIN must never land in a staff member's password manager. A masked text
+ * field (not type="password") plus the managers' opt-out attributes keeps Chrome, Edge, 1Password and LastPass from
+ * treating the DSC form as a sign-up form and offering to save or generate "the vault's password".
+ */
+const secretField = (shown: boolean) => ({
+  type: "text" as const, autoComplete: "off", spellCheck: false, autoCapitalize: "off", autoCorrect: "off",
+  "data-1p-ignore": "", "data-lpignore": "true", "data-form-type": "other",
+  style: { WebkitTextSecurity: shown ? "none" : "disc" } as React.CSSProperties,
+});
 
 export function DscView({ clientId, data, perms }: { clientId: string; data: ClientDscs; perms: DscPerms }) {
   return (
@@ -93,9 +104,9 @@ function DscCard({ clientId, d, today, remindDays, perms }: {
           {live && perms.canCustody && (
             <Modal trigger={out ? "Received back" : "Give out"} triggerVariant="button"
               title={out ? `Received back: ${d.holderName}` : `Give out: ${d.holderName}`}
-              triggerLabel={out ? `Record ${d.holderName}'s DSC as received back` : `Record ${d.holderName}'s DSC as given out`}>
+              triggerLabel={out ? `Received back: ${d.holderName}'s DSC` : `Give out ${d.holderName}'s DSC`}>
               {(close) => <CustodyForm clientId={clientId} dscId={d.id} direction={out ? "in" : "out"}
-                defaultName={out ? latest?.person_name ?? "" : ""} onDone={close} />}
+                defaultName={out ? latest?.person_name ?? "" : ""} minDate={latest?.on_date} onDone={close} />}
             </Modal>
           )}
           {live && perms.canEdit && (
@@ -104,7 +115,7 @@ function DscCard({ clientId, d, today, remindDays, perms }: {
                 {(close) => <DscForm clientId={clientId} existing={d} onDone={close} />}
               </Modal>
               <Modal trigger="Change password" triggerVariant="button" title={`Change password: ${d.holderName}`}
-                triggerLabel={`Change the password of ${d.holderName}'s DSC`}>
+                triggerLabel={`Change password of ${d.holderName}'s DSC`}>
                 {(close) => <PasswordForm clientId={clientId} id={d.id} onDone={close} />}
               </Modal>
             </>
@@ -136,7 +147,11 @@ function DscCard({ clientId, d, today, remindDays, perms }: {
   );
 }
 
-/** AC-7: one logged reveal per click; shown for 30 s with Copy, then hidden again. Never stored. */
+/**
+ * AC-7: one logged reveal per click; shown for 30 s with Copy, then hidden again. Never stored.
+ * Step 10 review: the 30 s are wall-clock time from a deadline (browsers slow timers in background tabs), checked on
+ * every tick and when the tab becomes visible; a copied password is overwritten on the clipboard when it hides.
+ */
 export function Reveal({ id, holder }: { id: string; holder: string }) {
   const [shown, setShown] = useState<string | null>(null);
   const [left, setLeft] = useState(0);
@@ -145,37 +160,52 @@ export function Reveal({ id, holder }: { id: string; holder: string }) {
   const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const deadline = useRef(0);
+  const copiedRef = useRef(false);
 
-  const hide = (said = "Password hidden.") => {
+  // Only refs and state setters inside, so these are stable for the interval and the visibility listener.
+  const stop = useCallback(() => {
     if (timer.current) clearInterval(timer.current);
     timer.current = null;
+  }, []);
+  const hide = useCallback((said = "Password hidden.") => {
+    stop();
+    if (copiedRef.current) {
+      copiedRef.current = false;
+      navigator.clipboard?.writeText("").catch(() => undefined); // best effort (Safari needs a user gesture)
+    }
     setShown(null);
     setLeft(0);
     setCopied(false);
     setAnnounce(said);
-  };
-  useEffect(() => () => { if (timer.current) clearInterval(timer.current); }, []);
+  }, [stop]);
+  const tick = useCallback(() => {
+    const s = Math.ceil((deadline.current - Date.now()) / 1000);
+    if (s <= 0) hide();
+    else setLeft(s);
+  }, [hide]);
+  useEffect(() => {
+    const onVisible = () => { if (timer.current && document.visibilityState === "visible") tick(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { document.removeEventListener("visibilitychange", onVisible); stop(); };
+  }, [tick, stop]);
 
   const reveal = () => start(async () => {
     setError(null);
     const r = await revealDscPassword({ id });
     if (!r.ok) { setError(r.error); return; }
+    deadline.current = Date.now() + REVEAL_SECONDS * 1000;
     setShown(r.password);
     setLeft(REVEAL_SECONDS);
     setAnnounce(`Password shown for ${REVEAL_SECONDS} seconds.`);
-    if (timer.current) clearInterval(timer.current);
-    timer.current = setInterval(() => {
-      setLeft((s) => {
-        if (s <= 1) { hide(); return 0; }
-        return s - 1;
-      });
-    }, 1000);
+    stop();
+    timer.current = setInterval(tick, 1000);
   });
 
   return (
     <div className="mt-3">
       {shown === null ? (
-        <Button size="sm" variant="secondary" disabled={pending} onClick={reveal} aria-label={`Show the password of ${holder}'s DSC`}>
+        <Button size="sm" variant="secondary" disabled={pending} onClick={reveal} aria-label={`Show password of ${holder}'s DSC`}>
           {pending ? "Showing…" : "Show password"}
         </Button>
       ) : (
@@ -183,10 +213,10 @@ export function Reveal({ id, holder }: { id: string; holder: string }) {
           <span className="text-[13px] text-ink-3">Password</span>
           <code data-testid="dsc-password" className="break-all font-mono text-[14px]">{shown}</code>
           <Button size="sm" variant="secondary" onClick={async () => {
-            try { await navigator.clipboard.writeText(shown); setCopied(true); } catch { setCopied(false); }
+            try { await navigator.clipboard.writeText(shown); copiedRef.current = true; setCopied(true); } catch { setCopied(false); }
           }}>{copied ? "Copied" : "Copy"}</Button>
           <Button size="sm" variant="secondary" onClick={() => hide()}>Hide</Button>
-          <span className="text-[12.5px] text-ink-3" aria-hidden="true">Hides in {left} s</span>
+          <span className="text-[12.5px] text-ink-3" aria-hidden="true">Hides in {left} s{copied ? " · clipboard cleared then" : ""}</span>
         </div>
       )}
       <p className="sr-only" role="status" aria-live="polite">{announce}</p>
@@ -239,10 +269,10 @@ function DscForm({ clientId, existing, onDone }: { clientId: string; existing?: 
         <>
           <label className="block text-[13.5px] font-medium" htmlFor={`${uid}-pw`}>Token PIN / password</label>
           <div className="flex gap-2">
-            <input id={`${uid}-pw`} name="password" type={showPw ? "text" : "password"} required maxLength={MAX_PASSWORD}
-              autoComplete="new-password" spellCheck={false} className={inputCls} {...a("password")} />
+            <input id={`${uid}-pw`} name="password" required maxLength={MAX_PASSWORD} {...secretField(showPw)} className={inputCls} {...a("password")} />
+            {/* N-6: one fixed label; aria-pressed carries the state. */}
             <Button type="button" size="sm" variant="secondary" className="mt-1" aria-pressed={showPw} onClick={() => setShowPw((s) => !s)}>
-              {showPw ? "Hide" : "Show"}
+              Show password
             </Button>
           </div>
           <FieldError id={`${uid}-password`} message={fe.password} />
@@ -283,11 +313,11 @@ function PasswordForm({ clientId, id, onDone }: { clientId: string; id: string; 
       run(() => changeDscPassword({ id, clientId, password: (f.get("password") as string) ?? "", confirm: (f.get("confirm") as string) ?? "" }));
     }}>
       <label className="block text-[13.5px] font-medium">New token PIN / password
-        <input name="password" type="password" required maxLength={MAX_PASSWORD} autoComplete="new-password" spellCheck={false}
+        <input name="password" required maxLength={MAX_PASSWORD} {...secretField(false)}
           className={inputCls} aria-invalid={!!fe.password} aria-describedby={fe.password ? `${uid}-pw` : undefined} />
       </label>
       <label className="block text-[13.5px] font-medium">Type it again
-        <input name="confirm" type="password" required maxLength={MAX_PASSWORD} autoComplete="new-password" spellCheck={false} className={inputCls} />
+        <input name="confirm" required maxLength={MAX_PASSWORD} {...secretField(false)} className={inputCls} />
       </label>
       <FieldError id={`${uid}-pw`} message={fe.password} />
       {error && !fe.password && <p role="alert" className="text-[13.5px] text-bad">{error}</p>}
@@ -299,8 +329,8 @@ function PasswordForm({ clientId, id, onDone }: { clientId: string; id: string; 
   );
 }
 
-function CustodyForm({ clientId, dscId, direction, defaultName, onDone }: {
-  clientId: string; dscId: string; direction: "out" | "in"; defaultName: string; onDone: () => void;
+function CustodyForm({ clientId, dscId, direction, defaultName, minDate, onDone }: {
+  clientId: string; dscId: string; direction: "out" | "in"; defaultName: string; minDate?: string; onDone: () => void;
 }) {
   const uid = useId();
   const { pending, error, fe, run } = useSubmit(onDone);
@@ -318,7 +348,7 @@ function CustodyForm({ clientId, dscId, direction, defaultName, onDone }: {
       </label>
       <FieldError id={`${uid}-personName`} message={fe.personName} />
       <label className="block text-[13.5px] font-medium">Date
-        <input name="onDate" type="date" required max={today} defaultValue={today} className={inputCls} {...a("onDate")} />
+        <input name="onDate" type="date" required min={minDate} max={today} defaultValue={today} className={inputCls} {...a("onDate")} />
       </label>
       <FieldError id={`${uid}-onDate`} message={fe.onDate} />
       <label className="block text-[13.5px] font-medium">Note <span className="font-normal text-ink-3">(optional)</span>
