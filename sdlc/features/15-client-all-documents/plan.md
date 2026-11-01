@@ -1,5 +1,5 @@
 # Plan: Client › All documents, with per-document activity (and the K4 fix)
-Spec: ./spec.md (approved 2026-11-01, U1–U6) · Status: draft · Date: 2026-11-01
+Spec: ./spec.md (approved 2026-11-01, U1–U6) · Status: **approved (Sidambara, 2026-11-01; roadmap PR at step 0 approved)** · Date: 2026-11-01
 Branch: `feat/15-client-all-documents` · Locks: **schema → 15** (free since 13's merge; taken at plan approval, roadmap PR at step 0) · architecture: none (15's items are written in its PR, as 14 did) · RUN_SLOW: not needed (no 02/03 write path)
 
 ## Files that change
