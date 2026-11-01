@@ -193,7 +193,9 @@ grant execute on function public.activity_feed(jsonb) to authenticated;
 -- 15 (U2, AC-5, AC-9): the latest event the viewer may see, per document, for a page of ≤ 50 documents. The same
 -- lookups as activity_feed (private.doc_activity_ids), LIMIT 1 each document; RLS (activity_select) decides what the viewer sees, so the
 -- row is exactly the first one activity_feed shows for that document. Documents with no visible event are absent.
--- The type name is the document's own (it is the row's subject on the All documents tab), read under RLS.
+-- The type name is the document's own (it is the row's subject on the All documents tab), read under RLS: for a
+-- document the viewer can't see but whose event they can (08: e.g. their own action), the row comes back with null
+-- type and group names, exactly as activity_feed shows it.
 create or replace function public.document_last_activity(p_ids uuid[])
 returns jsonb language plpgsql stable security invoker set search_path = '' as $$
 declare

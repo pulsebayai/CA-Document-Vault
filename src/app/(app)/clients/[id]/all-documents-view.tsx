@@ -9,7 +9,8 @@ import type { DocumentFilters } from "@/lib/validation/document-search";
 // Feature 15 (spec AC-1…AC-7) — Client › All documents: 03b's /documents table for this client only (U4), with Last
 // activity and the expandable row. `filters` are already scoped (lib/search/scope.ts: this client, the current FY
 // unless the URL chose one; null FY = All years). The scope carries the activity actions, so /documents' view
-// imports nothing new.
+// imports nothing server-only. The scope object is new on each render, so a refresh after a row action (review,
+// custody) reloads Last activity too — intended. An open activity panel keeps the events it loaded (AC-7).
 const loadLast: SearchScope["loadLast"] = (ids) => lastActivity(ids);
 const rowExtra: SearchScope["rowExtra"] = (d) => <DocumentActivityRow documentId={d.id} docCode={d.docCode} />;
 

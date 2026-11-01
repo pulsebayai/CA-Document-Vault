@@ -36,7 +36,7 @@ export function DocumentActivityRow({ documentId, docCode }: { documentId: strin
         <span aria-hidden className={`inline-block transition-transform ${open ? "rotate-90" : ""}`}>›</span> Show activity
       </button>
       {open && (
-        <div id={panelId} className="mt-1.5 rounded-lg border border-line bg-canvas px-3 py-2 text-[13px]">
+        <div id={panelId} role="region" aria-label={`Activity panel for ${docCode}`} className="mt-1.5 rounded-lg border border-line bg-canvas px-3 py-2 text-[13px]">
           {state.status === "loading" || state.status === "idle" ? (
             <p role="status" className="text-ink-2">Loading activity…</p>
           ) : state.status === "error" ? (

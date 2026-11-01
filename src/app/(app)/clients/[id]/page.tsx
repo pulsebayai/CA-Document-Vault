@@ -46,7 +46,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   // 15 AC-1: All documents (?tab=all), the /documents table for this client, with the same document count.
   const tab = sp.tab === "settings" ? "settings" : sp.tab === "expected" ? "expected" : sp.tab === "requested" ? "requested"
     : sp.tab === "dsc" ? "dsc" : sp.tab === "all" ? "all" : "documents";
-  const [plan, docCount, documents, expected, fys, planGroups, requestedCount, dscCount, dscs, remindDays] = await Promise.all([
+  const [plan, docCount, documents, expected, fys, planGroups, requestedCount, dscCount, dscs, remindDays, allOptions] = await Promise.all([
     tab === "settings" ? getClientPlan(c.id) : null,
     countClientDocuments(c.id),
     tab === "documents" ? listClientDocuments(c.id) : [],
@@ -57,10 +57,10 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
     liveDscCount(c.id),
     tab === "dsc" ? clientDscs(c.id, me.officeId) : null,
     tab === "settings" ? remindDaysFor(c.id) : null,
+    tab === "all" ? filterOptionsAs(c.id) : null, // 15
   ]);
   // 15 (AC-2): the current FY by the office date; the URL's filters re-read and scoped to this client.
   const currentFyId = fys.find((f) => f.code === fyCodeOf(expected.today))?.id ?? null;
-  const allOptions = tab === "all" ? await filterOptionsAs(c.id) : null;
   const requested = tab === "requested" ? await requestedAs(c.id, expected.today) : null;
   // 06 AC-12: each expected row's reminder history; the Expected tab also lists the client's reminders.
   const [history, reminderList] = await Promise.all([
