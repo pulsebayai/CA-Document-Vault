@@ -1,5 +1,5 @@
 # Intent: Client › All documents, with per-document activity (and the K4 fix)
-Author: Sidambara (drafted with Claude) · Status: draft · Date: 2026-11-01
+Author: Sidambara (drafted with Claude) · Status: **approved** (Sidambara, 2026-11-01) · Date: 2026-11-01
 Roadmap item: 15-client-all-documents · Release: **R1** (Kushal Associates, Q7) · Moves product metric: 5 (adoption) and principle 1 (staff-first speed); unblocks rollout to all clients (**K4**)
 Source: Kushal review 2026-10-29 → `sdlc/feedback/2026-10-29-kushal-review-plan.md` **A11b** (+ Q6, A13), 09's known issue **K4** (`sdlc/releases/R1/evidence/volume-dev.md`).
 
