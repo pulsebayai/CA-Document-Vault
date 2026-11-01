@@ -51,7 +51,7 @@ Screens: no mockup screen (new tab). Client page tabs (mockups 10–11), `/docum
 
 ## Non-functional requirements
 - **Performance:** AC-8 – AC-10.
-- **Security / privacy:** every read is SECURITY INVOKER under the viewer's RLS (`activity_select`, `document_select`); no new definer function; activity stays IDs and field names; nothing new in URLs but the FY, filters and page (already allowed).
+- **Security / privacy:** every read is SECURITY INVOKER under the viewer's RLS (`activity_select`, `document_select`); no new definer function except one IDs-only lookup helper whose result is read back under RLS (`private.doc_activity_ids`, plan D-5, approved by Sidambara 2026-11-01); activity stays IDs and field names; nothing new in URLs but the FY, filters and page (already allowed).
 - **Accessibility:** WCAG 2.1 AA; the expand toggle and its region labelled by the DOC-ID; axe on the tab, an expanded row and 390 px (the table scrolls inside its wrapper).
 
 ## Data model changes (schema lock)
