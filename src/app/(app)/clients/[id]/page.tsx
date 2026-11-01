@@ -21,6 +21,9 @@ import { RequestedView } from "./requested-view";
 import { clientDscs, liveDscCount, remindDaysFor } from "@/lib/dsc/queries";
 import { DscView } from "./dsc-view";
 import { DscRemindCard } from "./dsc-remind-card";
+import { filterOptionsAs } from "@/lib/search/queries";
+import { parseScopeParams, scopeFilters } from "@/lib/search/scope";
+import { AllDocumentsView } from "./all-documents-view";
 
 /**
  * Client page (mockups 10–11; 02 AC-18, 03 AC-10, 04 AC-13/14): header and tabs Documents (default, 04 AC-14) ·
@@ -40,9 +43,10 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   // 04 AC-13: Expected, with the open count (Due + Overdue, every FY) on the tab, whichever tab is shown.
   // 10 AC-16: Requested (ad-hoc items + the client's upload links), with the open count on the tab.
   // 14 AC-1: DSC, with the live count on the tab.
+  // 15 AC-1: All documents (?tab=all), the /documents table for this client, with the same document count.
   const tab = sp.tab === "settings" ? "settings" : sp.tab === "expected" ? "expected" : sp.tab === "requested" ? "requested"
-    : sp.tab === "dsc" ? "dsc" : "documents";
-  const [plan, docCount, documents, expected, fys, planGroups, requestedCount, dscCount, dscs, remindDays] = await Promise.all([
+    : sp.tab === "dsc" ? "dsc" : sp.tab === "all" ? "all" : "documents";
+  const [plan, docCount, documents, expected, fys, planGroups, requestedCount, dscCount, dscs, remindDays, allOptions] = await Promise.all([
     tab === "settings" ? getClientPlan(c.id) : null,
     countClientDocuments(c.id),
     tab === "documents" ? listClientDocuments(c.id) : [],
@@ -53,7 +57,10 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
     liveDscCount(c.id),
     tab === "dsc" ? clientDscs(c.id, me.officeId) : null,
     tab === "settings" ? remindDaysFor(c.id) : null,
+    tab === "all" ? filterOptionsAs(c.id) : null, // 15
   ]);
+  // 15 (AC-2): the current FY by the office date; the URL's filters re-read and scoped to this client.
+  const currentFyId = fys.find((f) => f.code === fyCodeOf(expected.today))?.id ?? null;
   const requested = tab === "requested" ? await requestedAs(c.id, expected.today) : null;
   // 06 AC-12: each expected row's reminder history; the Expected tab also lists the client's reminders.
   const [history, reminderList] = await Promise.all([
@@ -101,14 +108,15 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       {/* 10: four (14: five) tabs don't fit 390 px — the row scrolls sideways inside itself (relative: 02's sr-only rule). */}
       <nav aria-label="Client sections" className="relative overflow-x-auto border-b border-line">
         <ul className="flex gap-1 whitespace-nowrap">
-          {([["documents", `Documents`, `/clients/${c.id}`], ["expected", "Expected", `/clients/${c.id}?tab=expected`],
+          {([["documents", `Documents`, `/clients/${c.id}`], ["all", "All documents", `/clients/${c.id}?tab=all`],
+            ["expected", "Expected", `/clients/${c.id}?tab=expected`],
             ["requested", "Requested", `/clients/${c.id}?tab=requested`],
             ["dsc", "DSC", `/clients/${c.id}?tab=dsc`],
             ["settings", "Settings", `/clients/${c.id}?tab=settings`]] as const).map(([key, label, href]) => (
             <li key={key}>
               <Link href={href} aria-current={tab === key ? "page" : undefined}
                 className={`-mb-px inline-block border-b-2 px-3 py-2 text-[14px] ${tab === key ? "border-ink font-medium" : "border-transparent text-ink-2 hover:text-ink"}`}>
-                {label}{key === "documents" && <span className="ml-1 text-ink-3">{docCount}</span>}
+                {label}{(key === "documents" || key === "all") && <span className="ml-1 text-ink-3">{docCount}</span>}
                 {key === "expected" && <span className="ml-1 text-ink-3">{expected.open}</span>}
                 {key === "requested" && <span className="ml-1 text-ink-3">{requestedCount}</span>}
                 {key === "dsc" && dscCount !== null && <span className="ml-1 text-ink-3">{dscCount}</span>}
@@ -125,11 +133,16 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             expected={expected.items} planGroups={planGroups} fys={fys} canUpload={!c.archived} today={expected.today} clientName={c.name}
             reminders={reminders} />
         </div>
+      ) : tab === "all" ? (
+        <div>
+          <h2 className="sr-only">All documents</h2>
+          <AllDocumentsView clientId={c.id} filters={scopeFilters(c.id, parseScopeParams(sp), currentFyId)} options={allOptions!} currentFyId={currentFyId} />
+        </div>
       ) : tab === "expected" ? (
         <div>
           <h2 className="sr-only">Expected documents</h2>
           <ExpectedView clientId={c.id} items={expected.items} fys={fys}
-            currentFyId={fys.find((f) => f.code === fyCodeOf(expected.today))?.id ?? null}
+            currentFyId={currentFyId}
             perms={{ canAct: !c.archived, canWaive: me.role !== "limited" && !c.archived, canUndo: canManage }}
             reminders={reminders} />
           <div className="mt-5"><RemindersList entries={reminderList} today={expected.today} /></div>

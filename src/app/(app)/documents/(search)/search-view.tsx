@@ -11,6 +11,8 @@ import { RowCheckbox, SelectAll, SelectionBar, useSelection } from "@/components
 import type { ReviewTarget } from "@/components/bulk-review-dialog";
 import { SEARCH_TEXT_EVENT, handOffSearchText } from "@/components/header-search";
 import { documentFacets, findClients, searchDocuments } from "@/lib/search/actions";
+import { scopedHref } from "@/lib/search/scope";
+import { lastActivityLine, type LastActivityRow } from "@/lib/activity-feed/last-activity";
 import type { ClientHit, DocumentHit, FacetName, FacetValue, FilterOptions, PickerClient } from "@/lib/search/queries";
 import { CHANNEL_LABELS, RECEIVED_LABEL as RECEIVED_LABEL_ALL } from "@/lib/validation/document";
 import { custodyAction, documentState, inOfficeDays, type ShownStateKind, paperBadge } from "@/lib/documents/state";
@@ -120,7 +122,25 @@ export function reviewTarget(d: DocumentHit): ReviewTarget {
 // ── View ──────────────────────────────────────────────────────────────────────────────────────────────────────
 type Answer = { key: string; total: number; rows: DocumentHit[]; facets: FacetValue[] } | { key: string; error: string };
 
-export function SearchView({ filters, options }: { filters: DocumentFilters; options: FilterOptions }) {
+/**
+ * 15 (spec U4): the same view scoped to one client (Client › All documents). The client is fixed and not offered,
+ * the URL stays on the client page, the FY defaults to the current FY (`currentFyId`; null in `filters.fy` = All
+ * years), and each row adds Last activity (one call per page) and the expandable activity row. /documents passes
+ * no scope and is unchanged.
+ */
+export type SearchScope = {
+  clientId: string;
+  currentFyId: string | null;
+  /** One call per page (the caller passes the server action, so /documents imports nothing new). */
+  loadLast: (ids: string[]) => Promise<{ ok: true; rows: Array<LastActivityRow & { document_id: string }> } | { ok: false; error: string }>;
+  /** The row's expandable activity (AC-7). */
+  rowExtra: (d: DocumentHit) => ReactNode;
+};
+
+/** 15: chips the scope hides (the client is the page's; the FY has its own select). */
+const SCOPE_HIDDEN: ReadonlyArray<keyof DocumentFilters> = ["client", "fy"];
+
+export function SearchView({ filters, options, scope }: { filters: DocumentFilters; options: FilterOptions; scope?: SearchScope }) {
   const router = useRouter();
   const text = useSyncExternalStore(subscribe, readText, () => "");
   const query = normaliseSearchText(text);
@@ -153,8 +173,8 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
   const loading = answer?.key !== key;
   const ok = answer && "rows" in answer ? answer : null;
   const facets = useMemo(() => ok?.facets ?? [], [ok]);
-  const chips = useMemo(() => activeChips(filters, options, facets), [filters, options, facets]);
-  const filtered = isFiltered(filters);
+  const chips = useMemo(() => activeChips(filters, options, facets).filter((c) => !scope || !SCOPE_HIDDEN.includes(c.key)), [filters, options, facets, scope]);
+  const filtered = scope ? isFiltered({ ...filters, client: null, fy: null }) : isFiltered(filters);
   const pages = ok ? Math.max(1, Math.ceil(ok.total / PAGE_SIZE)) : 1;
   // 08 AC-1: selection is per page — a new filter, page or search text starts empty (D2).
   const selection = useSelection(key);
@@ -162,8 +182,28 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
   const selectedItems = pageRows.filter((d) => selection.ids.has(d.id)).map(reviewTarget);
 
   const go = (next: DocumentFilters) => {
+    if (scope) { router.push(scopedHref(scope.clientId, next, { allYears: next.fy === null }), { scroll: false }); return; } // 15
     const q = filtersToQuery(next);
     router.push(q ? `/documents?${q}` : "/documents", { scroll: false });
+  };
+  /** Clear all / Clear filters: back to no filters (15: this client's current FY). */
+  const cleared = (): DocumentFilters => ({ ...DEFAULT_FILTERS, sort: filters.sort, ...(scope ? { client: scope.clientId, fy: scope.currentFyId } : {}) });
+
+  // 15 (AC-5, AC-6): Last activity for the page's rows, one call per page; a failure leaves every row at "—".
+  const [last, setLast] = useState<{ key: string; rows: Map<string, LastActivityRow> } | null>(null);
+  const pageKey = ok ? `${answer!.key}\n${ok.rows.map((d) => d.id).join(",")}` : null;
+  useEffect(() => {
+    if (!scope || !ok || !pageKey) return;
+    let live = true;
+    scope.loadLast(ok.rows.map((d) => d.id)).catch(() => null).then((r) => {
+      if (live) setLast({ key: pageKey, rows: new Map(r && r.ok ? r.rows.map((x) => [x.document_id, x]) : []) });
+    });
+    return () => { live = false; };
+  }, [scope, ok, pageKey]);
+  const lastFor = (id: string): string | undefined => {
+    if (!scope) return undefined;
+    if (last?.key !== pageKey) return "…";
+    return lastActivityLine(last.rows.get(id) ?? null);
   };
   const set = (patch: Partial<DocumentFilters>) => go({ ...filters, page: 1, ...patch });
   const setReturn = (v: string | null) => {
@@ -200,7 +240,11 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
 
   return (
     <div className="mx-auto max-w-[1100px]">
-      <PageHeader title="Documents" subtitle={ok ? `${ok.total} ${ok.total === 1 ? "document" : "documents"}` : "Searching…"} />
+      {scope ? (
+        <p className="mb-3 text-[13.5px] text-ink-2">{ok ? `${ok.total} ${ok.total === 1 ? "document" : "documents"}` : "Searching…"}</p>
+      ) : (
+        <PageHeader title="Documents" subtitle={ok ? `${ok.total} ${ok.total === 1 ? "document" : "documents"}` : "Searching…"} />
+      )}
 
       <form role="search" aria-label="Search and filter documents" className="mb-3" onSubmit={(e) => { e.preventDefault(); setNonce((n) => n + 1); }}>
         <div className="flex flex-wrap items-center gap-2">
@@ -220,7 +264,7 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
         </div>
 
         <div id="document-filters" className={`${showFilters ? "flex" : "hidden"} mt-3 flex-wrap items-center gap-2 sm:flex`}>
-          <ClientPicker selected={options.client} includeArchived={filters.archived} onPick={(c) => set({ client: c, registration: null })} />
+          {!scope && <ClientPicker selected={options.client} includeArchived={filters.archived} onPick={(c) => set({ client: c, registration: null })} />}
           {filters.client && options.registrations.length > 0 && (
             <Select label="GSTIN/TAN" value={filters.registration} onChange={(v) => set({ registration: v })}
               options={options.registrations.map((r) => ({ value: r.id, label: `${r.kind === "gstin" ? "GSTIN" : "TAN"} ${r.number}` }))} />
@@ -232,7 +276,7 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
               options={typesOfGroup.map((t) => ({ value: t.id, label: t.name }))} />
           )}
           <Select label="FY" value={filters.fy} onChange={(v) => set({ fy: v, period: null })}
-            options={options.fys.map((y) => ({ value: y.id, label: y.code }))} />
+            options={options.fys.map((y) => ({ value: y.id, label: y.code }))} allLabel={scope ? "FY: All years" : undefined} />
           {filters.fy && (
             <Select label="Period" value={filters.period} onChange={(v) => set({ period: v })}
               options={periodsOfFy.map((p) => ({ value: p.id, label: p.label }))} />
@@ -280,7 +324,7 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
                 </button>
               </li>
             ))}
-            <li><Button type="button" size="sm" variant="secondary" onClick={() => go({ ...DEFAULT_FILTERS, sort: filters.sort })}>Clear all</Button></li>
+            <li><Button type="button" size="sm" variant="secondary" onClick={() => go(cleared())}>Clear all</Button></li>
           </ul>
         )}
         <p role="status" aria-live="polite" className="sr-only">
@@ -297,11 +341,17 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
         <LoadingState label="Loading documents">
           <Block className="h-64 rounded-xl shadow-card" />
         </LoadingState>
+      ) : ok.total === 0 && scope && !filtered && !query ? (
+        <Card className="px-6 py-10 text-center">
+          {/* 15 (AC-4): nothing for this client in the chosen FY. */}
+          <p className="font-medium">{filters.fy ? `No documents for ${options.fys.find((y) => y.id === filters.fy)?.code ?? "this year"} yet.` : "No documents for this client yet."}</p>
+          {filters.fy && <div className="mt-4 flex justify-center"><Button variant="secondary" onClick={() => go({ ...filters, fy: null, period: null, page: 1 })}>Show all years</Button></div>}
+        </Card>
       ) : ok.total === 0 ? (
         <Card className="px-6 py-10 text-center">
           <p className="font-medium">No documents match.</p>
           <div className="mt-4 flex justify-center gap-2">
-            {filtered && <Button variant="secondary" onClick={() => go({ ...DEFAULT_FILTERS, sort: filters.sort })}>Clear filters</Button>}
+            {filtered && <Button variant="secondary" onClick={() => go(cleared())}>Clear filters</Button>}
             {query && <Button variant="secondary" onClick={() => handOffSearchText("")}>Clear search text</Button>}
           </div>
         </Card>
@@ -312,7 +362,7 @@ export function SearchView({ filters, options }: { filters: DocumentFilters; opt
               <SelectAll pageIds={pageRows.map((d) => d.id)} selected={selection.ids} onChange={(on) => selection.setAll(pageRows.map((d) => d.id), on)} />
             </div>
             <ul aria-label="Documents" className="divide-y divide-line">
-              {ok.rows.map((d) => <ResultRow key={d.id} d={d} selected={selection.ids.has(d.id)} onToggle={() => selection.toggle(d.id)} />)}
+              {ok.rows.map((d) => <ResultRow key={d.id} d={d} selected={selection.ids.has(d.id)} onToggle={() => selection.toggle(d.id)} last={lastFor(d.id)} extra={scope?.rowExtra(d)} />)}
             </ul>
           </Card>
           <SelectionBar items={selectedItems} onClear={selection.clear} />
@@ -351,7 +401,7 @@ function rowInput(d: DocumentHit) {
   };
 }
 
-function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolean; onToggle: () => void }) {
+function ResultRow({ d, selected, onToggle, last, extra }: { d: DocumentHit; selected: boolean; onToggle: () => void; last?: string; extra?: ReactNode }) {
   const { what, who, how } = rowText(d);
   const today = istDate();
   const state = rowState(d, today);
@@ -373,6 +423,8 @@ function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolea
         {state.kind !== "archived" && state.kind !== "inbox" && (
           <p className={`mt-0.5 break-words text-[13px] font-medium ${STATE_TONE[state.kind]}`}>{state.text}</p>
         )}
+        {/* 15 (AC-5): scoped view only. */}
+        {last !== undefined && <p className="mt-0.5 break-words text-[13px] text-ink-2"><span className="text-ink-3">Last activity: </span><span>{last}</span></p>}
       </div>
       {/* 12 (AC-18, AC-19): above the row's link overlay (relative z-10). */}
       {!d.archived && (
@@ -390,6 +442,7 @@ function ResultRow({ d, selected, onToggle }: { d: DocumentHit; selected: boolea
         <FormatBadge preferred={d.notPreferred} />
         <InOfficeBadge days={inOfficeDays(rowInput(d), today)} />
       </span>
+      {extra}
       {/* 13: the custody click's result; always mounted so it is announced after the refresh. */}
       <p role="status" aria-live="polite" className={`relative z-10 basis-full text-[13px] empty:hidden ${msg?.ok === false ? "text-bad" : "text-ok"}`}>{msg?.text ?? ""}</p>
     </li>
