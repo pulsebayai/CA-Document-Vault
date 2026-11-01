@@ -27,24 +27,29 @@ create index if not exists activity_doc_ids_idx on public.activity using gin ((d
 -- out at 200k, plan step 3). The callers below then read those IDs back under the viewer's RLS (`id = any(…)`, the
 -- primary key), so what a viewer sees is still decided by activity_select alone; an ID alone reveals nothing.
 create or replace function private.doc_activity_ids(p_doc uuid)
-returns bigint[] language sql stable security definer set search_path = '' as $$
-  select coalesce(array_agg(x.id), '{}') from (
-    select r.id from public.activity r
+returns bigint[] language plpgsql stable security definer set search_path = '' as $$
+-- plpgsql, not sql: Postgres 17 re-plans a non-inlined SQL function on every call (≈ 15 ms × 20 documents per page);
+-- plpgsql caches the plan per session. Newest first, (created_at, id) desc: document_last_activity walks this order.
+declare
+  v_office uuid := private.current_office_id();
+begin
+  return (select coalesce(array_agg(x.id order by x.created_at desc, x.id desc), '{}') from (
+    select r.id, r.created_at from public.activity r
      where r.entity_id = p_doc::text and r.entity_type = 'document'
-       and r.office_id = (select private.current_office_id())
+       and r.office_id = v_office
     union all
-    select r.id from public.activity r
+    select r.id, r.created_at from public.activity r
      where r.data ? 'document_id' and r.data->>'document_id' = p_doc::text
        and not (r.entity_type = 'document' and r.entity_id = p_doc::text)
-       and r.office_id = (select private.current_office_id())
+       and r.office_id = v_office
     union all
-    select r.id from public.activity r
+    select r.id, r.created_at from public.activity r
      where r.data ? 'document_ids' and (r.data->'document_ids') ? p_doc::text
        and not (r.entity_type = 'document' and r.entity_id = p_doc::text)
        and (r.data->>'document_id') is distinct from p_doc::text
-       and r.office_id = (select private.current_office_id())
-  ) x
-$$;
+       and r.office_id = v_office
+  ) x);
+end $$;
 revoke all on function private.doc_activity_ids(uuid) from public;
 grant execute on function private.doc_activity_ids(uuid) to authenticated;
 
@@ -191,7 +196,7 @@ revoke all on function public.activity_feed(jsonb) from public, anon;
 grant execute on function public.activity_feed(jsonb) to authenticated;
 
 -- 15 (U2, AC-5, AC-9): the latest event the viewer may see, per document, for a page of ≤ 50 documents. The same
--- lookups as activity_feed (private.doc_activity_ids), LIMIT 1 each document; RLS (activity_select) decides what the viewer sees, so the
+-- lookups as activity_feed (private.doc_activity_ids), walked newest first until one is visible; RLS (activity_select) decides what the viewer sees, so the
 -- row is exactly the first one activity_feed shows for that document. Documents with no visible event are absent.
 -- The type name is the document's own (it is the row's subject on the All documents tab), read under RLS: for a
 -- document the viewer can't see but whose event they can (08: e.g. their own action), the row comes back with null
@@ -200,6 +205,10 @@ create or replace function public.document_last_activity(p_ids uuid[])
 returns jsonb language plpgsql stable security invoker set search_path = '' as $$
 declare
   v_office uuid := private.current_office_id();
+  v_doc    uuid;
+  v_id     bigint;
+  v_docs   uuid[] := '{}';
+  v_acts   bigint[] := '{}';
   v_out    jsonb;
 begin
   if v_office is null then
@@ -208,22 +217,26 @@ begin
   if coalesce(cardinality(p_ids), 0) > 50 then
     raise exception 'TOO_MANY: up to 50 documents at a time' using errcode = '22023';
   end if;
+  -- Per document: walk its rows newest first and stop at the first the viewer may see (RLS on each read), so a
+  -- Limited user pays one visibility check per document, not one per row (K4 under load, step 9).
+  for v_doc in select distinct x from unnest(coalesce(p_ids, '{}')) x loop
+    for v_id in select u.id from unnest(private.doc_activity_ids(v_doc)) with ordinality u(id, n) order by u.n loop
+      if exists (select 1 from public.activity a where a.id = v_id and a.office_id = v_office and a.action <> 'auth.signed_in') then
+        v_docs := v_docs || v_doc;
+        v_acts := v_acts || v_id;
+        exit;
+      end if;
+    end loop;
+  end loop;
   select coalesce(jsonb_agg(jsonb_build_object(
-           'document_id', d.id, 'id', l.id, 'at', l.created_at, 'action', l.action, 'entity_type', l.entity_type,
-           'entity_id', l.entity_id, 'data', l.data, 'actor_id', l.actor_id, 'actor_name', st.full_name,
+           'document_id', u.doc, 'id', a.id, 'at', a.created_at, 'action', a.action, 'entity_type', a.entity_type,
+           'entity_id', a.entity_id, 'data', a.data, 'actor_id', a.actor_id, 'actor_name', st.full_name,
            'doc_type_name', t.name, 'doc_group_name', g.name)), '[]'::jsonb)
     into v_out
-    from (select distinct x as id from unnest(coalesce(p_ids, '{}')) x) d
-    cross join lateral (
-      select a.id, a.created_at, a.action, a.entity_type, a.entity_id, a.data, a.actor_id
-        from public.activity a
-       where a.id = any(private.doc_activity_ids(d.id))
-         and a.office_id = v_office and a.action <> 'auth.signed_in'
-       order by a.created_at desc, a.id desc
-       limit 1
-    ) l
-    left join public.staff_user st on st.id = l.actor_id
-    left join public.document doc on doc.id = d.id
+    from unnest(v_docs, v_acts) u(doc, aid)
+    join public.activity a on a.id = u.aid
+    left join public.staff_user st on st.id = a.actor_id
+    left join public.document doc on doc.id = u.doc
     left join public.doc_type t on t.id = doc.doc_type_id
     left join public.doc_group g on g.id = t.doc_group_id;
   return v_out;
