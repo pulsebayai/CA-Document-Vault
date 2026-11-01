@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@/lib/supabase/server";
 import type { ActivityFilters, FeedCursor } from "./filters";
 import { feedArgs } from "./filters";
+import type { LastActivityRow } from "./last-activity";
 
 // Feature 08 — reads for the Activity screen and the document page's Activity card. Everything runs as the
 // signed-in user: activity_feed is SECURITY INVOKER and activity_select decides which rows (AC-11).
@@ -45,4 +46,24 @@ export async function feedOptions(f: ActivityFilters): Promise<FeedOptions> {
     client: client.data ? { id: client.data.id as string, name: client.data.name as string, code: client.data.code as string } : null,
     document: doc.data ? { id: doc.data.id as string, code: doc.data.doc_code as string } : null,
   };
+}
+
+// ── Feature 15: the All documents tab ────────────────────────────────────────────────────────────────────────────
+/** One Last activity row per document the viewer can see an event for (document_last_activity, invoker, ≤ 50 IDs). */
+export type LastActivity = LastActivityRow & { document_id: string };
+
+export async function lastActivityAs(ids: string[]): Promise<LastActivity[]> {
+  if (ids.length === 0) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("document_last_activity", { p_ids: ids });
+  if (error || !data) {
+    console.error("activity.last_failed", { code: error?.code ?? "unknown", requestId: randomUUID() });
+    throw new Error("LAST_ACTIVITY_FAILED");
+  }
+  return data as LastActivity[];
+}
+
+/** An expanded row's events: the document's newest `limit` events (activity_feed's document filter, AC-7). */
+export async function documentEventsAs(documentId: string, limit: number): Promise<FeedResult> {
+  return loadFeed({ staff: null, client: null, document: documentId, action: null, from: null, to: null }, null, limit);
 }
