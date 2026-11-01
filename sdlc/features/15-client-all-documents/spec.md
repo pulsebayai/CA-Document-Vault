@@ -1,5 +1,5 @@
 # Spec: Client › All documents, with per-document activity (and the K4 fix)
-Intent: ./intent.md (approved 2026-11-01, Q1–Q4) · Status: draft · Date: 2026-11-01
+Intent: ./intent.md (approved 2026-11-01, Q1–Q4) · Status: **approved (Sidambara, 2026-11-01; U1–U6 as recommended)** · Date: 2026-11-01
 Screens: no mockup screen (new tab). Client page tabs (mockups 10–11), `/documents` table (03b, agreed deviation in `ui-reference.md`), Activity rows (mockup 04); `ui-reference.md` tokens.
 
 ## Measured before this spec (dev, 2026-11-01, `explain analyze`, the 09 volume office: 201,624 activity rows)
