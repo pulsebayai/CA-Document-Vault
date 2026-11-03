@@ -1,5 +1,5 @@
 # Spec: Multi-tenant foundation
-Intent: ./intent.md · Status: draft · Date: 2026-11-03
+Intent: ./intent.md · Status: **approved** (Sidambara, 2026-11-03: S1–S6 as proposed) · Date: 2026-11-03
 
 ## Summary of design decisions (proposed; marked S-n for the gate)
 - **S1 — Sender name = the firm's name.** No separate sender column: the From display name is `office.name`, edited on Settings › Office. One platform From address (`MAIL_FROM_EMAIL`); Reply-To stays the staff member (intent Q2). `MAIL_FROM_NAME` becomes the fallback for mail with no office (none today).
