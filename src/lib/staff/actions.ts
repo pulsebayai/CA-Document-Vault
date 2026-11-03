@@ -31,7 +31,9 @@ export async function inviteStaff(_prev: ActionResult | null, form: FormData): P
 
   const admin = createAdminClient();
   const { data: existing } = await admin.from("staff_user").select("id").eq("email", email).maybeSingle();
-  if (existing) return { ok: false, error: "This person already has an account." };
+  // 17 (AC-12): one email = one firm. The refusal names no firm and doesn't say an account exists, so an Admin of one
+  // firm learns nothing about another (the failure itself is the unavoidable residue, accepted in the spec).
+  if (existing) return { ok: false, error: "This email can't be invited. Use a different address." };
 
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
@@ -40,7 +42,7 @@ export async function inviteStaff(_prev: ActionResult | null, form: FormData): P
   // Reserved ".test" addresses (CI) get the account created without an email, to protect the send quota.
   const { data: invited, error } = email.endsWith(".test")
     ? await admin.auth.admin.createUser({ email, email_confirm: true })
-    : await admin.auth.admin.inviteUserByEmail(email, { redirectTo: `${origin}/auth/callback` });
+    : await admin.auth.admin.inviteUserByEmail(email, { redirectTo: `${origin}/auth/callback`, data: { firm: me.officeName } }); // 17 (AC-13): {{ .Data.firm }}
   if (error || !invited.user) {
     console.error("staff.invite_failed", { code: error?.code, status: error?.status });
     return { ok: false, error: "Could not send the invite. Please try again." };
