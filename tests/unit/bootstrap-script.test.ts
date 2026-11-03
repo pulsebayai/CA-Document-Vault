@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { describePlan, parseArgs, readMode, runBootstrap } from "../../scripts/bootstrap-core.mjs";
+import { describePlan, parseArgs, readMode, runBootstrap, staffLessNamesakes } from "../../scripts/bootstrap-core.mjs";
 
 // Feature 17 (spec AC-14–18): the operator's bootstrap script — argument checks and refusals, and the order of writes.
 
@@ -49,6 +49,14 @@ describe("parseArgs", () => {
     expect(parseArgs(fixture, ENV).error).toMatch(/--test never runs against production/);
   });
 
+  it("--office takes an office ID only (review I-5: reuse is by ID, never by name)", () => {
+    const id = "0b8c5f8e-1d2a-4c3b-9e4f-5a6b7c8d9e0f";
+    expect(parseArgs([...ARGS, "--office", id.toUpperCase()], ENV).opts?.officeId).toBe(id);
+    expect(parseArgs([...ARGS, "--office", "Kushal Associates"], ENV).error).toMatch(/--office must be an office ID/);
+    expect(describePlan(parseArgs([...ARGS, "--office", id], ENV).opts).join("\n")).toMatch(new RegExp(`existing office ${id}`));
+    expect(describePlan(parseArgs(ARGS, ENV).opts).join("\n")).toMatch(/— a new firm/);
+  });
+
   it("readMode mirrors src/lib/tenancy.ts", () => {
     expect([readMode(undefined), readMode(" "), readMode("Multi"), readMode("single")]).toEqual(["multi", "multi", "multi", "single"]);
     expect(() => readMode("both")).toThrow();
@@ -58,7 +66,7 @@ describe("parseArgs", () => {
     const lines = describePlan(parseArgs(["--env", "prod", ...ARGS.slice(2), "--yes-production"], { ...ENV, TENANCY_MODE: "single" }).opts).join("\n");
     expect(lines).toMatch(/Environment: prod · project: abcdefghijklmnop \(PRODUCTION\) · mode: single/);
     expect(lines).toMatch(/Kushal Associates · Pondicherry/);
-    expect(lines).toMatch(/staff-less office renamed/);
+    expect(lines).toMatch(/one staff-less office, renamed/);
     expect(lines).not.toMatch(/admin@firm\.in/i);
   });
 });
@@ -119,6 +127,20 @@ describe("runBootstrap", () => {
   it("a failed activity row is reported, not swallowed (AC-14)", async () => {
     const f = fakeDb({ activityError: { code: "P0001" } });
     await expect(runBootstrap(f.db, opts)).rejects.toThrow(/staff\.invited activity row failed \(P0001\)/);
+  });
+
+  it("passes the office ID when given", async () => {
+    const f = fakeDb();
+    const id = "0b8c5f8e-1d2a-4c3b-9e4f-5a6b7c8d9e0f";
+    await runBootstrap(f.db, parseArgs([...ARGS, "--office", id, "--yes"], ENV).opts);
+    expect(f.rpc).toHaveBeenCalledWith("bootstrap_office", { p: { name: "Kushal Associates", branch: "Pondicherry", mode: "multi", test: false, office_id: id } });
+  });
+
+  it("the dry run lists only staff-less namesakes", async () => {
+    const db = { from: () => ({ select: () => ({ eq: () => ({ eq: async () => ({ data: [
+      { id: "a", branch: "Chennai", staff_user: [] }, { id: "b", branch: null, staff_user: [{ id: "s" }] },
+    ] }) }) }) }) };
+    expect(await staffLessNamesakes(db, parseArgs(ARGS, ENV).opts)).toEqual([{ id: "a", branch: "Chennai" }]);
   });
 
   it("--test creates the account without an email and marks it active", async () => {

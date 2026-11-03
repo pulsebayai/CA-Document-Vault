@@ -44,8 +44,9 @@ create policy office_update_admin on public.office for update to authenticated
   with check (id = (select private.current_office_id()) and (select private.has_role('{admin}'::public.staff_role[])));
 
 -- 4. Bootstrap a firm (AC-14–18) -------------------------------------------------------------------------------
--- p = {name, branch?, mode, test?}. mode = the TENANCY_MODE the operator's script ran with.
---   reuse  : an office with exactly this name and no staff (a re-run after a failed invite; Kushal's seeded row)
+-- p = {name, branch?, mode, test?, office_id?}. mode = the TENANCY_MODE the operator's script ran with.
+--   reuse  : only the office the operator names by ID (office_id), if it has no staff — a re-run after a failed
+--            invite, or Kushal's seeded row. Never by name: CA firm names repeat (review I-5, Sidambara 2026-11-03).
 --   claim  : single mode only — the one real office, with no staff, gets this name (the 2026-09-25 seed row)
 --   create : otherwise; the guard refuses a second real office in single mode
 -- Refused: a firm that already has staff (ALREADY_SET_UP); a mode different from the deployment's (DEPLOYMENT_MODE).
@@ -58,6 +59,7 @@ declare
   v_branch text := nullif(btrim(coalesce(p->>'branch', '')), '');
   v_mode   text := lower(btrim(coalesce(p->>'mode', '')));
   v_test   boolean := coalesce((p->>'test')::boolean, false);
+  v_id     uuid := nullif(p->>'office_id', '')::uuid;
   v_dep    text;
   v_office uuid;
   v_result text;
@@ -77,14 +79,13 @@ begin
     end if;
   end if;
 
-  select o.id into v_office from public.office o
-   where o.is_test = v_test and o.name = v_name
-   order by o.created_at limit 1 for update;
-  if v_office is not null then
+  if v_id is not null then
+    select o.id into v_office from public.office o where o.id = v_id and o.is_test = v_test for update;
+    if v_office is null then raise exception 'OFFICE_NOT_FOUND' using errcode = '22023'; end if;
     if exists (select 1 from public.staff_user s where s.office_id = v_office) then
       raise exception 'ALREADY_SET_UP: this firm already has staff' using errcode = '23505';
     end if;
-    if v_branch is not null then update public.office set branch = v_branch where id = v_office; end if;
+    update public.office set name = v_name, branch = v_branch where id = v_office;
     v_result := 'reused';
   elsif v_mode = 'single' and not v_test then
     select count(*) into v_real from public.office o where not o.is_test;
@@ -171,6 +172,9 @@ begin
     v_b := public.bootstrap_office(jsonb_build_object('name', 'Probe New Firm', 'mode', 'multi'));
     r := r || jsonb_build_object('multi_bootstrap', v_b->>'result',
       'multi_other_firm_kept', (select name from public.office where id = v_one));
+    -- never by name (review I-5): the same name again, without an office ID, is a second firm
+    r := r || jsonb_build_object('multi_same_name_new_office',
+      (public.bootstrap_office(jsonb_build_object('name', 'Probe New Firm', 'mode', 'multi'))->>'office_id') <> (v_b->>'office_id'));
     insert into public.office (name) values ('probe firm two');
     r := r || jsonb_build_object('multi_second_real', 'allowed');
     raise exception 'PROBE_ROLLBACK';

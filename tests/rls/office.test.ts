@@ -108,11 +108,12 @@ describe("Single-office guard (AC-19, AC-20) and single-mode bootstrap (AC-16, A
     expect(data.mode_mismatch).toMatch(/^DEPLOYMENT_MODE: this deployment is single/);
   });
 
-  it("multi: the bootstrap creates a new firm next to a staff-less one and never renames it; no guard in multi or unset", async (ctx) => {
+  it("multi: the bootstrap creates a new firm next to a staff-less one, never renames it, never reuses by name; no guard in multi or unset", async (ctx) => {
     const r = await probe();
     if (r.skip) ctx.skip();
     expect(r.data).toMatchObject({
       multi_bootstrap: "created", multi_other_firm_kept: "probe firm one", multi_second_real: "allowed",
+      multi_same_name_new_office: true, // never reuse by name (review I-5)
       unset_second_real: "allowed",
     });
   });

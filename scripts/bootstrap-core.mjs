@@ -4,10 +4,13 @@
 // The CLI wrapper is scripts/bootstrap-firm.mjs.
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-export const USAGE = `Usage: node scripts/bootstrap-firm.mjs --env dev|staging|prod --name "<firm>" [--branch "<branch>"] --admin-email <email> --admin-name "<name>" [--yes] [--yes-production] [--test]
+export const USAGE = `Usage: node scripts/bootstrap-firm.mjs --env dev|staging|prod --name "<firm>" [--branch "<branch>"] --admin-email <email> --admin-name "<name>" [--office <id>] [--yes] [--yes-production] [--test]
   Reads NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SECRET_KEY, TENANCY_MODE (unset = multi), APP_PUBLIC_URL and APP_ENV.
   --env names the environment you mean; prod also needs --yes-production (APP_ENV=production counts as prod too).
+  A new firm is created unless --office <id> names an existing staff-less office to set up (a re-run after a failed
+  invite, or the seeded row on staging/prod); the dry run lists staff-less firms with this name and their IDs.
   Without --yes it only prints what it would do. --test works on a test office and a .test address (no email sent;
   never on prod).`;
 
@@ -23,6 +26,7 @@ export function readMode(raw) {
 
 /** argv (without node and the script) + env → { opts } or { error }. Nothing is written. */
 export function parseArgs(argv, env) {
+  /** @type {{ env?: string, name?: string, branch?: string, adminEmail?: string, adminName?: string, officeId?: string, test: boolean, yes: boolean, yesProduction: boolean }} */
   const o = { test: false, yes: false, yesProduction: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -37,6 +41,7 @@ export function parseArgs(argv, env) {
       else if (a === "--branch") o.branch = value().trim();
       else if (a === "--admin-email") o.adminEmail = value().trim().toLowerCase();
       else if (a === "--admin-name") o.adminName = value().trim();
+      else if (a === "--office") o.officeId = value().trim().toLowerCase();
       else if (a === "--test") o.test = true;
       else if (a === "--yes") o.yes = true;
       else if (a === "--yes-production") o.yesProduction = true;
@@ -47,6 +52,7 @@ export function parseArgs(argv, env) {
   if (!o.name || o.name.length > 120) return { error: "--name is required (1–120 characters)" };
   if (o.branch !== undefined && (o.branch === "" || o.branch.length > 120)) return { error: "--branch must be 1–120 characters" };
   if (!o.adminEmail || !EMAIL.test(o.adminEmail)) return { error: "--admin-email must be a valid email address" };
+  if (o.officeId !== undefined && !UUID.test(o.officeId)) return { error: "--office must be an office ID (uuid)" };
   if (!o.adminName || o.adminName.length > 120) return { error: "--admin-name is required (1–120 characters)" };
   const dotTest = o.adminEmail.endsWith(".test");
   if (dotTest && !o.test) return { error: "A .test address is a test fixture: add --test" };
@@ -72,9 +78,15 @@ export function projectRef(url) {
 export function describePlan(o) {
   return [
     `Environment: ${o.env} · project: ${o.projectRef}${o.production ? " (PRODUCTION)" : ""} · mode: ${o.mode}${o.test ? " · TEST office" : ""}`,
-    `Firm: ${o.name}${o.branch ? ` · ${o.branch}` : ""} — created, or reused if it exists with no staff${o.mode === "single" && !o.test ? ", or the deployment's one staff-less office renamed" : ""}`,
+    `Firm: ${o.name}${o.branch ? ` · ${o.branch}` : ""} — ${o.officeId ? `set up in existing office ${o.officeId} (must have no staff; its name and branch are replaced)` : `a new firm${o.mode === "single" && !o.test ? " (or the deployment's one staff-less office, renamed)" : ""}`}`,
     `First Admin: ${o.adminName} — ${o.test ? "account created, no email (.test)" : "invited by email"}`,
   ];
+}
+
+/** Staff-less offices with exactly this name (dry run only), so the operator can pass --office instead of creating. */
+export async function staffLessNamesakes(db, o) {
+  const { data } = await db.from("office").select("id, branch, staff_user(id)").eq("name", o.name).eq("is_test", o.test);
+  return (data ?? []).filter((r) => (r.staff_user ?? []).length === 0).map((r) => ({ id: r.id, branch: r.branch }));
 }
 
 /**
@@ -88,7 +100,7 @@ export async function runBootstrap(db, o) {
   if (taken) throw new Error("This email can't be invited (one email = one firm). Use a different address. Nothing written.");
 
   const { data: boot, error: e1 } = await db.rpc("bootstrap_office", {
-    p: { name: o.name, ...(o.branch ? { branch: o.branch } : {}), mode: o.mode, test: o.test },
+    p: { name: o.name, ...(o.branch ? { branch: o.branch } : {}), mode: o.mode, test: o.test, ...(o.officeId ? { office_id: o.officeId } : {}) },
   });
   if (e1) throw new Error(`Firm not set up: ${String(e1.message).split(":")[0]}`);
   const officeId = boot.office_id;
