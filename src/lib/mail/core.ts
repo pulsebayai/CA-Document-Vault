@@ -72,9 +72,11 @@ export function recipientAllowed(to: string, cfg: Pick<MailConfig, "production" 
 /** 17 (S1): who the message is sent for. Kept apart from MailMessage so callers' messages are unchanged. */
 export type SendOptions = { fromName?: string };
 
-/** 17 (AC-7): a firm name safe for a From header — no CR/LF, quotes or angle brackets; ≤ 70 characters. */
+/** 17 (AC-7): a firm name safe for a From header — no control/format characters, quotes or angle brackets; ≤ 70 characters. */
 export function senderName(raw: string | undefined): string | undefined {
-  const v = (raw ?? "").replace(/[\r\n"<>]/g, " ").replace(/\s+/g, " ").trim().slice(0, 70).trim();
+  // Control and format characters (CR/LF, NUL, bidi marks…) and quote/angle brackets become spaces; cut by character,
+  // not UTF-16 unit, so a 70-character cut never splits an emoji or other surrogate pair.
+  const v = Array.from((raw ?? "").replace(/[\p{Cc}\p{Cf}"<>]/gu, " ").replace(/\s+/g, " ").trim()).slice(0, 70).join("").trim();
   return v === "" ? undefined : v;
 }
 

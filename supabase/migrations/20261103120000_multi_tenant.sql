@@ -14,6 +14,8 @@ create table private.deployment (
   set_at timestamptz not null default now()
 );
 revoke all on private.deployment from public, anon, authenticated;
+-- RLS on, no policies: like test_lane, a deliberate no-office_id exception (one row per deployment, owner-only).
+alter table private.deployment enable row level security;
 
 -- 2. Single-office guard (AC-19, AC-20) -------------------------------------------------------------------------
 -- Counts only real offices: automated-test offices (is_test) are created in every mode.
@@ -23,6 +25,7 @@ begin
   if new.is_test then return new; end if;
   if tg_op = 'UPDATE' and not old.is_test then return new; end if; -- a real office stays real; only test → real counts
   if coalesce((select d.mode from private.deployment d), 'multi') <> 'single' then return new; end if;
+  perform pg_advisory_xact_lock(hashtext('office_single_guard')); -- two concurrent inserts can't both pass the check
   if exists (select 1 from public.office o where not o.is_test and o.id <> new.id) then
     raise exception 'SINGLE_OFFICE: this deployment holds one firm' using errcode = '23514';
   end if;
@@ -63,6 +66,7 @@ begin
   if length(v_name) not between 1 and 120 then raise exception 'NAME_INVALID' using errcode = '22023'; end if;
   if v_branch is not null and length(v_branch) > 120 then raise exception 'BRANCH_INVALID' using errcode = '22023'; end if;
   if v_mode not in ('multi', 'single') then raise exception 'MODE_INVALID' using errcode = '22023'; end if;
+  perform pg_advisory_xact_lock(hashtext('bootstrap_office')); -- one bootstrap at a time (no duplicate offices)
 
   if not v_test then
     select d.mode into v_dep from private.deployment d for update;
@@ -111,7 +115,8 @@ grant execute on function public.bootstrap_office(jsonb) to service_role;
 -- 5. Test probe for the guard and the single-mode bootstrap (AC-16, AC-17, AC-19, AC-20) -----------------------
 -- Runs each scenario inside a block that is rolled back, so nothing it does survives, and returns what happened.
 -- Inside the block the existing real offices are flagged as test offices, so the scenario starts from "no firm yet"
--- whatever the database holds (dev, CI's local stack). Refuses to run when a deployment mode is set (staging/prod).
+-- whatever the database holds (dev, CI's local stack). Refuses to run when a deployment mode is set (staging/prod
+-- after their bootstrap) or when the database holds no test office (prod, before or after its bootstrap).
 create or replace function public.test_tenancy_probe()
 returns jsonb language plpgsql security definer set search_path = '' as $$
 declare
@@ -122,6 +127,9 @@ declare
 begin
   if exists (select 1 from private.deployment) then
     raise exception 'NOT_TEST_DEPLOYMENT: a deployment mode is set' using errcode = '42501';
+  end if;
+  if not exists (select 1 from public.office where is_test) then
+    raise exception 'NOT_TEST_DEPLOYMENT: no test offices here' using errcode = '42501';
   end if;
 
   -- single: guard + claim + mode mismatch
@@ -154,16 +162,17 @@ begin
     if sqlerrm <> 'PROBE_ROLLBACK' then raise; end if;
   end;
 
-  -- multi: no guard, and the bootstrap never renames another firm
+  -- multi: the bootstrap never claims (with exactly one staff-less real office, single mode would rename it), and
+  -- there is no guard
   begin
     update public.office set is_test = true where not is_test;
     insert into private.deployment (mode) values ('multi');
     insert into public.office (name) values ('probe firm one') returning id into v_one;
-    insert into public.office (name) values ('probe firm two');
-    r := r || jsonb_build_object('multi_second_real', 'allowed');
     v_b := public.bootstrap_office(jsonb_build_object('name', 'Probe New Firm', 'mode', 'multi'));
     r := r || jsonb_build_object('multi_bootstrap', v_b->>'result',
       'multi_other_firm_kept', (select name from public.office where id = v_one));
+    insert into public.office (name) values ('probe firm two');
+    r := r || jsonb_build_object('multi_second_real', 'allowed');
     raise exception 'PROBE_ROLLBACK';
   exception when others then
     if sqlerrm <> 'PROBE_ROLLBACK' then raise; end if;

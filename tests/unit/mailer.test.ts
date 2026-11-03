@@ -136,4 +136,11 @@ describe("From name = the sending firm (17)", () => {
     expect(senderName("  \r\n ")).toBeUndefined();
     expect(senderName(undefined)).toBeUndefined();
   });
+
+  it("control and format characters go too, and the cut never splits a character (review nit 6)", () => {
+    expect(senderName("Firm\u0000\u0085\u202eB")).toBe("Firm B");
+    const emoji = `${"A".repeat(69)}😀tail`;
+    expect(Array.from(senderName(emoji)!)).toHaveLength(70);
+    expect(senderName(emoji)!.endsWith("😀")).toBe(true);
+  });
 });

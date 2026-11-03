@@ -42,7 +42,7 @@ export async function inviteStaff(_prev: ActionResult | null, form: FormData): P
   // Reserved ".test" addresses (CI) get the account created without an email, to protect the send quota.
   const { data: invited, error } = email.endsWith(".test")
     ? await admin.auth.admin.createUser({ email, email_confirm: true })
-    : await admin.auth.admin.inviteUserByEmail(email, { redirectTo: `${origin}/auth/callback`, data: { firm: me.officeName } }); // 17 (AC-13): {{ .Data.firm }}
+    : await admin.auth.admin.inviteUserByEmail(email, { redirectTo: `${origin}/auth/callback`, data: { firm: me.officeName } }); // 17 (AC-13): {{ .Data.firm }} in the template only — never read user_metadata for access (the user can edit it)
   if (error || !invited.user) {
     console.error("staff.invite_failed", { code: error?.code, status: error?.status });
     return { ok: false, error: "Could not send the invite. Please try again." };

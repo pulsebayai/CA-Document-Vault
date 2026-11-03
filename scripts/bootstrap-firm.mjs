@@ -1,6 +1,6 @@
 // Feature 17 — set up a firm in one environment (operator tool; spec AC-14–18). Run from a shell that has that
 // environment's values (service role), e.g. after `set -a; . ./.env.staging; set +a`:
-//   node scripts/bootstrap-firm.mjs --name "Kushal Associates" --branch "Pondicherry" \
+//   node scripts/bootstrap-firm.mjs --env staging --name "Kushal Associates" --branch "Pondicherry" \
 //     --admin-email admin@firm.in --admin-name "Admin Name"            # prints the plan
 //   …same… --yes                                                         # does it
 // Logic: scripts/bootstrap-core.mjs (unit-tested).

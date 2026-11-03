@@ -86,10 +86,21 @@ describe("Editing the firm's name and branch (AC-10, AC-11)", () => {
   });
 });
 
+// The probe refuses where a deployment mode is set (staging after its bootstrap) or no test office exists (prod), so
+// these tests skip there by design (sdlc/releases/README.md › Firms and tenancy); they run on dev and CI's local stack.
+type Probe = Record<string, string | boolean>;
+const probe = async (): Promise<{ data: Probe | null; skip: boolean; error: string | null }> => {
+  const { data, error } = await adminClient().rpc("test_tenancy_probe");
+  if (error?.message.startsWith("NOT_TEST_DEPLOYMENT")) return { data: null, skip: true, error: null };
+  return { data: data as Probe, skip: false, error: error?.message ?? null };
+};
+
 describe("Single-office guard (AC-19, AC-20) and single-mode bootstrap (AC-16, AC-17) — rolled-back probe", () => {
-  it("single: a second real office and a test → real flip are refused; test offices are allowed; the bootstrap claims the staff-less firm; a different mode is refused", async () => {
-    const { data, error } = await adminClient().rpc("test_tenancy_probe");
-    expect(error).toBeNull();
+  it("single: a second real office and a test → real flip are refused; test offices are allowed; the bootstrap claims the staff-less firm; a different mode is refused", async (ctx) => {
+    const r = await probe();
+    if (r.skip) ctx.skip();
+    expect(r.error).toBeNull();
+    const data = r.data!;
     expect(data.single_second_real).toMatch(/^SINGLE_OFFICE/);
     expect(data.single_test_office).toBe("allowed");
     expect(data.single_test_to_real).toMatch(/^SINGLE_OFFICE/);
@@ -97,19 +108,27 @@ describe("Single-office guard (AC-19, AC-20) and single-mode bootstrap (AC-16, A
     expect(data.mode_mismatch).toMatch(/^DEPLOYMENT_MODE: this deployment is single/);
   });
 
-  it("multi and unset: no guard; the bootstrap creates a new firm and never renames another", async () => {
-    const { data } = await adminClient().rpc("test_tenancy_probe");
-    expect(data).toMatchObject({
-      multi_second_real: "allowed", multi_bootstrap: "created", multi_other_firm_kept: "probe firm one",
+  it("multi: the bootstrap creates a new firm next to a staff-less one and never renames it; no guard in multi or unset", async (ctx) => {
+    const r = await probe();
+    if (r.skip) ctx.skip();
+    expect(r.data).toMatchObject({
+      multi_bootstrap: "created", multi_other_firm_kept: "probe firm one", multi_second_real: "allowed",
       unset_second_real: "allowed",
     });
   });
 
-  it("the probe left nothing behind (no deployment mode, no probe offices)", async () => {
-    const { data } = await adminClient().from("office").select("id").like("name", "probe %");
-    expect(data).toEqual([]);
-    const again = await adminClient().rpc("test_tenancy_probe"); // would refuse if a deployment row had been kept
-    expect(again.error).toBeNull();
+  it("the probe leaves nothing behind: same real offices, no probe offices, no deployment mode", async (ctx) => {
+    const admin = adminClient();
+    const real = async () => ((await admin.from("office").select("id").eq("is_test", false).order("id")).data ?? []).map((o) => o.id);
+    const before = await real();
+    const r = await probe();
+    if (r.skip) ctx.skip();
+    expect(await real()).toEqual(before); // no real office left flagged as a test office (purgeable)
+    for (const pattern of ["probe %", "e2e office probe"]) {
+      const { data } = await admin.from("office").select("id").ilike("name", pattern);
+      expect({ pattern, left: data?.length ?? 0 }).toEqual({ pattern, left: 0 });
+    }
+    expect((await probe()).error).toBeNull(); // would refuse if a deployment row had been kept
   });
 
   it("the probe is service-role only", async () => {
