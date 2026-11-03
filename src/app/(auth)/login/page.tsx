@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import { loginBrand } from "@/lib/auth/login-brand";
 import { BrandMark, Card } from "@/components/ui";
 import { LoginForm } from "./login-form";
 
@@ -6,16 +6,16 @@ export const dynamic = "force-dynamic";
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { reason } = await searchParams;
-  // Office name is not sensitive; read server-side so the page works before sign-in.
-  const { data: office } = await createAdminClient().from("office").select("name, branch").order("created_at").limit(1).maybeSingle();
+  // 17: the platform name in multi mode (no database read); the deployment's one firm in single mode.
+  const office = await loginBrand();
   return (
     <main className="grid min-h-screen place-items-center px-4">
       <div className="w-full max-w-[380px]">
         <div className="mb-6 flex items-center gap-2.5">
           <BrandMark />
           <div>
-            <p className="font-semibold leading-tight">{office?.name ?? "CA Document Vault"}</p>
-            {office?.branch && <p className="text-[13px] text-ink-3">{office.branch}</p>}
+            <p className="font-semibold leading-tight">{office.name}</p>
+            {office.branch && <p className="text-[13px] text-ink-3">{office.branch}</p>}
           </div>
         </div>
         <Card className="p-6">

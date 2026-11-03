@@ -9,7 +9,7 @@ import "server-only";
 export type TenancyMode = "multi" | "single";
 
 /** Modules allowed to call tenancyMode() (tests/unit/tenancy.test.ts). Add a module here only with a spec that says why. */
-export const TENANCY_MODE_CALLERS: readonly string[] = [];
+export const TENANCY_MODE_CALLERS: readonly string[] = ["src/lib/auth/login-brand.ts"];
 
 /** Unset or blank → multi (owner, 2026-11-03); multi/single in any case; anything else is a configuration error. */
 export function readTenancyMode(raw: string | undefined): TenancyMode {
