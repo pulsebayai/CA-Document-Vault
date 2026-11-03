@@ -1,5 +1,5 @@
 # Intent: Cross-firm security sweep (prove firm isolation everywhere)
-Author: Sidambara (drafted with Claude) · Status: **draft — awaiting approval** · Date: 2026-11-04
+Author: Sidambara (drafted with Claude) · Status: **approved** (Sidambara, 2026-11-04: as drafted, Q1–Q3 as recommended) · Date: 2026-11-04
 Roadmap item: 18-cross-firm-security-sweep · Release: **R1** (Sidambara, 2026-11-04) · Moves product metric: none directly. It guards all of them and enables more firms, because Kushal Associates distributes the vault to other CA firms.
 
 ## Problem
@@ -58,7 +58,7 @@ Roadmap item: 18-cross-firm-security-sweep · Release: **R1** (Sidambara, 2026-1
 - Penetration testing of the deployed site by an outside party (a candidate before the second *real* firm; not decided).
 - Roles inside one firm, which are already covered by 08's role matrix.
 
-## Open questions for approval
-1. **Q1 — the coverage guard's strictness.** I recommend **fail CI** when a new table or function has no cross-firm case, not just warn. It mirrors 08's matrix.
-2. **Q2 — server actions.** I recommend that functions are tested at the database (where RLS decides), plus **one e2e per screen family** that signs in as Firm A and opens Firm B's URLs (client, document, DSC, link) and expects Not Found. Covering every server action one by one would roughly double the work for little extra protection [Likely].
-3. **Q3 — if a leak is found**, fix it inside 18 (taking the schema lock), rather than recording it for later. I recommend fixing inside 18.
+## Decisions (Sidambara, 2026-11-04)
+1. **Q1 — the coverage guard's strictness: fail CI** when a new table or function has no cross-firm case, not just warn. It mirrors 08's matrix.
+2. **Q2 — server actions:** functions are tested at the database (where RLS decides), plus **one e2e per screen family** that signs in as Firm A and opens Firm B's URLs (client, document, DSC, link) and expects Not Found. Covering every server action one by one would roughly double the work for little extra protection [Likely].
+3. **Q3 — a leak found is fixed inside 18** (taking the schema lock then), not recorded for later.
