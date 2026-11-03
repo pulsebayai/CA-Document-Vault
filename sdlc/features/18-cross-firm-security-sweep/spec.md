@@ -1,5 +1,5 @@
 # Spec: Cross-firm security sweep
-Intent: ./intent.md · Status: **draft — awaiting approval** · Date: 2026-11-04
+Intent: ./intent.md · Status: **approved** (Sidambara, 2026-11-04: X1–X8 as proposed; X1 and X3 as recommended) · Date: 2026-11-04
 
 ## Inventory (dev, read 2026-11-04)
 | Object | Count | Notes |
@@ -149,6 +149,6 @@ Intent: ./intent.md · Status: **draft — awaiting approval** · Date: 2026-11-
 ## Out of scope
 As in the intent (19, export, per-firm DSC keys, external pen test, roles within one firm).
 
-## Open questions for the gate
+## Decisions at the gate (Sidambara, 2026-11-04)
 1. **X1:** take the schema and architecture locks at plan approval for the test-only inventory function (recommended), rather than parsing migration files.
 2. **X3:** Admin as the main attacker, plus Limited on the role-dependent objects (recommended). Running every case for all 4 roles would roughly add ×3 time for little gain.
