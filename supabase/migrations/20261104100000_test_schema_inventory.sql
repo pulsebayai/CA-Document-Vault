@@ -14,6 +14,13 @@ returns jsonb language sql stable security definer set search_path = '' as $$
         'policies', (select coalesce(jsonb_agg(distinct p.cmd order by p.cmd), '[]'::jsonb)
                        from pg_catalog.pg_policies p where p.schemaname = 'public' and p.tablename = c.relname),
         'anon', pg_catalog.has_table_privilege('anon', c.oid, 'select,insert,update,delete'),
+        -- columns staff (authenticated) may write, so cross-firm inserts and updates are built from writable columns only
+        'insert_cols', (select coalesce(jsonb_agg(a.attname order by a.attnum), '[]'::jsonb) from pg_catalog.pg_attribute a
+                         where a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+                           and pg_catalog.has_column_privilege('authenticated', c.oid, a.attnum, 'insert')),
+        'update_cols', (select coalesce(jsonb_agg(a.attname order by a.attnum), '[]'::jsonb) from pg_catalog.pg_attribute a
+                         where a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+                           and pg_catalog.has_column_privilege('authenticated', c.oid, a.attnum, 'update')),
         'fks', (select coalesce(jsonb_agg(jsonb_build_object(
                     'columns', (select jsonb_agg(a.attname order by k.ord)
                                   from unnest(f.conkey) with ordinality k(attnum, ord)

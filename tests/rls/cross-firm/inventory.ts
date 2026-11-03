@@ -3,7 +3,7 @@ import { adminClient } from "../../support/db";
 // Feature 18 (spec X1): the database's own object list, read with the service role.
 
 export type Inventory = {
-  tables: Array<{ name: string; rls: boolean; office_id: boolean; policies: string[]; anon: boolean; fks: Array<{ columns: string[]; references: string }> }>;
+  tables: Array<{ name: string; rls: boolean; office_id: boolean; policies: string[]; anon: boolean; insert_cols: string[]; update_cols: string[]; fks: Array<{ columns: string[]; references: string }> }>;
   views: Array<{ name: string; security_invoker: boolean; anon: boolean }>;
   functions: Array<{ schema: string; name: string; args: string; definer: boolean; trigger: boolean; anon: boolean; authenticated: boolean; service_role: boolean }>;
   realtime: string[];
