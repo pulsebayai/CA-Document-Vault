@@ -1,12 +1,12 @@
 # Product: CA Document Vault
-Owner: Raja · Mode: new · Status: approved · Updated: 2026-10-25 (client upload links added to R1, feature 10)
+Owner: Raja · Mode: new · Status: approved · Updated: 2026-11-03 (multi-firm hosting in R1, feature 17) · earlier: 2026-10-25 (client upload links added to R1, feature 10)
 Reference mockup: https://cavault.pulsebay.com (prototype v2, "Sharma & Co"). v1 builds the staff side, reminder emails to clients, and **per-request client upload links** (feature 10, added 2026-10-25). Client login stays deferred.
 
 ## Vision
 Every document a CA firm needs from its clients is tracked from "expected" to "received" to "returned", lands in the right place, and can be found in seconds.
 
 ## Target users
-- **Only users in v1:** staff of one Indian CA firm (6–20 staff, 200–1,000 clients). Accounts are created by the Admin — no self sign-up. Roles: Admin, Manager, Staff, Staff (limited).
+- **Only users in v1:** staff of Indian CA firms (6–20 staff, 200–1,000 clients each; Kushal Associates first; each firm sees only its own data). Accounts are created by the Admin — no self sign-up. Roles: Admin, Manager, Staff, Staff (limited).
 - **Recipients and uploaders, not users:** the firm's clients. They have no login. Staff remind them in one of two ways, and either can carry a **per-request upload link** (feature 10):
   - by email sent from the vault (replies go to the assigned staff member);
   - by a pre-filled WhatsApp message the staff member sends from their own WhatsApp.
@@ -34,7 +34,7 @@ Every document a CA firm needs from its clients is tracked from "expected" to "r
 
 ## Non-goals (v1)
 - Client login or client portal. Clients can't view or download anything. They upload only through per-request links (feature 10).
-- Multi-firm SaaS (tenancy, billing, self-serve onboarding).
+- Billing and self-serve firm sign-up (later). Multi-firm hosting itself is in R1 (17, 2026-11-03): one codebase runs as a shared SaaS (each firm isolated by row-level security) or as one firm per deployment (Dedicated, or Customer-owned in the firm's own cloud accounts). One email belongs to one firm.
 - Filing returns, reading GST/ITR portals, OCR/auto-classification.
 - WhatsApp Business API integration (staff add WhatsApp files manually).
 - Practice management (billing, timesheets, general task management).
