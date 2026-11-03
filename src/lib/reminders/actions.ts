@@ -90,7 +90,7 @@ export async function sendEmailReminder(clientId: string, itemIds: string[]): Pr
   const result = await sendMail({
     to: recipient, subject: built.message.subject, text: built.message.text, html: built.message.html,
     replyTo: { email: me.email, name: me.fullName },
-  }, cfg);
+  }, cfg, { fromName: me.officeName }); // 17: the firm's name as sender
 
   const finish = () => supabase.rpc("finish_email_reminder", {
     p_id: id, p_status: result.status, p_provider_id: result.providerId, p_error_code: result.errorCode,

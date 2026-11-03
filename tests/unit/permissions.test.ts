@@ -45,6 +45,8 @@ describe("permissions matrix (AC-12)", () => {
       ["Add a financial year", "Yes", "No", "No", "No"],
       ["See Activity", "All", "All", "All", "Own + assigned clients"],
       ["Manage users and roles", "Yes", "No", "No", "No"],
+      // 17 spec AC-10 (approved Sidambara 2026-11-03): one row added; no existing row changed.
+      ["Edit the firm's name and branch", "Yes", "No", "No", "No"],
     ]);
   });
 });

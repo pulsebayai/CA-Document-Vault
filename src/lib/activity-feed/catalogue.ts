@@ -121,6 +121,9 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   "staff.role_changed": fixed("users", "changed a user's role"),
   "staff.deactivated": fixed("users", "deactivated a user"),
   "staff.reactivated": fixed("users", "reactivated a user"),
+  // Firm (17): the Admin's name/branch edit; the operator's bootstrap (actor null → shown as the system)
+  "office.updated": fixed("users", "updated the firm's name or branch"),
+  "office.bootstrapped": fixed("users", "set up the firm in the vault"),
   // Sign-ins (01)
   "auth.signed_in": fixed("sign_ins", "signed in"),
 };

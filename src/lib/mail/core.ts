@@ -69,6 +69,23 @@ export function recipientAllowed(to: string, cfg: Pick<MailConfig, "production" 
   return cfg.production || cfg.allowlist.has(addr);
 }
 
+/** 17 (S1): who the message is sent for. Kept apart from MailMessage so callers' messages are unchanged. */
+export type SendOptions = { fromName?: string };
+
+/** 17 (AC-7): a firm name safe for a From header — no control/format characters, quotes or angle brackets; ≤ 70 characters. */
+export function senderName(raw: string | undefined): string | undefined {
+  // Control and format characters (CR/LF, NUL, bidi marks…) and quote/angle brackets become spaces; cut by character,
+  // not UTF-16 unit, so a 70-character cut never splits an emoji or other surrogate pair.
+  const v = Array.from((raw ?? "").replace(/[\p{Cc}\p{Cf}"<>]/gu, " ").replace(/\s+/g, " ").trim()).slice(0, 70).join("").trim();
+  return v === "" ? undefined : v;
+}
+
+/** The From address: the platform's (MAIL_FROM_EMAIL) with the sending firm's name when given (17, S1). */
+function fromFor(base: MailAddress, opts: SendOptions): MailAddress {
+  const name = senderName(opts.fromName) ?? base.name;
+  return name ? { email: base.email, name } : { email: base.email };
+}
+
 const suppressed: SendResult = { status: "suppressed", providerId: null, errorCode: null };
 
 /**
@@ -77,13 +94,13 @@ const suppressed: SendResult = { status: "suppressed", providerId: null, errorCo
  * Brevo key is never read when the transport is "test".
  */
 export async function deliver(
-  message: MailMessage, cfg: MailConfig, transports: { test: Transport; brevo: () => Transport },
+  message: MailMessage, cfg: MailConfig, transports: { test: Transport; brevo: () => Transport }, opts: SendOptions = {},
 ): Promise<SendResult> {
   if (!recipientAllowed(message.to, cfg)) return suppressed;
-  if (cfg.transport === "test") return transports.test.send({ ...message, from: cfg.from ?? { email: "vault@example.test" } });
+  if (cfg.transport === "test") return transports.test.send({ ...message, from: fromFor(cfg.from ?? { email: "vault@example.test" }, opts) });
   if (!cfg.from) return { status: "failed", providerId: null, errorCode: "MAIL_FROM_MISSING" };
   try {
-    return await transports.brevo().send({ ...message, from: cfg.from });
+    return await transports.brevo().send({ ...message, from: fromFor(cfg.from, opts) });
   } catch {
     return { status: "failed", providerId: null, errorCode: "MAIL_CONFIG" };
   }

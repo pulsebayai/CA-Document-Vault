@@ -1,11 +1,11 @@
 import "server-only";
 import { brevoFromEnv } from "./brevo";
-import { deliver, readMailConfig, type MailConfig, type MailMessage, type SendResult } from "./core";
+import { deliver, readMailConfig, type MailConfig, type MailMessage, type SendOptions, type SendResult } from "./core";
 import { testTransport } from "./test-transport";
 
 // Feature 06 — the app's single mail entry point (architecture change 1). Server-only.
 
-export type { MailMessage, SendResult } from "./core";
+export type { MailMessage, SendOptions, SendResult } from "./core";
 
 /** Settings from the server environment (read per call so a changed env needs no redeploy of logic). */
 export function mailConfig(): MailConfig {
@@ -19,6 +19,7 @@ export function mailConfig(): MailConfig {
   });
 }
 
-export function sendMail(message: MailMessage, cfg: MailConfig = mailConfig()): Promise<SendResult> {
-  return deliver(message, cfg, { test: testTransport, brevo: brevoFromEnv });
+/** 17: `opts.fromName` = the sending firm's name (From display name on the platform address). */
+export function sendMail(message: MailMessage, cfg: MailConfig = mailConfig(), opts: SendOptions = {}): Promise<SendResult> {
+  return deliver(message, cfg, { test: testTransport, brevo: brevoFromEnv }, opts);
 }

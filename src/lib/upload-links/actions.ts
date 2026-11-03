@@ -176,7 +176,7 @@ async function deliver(
       error: "Not sent: some documents changed meanwhile. You can retry." };
   }
   const result = await sendMail({ to: recipient, subject: message.subject, text: message.text, html: message.html,
-    replyTo: { email: me.email, name: me.fullName } }, mailConfig());
+    replyTo: { email: me.email, name: me.fullName } }, mailConfig(), { fromName: me.officeName }); // 17: firm as sender
   let fin = await finish(result.status, result.providerId ?? null, result.errorCode ?? null);
   if (fin.error) fin = await finish(result.status, result.providerId ?? null, result.errorCode ?? null);
   touch(clientId);
