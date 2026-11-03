@@ -38,7 +38,7 @@ One: `2026110xxxxxxx_multi_tenant.sql` (spec › Data model 1–5). Applied to d
 - [ ] 0. Branch housekeeping: confirm #23 merged, locks commit on main, rebase this branch on main. — proof: `git log`, roadmap shows locks → 17
 - [x] 1. `tenancy.ts` + ESLint fence + unit tests (unset/multi/single/invalid; a test that greps `src/` for `TENANCY_MODE` outside the allowed file). — proof: `npx vitest run --project unit tests/unit/tenancy.test.ts`, `npm run lint`
 - [x] 2. `login-brand.ts` + login page change + unit test (multi: constant and `createAdminClient` never called — mocked spy; single: non-test office name/branch; none → constant). — proof: unit file; existing `smoke.spec.ts` / `auth.spec.ts` unedited and green in CI
-- [ ] 3. Mailer `fromName` (sanitise CR/LF/quotes/angle brackets, ≤ 70, fallback to `MAIL_FROM_NAME`) + both callers + `mailer.test.ts` additions (failing first). — proof: unit; 06/10 RLS + e2e unedited
+- [x] 3. Mailer `fromName` (sanitise CR/LF/quotes/angle brackets, ≤ 70, fallback to `MAIL_FROM_NAME`) + both callers + `mailer.test.ts` additions (failing first). — proof: unit; 06/10 RLS + e2e unedited
 - [ ] 4. Migration + `office.test.ts` (Admin updates name/branch; Manager/Staff/Limited refused; other columns refused; other firm's row refused; guard via `test_single_office_guard()`; multi = no guard) + `bootstrap.test.ts` (create, reuse while no staff, refuse once staffed, claim only in single — through the test probe, mode mismatch refused, service-role-only grants). Written failing first, then the migration. Apply to dev (Supabase connector), md5 check. — proof: `npx vitest run --project db tests/rls/office.test.ts tests/rls/bootstrap.test.ts` against dev
 - [ ] 5. Settings › Office: page, form, server action (zod 1–120, trimmed; `revalidatePath("/", "layout")`; `logActivity` `office.updated` with field names), layout item, permissions row + role-matrix probe, catalogue sentences. — proof: unit (`office-form`, `permissions`, `activity-catalogue`), RLS `role-matrix`, e2e `office-settings.spec.ts` locally
 - [ ] 6. Invite: neutral message + `data.firm`; unit test on the invite options (mocked admin client); e2e addition in `tenancy-edges.spec.ts` (Admin of firm B invites firm A's staff email → AC-12 text). — proof: unit + e2e locally
@@ -67,7 +67,7 @@ One: `2026110xxxxxxx_multi_tenant.sql` (spec › Data model 1–5). Applied to d
 [Likely] ≈ 4–6 working days of build sessions + review.
 
 ## Deviations from plan
-(none yet)
+- **Step 3 — `fromName` is a send option, not a message field** (`sendMail(message, cfg, { fromName })`, `deliver(…, opts)`). 06's `reminder-actions.test.ts` compares the whole message with `toEqual`; a new message field would have meant editing that test. As an option, every existing test stays unedited and the message type is unchanged. Behaviour is as specified (AC-6, AC-7).
 
 ## Session log
 ### 2026-11-03

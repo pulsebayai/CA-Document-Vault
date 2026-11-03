@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_DAILY_MAX, deliver, readMailConfig, recipientAllowed, type MailMessage } from "@/lib/mail/core";
+import { DEFAULT_DAILY_MAX, deliver, readMailConfig, recipientAllowed, senderName, type MailMessage } from "@/lib/mail/core";
 import { testOutbox, testTransport } from "@/lib/mail/test-transport";
 import { BREVO_ENDPOINT, createBrevoTransport } from "@/lib/mail/brevo";
 
@@ -101,5 +101,39 @@ describe("createBrevoTransport", () => {
       init.signal!.addEventListener("abort", () => reject(init.signal!.reason));
     })) as unknown as typeof fetch;
     expect(await send(createBrevoTransport("k", hang, 20))).toMatchObject({ status: "failed", errorCode: "TIMEOUT" });
+  });
+});
+
+// Feature 17 (spec AC-6, AC-7, S1): one platform address; the firm's name as the From display name; Reply-To unchanged.
+describe("From name = the sending firm (17)", () => {
+  it("the firm's name replaces MAIL_FROM_NAME; the address stays the platform's", async () => {
+    const cfg = readMailConfig({ MAIL_TRANSPORT: "brevo", APP_ENV: "production", MAIL_FROM_EMAIL: "vault@cavault.in", MAIL_FROM_NAME: "CA Document Vault" });
+    const send = vi.fn(async () => ({ status: "sent" as const, providerId: "m1", errorCode: null }));
+    await deliver(msg("a@client.in"), cfg, { test: testTransport, brevo: () => ({ name: "brevo", send }) }, { fromName: "Kushal Associates" });
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      from: { email: "vault@cavault.in", name: "Kushal Associates" }, replyTo: { email: "priya@firm.in", name: "Priya" },
+    }));
+  });
+
+  it("two firms on one deployment each send under their own name (test transport too)", async () => {
+    const cfg = readMailConfig({ EMAIL_ALLOWLIST: "a@client.in", MAIL_FROM_EMAIL: "vault@cavault.in" });
+    const t = { test: testTransport, brevo: vi.fn() };
+    await deliver(msg("a@client.in"), cfg, t, { fromName: "Firm A" });
+    expect(testOutbox.at(-1)?.from).toEqual({ email: "vault@cavault.in", name: "Firm A" });
+    await deliver(msg("a@client.in"), cfg, t, { fromName: "Firm B" });
+    expect(testOutbox.at(-1)?.from).toEqual({ email: "vault@cavault.in", name: "Firm B" });
+  });
+
+  it("without a firm name, MAIL_FROM_NAME is the fallback (unchanged behaviour)", async () => {
+    const cfg = readMailConfig({ EMAIL_ALLOWLIST: "a@client.in", MAIL_FROM_EMAIL: "vault@cavault.in", MAIL_FROM_NAME: "CA Document Vault" });
+    await deliver(msg("a@client.in"), cfg, { test: testTransport, brevo: vi.fn() });
+    expect(testOutbox.at(-1)?.from).toEqual({ email: "vault@cavault.in", name: "CA Document Vault" });
+  });
+
+  it("header-breaking characters are removed and the name is cut to 70 characters (AC-7)", () => {
+    expect(senderName('Sharma "&" <Co>\r\nBcc: x@y.z')).toBe("Sharma & Co Bcc: x@y.z");
+    expect(senderName("A".repeat(90))).toHaveLength(70);
+    expect(senderName("  \r\n ")).toBeUndefined();
+    expect(senderName(undefined)).toBeUndefined();
   });
 });
