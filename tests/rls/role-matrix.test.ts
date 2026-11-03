@@ -221,6 +221,11 @@ const PROBES: Record<string, Probe> = {
     const res = await who.from("staff_user").update({ full_name: "Test rm-spare" }).eq("id", u.spare.id).select("id");
     return changed(res);
   },
+  // 17 (spec AC-10): rewrites the office's own name, so the fixture office is still found by name next run.
+  edit_office: async (who) => {
+    const { data: o } = await adminClient().from("office").select("name, branch").eq("id", officeId).single();
+    return changed(await who.from("office").update({ name: o!.name, branch: o!.branch }).eq("id", officeId).select("id"));
+  },
 };
 
 beforeAll(async () => {

@@ -63,6 +63,8 @@ export const PERMISSIONS: readonly PermissionRow[] = [
     labels: { limited: "Own + assigned clients" },
   },
   { id: "manage_users", label: "Manage users and roles", values: { admin: "yes", manager: "no", staff: "no", limited: "no" } },
+  // 17 spec AC-10 (approved Sidambara 2026-11-03): Settings › Office.
+  { id: "edit_office", label: "Edit the firm's name and branch", values: { admin: "yes", manager: "no", staff: "no", limited: "no" } },
 ];
 
 const CELL_TEXT: Record<Cell, string> = { yes: "Yes", no: "No", all: "All", assigned: "Assigned" };

@@ -14,6 +14,7 @@ export default async function SettingsLayout({ children }: LayoutProps<"/setting
   // 04 AC-16: metric 1 — Admin/Manager only (the page itself is Not Found for others).
   if (canManageCatalogue(me.role)) items.push({ href: "/settings/collection", label: "Collection" });
   if (me.role === "admin") items.push({ href: "/settings/users", label: "Users and roles" });
+  if (me.role === "admin") items.push({ href: "/settings/office", label: "Office" }); // 17 (AC-9)
   return (
     <div className="mx-auto max-w-[1180px]">
       <PageHeader title="Settings" subtitle="Office-wide" />
