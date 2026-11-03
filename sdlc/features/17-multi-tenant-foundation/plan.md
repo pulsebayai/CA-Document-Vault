@@ -35,7 +35,7 @@ Spec: ./spec.md · Status: **approved** (Sidambara, 2026-11-03) · Date: 2026-11
 One: `2026110xxxxxxx_multi_tenant.sql` (spec › Data model 1–5). Applied to dev before review; live function bodies checked md5 = file; recorded in the PR (CLAUDE.md rule).
 
 ## Steps
-- [ ] 0. Branch housekeeping: confirm #23 merged, locks commit on main, rebase this branch on main. — proof: `git log`, roadmap shows locks → 17
+- [x] 0. Branch housekeeping: confirm #23 merged, locks commit on main, rebase this branch on main. — proof: `git log`, roadmap shows locks → 17
 - [x] 1. `tenancy.ts` + ESLint fence + unit tests (unset/multi/single/invalid; a test that greps `src/` for `TENANCY_MODE` outside the allowed file). — proof: `npx vitest run --project unit tests/unit/tenancy.test.ts`, `npm run lint`
 - [x] 2. `login-brand.ts` + login page change + unit test (multi: constant and `createAdminClient` never called — mocked spy; single: non-test office name/branch; none → constant). — proof: unit file; existing `smoke.spec.ts` / `auth.spec.ts` unedited and green in CI
 - [x] 3. Mailer `fromName` (sanitise CR/LF/quotes/angle brackets, ≤ 70, fallback to `MAIL_FROM_NAME`) + both callers + `mailer.test.ts` additions (failing first). — proof: unit; 06/10 RLS + e2e unedited
@@ -45,7 +45,7 @@ One: `2026110xxxxxxx_multi_tenant.sql` (spec › Data model 1–5). Applied to d
 - [x] 7. Bootstrap script: `bootstrap-core.mjs` (argument parsing, refusals: `.test` without `--test`, production ref without `--yes-production`, dry run without `--yes`) + `bootstrap-firm.mjs` (calls `bootstrap_office`, then invite + `staff_user` insert + activity; re-run safe). Unit tests with a mocked client; one real run on dev with `--test` into a fresh `e2e office bootstrap` test office. — proof: unit file; dev run output recorded in the session log
 - [x] 8. Cross-firm edges: `tenancy-edges.spec.ts` (two test firms; login shows "CA Document Vault"; B's reminder From name is B's via the test transport's captured message; B's `/u` shows B) + `office.test.ts` two-firm RLS cases. — proof: e2e + RLS locally
 - [x] 9. Docs: `architecture.md` (6 items), `releases/README.md` checklist, `ui-reference.md` row, `.env.example`. — proof: diff reviewed
-- [ ] 10. Full verification (lint, typecheck, unit, RLS on dev, build; e2e in CI) → `verifier`; `sdlc-reviewer` → fix Important findings failing-first → PR with AC → test → result table; dev Regression `only` = 17's RLS files. — proof: CI green on the last code commit
+- [x] 10. Full verification (lint, typecheck, unit, RLS on dev, build; e2e in CI) → `verifier`; `sdlc-reviewer` → fix Important findings failing-first → PR with AC → test → result table; dev Regression `only` = 17's RLS files. — proof: CI green on the last code commit
 
 ## Risks
 | Risk | Mitigation | Rollback |
@@ -88,4 +88,7 @@ One: `2026110xxxxxxx_multi_tenant.sql` (spec › Data model 1–5). Applied to d
 - Done: step 7's real run on dev from the Mac's `.env.local` (`NODE_USE_ENV_PROXY=1`): `--env dev --test` created test office `6a6f4287-1441-43f7-ab8f-5f08a6ad0fba` ("e2e office bootstrap script"), its Admin (active, no email), 10 groups, FYs 2025-26 + 2026-27, 6 preferred formats, activity `office.bootstrapped` {created} + `staff.invited` {role admin, via bootstrap}, actor null; no deployment row. Refusals checked live: same email again ("one email = one firm … Nothing written"), `--office` of the now-staffed office (`ALREADY_SET_UP`), `--env prod` without `--yes-production`, a real address with `--test` (exit 2). The production message now names `--env prod` too (it said only "APP_ENV is production").
 - Mac clone: switched from `docs/10-…` to `feat/17-multi-tenant-foundation` (GitHub reachable from the Mac again).
 - Next step: merge #23, then #24.
+### 2026-11-04
+- Done: **shipped.** #23 (roadmap row + locks) merged 19:34:28Z, then #24 (merge 1c81656); main CI green on 1c81656. Locks released on main (chore/17-shipped).
+- Next step (product level): the R1 path — staging + prod in `multi`, following `sdlc/releases/README.md` › "Firms and tenancy"; 16 stays postponed.
 
