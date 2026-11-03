@@ -110,10 +110,12 @@ describe("empty states (AC-4)", () => {
 describe("Last activity (AC-5, AC-6)", () => {
   it("one call for the page; who · sentence · when; a document without a visible event shows —", async () => {
     view();
-    const rows = await screen.findAllByText(/^Last activity/);
+    // Wait for the line to load before counting calls: the request starts in an effect after the rows render, so
+    // counting at the first render raced on a slow runner (nightly 41563529058; change approved by Sidambara 2026-11-03).
+    expect(await screen.findByText("Priya · marked Sales register ready to dispatch · 5 min ago")).toBeTruthy();
     expect(lastActivity).toHaveBeenCalledTimes(1);
     expect(lastActivity).toHaveBeenCalledWith(["d1", "d2"]);
-    expect(await screen.findByText("Priya · marked Sales register ready to dispatch · 5 min ago")).toBeTruthy();
+    const rows = screen.getAllByText(/^Last activity/);
     expect(rows).toHaveLength(2);
     expect(within(rows[1].closest("p")!).getByText("—")).toBeTruthy();
   });
