@@ -120,7 +120,9 @@ describe("counts, order and paging (AC-2, AC-4)", () => {
       }
     }
     expect((await today(as.manager, "everyone")).counts).toMatchObject({ overdue: 19, due_week: 0 });
-  });
+    // Time limit only (Sidambara 2026-11-03): ≈ 30 sequential calls; 7.5–9.4 s from a session, > 30 s from GitHub's
+    // runner (network round trips to Mumbai), failing every full Regression since 31 Oct. Assertions unchanged.
+  }, 90_000);
 
   it("cards: most overdue first, then by name; rows: most days late first; header names incharge and group assignees", async () => {
     const cards = await allCards(as.manager, "everyone");
