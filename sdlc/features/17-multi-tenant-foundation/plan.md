@@ -1,5 +1,5 @@
 # Plan: Multi-tenant foundation
-Spec: ./spec.md · Status: draft · Date: 2026-11-03
+Spec: ./spec.md · Status: **approved** (Sidambara, 2026-11-03) · Date: 2026-11-03
 
 ## Locks
 - At plan approval, on main (small roadmap commit/PR): **schema lock → 17, architecture lock → 17**, status `in-progress`.
