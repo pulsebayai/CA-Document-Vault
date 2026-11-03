@@ -63,7 +63,7 @@ export function parseArgs(argv, env) {
   if (!url || !env.SUPABASE_SECRET_KEY) return { error: "NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY are required" };
   // Fail closed: prod by the operator's word OR by the shell's APP_ENV (either one is enough).
   const production = o.env === "prod" || String(env.APP_ENV ?? "").trim().toLowerCase() === "production";
-  if (production && !o.yesProduction) return { error: "APP_ENV is production: add --yes-production after checking the project below" };
+  if (production && !o.yesProduction) return { error: "This is production (--env prod or APP_ENV=production): add --yes-production after checking the project ref" };
   if (production && o.test) return { error: "--test never runs against production" };
   const base = String(env.APP_PUBLIC_URL ?? "").trim().replace(/\/+$/, "");
   if (!o.test && !/^https:\/\//.test(base)) return { error: "APP_PUBLIC_URL (https) is required: the invite links to <APP_PUBLIC_URL>/auth/callback" };
