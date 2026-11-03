@@ -1,5 +1,5 @@
 # Intent: Multi-tenant foundation (one codebase for SaaS, Dedicated and Customer-owned)
-Author: Sidambara (drafted with Claude) · Status: draft · Date: 2026-11-03
+Author: Sidambara (drafted with Claude) · Status: **approved** (Sidambara, 2026-11-03) · Date: 2026-11-03
 Roadmap item: 17-multi-tenant-foundation · Release: **R1** (owner, 2026-11-03) · Moves product metric: none directly — a business enabler (more firms on the same product); guards metric 5 (adoption) by keeping Kushal's experience unchanged
 Source: chat decisions 2026-11-01 → 11-03, recorded in `sdlc/notes/2026-11-03-multi-tenant-decisions.md` (project doc).
 
@@ -62,11 +62,17 @@ Source: chat decisions 2026-11-01 → 11-03, recorded in `sdlc/notes/2026-11-03-
 - `product.md` lists **"Multi-firm SaaS (tenancy, billing, self-serve onboarding)" as a non-goal** → narrow it to "billing and self-serve onboarding (later)" and add the three deployment models.
 - `architecture.md` decision log: reverse **2026-09-25 "Single office, single tenant"**; add tenancy modes, deployment models, one-email-one-firm, operator access only through a logged server-side path (never a staff login in a customer's office).
 
+## Decisions (Sidambara, 2026-11-03)
+- **Q1 — platform name:** "CA Document Vault" on the multi-mode login page.
+- **Q2 — sender:** one platform sender address; the firm's name as display name; Reply-To = the staff member who sends.
+- **Q3 — single-office guard:** yes (the spec settles where it lives; recommended: a database rule, so a stray SQL insert is refused too).
+- **Q4 — `TENANCY_MODE` unset:** defaults to `multi`.
+- **Q5 — first Admin:** by invite email (the normal invite flow). Command form (npm script vs SQL function alone) → spec.
+- **Q6 — email ceiling:** per office (no platform-wide ceiling now).
+- **Q7 — firm name edits:** Admin only.
+
 ## Open questions (for the spec)
-1. **Platform name on the multi-mode login page:** "CA Document Vault", or a product brand?
-2. **Sender address:** one platform address with the firm as display name and Reply-To = the staff member (recommended; one verified domain), or a verified address per firm (each firm's DNS team adds DKIM)? Changes what `office` stores and the staging checklist.
-3. **Single-office guard:** how does the database know the mode (a one-row settings table set at deployment, vs a check only in the bootstrap)? A database rule survives a mistaken SQL insert; a bootstrap check doesn't.
-4. **`TENANCY_MODE` unset:** fail closed (app refuses to start in production) or default to `multi`?
-5. **Bootstrap interface:** an npm script (service role, run by the operator) calling one SQL function, or the SQL function alone? First Admin by invite email (normal flow) — confirm.
-6. **Email ceiling across firms:** `EMAIL_DAILY_MAX` is per office; with many firms on one SES account, is a platform-wide ceiling needed now, or later with billing?
-7. **Who may edit the firm name:** Admin only (recommended), and is the change logged in Activity?
+- Bootstrap command form (Q5): an operator npm script (service role) calling one SQL function, or the SQL function alone.
+- Where the single-office guard reads the mode (Q3), and how CI exercises `single`.
+- Per-office ceiling (Q6): keep `EMAIL_DAILY_MAX` as one value applied to each office, or a column on `office` (default 200) so firms can differ.
+- Whether the firm-name change is logged in Activity (default: yes, "every mutation writes activity").
