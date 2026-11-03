@@ -1,5 +1,5 @@
 # Plan: Cross-firm security sweep
-Spec: ./spec.md · Status: **draft — awaiting approval** · Date: 2026-11-04
+Spec: ./spec.md · Status: **approved** (Sidambara, 2026-11-04) · Date: 2026-11-04
 
 ## Locks
 - At plan approval, on main (small roadmap PR): **schema lock → 18, architecture lock → 18** (spec X1), row 18 status `in progress`.
