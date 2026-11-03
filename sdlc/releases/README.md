@@ -60,3 +60,11 @@ Before any real DSC password is entered on prod:
 4. **Written risk acceptance** by Kushal Associates (intent "Risks"): anyone with a Staff, Manager or Admin login can reveal every client's PIN; every reveal is logged. Filed in `sdlc/releases/R1/`.
 5. **Weekly reveal check during the pilot:** an Admin or Manager opens Activity › Password reveals and confirms each reveal was expected.
 6. **Key rotation (when needed):** add `2:<new key>` to `DSC_ENC_KEYS`, set `DSC_KEY_ID=2`, re-encrypt with a one-off server script (decrypt by the old id, save through `dsc_save`), then remove `1:`. Not automated in R1.
+
+## Firms and tenancy (17; R1, staging and prod)
+1. **`TENANCY_MODE=multi`** on the staging and prod Vercel projects (server-only, Production and Preview). Unset also means multi; set it so the intent is visible.
+2. **Sender:** `MAIL_FROM_EMAIL` = the platform address on a verified sending domain (Brevo now, SES after the switch); `MAIL_FROM_NAME` = "CA Document Vault". Emails then read `"<firm name>" <platform address>`, Reply-To = the staff member.
+3. **Invite template** (Supabase → Authentication → Email templates → Invite user): subject "You've been invited to {{ .Data.firm }} on CA Document Vault", and the firm in the body. One test invite per environment.
+4. **Bootstrap Kushal Associates** after the migration replay (the 2026-09-25 seed row exists with no staff): from a shell with that environment's values, `node scripts/bootstrap-firm.mjs --name "Kushal Associates" --branch "Pondicherry" --admin-email <Kushal's Admin> --admin-name "<name>"`, check the printed plan (project ref, mode multi, "reused"), then again with `--yes` (prod also `--yes-production`). Record the office ID and time here; Kushal's Admin signs in from the invite.
+5. **Edge check on staging with a second firm:** bootstrap "Staging Test Firm" (a real address you control), sign in as its Admin: the login page shows "CA Document Vault", the header shows "Staging Test Firm", Clients and Documents are empty, an invite of a Kushal staff email gets "This email can't be invited…", and a reminder sent from it arrives as "Staging Test Firm". Never run this on prod.
+6. **Settings › Office:** Kushal's Admin sees Office; a Manager doesn't.

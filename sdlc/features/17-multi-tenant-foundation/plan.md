@@ -44,7 +44,7 @@ One: `2026110xxxxxxx_multi_tenant.sql` (spec › Data model 1–5). Applied to d
 - [x] 6. Invite: neutral message + `data.firm`; unit test on the invite options (mocked admin client); e2e addition in `tenancy-edges.spec.ts` (Admin of firm B invites firm A's staff email → AC-12 text). — proof: unit + e2e locally
 - [ ] 7. Bootstrap script: `bootstrap-core.mjs` (argument parsing, refusals: `.test` without `--test`, production ref without `--yes-production`, dry run without `--yes`) + `bootstrap-firm.mjs` (calls `bootstrap_office`, then invite + `staff_user` insert + activity; re-run safe). Unit tests with a mocked client; one real run on dev with `--test` into a fresh `e2e office bootstrap` test office. — proof: unit file; dev run output recorded in the session log
 - [ ] 8. Cross-firm edges: `tenancy-edges.spec.ts` (two test firms; login shows "CA Document Vault"; B's reminder From name is B's via the test transport's captured message; B's `/u` shows B) + `office.test.ts` two-firm RLS cases. — proof: e2e + RLS locally
-- [ ] 9. Docs: `architecture.md` (6 items), `releases/README.md` checklist, `ui-reference.md` row, `.env.example`. — proof: diff reviewed
+- [x] 9. Docs: `architecture.md` (6 items), `releases/README.md` checklist, `ui-reference.md` row, `.env.example`. — proof: diff reviewed
 - [ ] 10. Full verification (lint, typecheck, unit, RLS on dev, build; e2e in CI) → `verifier`; `sdlc-reviewer` → fix Important findings failing-first → PR with AC → test → result table; dev Regression `only` = 17's RLS files. — proof: CI green on the last code commit
 
 ## Risks
