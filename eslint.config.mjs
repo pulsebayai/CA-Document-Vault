@@ -5,6 +5,8 @@ import nextTs from "eslint-config-next/typescript";
 const SECRET_KEY_RULE = { selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name='SUPABASE_SECRET_KEY']", message: "SUPABASE_SECRET_KEY may only be read in src/lib/supabase/admin.ts." };
 const BREVO_KEY_RULE = { selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name='BREVO_API_KEY']", message: "BREVO_API_KEY may only be read in src/lib/mail/brevo.ts (feature 06)." };
 
+const TENANCY_RULE = { selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name='TENANCY_MODE']", message: "TENANCY_MODE may only be read in src/lib/tenancy.ts (feature 17; call tenancyMode() from an allowed module)." };
+
 const DSC_KEY_RULE = { selector: "MemberExpression[object.object.name='process'][object.property.name='env'][property.name=/^DSC_(ENC_KEYS|KEY_ID)$/]", message: "DSC_ENC_KEYS may only be read in src/lib/dsc/crypto.ts (feature 14; DSC_KEY_ID too)." };
 
 const eslintConfig = defineConfig([
@@ -20,16 +22,18 @@ const eslintConfig = defineConfig([
     },
   },
   // Secrets fence (06 adds BREVO_API_KEY, read only in src/lib/mail/brevo.ts; 14 adds DSC_ENC_KEYS / DSC_KEY_ID,
-  // read only in src/lib/dsc/crypto.ts). A later block's no-restricted-syntax replaces an earlier one for the same
+  // read only in src/lib/dsc/crypto.ts; 17 adds TENANCY_MODE, read only in src/lib/tenancy.ts — not a secret, but one
+  // reader keeps the mode from leaking into business logic). A later block's no-restricted-syntax replaces an earlier one for the same
   // files, so every selector is listed here and each allowed file keeps the other fences.
   {
     files: ["src/**/*.{ts,tsx}"],
-    ignores: ["src/lib/supabase/admin.ts", "src/lib/mail/brevo.ts", "src/lib/dsc/crypto.ts"],
-    rules: { "no-restricted-syntax": ["error", SECRET_KEY_RULE, BREVO_KEY_RULE, DSC_KEY_RULE] },
+    ignores: ["src/lib/supabase/admin.ts", "src/lib/mail/brevo.ts", "src/lib/dsc/crypto.ts", "src/lib/tenancy.ts"],
+    rules: { "no-restricted-syntax": ["error", SECRET_KEY_RULE, BREVO_KEY_RULE, DSC_KEY_RULE, TENANCY_RULE] },
   },
-  { files: ["src/lib/supabase/admin.ts"], rules: { "no-restricted-syntax": ["error", BREVO_KEY_RULE, DSC_KEY_RULE] } },
-  { files: ["src/lib/mail/brevo.ts"], rules: { "no-restricted-syntax": ["error", SECRET_KEY_RULE, DSC_KEY_RULE] } },
-  { files: ["src/lib/dsc/crypto.ts"], rules: { "no-restricted-syntax": ["error", SECRET_KEY_RULE, BREVO_KEY_RULE] } },
+  { files: ["src/lib/supabase/admin.ts"], rules: { "no-restricted-syntax": ["error", BREVO_KEY_RULE, DSC_KEY_RULE, TENANCY_RULE] } },
+  { files: ["src/lib/mail/brevo.ts"], rules: { "no-restricted-syntax": ["error", SECRET_KEY_RULE, DSC_KEY_RULE, TENANCY_RULE] } },
+  { files: ["src/lib/dsc/crypto.ts"], rules: { "no-restricted-syntax": ["error", SECRET_KEY_RULE, BREVO_KEY_RULE, TENANCY_RULE] } },
+  { files: ["src/lib/tenancy.ts"], rules: { "no-restricted-syntax": ["error", SECRET_KEY_RULE, BREVO_KEY_RULE, DSC_KEY_RULE] } },
   {
     // e2e specs use tests/e2e/fixtures.ts, which gives every browser context access to a protected Vercel preview.
     files: ["tests/e2e/**/*.spec.ts"],
