@@ -1,5 +1,5 @@
 # Intent: Super admin console (platform-level firm management)
-Author: Sidambara (drafted with Claude) · Status: **draft — awaiting approval** · Date: 2026-11-04
+Author: Sidambara (drafted with Claude) · Status: **approved** (Sidambara, 2026-11-04 13:27: Q1–Q5 as recommended — TOTP for super admins; reason + 60-minute window; firm sees access in Activity + bell; neutral suspended message; usage = staff, clients, documents, files stored, last activity) · Date: 2026-11-04
 Roadmap item: 19-super-admin-console · Release: **R1** (Sidambara, 2026-11-04) · Moves product metric: none directly. It enables more firms, which matters because Kushal Associates distributes the vault to other CA firms.
 Decisions already made (Sidambara, 2026-11-04):
 - Super admin = **Pulsebay only**. Kushal asks Pulsebay to set up each firm.
@@ -95,7 +95,7 @@ Decisions already made (Sidambara, 2026-11-04):
 - Per-firm settings beyond name and branch.
 - Dedicated / Customer-owned deployment kit.
 
-## Open questions for approval
+## Decisions (approved 2026-11-04, as recommended)
 1. **Q1 — second factor for super admins.** I recommend **requiring an authenticator app (TOTP) on top of the email code** for super admins only. One stolen super admin login can read every firm, so it's the platform's most sensitive account. Supabase Auth supports TOTP MFA [Likely, to confirm in the spec]. Cost: [Uncertain] +1–2 days.
 2. **Q2 — the access window.** I recommend a written reason plus **60 minutes**, reopened as needed, with the firm's Admins notified each time it opens. Alternative: always-on read access with logging only. That's simpler, but harder to defend to privacy-conscious firms.
 3. **Q3 — what the firm sees.** I recommend that support access shows in the firm's Activity, and that Admins get a bell notification. Alternative: platform-only logging, where the firm can't see it. I don't recommend that; it builds no trust.
