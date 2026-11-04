@@ -564,7 +564,7 @@ describe("platform: super admins (19)", () => {
     const self = await sa.as.from("platform_admin").select("id");
     expect((self.data ?? []).map((r) => r.id), "control: own row only").toEqual([sa.id]);
     expect(noneOrRefused(await A.as.admin.from("platform_admin").select("id").eq("id", sa.id) as unknown as Res)).toBe(true);
-  });
+  }, 120_000); // ≈ 20 calls: the 30 s default isn't enough when dev is shared with a Regression run (like its neighbours)
 
   it("every platform function refuses staff of Firm A and a deactivated super admin; an active one gets past the check", async () => {
     ran.add("platform:callers");
@@ -592,7 +592,10 @@ describe("platform: super admins (19)", () => {
       ["platform_expected", (o, c) => ({ p_office: o, p_client: c, p_page: 1 })],
       ["platform_activity", (o) => ({ p_office: o, p_page: 1 })],
     ];
-    const bNeedles = [B.marker, B.office, ...Object.values(B.ids).map(String), ...Object.values(B.users).map((u) => u.id)];
+    // IDs and the marker as text; a short number (B's activity row ID: 290 on CI's fresh database) would match any
+    // unrelated number, so it is checked exactly below instead (the same rule as "nothing outside", CI 41847…, PR #31)
+    const bNeedles = [B.marker, B.office, ...Object.values(B.ids).filter((v) => v !== null).map(String), ...Object.values(B.users).map((u) => u.id)]
+      .filter((n) => n.length >= 8);
     const problems: string[] = [];
     const lines: string[] = [];
     for (const [fn, args] of VIEWS) {
@@ -608,6 +611,8 @@ describe("platform: super admins (19)", () => {
         if (!mixed.error || !/NOT_FOUND/.test(mixed.error.message)) problems.push(`${fn} with B's IDs: ${mixed.error?.message.slice(0, 60) ?? "ANSWERED"}`);
       if (!noWindow.error || !/NO_ACCESS/.test(noWindow.error.message)) problems.push(`${fn} by another super admin: ${noWindow.error?.message.slice(0, 60) ?? "ANSWERED"}`);
       if (ctl.error || isEmpty(ctl.data)) problems.push(`${fn}: control failed (${ctl.error?.message.slice(0, 60) ?? "empty"})`);
+      const rowIds = (r: Res) => ((r.data as { rows?: Array<{ id?: unknown }> } | null)?.rows ?? []).map((x) => x.id);
+      if (fn === "platform_activity" && [...rowIds(mixed), ...rowIds(ctl)].includes(B.ids.activity)) problems.push(`${fn}: LEAK — returns Firm B's activity row`);
       else if (mentions(ctl.data, bNeedles).length) problems.push(`${fn}: control carries B`);
       lines.push(`${fn}: B office ${onB.error ? "refused" : "ANSWERED"} · B IDs ${mixed.error ? "refused" : "A only"} · other admin ${noWindow.error ? "refused" : "ANSWERED"} · control ${ctl.error ? "FAILED" : "ok"}`);
     }
