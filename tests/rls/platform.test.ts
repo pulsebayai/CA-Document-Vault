@@ -188,7 +188,10 @@ describe("support access (AC-8 – AC-11)", () => {
     await must(rpc(sa.as, "platform_close_access", { p_access: access }));
     expect((await rpc(sa.as, "platform_clients", { p_office: A, p_query: null, p_page: 1 })).error?.message).toMatch(/NO_ACCESS/);
     const second = await must<string>(rpc(sa.as, "platform_open_access", { p_office: A, p_reason: "Ticket 1235 expiry check" }));
-    await svc().from("platform_access").update({ expires_at: new Date(Date.now() - 1000).toISOString() }).eq("id", second);
+    const past = await svc().from("platform_access") // opened_at moves back too: the table requires expires_at > opened_at
+      .update({ opened_at: new Date(Date.now() - 2 * 3600_000).toISOString(), expires_at: new Date(Date.now() - 3600_000).toISOString() })
+      .eq("id", second);
+    expect(past.error).toBeNull();
     expect((await rpc(sa.as, "platform_clients", { p_office: A, p_query: null, p_page: 1 })).error?.message).toMatch(/NO_ACCESS/);
   });
 });

@@ -22,7 +22,7 @@ let tokenHash: string;
 const rpc = (who: SupabaseClient, fn: string, args: Record<string, unknown>) => who.rpc(fn, args) as unknown as Promise<Res>;
 const linkWorks = async () => {
   const r = await svc().rpc("link_open", { p_token_hash: tokenHash, p_ip_hash: ip() });
-  return !r.error && !(r.data as { error?: string } | null)?.error;
+  return !r.error && (r.data as { active?: boolean } | null)?.active === true; // 10: link_open answers { active }
 };
 
 beforeAll(async () => {
@@ -55,7 +55,7 @@ describe("suspend (AC-7)", () => {
     expect((await rpc(sa.as, "platform_suspend_firm", { p_office: F, p_reason: "late" })).error?.message).toMatch(/REASON_INVALID/);
   });
 
-  it("locks the firm out at once: the signed-in staff member reads and writes nothing, the link answers NOT_ACTIVE", async () => {
+  it("locks the firm out at once: the signed-in staff member reads and writes nothing, the link is not active", async () => {
     const r = await rpc(sa.as, "platform_suspend_firm", { p_office: F, p_reason: "Unpaid since October (test)" });
     expect(r.error).toBeNull();
     expect((await asStaff.from("client").select("id").eq("id", client)).data ?? []).toEqual([]);
@@ -63,7 +63,8 @@ describe("suspend (AC-7)", () => {
     const write = await rpc(asStaff, "record_follow_up", { p_client: client, p_items: [], p_channel: "phone", p_on: null, p_note: null });
     expect(write.error).not.toBeNull();
     const link = await svc().rpc("link_open", { p_token_hash: tokenHash, p_ip_hash: ip() });
-    expect((link.data as { error?: string } | null)?.error).toBe("NOT_ACTIVE");
+    expect(link.error).toBeNull();
+    expect(link.data).toEqual({ active: false }); // 10's generic answer for any unusable link (= NOT_ACTIVE on /u)
     const act = (await svc().from("activity").select("actor_id, data").eq("office_id", F).eq("action", "office.suspended").order("id", { ascending: false }).limit(1)).data!;
     expect(act[0]).toMatchObject({ actor_id: null });
     expect(JSON.stringify(act)).not.toContain("Unpaid"); // the reason stays on the office row
