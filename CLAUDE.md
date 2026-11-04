@@ -33,6 +33,7 @@ Subagents: `verifier` (after each step), `sdlc-reviewer` (before a PR). Hook: `.
 - Never work directly on main except roadmap/product docs.
 - On a feature branch, do not edit roadmap.md, and edit architecture.md only if this feature holds the architecture lock.
 - Only the feature holding the schema lock may add database migrations.
+- Every new table, view or database function gets a cross-firm case and a line in `tests/rls/cross-firm/coverage.ts` in the same PR (18; the guard test fails otherwise).
 - All data access goes through RLS-protected tables; never use the service-role key in client-reachable code.
 - No PII (PAN, mobile, email, client names) in URLs, logs or analytics.
 - Every release follows the Release & regression policy in architecture.md (staging gate, manual checklist, evidence in sdlc/releases/). Never run data-writing tests against prod.
