@@ -1,7 +1,7 @@
 import { appendFileSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient } from "../../support/db";
 import { inventory, type Inventory } from "./inventory";
@@ -14,6 +14,14 @@ import { PARENT, ROW } from "./rows";
 // door into Firm B. One seed per run (plan step 2: ≈ 2 min on dev from a session), so the sections share this file.
 // Every refusal is paired with a control (plan: "Proving a refusal is the tenant refusal"): the same call on Firm A's
 // own object must work, so a case can't pass because of a bad argument.
+
+// Step 6 (AC-12 b): the app's own file-link code runs here as Firm A's signed-in Admin. Its Supabase client and
+// signed-in staff are swapped for Firm A's, so the RLS lookups before any signing are the real ones.
+const actAs = vi.hoisted(() => ({ client: null as unknown, staff: null as unknown }));
+vi.mock("server-only", () => ({}));
+vi.mock("next/cache", () => ({ revalidatePath: () => undefined, revalidateTag: () => undefined }));
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => actAs.client }));
+vi.mock("@/lib/auth/staff", () => ({ requireStaff: async () => actAs.staff }));
 
 let A: Firm, B: Firm, inv: Inventory;
 let C: { office: string; admin: SupabaseClient };
@@ -215,6 +223,75 @@ describe("tables: point Firm A's rows at Firm B's objects (X4.4)", () => {
     }
     expect(found).toEqual([]);
   }, 300_000);
+});
+
+// ── Files (AC-12) ──────────────────────────────────────────────────────────────────────────────────────────────────
+describe("files: Firm A gets no file of Firm B's (AC-12)", () => {
+  const BUCKET = "documents";
+  beforeAll(() => {
+    actAs.client = A.as.admin;
+    actAs.staff = { id: A.users.admin.id, officeId: A.office, officeName: "XF A", officeBranch: null, fullName: "XF", email: A.users.admin.email, role: "admin" };
+  });
+
+  it("(a) direct Storage calls on Firm B's object are refused: download, signed URL, list, upload, move", async () => {
+    const st = A.as.admin.storage.from(BUCKET);
+    const dl = await st.download(B.ids.softPath);
+    expect(dl.data).toBeNull();
+    const signed = await st.createSignedUrl(B.ids.softPath, 60);
+    expect(signed.data?.signedUrl ?? null).toBeNull();
+    const list = await st.list(`office/${B.office}/doc`);
+    expect(list.data ?? []).toEqual([]);
+    const up = await st.upload(`office/${B.office}/doc/${B.ids.softDoc}/xf.pdf`, new Blob(["%PDF-1.4"]), { contentType: "application/pdf" });
+    expect(up.error).not.toBeNull();
+    const mv = await st.move(B.ids.softPath, `office/${A.office}/doc/${A.ids.softDoc}/stolen.pdf`);
+    expect(mv.error).not.toBeNull();
+    // control: Firm A's own object isn't reachable directly either (no Storage policies for app roles, 03): files go
+    // only through server-signed links, which (b) tests
+    expect((await st.download(A.ids.softPath)).data).toBeNull();
+    const { data: still } = await svc().storage.from(BUCKET).download(B.ids.softPath);
+    expect(still, "B's object still there").not.toBeNull();
+  });
+
+  it("(b) getFileLink signs nothing for Firm B's file version; Firm A's own version gets a link", async () => {
+    const { getFileLink } = await import("@/lib/documents/actions");
+    for (const mode of ["download", "view"] as const) {
+      const theirs = await getFileLink(B.ids.softVersion, mode);
+      expect(theirs.ok, `B's version (${mode})`).toBe(false);
+    }
+    const mine = await getFileLink(A.ids.softVersion, "download");
+    expect(mine.ok, "control: A's own version").toBe(true);
+  });
+
+  it("(b) the bulk zip lists and signs nothing of Firm B's; Firm A's own selection is listed", async () => {
+    const { getZipManifest, getFileLinks } = await import("@/lib/bulk/actions");
+    const theirs = await getZipManifest([B.ids.softDoc, B.ids.linkDoc]);
+    expect(mentions(theirs, [B.ids.softPath, B.ids.softVersion, B.marker])).toEqual([]);
+    const links = await getFileLinks([B.ids.softVersion]);
+    // one entry per ID asked for; a link is only one with a URL (08: url null = not available to you)
+    expect(links.ok ? links.links.filter((l) => l.url).length : 0).toBe(0);
+    const myLinks = await getFileLinks([A.ids.softVersion]);
+    expect(myLinks.ok && myLinks.links.filter((l) => l.url).length, "control: A's own version is signed").toBe(1);
+    const mine = await getZipManifest([A.ids.softDoc]);
+    expect(JSON.stringify(mine), "control: A's own document").toContain(A.ids.softVersion);
+  });
+
+  it("(b) currentFiles finds no file for Firm B's documents; Firm A's own is found", async () => {
+    const { currentFiles } = await import("@/lib/documents/queries");
+    const m = await currentFiles([B.ids.softDoc, A.ids.softDoc]);
+    expect(m.get(B.ids.softDoc) ?? null).toBeNull();
+    expect(m.get(A.ids.softDoc), "control").toBeTruthy();
+  });
+
+  it("(b) startUpload won't issue an upload ticket for Firm B's document; a new file is always under Firm A's office", async () => {
+    const { startUpload } = await import("@/lib/documents/actions");
+    const theirs = await startUpload({ name: "x.pdf", size: 100, type: "application/pdf", documentId: B.ids.softDoc });
+    expect(theirs.ok).toBe(false);
+    const mine = await startUpload({ name: "x.pdf", size: 100, type: "application/pdf", documentId: A.ids.softDoc });
+    expect(mine.ok, "control").toBe(true);
+    const fresh = await startUpload({ name: "x.pdf", size: 100, type: "application/pdf" });
+    expect(fresh.ok && JSON.stringify(fresh).includes(`office/${A.office}/`)).toBe(true);
+    expect(JSON.stringify(fresh)).not.toContain(B.office);
+  });
 });
 
 // ── Service-role functions: 10's public upload-link path (AC-9, AC-10) ───────────────────────────────────────────
