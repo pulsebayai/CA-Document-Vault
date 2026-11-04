@@ -79,3 +79,19 @@ export async function pickType(page: Page, name: string) {
 
 /** 12: the Document type field shows the chosen type's name. */
 export const typeFieldValue = (name: string) => new RegExp(`^${escapeRe(name)}$`);
+
+/**
+ * 19: signs a super admin in the way staff sign in (the emailed link, from the admin API). A super admin lands on
+ * /platform, never on Today, so this doesn't reuse signIn()'s staff landing checks or session cache.
+ */
+export async function signInPlatform(page: Page, email: string, baseURL: string | undefined) {
+  const base = baseURL ?? "http://localhost:3000";
+  await allowPreview(page.context(), baseURL);
+  const { data, error } = await adminClient().auth.admin.generateLink({
+    type: "magiclink", email, options: { redirectTo: `${base}/auth/callback` },
+  });
+  if (error) throw new Error(`generateLink failed: ${error.message}`);
+  await page.goto(data.properties.action_link);
+  await page.waitForURL(/\/platform$/, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Firms" })).toBeVisible();
+}
