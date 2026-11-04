@@ -84,11 +84,13 @@ describe("suspend (AC-7)", () => {
     expect(log.rows[0]?.reason).toBe("Unpaid since October (test)");
   });
 
-  it("the nightly job skips a suspended firm; the same firm unsuspended is generated (rolled-back probe on a real office, D3)", async () => {
-    // run_daily_expected covers real offices only, so the probe suspends one inside a block that is always rolled back
+  it("the nightly job skips a suspended firm, and a one-firm (single) deployment refuses suspend and create (rolled-back probe, D3; review I-2)", async (ctx) => {
+    // run_daily_expected covers real offices only, so the probe suspends one inside a block that is always rolled back.
+    // The probe is refused where a deployment mode is set (staging, prod), like 17's: skipped there by design (review I-1).
     const r = await svc().rpc("test_platform_probe");
+    if (r.error?.message.startsWith("NOT_TEST_DEPLOYMENT")) return ctx.skip();
     expect(r.error).toBeNull();
-    expect(r.data).toEqual({ suspended_rows: 0, control_rows: 1 });
+    expect(r.data).toEqual({ suspended_rows: 0, control_rows: 1, single_suspend: "SINGLE_MODE", single_create: "SINGLE_MODE" });
     // refused for staff
     expect((await asStaff.rpc("test_platform_probe")).error).not.toBeNull();
   }, 120_000);

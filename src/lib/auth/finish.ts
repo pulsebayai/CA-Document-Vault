@@ -8,7 +8,7 @@ import type { AccessState } from "./access";
  * Runs after ANY successful sign-in (code, link or invite link) and decides what the user is (19, spec AC-3, AC-7):
  * - staff of a firm that isn't suspended → activates an invited member, writes the audit trail → "staff";
  * - staff of a suspended firm → signed out → "suspended" (an invite isn't activated while the firm is paused);
- * - an active super admin (outside every firm) → one platform audit row (or signed out if it can't be written) → "platform";
+ * - an active super admin (outside every firm) → platform_signed_in() records it as the user (signed out if it can't) → "platform";
  * - anyone else (deactivated staff or super admin, unknown) → signed out → "none".
  */
 export async function finishSignIn(supabase: SupabaseClient, method: "code" | "link" | "invite"): Promise<AccessState> {
@@ -27,15 +27,11 @@ export async function finishSignIn(supabase: SupabaseClient, method: "code" | "l
     await logActivity({ officeId: staff.office_id, actorId: staff.id, action: "auth.signed_in", entityType: "staff_user", entityId: staff.id, data: { method } });
     return "staff";
   }
-  const { data: platform } = await admin.from("platform_admin").select("id, status").eq("id", user.id).maybeSingle();
-  if (platform?.status === "active") {
-    const { error } = await admin.from("platform_audit").insert({ admin_id: platform.id, action: "auth.signed_in", detail: { method } });
-    if (error) { // fail closed: platform access starts only once it is on the record (Y3, "log before return")
-      console.error("platform.sign_in_audit_failed", { code: error.code });
-      return signedOut(supabase, "none");
-    }
-    return "platform";
-  }
+  // 19: an active super admin — the database checks it and records the sign-in as the user (no service role; review
+  // I-4). Fail closed: any refusal or failure signs the user out (platform access starts only once it is on record).
+  const { error } = await supabase.rpc("platform_signed_in", { p_method: method });
+  if (!error) return "platform";
+  if (!/NOT_PLATFORM_ADMIN/.test(error.message)) console.error("platform.sign_in_audit_failed", { code: error.code });
   return signedOut(supabase, "none");
 }
 

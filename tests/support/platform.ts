@@ -31,6 +31,8 @@ export const PLATFORM_FUNCTIONS: Record<string, (office: string, other: string) 
   platform_create_firm: () => ({ p: { name: "e2e office platform probe", branch: null } }),
   platform_record_first_admin: (o) => ({ p_office: o, p_user: "00000000-0000-0000-0000-000000000000", p_name: "X", p_email: "x@example.test" }),
   platform_invite_target: (o) => ({ p_office: o }),
+  platform_begin_reinvite: (o) => ({ p_office: o }),
+  platform_signed_in: () => ({ p_method: "code" }),
   platform_suspend_firm: (o) => ({ p_office: o, p_reason: "probe — must be refused" }),
   platform_reactivate_firm: (o) => ({ p_office: o }),
   platform_open_access: (o) => ({ p_office: o, p_reason: "probe — must be refused" }),

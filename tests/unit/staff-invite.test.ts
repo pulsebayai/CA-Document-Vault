@@ -9,14 +9,14 @@ vi.mock("@/lib/auth/staff", () => ({
   requireAdmin: async () => ({ id: "admin-b", officeId: "office-b", officeName: "Firm B & Co", officeBranch: null, fullName: "B Admin", email: "admin@b.in", role: "admin" }),
 }));
 
-const existing = { row: null as null | { id: string } };
+const existing = { row: null as null | { id: string }, platform: null as null | { id: string } }; // 19: per table
 const invite = vi.fn(async () => ({ data: { user: { id: "new-user" } }, error: null }));
 const createUser = vi.fn(async () => ({ data: { user: { id: "new-user" } }, error: null }));
 const insert = vi.fn(async () => ({ error: null }));
 vi.mock("@/lib/supabase/admin", () => ({
   createAdminClient: () => ({
-    from: () => ({
-      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: existing.row, error: null }) }) }),
+    from: (table: string) => ({
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: table === "platform_admin" ? existing.platform : existing.row, error: null }) }) }),
       insert,
     }),
     auth: { admin: { inviteUserByEmail: invite, createUser } },
@@ -33,7 +33,15 @@ const form = (email: string) => {
 
 // Feature 17 (spec AC-12, AC-13).
 describe("inviteStaff across firms", () => {
-  beforeEach(() => { existing.row = null; invite.mockClear(); createUser.mockClear(); insert.mockClear(); });
+  beforeEach(() => { existing.row = null; existing.platform = null; invite.mockClear(); createUser.mockClear(); insert.mockClear(); });
+
+  it("19 AC-1: a super admin's email gets the same neutral refusal, before any invite (a super admin is never staff)", async () => {
+    existing.platform = { id: "super-admin" };
+    const r = await inviteStaff(null, form("ops@pulsebay.com"));
+    expect(r).toEqual({ ok: false, error: "This email can't be invited. Use a different address." });
+    expect(invite).not.toHaveBeenCalled();
+    expect(createUser).not.toHaveBeenCalled();
+  });
 
   it("an email already used anywhere gets a neutral refusal that names no firm and no account (AC-12)", async () => {
     existing.row = { id: "someone-at-firm-a" };

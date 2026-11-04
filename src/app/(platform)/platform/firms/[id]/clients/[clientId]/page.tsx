@@ -33,8 +33,8 @@ export default async function PlatformClientPage({ params }: PageProps<"/platfor
         </dl>
       </Card>
       <div className="flex flex-wrap gap-4 text-[13.5px]">
-        <Link className="font-medium text-accent underline-offset-2 hover:underline" href={`${base}/documents?client=${c.id}`}>Documents ({c.documents})</Link>
-        <Link className="font-medium text-accent underline-offset-2 hover:underline" href={`${base}/clients/${c.id}/expected`}>Expected documents ({c.expected_pending} pending)</Link>
+        <Link prefetch={false} className="font-medium text-accent underline-offset-2 hover:underline" href={`${base}/documents?client=${c.id}`}>Documents ({c.documents})</Link>
+        <Link prefetch={false} className="font-medium text-accent underline-offset-2 hover:underline" href={`${base}/clients/${c.id}/expected`}>Expected documents ({c.expected_pending} pending)</Link>
       </div>
     </div>
   );

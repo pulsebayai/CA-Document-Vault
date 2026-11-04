@@ -55,7 +55,7 @@ export const FUNCTIONS: Record<string, Coverage> = {
   // window and firm kind ("platform:*" cases in sweep.test.ts)
   "public.my_access_state": F("my_access_state"),
   ...Object.fromEntries(["whoami", "firms", "create_firm", "record_first_admin", "invite_target", "suspend_firm",
-    "reactivate_firm", "open_access", "close_access", "audit_list"].map((n) => [`public.platform_${n}`,
+    "reactivate_firm", "open_access", "close_access", "audit_list", "begin_reinvite", "signed_in"].map((n) => [`public.platform_${n}`,
     { cases: [`functions:platform_${n}`, "platform:callers"] } as Coverage])),
   ...Object.fromEntries(["clients", "client", "documents", "document", "expected", "activity"].map((n) => [`public.platform_${n}`,
     { cases: [`functions:platform_${n}`, "platform:callers", "platform:window"] } as Coverage])),

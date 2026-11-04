@@ -21,7 +21,7 @@ export default async function PlatformDocumentsPage({ params, searchParams }: Pa
       <DataTable caption="Documents" head={["DOC-ID", "Client", "Type", "Period", "Received", "Status", "File"]} empty={r.data.rows.length === 0}>
         {r.data.rows.map((d) => (
           <tr key={d.id} className="border-b border-line last:border-0">
-            <Td first><Link href={`/platform/firms/${id}/documents/${d.id}`} className="font-mono text-accent underline-offset-2 hover:underline">{d.doc_code}</Link></Td>
+            <Td first><Link prefetch={false} href={`/platform/firms/${id}/documents/${d.id}`} className="font-mono text-accent underline-offset-2 hover:underline">{d.doc_code}</Link></Td>
             <Td>{d.client_name ?? <span className="text-ink-3">Untagged</span>}</Td>
             <Td>{d.type_name ?? "—"}</Td><Td>{d.period_code ?? "—"}</Td>
             <Td>{date(d.received_on)} <span className="text-ink-3">{words(d.received_as)}</span></Td>

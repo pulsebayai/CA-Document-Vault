@@ -30,6 +30,9 @@ function message(code: string | undefined): string {
   if (code.startsWith("NOT_SUSPENDED")) return "This firm isn't suspended.";
   if (code.startsWith("NAME_INVALID")) return "Enter the firm's name (1–120 characters).";
   if (code.startsWith("NOT_FOUND")) return "This firm wasn't found.";
+  if (code.startsWith("SINGLE_MODE")) return "This deployment holds one firm: firms can't be added or suspended here.";
+  if (code.startsWith("DEPLOYMENT_MODE_UNSET")) return "Set up this deployment with the operator script before adding firms here.";
+  if (code.startsWith("NAME_RESERVED")) return "Names starting \"e2e office\" are kept for automated tests. Choose another name.";
   return "Something went wrong. Please try again.";
 }
 
@@ -55,14 +58,14 @@ export async function createFirm(_prev: PlatformResult | null, form: FormData): 
   const { data, error } = await rpc("platform_create_firm", { p: { name: f.name, ...(f.branch ? { branch: f.branch } : {}) } });
   if (error || !data) return { ok: false, error: message(error?.message) };
   const officeId = (data as { office_id: string }).office_id;
-  const invited = await inviteFirstAdmin({ officeId, firmName: f.name, fullName: f.adminName, email: f.adminEmail });
+  const invited = await inviteFirstAdmin({ officeId, fullName: f.adminName, email: f.adminEmail });
   revalidatePath("/platform");
   // the firm exists either way; a failed invite is retried from the firm page
   redirect(`/platform/firms/${officeId}?${invited.ok ? "created=1" : "invite=failed"}`);
 }
 
 /** Invite the first Admin of a firm that has no staff yet (after a failed invite at creation). */
-export async function inviteAdmin(officeId: string, firmName: string, _prev: PlatformResult | null, form: FormData): Promise<PlatformResult> {
+export async function inviteAdmin(officeId: string, _prev: PlatformResult | null, form: FormData): Promise<PlatformResult> {
   const me = await requirePlatformAdmin();
   if (!id.safeParse(officeId).success) return { ok: false, error: "Invalid request." };
   const parsed = firmSchema.pick({ adminName: true, adminEmail: true }).safeParse({ adminName: form.get("adminName") ?? "", adminEmail: form.get("adminEmail") ?? "" });
@@ -72,16 +75,16 @@ export async function inviteAdmin(officeId: string, firmName: string, _prev: Pla
   if (me.test !== parsed.data.adminEmail.endsWith(".test")) {
     return { ok: false, error: me.test ? "A test super admin invites .test addresses only." : "Use a real address for a real firm." };
   }
-  const r = await inviteFirstAdmin({ officeId, firmName, fullName: parsed.data.adminName, email: parsed.data.adminEmail });
+  const r = await inviteFirstAdmin({ officeId, fullName: parsed.data.adminName, email: parsed.data.adminEmail });
   if (!r.ok) return r;
   revalidatePath(`/platform/firms/${officeId}`);
   return { ok: true, message: "Invite sent." };
 }
 
-export async function resendInvite(officeId: string, firmName: string): Promise<PlatformResult> {
+export async function resendInvite(officeId: string): Promise<PlatformResult> {
   await requirePlatformAdmin();
   if (!id.safeParse(officeId).success) return { ok: false, error: "Invalid request." };
-  const r = await resendFirstAdminInvite({ officeId, firmName });
+  const r = await resendFirstAdminInvite({ officeId });
   return r.ok ? { ok: true, message: "Invite sent again." } : r;
 }
 

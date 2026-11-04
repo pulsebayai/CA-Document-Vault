@@ -46,7 +46,7 @@ export function ClientsBrowser({ firmId, initial }: { firmId: string; initial: P
               {data.rows.map((c) => (
                 <tr key={c.id} className="border-b border-line last:border-0">
                   <td className="px-5 py-3">
-                    <Link href={`/platform/firms/${firmId}/clients/${c.id}`} className="font-medium text-accent underline-offset-2 hover:underline">{c.name}</Link>
+                    <Link prefetch={false} href={`/platform/firms/${firmId}/clients/${c.id}`} className="font-medium text-accent underline-offset-2 hover:underline">{c.name}</Link>
                     <span className="ml-1.5 text-ink-3">{c.code}</span>
                     {c.archived && <span className="ml-1.5"><Badge tone="muted">Archived</Badge></span>}
                   </td>

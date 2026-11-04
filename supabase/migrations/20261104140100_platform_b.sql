@@ -61,8 +61,10 @@ grant execute on function public.my_access_state() to authenticated;
 create or replace function private.require_platform_admin(out id uuid, out test boolean)
 language plpgsql stable security definer set search_path = '' as $$
 begin
+  -- review M-2: the sign-in email must still be the one on record, so a changed login email can't keep platform access
   select p.id, p.email like '%.test' into id, test
-    from public.platform_admin p where p.id = (select auth.uid()) and p.status = 'active';
+    from public.platform_admin p join auth.users u on u.id = p.id
+   where p.id = (select auth.uid()) and p.status = 'active' and lower(u.email) = p.email;
   if id is null then
     raise exception 'NOT_PLATFORM_ADMIN' using errcode = '42501';
   end if;
@@ -174,6 +176,13 @@ declare me record; v_mode text; v jsonb;
 begin
   me := private.require_platform_admin();
   select d.mode into v_mode from private.deployment d;
+  -- review I-2: a one-firm (Dedicated / Customer-owned) deployment never gets a second firm from the console
+  if v_mode = 'single' then raise exception 'SINGLE_MODE: this deployment holds one firm' using errcode = '42501'; end if;
+  -- review L-6: a real super admin never fixes the deployment mode by accident (dev, or staging/prod before the
+  -- operator's bootstrap); test super admins take 17's test path, which never sets it
+  if not me.test and v_mode is null then raise exception 'DEPLOYMENT_MODE_UNSET: set up the deployment with the operator script first' using errcode = '42501'; end if;
+  -- review N-7: names starting "e2e office" become test offices (02), invisible to a real super admin at once
+  if not me.test and btrim(coalesce(p->>'name', '')) ilike 'e2e office%' then raise exception 'NAME_RESERVED: "e2e office" names are for tests' using errcode = '22023'; end if;
   perform set_config('request.jwt.claims', '', true), set_config('request.jwt.claim.sub', '', true);
   v := public.bootstrap_office(jsonb_build_object('name', p->>'name', 'branch', p->>'branch',
          'mode', coalesce(v_mode, 'multi'), 'test', me.test));
@@ -204,17 +213,45 @@ begin
   perform private.platform_log(me.id, 'staff.invited', o.id, null, jsonb_build_object('staff_id', p_user));
 end $$;
 
--- The first Admin still waiting for their invite (for "Resend invite"), or null.
+-- The first Admin still waiting for their invite (for "Resend invite"): only while nobody in the firm has signed in
+-- (review L-2: never an Admin the firm invited itself). Name and ID only — an unlogged read returns no email (I-5).
 create or replace function public.platform_invite_target(p_office uuid)
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare me record; o public.office; s public.staff_user;
 begin
   me := private.require_platform_admin();
   o := private.platform_office(p_office, me.test);
+  if exists (select 1 from public.staff_user x where x.office_id = o.id and x.status <> 'invited') then return null; end if;
   select * into s from public.staff_user where office_id = o.id and role = 'admin' and status = 'invited'
    order by created_at limit 1;
   if s.id is null then return null; end if;
+  return jsonb_build_object('staff_id', s.id, 'full_name', s.full_name);
+end $$;
+
+-- "Resend invite" (review I-4): logged before the server sends anything, and the only way the address reaches it.
+create or replace function public.platform_begin_reinvite(p_office uuid)
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare me record; o public.office; s public.staff_user;
+begin
+  me := private.require_platform_admin();
+  o := private.platform_office(p_office, me.test);
+  if not exists (select 1 from public.staff_user x where x.office_id = o.id and x.status <> 'invited') then
+    select * into s from public.staff_user where office_id = o.id and role = 'admin' and status = 'invited'
+     order by created_at limit 1;
+  end if;
+  if s.id is null then raise exception 'NOTHING_WAITING: nobody in this firm is waiting for an invite' using errcode = 'P0002'; end if;
+  perform private.platform_log(me.id, 'staff.reinvited', o.id, null, jsonb_build_object('staff_id', s.id));
   return jsonb_build_object('staff_id', s.id, 'email', s.email, 'full_name', s.full_name);
+end $$;
+
+-- A super admin's sign-in, recorded by the database as the signed-in user (review I-4; was a service-role insert).
+create or replace function public.platform_signed_in(p_method text)
+returns void language plpgsql security definer set search_path = '' as $$
+declare me record;
+begin
+  me := private.require_platform_admin();
+  if p_method is null or p_method not in ('code', 'link', 'invite') then raise exception 'INVALID: method' using errcode = '22023'; end if;
+  perform private.platform_log(me.id, 'auth.signed_in', null, null, jsonb_build_object('method', p_method));
 end $$;
 
 create or replace function public.platform_suspend_firm(p_office uuid, p_reason text)
@@ -225,6 +262,10 @@ begin
   o := private.platform_office(p_office, me.test);
   if length(v_reason) not between 10 and 500 then raise exception 'REASON_INVALID: 10–500 characters' using errcode = '22023'; end if;
   if o.suspended_at is not null then raise exception 'ALREADY_SUSPENDED' using errcode = 'P0001'; end if;
+  -- review I-2 (spec Y6): a one-firm deployment is never suspended from the console (it would lock out its only firm)
+  if exists (select 1 from private.deployment d where d.mode = 'single') then
+    raise exception 'SINGLE_MODE: this deployment holds one firm' using errcode = '42501';
+  end if;
   update public.office set suspended_at = now(), suspended_by = me.id, suspend_reason = v_reason where id = o.id;
   insert into public.activity (office_id, actor_id, action, entity_type, entity_id, data)
     values (o.id, null, 'office.suspended', 'office', o.id::text, '{}');
@@ -280,7 +321,9 @@ end $$;
 -- ── Read views (Y5). Each: caller → office → open window → log → data (this firm only). ──────────────────────
 create or replace function public.platform_clients(p_office uuid, p_query text, p_page integer)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare me record; o public.office; v_access uuid; v_q text := nullif(btrim(coalesce(p_query, '')), '');
+declare me record; o public.office; v_access uuid;
+  -- 03b's rule: \ % _ are literal in a search (review N-2)
+  v_q text := nullif(regexp_replace(btrim(coalesce(p_query, '')), '([\\%_])', '\\\1', 'g'), '');
   v_page integer := greatest(coalesce(p_page, 1), 1);
 begin
   me := private.require_platform_admin();
@@ -290,10 +333,10 @@ begin
   return jsonb_build_object(
     'total', (select count(*) from public.client c where c.office_id = o.id
                and (v_q is null or c.name ilike '%' || v_q || '%' or c.code ilike v_q || '%')),
-    'rows', coalesce((select jsonb_agg(r order by r->>'name') from (
+    'rows', coalesce((select jsonb_agg(x.r order by x.n) from (
       select jsonb_build_object('id', c.id, 'code', c.code, 'name', c.name, 'client_type', c.client_type,
                'pan', c.pan, 'email', c.email, 'mobile', c.mobile, 'archived', c.archived_at is not null,
-               'incharge_name', s.full_name) r
+               'incharge_name', s.full_name) r, row_number() over (order by lower(c.name), c.id) n
         from public.client c left join public.staff_user s on s.id = c.incharge_id
        where c.office_id = o.id and (v_q is null or c.name ilike '%' || v_q || '%' or c.code ilike v_q || '%')
        order by lower(c.name), c.id limit 20 offset (v_page - 1) * 20) x), '[]'::jsonb));
@@ -335,11 +378,12 @@ begin
   perform private.platform_viewed(me.id, o.id, v_access, 'documents', p_client);
   return jsonb_build_object(
     'total', (select count(*) from public.document d where d.office_id = o.id and (p_client is null or d.client_id = p_client)),
-    'rows', coalesce((select jsonb_agg(r) from (
+    'rows', coalesce((select jsonb_agg(x.r order by x.n) from (
       select jsonb_build_object('id', d.id, 'doc_code', d.doc_code, 'client_name', c.name, 'type_name', t.name,
                'period_code', pe.code, 'received_as', d.received_as, 'received_on', d.received_on, 'status', d.status,
                'custody', d.custody, 'archived', d.archived_at is not null,
-               'file_name', v.file_name, 'size_bytes', v.size_bytes) r
+               'file_name', v.file_name, 'size_bytes', v.size_bytes) r,
+               row_number() over (order by d.received_on desc nulls last, d.id) n
         from public.document d
         left join public.client c on c.id = d.client_id
         left join public.doc_type t on t.id = d.doc_type_id
@@ -388,9 +432,10 @@ begin
   perform private.platform_viewed(me.id, o.id, v_access, 'expected', p_client);
   return jsonb_build_object(
     'total', (select count(*) from public.expected_doc e where e.client_id = p_client and e.office_id = o.id),
-    'rows', coalesce((select jsonb_agg(r) from (
+    'rows', coalesce((select jsonb_agg(x.r order by x.n) from (
       select jsonb_build_object('id', e.id, 'type_name', t.name, 'period_code', pe.code, 'status', e.status,
-               'ask_on', e.ask_on, 'overdue_from', e.overdue_from, 'received_on', e.received_on) r
+               'ask_on', e.ask_on, 'overdue_from', e.overdue_from, 'received_on', e.received_on) r,
+               row_number() over (order by e.overdue_from desc, t.name, e.id) n
         from public.expected_doc e join public.doc_type t on t.id = e.doc_type_id join public.period pe on pe.id = e.period_id
        where e.client_id = p_client and e.office_id = o.id
        order by e.overdue_from desc, t.name limit 20 offset (v_page - 1) * 20) x), '[]'::jsonb));
@@ -404,30 +449,31 @@ begin
   o := private.platform_office(p_office, me.test);
   v_access := private.platform_require_access(me.id, o.id);
   perform private.platform_viewed(me.id, o.id, v_access, 'activity', null);
-  return jsonb_build_object('rows', coalesce((select jsonb_agg(r) from (
-    select jsonb_build_object('id', a.id, 'action', a.action, 'entity_type', a.entity_type, 'entity_id', a.entity_id,
+  return jsonb_build_object('rows', coalesce((select jsonb_agg(x.r order by x.n desc) from (
+    select a.id as n, jsonb_build_object('id', a.id, 'action', a.action, 'entity_type', a.entity_type, 'entity_id', a.entity_id,
              'data', a.data, 'created_at', a.created_at,
              'actor_name', (select s.full_name from public.staff_user s where s.id = a.actor_id)) r
       from public.activity a where a.office_id = o.id and a.action <> 'auth.signed_in'
      order by a.id desc limit 50 offset (v_page - 1) * 50) x), '[]'::jsonb));
 end $$;
 
--- AC-12: the platform log, newest first; a .test super admin sees test firms' rows only.
+-- AC-12: the platform log, newest first. A .test super admin sees test firms' rows only, and rows without a firm only
+-- of .test super admins (sign-ins, script changes); a real super admin the reverse (review L-5).
 create or replace function public.platform_audit_list(p jsonb)
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
 declare me record; v_office uuid := nullif(p->>'office_id', '')::uuid; v_action text := nullif(p->>'action', '');
   v_page integer := greatest(coalesce((p->>'page')::integer, 1), 1);
 begin
   me := private.require_platform_admin();
-  return jsonb_build_object('rows', coalesce((select jsonb_agg(r) from (
-    select jsonb_build_object('id', l.id, 'at', l.at, 'action', l.action, 'office_id', l.office_id, 'office_name', o.name,
+  return jsonb_build_object('rows', coalesce((select jsonb_agg(y.r order by y.n desc) from (
+    select l.id as n, jsonb_build_object('id', l.id, 'at', l.at, 'action', l.action, 'office_id', l.office_id, 'office_name', o.name,
              'admin_name', a.full_name, 'access_id', l.access_id, 'detail', l.detail,
              'reason', case when l.action = 'access.opened' then x.reason else l.reason end) r
       from public.platform_audit l
       join public.platform_admin a on a.id = l.admin_id
       left join public.office o on o.id = l.office_id
       left join public.platform_access x on x.id = l.access_id
-     where (l.office_id is null or o.is_test = me.test)
+     where (case when l.office_id is null then (a.email like '%.test') = me.test else o.is_test = me.test end)
        and (v_office is null or l.office_id = v_office) and (v_action is null or l.action = v_action)
      order by l.id desc limit 50 offset (v_page - 1) * 50) y), '[]'::jsonb));
 end $$;
@@ -449,14 +495,18 @@ end $$;
 -- deployment mode is set (staging, prod, every one-firm deployment), like 17's test_tenancy_probe.
 create or replace function public.test_platform_probe()
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare v_office uuid; v_admin uuid; v_max bigint; v_susp integer; v_ctrl integer;
+declare v_office uuid; v_admin uuid; v_test_admin uuid; v_test_office uuid; v_max bigint; v_susp integer; v_ctrl integer;
+  v_single_suspend text; v_single_create text; v_claims text := current_setting('request.jwt.claims', true);
 begin
   if exists (select 1 from private.deployment) then
     raise exception 'NOT_TEST_DEPLOYMENT: a deployment mode is set' using errcode = '42501';
   end if;
   select id into v_admin from public.platform_admin order by created_at limit 1;
-  if v_admin is null then raise exception 'NO_PLATFORM_ADMIN: create a test super admin first' using errcode = 'P0002'; end if;
+  select id into v_test_admin from public.platform_admin where email like '%.test' and status = 'active' order by created_at limit 1;
+  if v_admin is null or v_test_admin is null then raise exception 'NO_PLATFORM_ADMIN: create a test super admin first' using errcode = 'P0002'; end if;
+  select id into v_test_office from public.office where is_test and suspended_at is null order by created_at limit 1;
   begin
+    -- 1. the nightly job skips a suspended (real) office; the same office unsuspended is the control
     select id into v_office from public.office where not is_test order by created_at limit 1;
     if v_office is null then
       insert into public.office (name) values ('platform probe firm') returning id into v_office;
@@ -469,11 +519,27 @@ begin
     select coalesce(max(id), 0) into v_max from public.activity;
     perform private.run_daily_expected();
     select count(*) into v_ctrl from public.activity where office_id = v_office and id > v_max;
+    -- 2. review I-2: in a one-firm (single) deployment, suspend and create are refused, as a test super admin
+    insert into private.deployment (mode) values ('single');
+    perform set_config('request.jwt.claims', json_build_object('sub', v_test_admin, 'role', 'authenticated')::text, true);
+    begin
+      perform public.platform_suspend_firm(v_test_office, 'single mode probe reason');
+      v_single_suspend := 'ALLOWED';
+    exception when others then v_single_suspend := split_part(sqlerrm, ':', 1);
+    end;
+    begin
+      perform public.platform_create_firm('{"name": "e2e office single probe"}'::jsonb);
+      v_single_create := 'ALLOWED';
+    exception when others then v_single_create := split_part(sqlerrm, ':', 1);
+    end;
+    perform set_config('request.jwt.claims', coalesce(v_claims, ''), true);
     raise exception 'PROBE_ROLLBACK';
   exception when raise_exception then
     if sqlerrm <> 'PROBE_ROLLBACK' then raise; end if;
   end;
-  return jsonb_build_object('suspended_rows', v_susp, 'control_rows', v_ctrl);
+  perform set_config('request.jwt.claims', coalesce(v_claims, ''), true);
+  return jsonb_build_object('suspended_rows', v_susp, 'control_rows', v_ctrl,
+    'single_suspend', v_single_suspend, 'single_create', v_single_create);
 end $$;
 revoke all on function public.test_platform_probe() from public, anon, authenticated;
 grant execute on function public.test_platform_probe() to service_role;

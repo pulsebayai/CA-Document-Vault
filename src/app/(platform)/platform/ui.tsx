@@ -45,9 +45,9 @@ export function Pager({ base, page, hasNext, extra = "" }: { base: string; page:
   const cls = "rounded-[7px] border border-line-2 bg-panel px-2.5 py-1 hover:bg-canvas";
   return (
     <nav aria-label="Pages" className="mt-4 flex items-center justify-end gap-2 text-[13.5px]">
-      {page > 1 ? <Link className={cls} href={href(page - 1)}>Previous</Link> : null}
+      {page > 1 ? <Link prefetch={false} className={cls} href={href(page - 1)}>Previous</Link> : null}
       <span className="text-ink-3">Page {page}</span>
-      {hasNext ? <Link className={cls} href={href(page + 1)}>Next</Link> : null}
+      {hasNext ? <Link prefetch={false} className={cls} href={href(page + 1)}>Next</Link> : null}
     </nav>
   );
 }
@@ -58,7 +58,7 @@ export function NoAccess({ firmId }: { firmId: string }) {
     <Card className="px-6 py-8">
       <p role="alert" className="font-medium">Read access to this firm isn&apos;t open.</p>
       <p className="mt-1 text-ink-2">Open read access with a reason on the firm page. It lasts 60 minutes, and the firm&apos;s Admins are told.</p>
-      <Link href={`/platform/firms/${firmId}`} className="mt-4 inline-block font-medium text-accent underline-offset-2 hover:underline">Go to the firm page</Link>
+      <Link prefetch={false} href={`/platform/firms/${firmId}`} className="mt-4 inline-block font-medium text-accent underline-offset-2 hover:underline">Go to the firm page</Link>
     </Card>
   );
 }
@@ -73,5 +73,5 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 }
 
 export function Back({ href, children }: { href: string; children: ReactNode }) {
-  return <Link href={href} className="mb-3 inline-block text-[13.5px] text-ink-2 hover:text-ink">← {children}</Link>;
+  return <Link prefetch={false} href={href} className="mb-3 inline-block text-[13.5px] text-ink-2 hover:text-ink">← {children}</Link>;
 }

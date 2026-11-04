@@ -36,12 +36,15 @@ function adminDb({ staff = null as Row, platform = null as Row, auditError = nul
   };
   return db;
 }
-function userClient({ user = { id: "u1" } as Row, staffRow = null as Row, state = "none" as unknown, whoami = null as Row, claims = true } = {}) {
+// platformSignIn: what platform_signed_in() answers as this user ("ok", or an error message; default: not a super admin)
+function userClient({ user = { id: "u1" } as Row, staffRow = null as Row, state = "none" as unknown, whoami = null as Row, claims = true, platformSignIn = "NOT_PLATFORM_ADMIN" } = {}) {
   const chain = { select: () => chain, eq: () => chain, maybeSingle: async () => ({ data: staffRow, error: null }) };
   return {
     signOut: vi.fn(async () => ({ error: null })),
     rpc: vi.fn(async (fn: string) => fn === "my_access_state" ? { data: state, error: null }
-      : fn === "platform_whoami" ? (whoami ? { data: whoami, error: null } : { data: null, error: { message: "NOT_PLATFORM_ADMIN" } }) : { data: null, error: null }),
+      : fn === "platform_whoami" ? (whoami ? { data: whoami, error: null } : { data: null, error: { message: "NOT_PLATFORM_ADMIN" } })
+      : fn === "platform_signed_in" ? (platformSignIn === "ok" ? { data: null, error: null } : { data: null, error: { message: platformSignIn, code: "x" } })
+      : { data: null, error: null }),
     from: () => chain,
     auth: {
       getUser: async () => ({ data: { user } }),
@@ -85,27 +88,29 @@ describe("finishSignIn: what the signed-in user is", () => {
     expect(h.logActivity).not.toHaveBeenCalled();
   });
 
-  it("deactivated staff → none, signed out (a super admin row is never consulted for a staff email)", async () => {
-    const r = await finish(adminDb({ staff: { id: "u1", office_id: "o1", status: "deactivated", office: { suspended_at: null } }, platform: { id: "u1", status: "active" } }));
+  it("deactivated staff → none, signed out (the platform check is never asked for a staff member)", async () => {
+    const client = userClient({ platformSignIn: "ok" });
+    const r = await finish(adminDb({ staff: { id: "u1", office_id: "o1", status: "deactivated", office: { suspended_at: null } } }), client);
     expect(r.state).toBe("none");
     expect(r.client.auth.signOut).toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalledWith("platform_signed_in", expect.anything());
   });
 
-  it("an active super admin → platform, with one platform audit row and no firm activity", async () => {
-    const r = await finish(adminDb({ platform: { id: "u1", status: "active" } }));
+  it("an active super admin → platform: the database records the sign-in as the user (review I-4: no service-role write)", async () => {
+    const r = await finish(adminDb(), userClient({ platformSignIn: "ok" }));
     expect(r.state).toBe("platform");
-    expect(r.admin.writes).toEqual([["insert", "platform_audit", { admin_id: "u1", action: "auth.signed_in", detail: { method: "code" } }]]);
+    expect(r.client.rpc).toHaveBeenCalledWith("platform_signed_in", { p_method: "code" });
+    expect(r.admin.writes).toEqual([]);
     expect(h.logActivity).not.toHaveBeenCalled();
   });
 
   it("a super admin whose sign-in can't be recorded is signed out (fail closed)", async () => {
-    const r = await finish(adminDb({ platform: { id: "u1", status: "active" }, auditError: { code: "57014" } }));
+    const r = await finish(adminDb(), userClient({ platformSignIn: "canceling statement due to statement timeout" }));
     expect(r.state).toBe("none");
     expect(r.client.auth.signOut).toHaveBeenCalled();
   });
 
-  it("a deactivated super admin, or nobody we know → none, signed out", async () => {
-    expect((await finish(adminDb({ platform: { id: "u1", status: "deactivated" } }))).state).toBe("none");
+  it("a deactivated super admin, or nobody we know (the database refuses: NOT_PLATFORM_ADMIN) → none, signed out", async () => {
     expect((await finish(adminDb())).state).toBe("none");
     expect((await finish(adminDb(), userClient({ user: null }))).state).toBe("none");
   });

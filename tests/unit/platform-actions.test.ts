@@ -55,7 +55,10 @@ describe("createFirm", () => {
   const valid = { name: " Sharma & Co ", branch: "Chennai", adminName: "Priya", adminEmail: "Priya@Sharma.in" };
 
   it("creates the firm, invites the first Admin by email (firm name for the template), records them and lands on the firm", async () => {
-    h.rpc.mockImplementation(async (fn: string) => (fn === "platform_create_firm" ? { data: { office_id: OFFICE, result: "created" }, error: null } : { data: null, error: null }));
+    h.rpc.mockImplementation(async (fn: string) => (fn === "platform_create_firm" ? { data: { office_id: OFFICE, result: "created" }, error: null }
+      : fn === "platform_firms" ? { data: [{ id: OFFICE, name: "Sharma & Co", staff_active: 0, staff_invited: 0 }], error: null } // the invite reads the name back
+      : { data: null, error: null }));
+    h.admin.invite.mockResolvedValue({ data: { user: { id: "u1", created_at: new Date().toISOString(), last_sign_in_at: null } }, error: null });
     const { createFirm } = await import("@/lib/platform/actions");
     expect(await caught(createFirm(null, form(valid)))).toBe(`REDIRECT:/platform/firms/${OFFICE}?created=1`);
     expect(h.rpc).toHaveBeenCalledWith("platform_create_firm", { p: { name: "Sharma & Co", branch: "Chennai" } });
@@ -97,7 +100,23 @@ describe("createFirm", () => {
 });
 
 describe("inviteFirstAdmin (service role, after the database confirms the caller)", () => {
-  const p = { officeId: OFFICE, firmName: "Sharma & Co", fullName: "Priya", email: "priya@sharma.in" };
+  const p = { officeId: OFFICE, fullName: "Priya", email: "priya@sharma.in" };
+  const firms = (staff = 0) => ({ data: [{ id: OFFICE, name: "Sharma & Co", staff_active: staff, staff_invited: 0 }], error: null });
+  beforeEach(() => {
+    h.rpc.mockImplementation(async (fn: string) => (fn === "platform_firms" ? firms() : { data: null, error: null }));
+    h.admin.invite.mockResolvedValue({ data: { user: { id: "u1", created_at: new Date().toISOString(), last_sign_in_at: null } }, error: null });
+    h.admin.create.mockResolvedValue({ data: { user: { id: "u1", created_at: new Date().toISOString(), last_sign_in_at: null } }, error: null });
+  });
+
+  it("review L-3: the firm's name in the email comes from the database, and a firm with staff is refused before any email", async () => {
+    const { inviteFirstAdmin } = await import("@/lib/platform/invite");
+    expect(await inviteFirstAdmin(p)).toEqual({ ok: true });
+    expect(h.admin.invite).toHaveBeenCalledWith("priya@sharma.in", expect.objectContaining({ data: { firm: "Sharma & Co" } }));
+    h.admin.invite.mockClear();
+    h.rpc.mockImplementation(async (fn: string) => (fn === "platform_firms" ? firms(2) : { data: null, error: null }));
+    expect(await inviteFirstAdmin(p)).toEqual({ ok: false, error: "This firm already has staff." });
+    expect(h.admin.invite).not.toHaveBeenCalled();
+  });
 
   it("never touches the admin API unless platform_whoami confirms an active super admin", async () => {
     h.whoami = null;
@@ -125,18 +144,44 @@ describe("inviteFirstAdmin (service role, after the database confirms the caller
   });
 
   it("a refused record removes the account it created (a retry starts clean) and says why in plain words", async () => {
-    h.rpc.mockResolvedValue({ data: null, error: { code: "23505", message: "ALREADY_SET_UP: this firm already has staff" } });
+    h.rpc.mockImplementation(async (fn: string) => (fn === "platform_firms" ? firms()
+      : { data: null, error: { code: "23505", message: "EMAIL_IN_USE: this email can't be used" } }));
     const { inviteFirstAdmin } = await import("@/lib/platform/invite");
-    expect(await inviteFirstAdmin(p)).toEqual({ ok: false, error: "This firm already has staff." });
+    expect(await inviteFirstAdmin(p)).toEqual({ ok: false, error: "This email can't be invited. Use a different address." });
     expect(h.admin.del).toHaveBeenCalledWith("u1");
   });
 
-  it("resend: emails the waiting Admin again and records it in the platform audit (IDs only)", async () => {
-    h.rpc.mockResolvedValue({ data: { staff_id: "s1", email: "priya@sharma.in", full_name: "Priya" }, error: null });
+  it("review M-3: an account that existed before this call (an invite returns it) is never deleted", async () => {
+    h.admin.invite.mockResolvedValue({ data: { user: { id: "old", created_at: "2026-10-01T00:00:00Z", last_sign_in_at: null } }, error: null });
+    h.rpc.mockImplementation(async (fn: string) => (fn === "platform_firms" ? firms()
+      : { data: null, error: { code: "23505", message: "ALREADY_SET_UP: this firm already has staff" } }));
+    const { inviteFirstAdmin } = await import("@/lib/platform/invite");
+    expect(await inviteFirstAdmin(p)).toEqual({ ok: false, error: "This firm already has staff." });
+    expect(h.admin.del).not.toHaveBeenCalled();
+  });
+
+  it("review I-4: resend asks the database first (logged there), then emails the address it returns; no service-role write", async () => {
+    const calls: string[] = [];
+    h.rpc.mockImplementation(async (fn: string) => {
+      calls.push(fn);
+      if (fn === "platform_firms") return firms();
+      if (fn === "platform_begin_reinvite") return { data: { staff_id: "s1", email: "priya@sharma.in", full_name: "Priya" }, error: null };
+      return { data: null, error: null };
+    });
+    h.admin.invite.mockImplementation(async () => { calls.push("send"); return { data: { user: { id: "s1" } }, error: null }; });
     const { resendFirstAdminInvite } = await import("@/lib/platform/invite");
-    expect(await resendFirstAdminInvite({ officeId: OFFICE, firmName: "Sharma & Co" })).toEqual({ ok: true });
+    expect(await resendFirstAdminInvite({ officeId: OFFICE })).toEqual({ ok: true });
+    expect(calls).toEqual(["platform_firms", "platform_begin_reinvite", "send"]);
     expect(h.admin.invite).toHaveBeenCalledWith("priya@sharma.in", expect.objectContaining({ data: { firm: "Sharma & Co" } }));
-    expect(h.admin.audit).toHaveBeenCalledWith("platform_audit", { admin_id: "sa1", action: "staff.reinvited", office_id: OFFICE, detail: { staff_id: "s1" } });
+    expect(h.admin.audit).not.toHaveBeenCalled();
+  });
+
+  it("resend with nobody waiting sends nothing", async () => {
+    h.rpc.mockImplementation(async (fn: string) => (fn === "platform_firms" ? firms(3)
+      : { data: null, error: { message: "NOTHING_WAITING: nobody in this firm is waiting for an invite" } }));
+    const { resendFirstAdminInvite } = await import("@/lib/platform/invite");
+    expect(await resendFirstAdminInvite({ officeId: OFFICE })).toEqual({ ok: false, error: "Nobody is waiting for an invite." });
+    expect(h.admin.invite).not.toHaveBeenCalled();
   });
 });
 

@@ -226,3 +226,74 @@ describe("audit (AC-12)", () => {
     expect((await asAdminA.from("platform_audit").select("id").limit(1)).data ?? []).toEqual([]);
   });
 });
+
+// Step 10 review fixes (sdlc-reviewer I-4/I-5, security review M-1/M-2/L-2, coverage gap). Written failing-first.
+describe("step 10 review fixes", () => {
+  const newStafflessFirm = async () =>
+    (await must<{ office_id: string }>(rpc(sa.as, "platform_create_firm", { p: { name: testOfficeName(`platform-fix-${randomBytes(3).toString("hex")}`) } }))).office_id;
+
+  it("coverage gap: a super admin's own account can't be recorded as a firm's first Admin (a staff-less firm, so the clash check is what refuses)", async () => {
+    const office = await newStafflessFirm();
+    const r = await rpc(sa.as, "platform_record_first_admin", { p_office: office, p_user: sa.id, p_name: "X", p_email: sa.email });
+    expect(r.error?.message).toMatch(/EMAIL_IN_USE/);
+  });
+
+  it("I-5/L-2: the waiting Admin is shown without their email; resending is a logged action that returns the address to the server", async () => {
+    const office = await newStafflessFirm();
+    const email = uniqueTestEmail("platform-reinvite");
+    const { data: u } = await svc().auth.admin.createUser({ email, email_confirm: false });
+    await must(rpc(sa.as, "platform_record_first_admin", { p_office: office, p_user: u!.user!.id, p_name: "Waiting Admin", p_email: email }));
+    const target = await must<Record<string, unknown>>(rpc(sa.as, "platform_invite_target", { p_office: office }));
+    expect(target).toEqual({ staff_id: u!.user!.id, full_name: "Waiting Admin" }); // no email: an unlogged read returns no PII
+    const before = (await audit("staff.reinvited", office)).length;
+    const begun = await must<Record<string, unknown>>(rpc(sa.as, "platform_begin_reinvite", { p_office: office }));
+    expect(begun).toEqual({ staff_id: u!.user!.id, email, full_name: "Waiting Admin" });
+    expect((await audit("staff.reinvited", office)).length).toBe(before + 1); // logged before the server sends anything
+    // a firm whose staff have signed in has nobody waiting: nothing is sent and nothing is returned
+    expect((await rpc(sa.as, "platform_begin_reinvite", { p_office: A })).error?.message).toMatch(/NOTHING_WAITING/);
+    expect(await must<unknown>(rpc(sa.as, "platform_invite_target", { p_office: A }))).toBeNull();
+  });
+
+  it("I-4: a super admin's sign-in is recorded by the database as the user (no service role)", async () => {
+    const before = (await svc().from("platform_audit").select("id").eq("admin_id", sa.id).eq("action", "auth.signed_in")).data?.length ?? 0;
+    await must(rpc(sa.as, "platform_signed_in", { p_method: "code" }));
+    const rows = (await svc().from("platform_audit").select("detail").eq("admin_id", sa.id).eq("action", "auth.signed_in").order("id", { ascending: false })).data ?? [];
+    expect(rows.length).toBe(before + 1);
+    expect(rows[0].detail).toEqual({ method: "code" });
+    expect((await rpc(sa.as, "platform_signed_in", { p_method: "anything" })).error?.message).toMatch(/INVALID/);
+    expect((await rpc(asAdminA, "platform_signed_in", { p_method: "code" })).error?.message).toMatch(/NOT_PLATFORM_ADMIN/);
+  });
+
+  it("M-1: asking PostgREST to roll back a read still leaves its log rows, or is refused", async () => {
+    const access = await must<string>(rpc(sa.as, "platform_open_access", { p_office: A, p_reason: "Rollback check (security review M-1)" }));
+    const viewed = async () => (await svc().from("platform_audit").select("id").eq("access_id", access).eq("action", "viewed")).data?.length ?? 0;
+    const { data: s } = await sa.as.auth.getSession();
+    const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/rpc/platform_client`, {
+      method: "POST",
+      headers: {
+        apikey: process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, Authorization: `Bearer ${s.session!.access_token}`,
+        "Content-Type": "application/json", Prefer: "tx=rollback",
+      },
+      body: JSON.stringify({ p_office: A, p_client: clientA }),
+    });
+    const body = await res.text();
+    if (res.ok && body.includes(panA)) expect(await viewed()).toBe(1); // got the PII → the log row must exist
+    else expect(await viewed()).toBeLessThanOrEqual(1);
+    await must(rpc(sa.as, "platform_close_access", { p_access: access }));
+  });
+
+  it("M-2: a super admin whose sign-in email was changed loses platform access until the record matches again", async () => {
+    const other = await createPlatformAdmin("platform-sa-email");
+    const as = await signedInClient(other.email);
+    expect((await rpc(as, "platform_whoami", {})).error).toBeNull(); // control
+    const moved = uniqueTestEmail("platform-sa-moved");
+    try {
+      expect((await svc().auth.admin.updateUserById(other.id, { email: moved, email_confirm: true })).error).toBeNull();
+      expect((await rpc(as, "platform_whoami", {})).error?.message).toMatch(/NOT_PLATFORM_ADMIN/);
+      expect((await rpc(as, "platform_firms", {})).error?.message).toMatch(/NOT_PLATFORM_ADMIN/);
+    } finally {
+      await svc().auth.admin.updateUserById(other.id, { email: other.email, email_confirm: true });
+    }
+    expect((await rpc(as, "platform_whoami", {})).error).toBeNull();
+  });
+});

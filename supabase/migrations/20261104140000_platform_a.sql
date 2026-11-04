@@ -107,6 +107,16 @@ create trigger platform_audit_append_only before update or delete on public.plat
   for each row execute function private.forbid_change();
 create trigger platform_audit_no_pii before insert on public.platform_audit
   for each row execute function private.platform_audit_no_pii();
+-- review L-4: TRUNCATE skips row triggers, so it gets its own guard, and no role keeps the privilege
+create or replace function private.platform_audit_no_truncate()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  raise exception 'APPEND_ONLY: the platform audit is never emptied' using errcode = '42501';
+end $$;
+revoke all on function private.platform_audit_no_truncate() from public, anon, authenticated;
+create trigger platform_audit_no_truncate before truncate on public.platform_audit
+  for each statement execute function private.platform_audit_no_truncate();
+revoke truncate on public.platform_audit from service_role;
 
 -- ── 4 ─────────────────────────────────────────────────────────────────────
 alter table public.office

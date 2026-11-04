@@ -37,10 +37,10 @@ export default async function FirmPage({ params, searchParams }: PageProps<"/pla
           {waiting ? (
             <div className="space-y-3">
               <p className="text-ink-2">{waiting.full_name} hasn&apos;t signed in yet.</p>
-              <ActionButton run={resendInvite.bind(null, id, firm.name)} pendingLabel="Sending…">Resend invite</ActionButton>
+              <ActionButton run={resendInvite.bind(null, id)} pendingLabel="Sending…">Resend invite</ActionButton>
             </div>
           ) : (
-            <FirmForm action={inviteAdmin.bind(null, id, firm.name)} test={me.test} adminOnly />
+            <FirmForm action={inviteAdmin.bind(null, id)} test={me.test} adminOnly />
           )}
         </Card>
       )}

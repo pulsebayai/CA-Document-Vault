@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 
@@ -70,7 +71,8 @@ async function view<T>(fn: string, args: Record<string, unknown>): Promise<ViewR
   return { ok: true, data: data as T };
 }
 
-export const listFirms = () => call<Firm[]>("platform_firms");
+/** Cached per request: the firm layout and page both need it (review N-5). */
+export const listFirms = cache(() => call<Firm[]>("platform_firms"));
 
 /** One firm from the list (no view is logged: the firm page shows counts only). Not Found for another kind of firm. */
 export async function getFirm(id: string): Promise<Firm> {
@@ -80,7 +82,7 @@ export async function getFirm(id: string): Promise<Firm> {
 }
 
 export const inviteTarget = (office: string) =>
-  call<{ staff_id: string; email: string; full_name: string } | null>("platform_invite_target", { p_office: office });
+  call<{ staff_id: string; full_name: string } | null>("platform_invite_target", { p_office: office }); // no email (unlogged read)
 
 export const viewClients = (office: string, query: string | null, page: number) =>
   view<Page<ClientRow>>("platform_clients", { p_office: office, p_query: query, p_page: page });

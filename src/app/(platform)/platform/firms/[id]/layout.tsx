@@ -35,7 +35,7 @@ export default async function FirmLayout({ children, params }: LayoutProps<"/pla
       )}
       <nav aria-label="Firm" className="mb-5 flex gap-1 overflow-x-auto border-b border-line">
         {tabs.map((t) => (
-          <Link key={t.href} href={t.href} className="whitespace-nowrap px-3 py-2 text-[13.5px] text-ink-2 hover:text-ink">{t.label}</Link>
+          <Link prefetch={false} key={t.href} href={t.href} className="whitespace-nowrap px-3 py-2 text-[13.5px] text-ink-2 hover:text-ink">{t.label}</Link>
         ))}
       </nav>
       {children}

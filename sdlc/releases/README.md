@@ -81,4 +81,6 @@ Before any real DSC password is entered on prod:
    - Platform › Audit lists each step, with the reasons;
    - a Kushal staff member opening `/platform` gets Not Found.
    Never open access to, or suspend, Kushal Associates on prod as a test.
-4. **Expected skip:** `tests/rls/platform-suspend.test.ts`'s nightly-skip probe (`test_platform_probe`) is refused once a deployment mode is set (staging, prod), like 17's probe. Not a failure.
+4. **Reads stay logged:** check that the PostgREST setting `db-tx-end` is not overridable (`commit` — Supabase's default; never `commit-allow-override`), so a `Prefer: tx=rollback` call can't read client data and roll back its own log row. `tests/rls/platform.test.ts` › M-1 shows it per environment.
+5. **Test super admins on staging:** the staging Regression creates `.test` super admins (fixtures); they act on test firms only and real super admins don't see their audit rows. Don't remove them by hand.
+6. **Expected skip:** `tests/rls/platform-suspend.test.ts`'s nightly-skip probe (`test_platform_probe`) is refused once a deployment mode is set (staging, prod), like 17's probe. Not a failure.
