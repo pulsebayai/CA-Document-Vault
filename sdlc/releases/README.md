@@ -69,3 +69,16 @@ Before any real DSC password is entered on prod:
 5. **Edge check on staging with a second firm:** bootstrap "Staging Test Firm" (a real address you control), sign in as its Admin: the login page shows "CA Document Vault", the header shows "Staging Test Firm", Clients and Documents are empty, an invite of a Kushal staff email gets "This email can't be invited…", and a reminder sent from it arrives as "Staging Test Firm". Never run this on prod.
 6. **Settings › Office:** Kushal's Admin sees Office; a Manager doesn't.
 7. **Expected skips:** after step 4, `tests/rls/office.test.ts`'s three probe tests skip on staging (the probe refuses once a deployment mode is set, and on any database with no test office, i.e. prod). They run on dev and CI's local stack. Not a failure.
+
+## Super admins (19; R1, staging and prod)
+1. **Migrations replayed** (`20261104140000_platform_a`, `20261104140100_platform_b`): no data step. Check that `public.platform_firms()` refuses a staff member (`NOT_PLATFORM_ADMIN`) and that `office` has the three suspend columns.
+2. **Add the super admins with the script** — Pulsebay only, a **named few**, each on a **mailbox only that person can open** (no second factor in R1: the inbox is the key to every firm's client details; accepted risk, architecture decision log 2026-11-04). From a shell with that environment's values: `node scripts/add-platform-admin.mjs --env staging --email <person>@pulsebay.com --name "<full name>"`, check the plan (project ref), then add `--yes` (prod: `--env prod … --yes --yes-production`). Never a `.test` address, never an address that is staff in any firm (refused). Record who and when here. Someone who leaves: `--deactivate --yes` the same day.
+3. **Smoke the console on staging** (a real super admin, real firms only):
+   - sign in with the email code → `/platform`; open `/today` → back to `/platform`;
+   - the firms list shows Kushal Associates (and the staging test firm from "Firms and tenancy" step 5);
+   - on the staging test firm: open read access with a reason → a client and a document open, no file link; its Admin sees "Pulsebay support viewed …" under Activity › Support access and the bell; close → the views shut;
+   - suspend the staging test firm → its signed-in Admin gets "This firm's access is paused" on the next click and one of its upload links shows the generic "not active" page; reactivate → both work again;
+   - Platform › Audit lists each step, with the reasons;
+   - a Kushal staff member opening `/platform` gets Not Found.
+   Never open access to, or suspend, Kushal Associates on prod as a test.
+4. **Expected skip:** `tests/rls/platform-suspend.test.ts`'s nightly-skip probe (`test_platform_probe`) is refused once a deployment mode is set (staging, prod), like 17's probe. Not a failure.
