@@ -91,6 +91,9 @@ test("AC-2/3/5/8/9/13: sign in → firms → create a firm → open access → r
   await expect(firmPage.getByText(`Pulsebay support viewed ${clientName}`)).toBeVisible();
   await expect(firmPage.getByText("Pulsebay support opened read-only access to the firm's data for 60 minutes")).toBeVisible();
   await expect(firmPage.getByText(marker.concat(":"))).toHaveCount(0); // the reason never reaches the firm
+  // the "Support access" filter (decided 2026-11-04) shows them on their own
+  await firmPage.getByRole("combobox", { name: "Action", exact: true }).selectOption({ label: "Action: Support access" });
+  await expect(firmPage.getByText(`Pulsebay support viewed ${clientName}`)).toBeVisible();
   await firmPage.getByRole("button", { name: /^Notifications, \d+ unread$/ }).click();
   await expect(firmPage.getByRole("region", { name: "Notifications" }))
     .toContainText("Pulsebay support opened read-only access to your firm's data for 60 minutes.");

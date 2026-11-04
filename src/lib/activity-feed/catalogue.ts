@@ -140,14 +140,14 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   // Firm (17): the Admin's name/branch edit; the operator's bootstrap (actor null → shown as the system)
   "office.updated": fixed("users", "updated the firm's name or branch"),
   "office.bootstrapped": fixed("users", "set up the firm in the vault"),
-  // Super admin (19, spec AC-13): read-only support access, suspension. Actor null in the row = the platform. Filed
-  // under Users: 08's filter list is fixed by its spec, so a separate "Support access" filter needs its own approval.
-  "platform.access_opened": { category: "users", actor: platform, text: () => "opened read-only access to the firm's data for 60 minutes" },
-  "platform.viewed": { category: "users", actor: platform, text: (r) => (VIEWED[String(r.data.view)] ?? (() => "viewed the firm's data"))(r) },
-  "office.suspended": { category: "users", actor: platform, text: () => "paused the firm's access to the vault" },
-  "office.reactivated": { category: "users", actor: platform, text: () => "restored the firm's access to the vault" },
+  // Super admin (19, spec AC-13): read-only support access, suspension. Actor null in the row = the platform.
+  // Their own Activity filter, "Support access" (approved Sidambara 2026-11-04).
+  "platform.access_opened": { category: "platform", actor: platform, text: () => "opened read-only access to the firm's data for 60 minutes" },
+  "platform.viewed": { category: "platform", actor: platform, text: (r) => (VIEWED[String(r.data.view)] ?? (() => "viewed the firm's data"))(r) },
+  "office.suspended": { category: "platform", actor: platform, text: () => "paused the firm's access to the vault" },
+  "office.reactivated": { category: "platform", actor: platform, text: () => "restored the firm's access to the vault" },
   // written to the platform audit only (src/lib/platform/invite.ts), never to a firm's activity; listed for 08's scan
-  "staff.reinvited": { category: "users", actor: platform, text: () => "sent the first Admin's invite again" },
+  "staff.reinvited": { category: "platform", actor: platform, text: () => "sent the first Admin's invite again" },
   // Sign-ins (01)
   "auth.signed_in": fixed("sign_ins", "signed in"),
 };

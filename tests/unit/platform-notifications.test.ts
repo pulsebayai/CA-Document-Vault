@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { ACTIVITY_CATALOGUE, describeActivity, type ActivityRowView } from "@/lib/activity-feed/catalogue";
 import { lastActivityLine } from "@/lib/activity-feed/last-activity";
+import { actionsFor } from "@/lib/activity-feed/categories";
 
 // Feature 19 (spec AC-8, AC-13; plan step 7): what a firm sees of support access — its Activity sentences and the
 // bell for its Admins. Rows hold IDs and the view name only; names come from 08's feed under the viewer's RLS.
@@ -57,6 +58,11 @@ describe("Activity sentences (AC-13)", () => {
     const line = lastActivityLine({ id: 1, at: new Date().toISOString(), action: "platform.viewed", entity_type: "platform_access",
       data: { view: "document" }, actor_id: null, actor_name: null, doc_type_name: null, doc_group_name: null });
     expect(line).toMatch(/^Pulsebay support · viewed a document · /);
+  });
+
+  it("the Support access filter holds exactly the platform's actions (decided 2026-11-04)", () => {
+    expect(actionsFor("platform")).toEqual(["office.reactivated", "office.suspended", "platform.access_opened", "platform.viewed", "staff.reinvited"]);
+    expect(actionsFor("users")).toContain("staff.invited"); // a firm's own user changes stay under Users
   });
 
   it("every platform action is in the catalogue", () => {
