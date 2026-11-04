@@ -46,7 +46,9 @@ const softDoc = async (f: Firm, extra: Args = {}) => doc(f, {
 });
 const clientBody = (f: Firm, incharge: string) => ({
   name: `${f.marker} Client`, client_type: "individual", incharge_id: incharge, previous_reference: "XF",
-  email: `${f.key}-client@example.test`, mobile: "9876500001", pan: f.ids.pan, // the PAN stays: its GSTIN depends on it
+  // update_client takes the full client: PAN and the registration list too (a registration left out is switched off)
+  email: `${f.key}-client@example.test`, mobile: "9876500001", pan: f.ids.pan,
+  registrations: [{ kind: "gstin", number: f.ids.gstin }],
 });
 const linkBody = (client: string, items: Args[], extra: Args = {}) => ({ client_id: client, items, token_hash: hash(), ...extra });
 const adHoc = (f: Firm, extra: Args = {}) => ({ kind: "ad_hoc", doc_type_id: f.ids.bankType, ...extra });

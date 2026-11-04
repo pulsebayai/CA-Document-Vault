@@ -31,7 +31,7 @@ export type Firm = {
     review: string; custody: string; laterExpected: string; laterPeriod: string;
     // second objects (review I-4, I-6): controls that need a fresh target of the same kind, or a second parent
     client2: string; laterExpected2: string; readyDoc: string; proposedType2: string; proposedType3: string; proposedType4: string;
-    otherType: string; otherGroup: string; gstType: string; pan: string; emailFollowUp: string | null;
+    otherType: string; otherGroup: string; gstType: string; pan: string; gstin: string; emailFollowUp: string | null;
   };
 };
 
@@ -72,6 +72,7 @@ async function seedFirm(key: "a" | "b"): Promise<Firm> {
   const pan = testPan("P", key === "a" ? 1801 : 1802);
   await one(as.staff.from("client").update({ pan }).eq("id", ids.client), "pan");
   ids.pan = pan;
+  ids.gstin = testGstin(pan);
   ids.registration = (await one(as.staff.from("client_registration")
     .insert({ office_id: office, client_id: ids.client, kind: "gstin", number: testGstin(pan) }).select("id").single(), "registration")).id as string;
   ids.contact = (await one(as.staff.from("client_contact")

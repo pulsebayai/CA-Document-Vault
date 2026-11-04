@@ -38,7 +38,7 @@ One: `…_test_schema_inventory.sql`, plus one per leak fix (X8). Each is applie
 - [x] 5. **Service-role functions + private definers** (AC-9–AC-11): `links.test.ts`; map the 60 private definers to the cases that reach them; exemptions with reasons. Guard green. — proof: `guard.test.ts` + `links.test.ts` green
 - [x] 6. **Storage + screens** (AC-12, AC-13): `storage.test.ts`; `cross-firm.spec.ts` run locally (`playwright.local.config.ts`). — proof: both run logs
 - [x] 7. Full local run of `tests/rls/cross-firm` on dev + timing (AC-15). The existing suite is untouched (AC-16): the full RLS run on dev in the session. — proof: timings in the session log
-- [ ] 8. Docs: the architecture rule + decision row, the CLAUDE.md line, the evidence report (AC-14; final run IDs after CI). — proof: diff
+- [x] 8. Docs: the architecture rule + decision row, the CLAUDE.md line, the evidence report (AC-14; final run IDs after CI). — proof: diff
 - [ ] 9. `verifier` → `sdlc-reviewer` (focus: cases that pass for the wrong reason, e.g. a refusal caused by a bad argument instead of the tenant check) → fix Important findings failing-first → PR with the AC → test → result table → dev Regression `only` = `rls/cross-firm e2e/cross-firm`. — proof: CI green on the last code commit
 
 ## Proving a refusal is the *tenant* refusal (review focus)
@@ -66,3 +66,17 @@ A case can pass for the wrong reason: a malformed argument, a missing required f
 - **D6 (step 6):** the app's server code is run in the `db` test project with `@/lib/supabase/server` and `@/lib/auth/staff` swapped for Firm A's signed-in client (plan risk 3): the RLS lookups before signing are real; Next's cookie handling is covered by 01's auth tests. The bulk link call answers one entry per ID with `url: null` for files you can't have, so the test counts entries with a URL.
 - **Step 7 results (2026-11-04):** lint 0, typecheck 0, unit **702/702**. Full RLS suite on dev from the session in 9 foreground batches (a background run was stopped when the session paused, D7): **66 files, 1,013 passed, 0 failed, 17 skipped** (VOLUME / RUN_SLOW / env-gated, as on main), ≈ 57 min of test time; every existing file unedited (AC-16). The cross-firm folder alone: 139 tests, ≈ 7 min on dev (incl. the 2-min seed); e2e `cross-firm.spec.ts` 3/3 locally. PR CI timing (AC-15, local stacks) is measured in step 9.
 - **D7 (step 7):** long runs in a cloud session go in the foreground in ≤ 10-minute batches; a background process is stopped when the session pauses and leaves a partial log that looks like failures (review-dispatch showed 26 "failed" in the cut-off log, 39/39 alone).
+- **D8 (step 9, pre-PR review, 2026-11-04):** `sdlc-reviewer`: 1 Blocker, 9 Important, 8 Nits — all in the test logic, no product leak; all fixed.
+  - **B-1:** the "insert into Firm B" case (X4.3) had been lost in a step-3 refactor while `coverage.ts` still claimed it. Restored; a new check fails when coverage.ts names a case that didn't run (`ran` set).
+  - **I-1/I-2:** the A→B foreign-key scan and the activity/notification scan run in `afterAll`, after every section; Firm B's office row is part of the snapshot.
+  - **I-3:** write-B writes a different valid value, and the control's change is put back and checked.
+  - **I-4/I-6:** every write attempt has a control with the same payload shape (per attempt where it differs), run after the attempts. Payload errors (duplicate key, not null, check, invalid input) never count as proof; named firm checks are matched by message, not SQLSTATE (ours use 23514 too). "Closed for everyone" = Firm A's own call gets the identical refusal. One case (`retry_link_email`) has a written exemption and an expected error.
+  - **I-5:** Firm B gets a pending *email* follow-up, so `finish_email_reminder` reaches its firm check.
+  - **I-7:** firm-wide figures must be non-zero for Firm A (11's formats are seeded for both firms); reads need a working, non-empty control.
+  - **I-8:** `link_register` changes one thing at a time, with a positive control; B's token is shown live first.
+  - **I-9:** more mixed ID keys: `replaces` (the definer `insert_upload_request`), registration (on a per-GSTIN type), moving a DSC to Firm B's client, `registration_id` / `received_by` on documents.
+  - **N-1:** the policy column is qualified (`period.financial_year_id`), applied on dev.
+  - **N-2..N-7:** the Limited case is relabelled; a no-policy insert must be refused by the access rules; untried foreign keys are listed with a reason (all: column not staff-writable); dead code removed; order dependence noted; e2e controls added.
+  - Found while fixing: `update_client` switches off any registration not listed (02, by design), so the test sends the full client.
+- **N-8:** files beyond the plan's list: `functions.ts`, `rows.ts`, `inventory.ts` (split out of the sweep for readability).
+- **Final run (2026-11-04):** cross-firm folder **145/145** on dev. Evidence: `sdlc/releases/R1/evidence/cross-firm-sweep.md`. **Inventory function body md5 on dev = file:** `8b45fbf0505fd503daf70a14aae62742`; `period_insert` on dev = the migration (checked 2026-11-04).
