@@ -427,3 +427,38 @@ begin
     execute format('grant execute on function %s to authenticated', f);
   end loop;
 end $$;
+
+-- ── 5. Test probe (D3): the nightly job skips a suspended firm ─────────────────────────────────────────────────────
+-- run_daily_expected covers real offices only, so the check suspends a real office inside a block that is always
+-- rolled back, runs the job, then runs it again unsuspended as the control. Service role only; refused wherever a
+-- deployment mode is set (staging, prod, every one-firm deployment), like 17's test_tenancy_probe.
+create or replace function public.test_platform_probe()
+returns jsonb language plpgsql security definer set search_path = '' as $$
+declare v_office uuid; v_admin uuid; v_max bigint; v_susp integer; v_ctrl integer;
+begin
+  if exists (select 1 from private.deployment) then
+    raise exception 'NOT_TEST_DEPLOYMENT: a deployment mode is set' using errcode = '42501';
+  end if;
+  select id into v_admin from public.platform_admin order by created_at limit 1;
+  if v_admin is null then raise exception 'NO_PLATFORM_ADMIN: create a test super admin first' using errcode = 'P0002'; end if;
+  begin
+    select id into v_office from public.office where not is_test order by created_at limit 1;
+    if v_office is null then
+      insert into public.office (name) values ('platform probe firm') returning id into v_office;
+    end if;
+    update public.office set suspended_at = now(), suspended_by = v_admin, suspend_reason = 'nightly skip probe' where id = v_office;
+    select coalesce(max(id), 0) into v_max from public.activity;
+    perform private.run_daily_expected();
+    select count(*) into v_susp from public.activity where office_id = v_office and id > v_max;
+    update public.office set suspended_at = null, suspended_by = null, suspend_reason = null where id = v_office;
+    select coalesce(max(id), 0) into v_max from public.activity;
+    perform private.run_daily_expected();
+    select count(*) into v_ctrl from public.activity where office_id = v_office and id > v_max;
+    raise exception 'PROBE_ROLLBACK';
+  exception when raise_exception then
+    if sqlerrm <> 'PROBE_ROLLBACK' then raise; end if;
+  end;
+  return jsonb_build_object('suspended_rows', v_susp, 'control_rows', v_ctrl);
+end $$;
+revoke all on function public.test_platform_probe() from public, anon, authenticated;
+grant execute on function public.test_platform_probe() to service_role;

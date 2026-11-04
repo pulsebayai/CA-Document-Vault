@@ -9,6 +9,7 @@ import { T, bankOnlyClient, expectedItem, generateAsOf, mustRpc } from "../../su
 import { FAKE_CT, mustSaveDsc, newDsc } from "../../support/dsc";
 import { seedPreferences } from "../../support/formats";
 import { testGstin, testPan } from "../../support/test-data";
+import { signedInPlatformAdmin } from "../../support/platform";
 
 // Feature 18 (spec AC-1) — two firms on one database, each with an Admin, a Staff and a Limited user and at least one
 // row in every table that carries office_id, all made through the app's own functions as signed-in staff (02: the
@@ -32,6 +33,7 @@ export type Firm = {
     // second objects (review I-4, I-6): controls that need a fresh target of the same kind, or a second parent
     client2: string; laterExpected2: string; readyDoc: string; proposedType2: string; proposedType3: string; proposedType4: string;
     otherType: string; otherGroup: string; gstType: string; pan: string; gstin: string; emailFollowUp: string | null;
+    platformAccess: string; // 19: a support window opened on this firm by the sweep's test super admin
   };
 };
 
@@ -162,6 +164,12 @@ async function seedFirm(key: "a" | "b"): Promise<Firm> {
   await mustRpc(as.staff, "dsc_custody_log", { p: { dsc_id: ids.dsc, direction: "out", person_name: `${marker} Person`, on_date: "2026-05-01" } });
   ids.dscCustody = (await one(svc.from("dsc_custody").select("id").eq("dsc_id", ids.dsc).limit(1).single(), "dsc custody")).id as string;
   await mustRpc(as.staff, "dsc_set_remind_days", { p_client_id: ids.client, p_days: 45 });
+
+  // Super admin (19): a support window on this firm, so platform_access / platform_audit hold a row of each firm and
+  // its Admins get the bell (notification kind platform_access).
+  const sa = await signedInPlatformAdmin("xfirm-sa");
+  ids.platformAccess = await one(sa.as.rpc("platform_open_access", { p_office: office, p_reason: `Cross-firm sweep seed ${key}` }), "platform access") as unknown as string;
+  await one(sa.as.rpc("platform_close_access", { p_access: ids.platformAccess }), "platform close");
 
   ids.activity = (await one(svc.from("activity").select("id").eq("office_id", office).order("id", { ascending: false }).limit(1).single(), "activity")).id as number;
   return { key, office, marker, users, as, ids };

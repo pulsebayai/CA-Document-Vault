@@ -81,5 +81,12 @@ describe("suspend (AC-7)", () => {
     expect((await rpc(sa.as, "platform_reactivate_firm", { p_office: F })).error?.message).toMatch(/NOT_SUSPENDED/);
   });
 
-  it.todo("the nightly job skips a suspended firm (run_daily_expected covers real offices only: proven with a rolled-back probe in step 2)");
+  it("the nightly job skips a suspended firm; the same firm unsuspended is generated (rolled-back probe on a real office, D3)", async () => {
+    // run_daily_expected covers real offices only, so the probe suspends one inside a block that is always rolled back
+    const r = await svc().rpc("test_platform_probe");
+    expect(r.error).toBeNull();
+    expect(r.data).toEqual({ suspended_rows: 0, control_rows: 1 });
+    // refused for staff
+    expect((await asStaff.rpc("test_platform_probe")).error).not.toBeNull();
+  }, 120_000);
 });
