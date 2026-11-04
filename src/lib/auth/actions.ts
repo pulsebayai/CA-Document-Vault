@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { finishSignIn } from "./finish";
 import { clearFailures, isLocked, recordFailure } from "./lockout";
 import { normaliseEmail } from "./roles";
+import { AFTER_SIGN_IN, PAUSED_MESSAGE, REMOVED_MESSAGE } from "./access";
 
 export type LoginState =
   | { step: "email"; error?: string }
@@ -32,12 +33,14 @@ async function requestCode(_prev: LoginState, form: FormData): Promise<LoginStat
 
   if (await isLocked(email)) return { step: "code", email, message: NEUTRAL, error: LOCKED };
 
-  // Only send to staff who are not deactivated. Never create users here.
-  const { data: staff } = await createAdminClient()
-    .from("staff_user").select("status").eq("email", email).maybeSingle();
+  // Only send to staff who are not deactivated, or to an active super admin (19). Never create users here.
+  const admin = createAdminClient();
+  const { data: staff } = await admin.from("staff_user").select("status").eq("email", email).maybeSingle();
+  const { data: platform } = staff ? { data: null } : await admin.from("platform_admin").select("status").eq("email", email).maybeSingle();
+  const allowed = (staff && staff.status !== "deactivated") || platform?.status === "active";
   // Never spend the (small) email quota on reserved test domains (RFC 2606 ".test") — CI uses them.
   const isTestAddress = email.endsWith(".test");
-  if (staff && staff.status !== "deactivated" && !isTestAddress) {
+  if (allowed && !isTestAddress) {
     const supabase = await createClient();
     const { error } = await supabase.auth.signInWithOtp({
       email,
@@ -63,10 +66,10 @@ async function verifyCode(prev: LoginState, form: FormData): Promise<LoginState>
     return { ...prev, error: locked ? LOCKED : "That code is wrong or has expired. Check the latest email or request a new code." };
   }
   await clearFailures(email);
-  if ((await finishSignIn(supabase, "code")) === "removed") {
-    return { step: "email", error: "Your access has been removed. Contact your administrator." };
-  }
-  redirect("/today"); // spec 06 AC-1: sign-in lands on Today
+  const state = await finishSignIn(supabase, "code");
+  if (state === "none") return { step: "email", error: REMOVED_MESSAGE };
+  if (state === "suspended") return { step: "email", error: PAUSED_MESSAGE };
+  redirect(AFTER_SIGN_IN[state]); // staff → Today (06 AC-1); super admin → /platform (19)
 }
 
 /** Link sign-in (PKCE): exchange the one-time code from the email link for a session. */
@@ -74,15 +77,13 @@ export async function completeLinkSignIn(code: string): Promise<{ error: string 
   const supabase = await createClient();
   const { error } = await supabase.auth.exchangeCodeForSession(code);
   if (error) return { error: LINK_FAILED };
-  if ((await finishSignIn(supabase, "link")) === "removed") redirect("/login?reason=removed");
-  redirect("/today"); // spec 06 AC-1: sign-in lands on Today
+  redirect(AFTER_SIGN_IN[await finishSignIn(supabase, "link")]); // staff → Today (06 AC-1); others: access.ts
 }
 
 /** Invite link: the browser has stored the session from the URL fragment; finish on the server. */
 export async function completeInviteSignIn(): Promise<{ error: string }> {
   const supabase = await createClient();
-  const result = await finishSignIn(supabase, "invite");
-  redirect(result === "removed" ? "/login?reason=removed" : "/today");
+  redirect(AFTER_SIGN_IN[await finishSignIn(supabase, "invite")]);
 }
 
 const LINK_FAILED = "This sign-in link has expired, was already used, or was opened in a different browser. Request a new link on this device.";

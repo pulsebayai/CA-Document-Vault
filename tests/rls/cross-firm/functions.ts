@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { adminClient } from "../../support/db";
 import { uploadObject } from "../../support/documents";
+import { PLATFORM_FUNCTIONS } from "../../support/platform";
 import type { Firm, Role } from "./seed";
 
 // Feature 18 (spec AC-6–AC-8, X5) — one entry per function staff can call. Each attempt is made as a member of Firm A
@@ -264,6 +265,15 @@ export const FN_CASES: FnCase[] = [
     B_("B's client + group", (B) => ({ p_client_id: B.ids.client2, p_doc_group_id: B.ids.group })),
     { label: "mixed: A's client, B's group", args: (A, B) => ({ p_client_id: A.ids.client2, p_doc_group_id: B.ids.group }) },
   ], control: (A) => ({ p_client_id: A.ids.client2, p_doc_group_id: A.ids.group }) },
+  // 19: what the signed-in user is; takes no argument, so it can only ever describe the caller
+  { fn: "my_access_state", kind: "read", attempts: [{ label: "no argument (the caller only)", args: () => ({}) }], control: () => ({}) },
+  // 19: the platform functions refuse every staff member before anything else (NOT_PLATFORM_ADMIN), Firm B's office or
+  // Firm A's own alike: "closed for everyone". The super admin's own doors are the "platform" section of sweep.test.ts.
+  ...Object.entries(PLATFORM_FUNCTIONS).map(([fn, args]): FnCase => ({
+    fn, kind: "write",
+    attempts: [B_("B's office and IDs", (B) => args(B.office, B.ids.client))],
+    control: (A) => args(A.office, A.ids.client),
+  })),
   // last: revoking A's link would stop later link cases
   { fn: "revoke_upload_request", kind: "write", attempts: [B_("B's request", (B) => ({ p_id: B.ids.request }))],
     control: (A) => ({ p_id: A.ids.request }) },

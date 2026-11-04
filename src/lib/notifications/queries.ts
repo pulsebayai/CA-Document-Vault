@@ -1,6 +1,11 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { notificationText, type NotificationDecision } from "@/lib/catalogue/messages";
+import { PLATFORM_ACTOR } from "@/lib/activity-feed/catalogue";
+
+/** 19 (spec Y4, AC-8): the bell for a firm's Admins when support opens read access. No reason, no names: IDs only. */
+export const PLATFORM_ACCESS_TEXT =
+  `${PLATFORM_ACTOR} opened read-only access to your firm's data for 60 minutes. Everything they view is listed in Activity.`;
 
 // Feature 05 AC-13: the bell. RLS returns the signed-in staff member's own notifications only. A notification holds
 // IDs and the decision; the text is built here from the type rows (names, decision comment), never stored.
@@ -41,7 +46,7 @@ export async function loadNotifications(): Promise<NotificationList> {
     const { data } = await supabase.from("upload_request").select("id, client:client_id (name)").in("id", requestIds);
     for (const q of (data ?? []) as unknown as Array<{ id: string; client: { name: string } | null }>) if (q.client) clients.set(q.id, q.client.name);
   }
-  const ids = [...new Set(rows.filter((r) => r.kind !== "link_upload").flatMap((r) => [r.data.doc_type_id, r.data.target_id].filter(Boolean) as string[]))];
+  const ids = [...new Set(rows.filter((r) => r.kind === "type_decision").flatMap((r) => [r.data.doc_type_id, r.data.target_id].filter(Boolean) as string[]))];
   const types = new Map<string, TypeRow>();
   if (ids.length) {
     const { data } = await supabase.from("doc_type").select("id, name, decision_comment, doc_group:doc_group_id (name)").in("id", ids);
@@ -50,6 +55,7 @@ export async function loadNotifications(): Promise<NotificationList> {
   return {
     unread,
     items: rows.map((r) => {
+      if (r.kind === "platform_access") return { id: r.id, createdAt: r.created_at, unread: r.read_at === null, text: PLATFORM_ACCESS_TEXT };
       if (r.kind === "link_upload") {
         const who = clients.get(r.data.request_id ?? "");
         return { id: r.id, createdAt: r.created_at, unread: r.read_at === null,

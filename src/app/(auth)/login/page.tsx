@@ -1,4 +1,5 @@
 import { loginBrand } from "@/lib/auth/login-brand";
+import { PAUSED_MESSAGE, REMOVED_MESSAGE } from "@/lib/auth/access";
 import { BrandMark, Card } from "@/components/ui";
 import { LoginForm } from "./login-form";
 
@@ -21,9 +22,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <Card className="p-6">
           <h1 className="text-[22px] font-semibold">Sign in</h1>
           <p className="mt-1 text-ink-2">We&apos;ll email you a sign-in link and code. No password needed.</p>
-          {reason === "removed" && (
+          {(reason === "removed" || reason === "paused") && (
             <p role="alert" className="mt-4 rounded-lg bg-bad-soft px-3 py-2 text-[13.5px] text-bad">
-              Your access has been removed. Contact your administrator.
+              {reason === "paused" ? PAUSED_MESSAGE : REMOVED_MESSAGE}
             </p>
           )}
           <LoginForm />

@@ -5,5 +5,6 @@
 export const DOCUMENT_REF_ACTIONS: readonly string[] = Object.freeze([
   "dispatch.created",
   "dispatch.item_removed",
+  "platform.viewed", // 19: support viewed this document (data.document_id; 15's indexed lookup finds it)
   "upload_request_item.filed",
 ]);

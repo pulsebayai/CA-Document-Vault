@@ -11,6 +11,8 @@ import { changedTables, isEmpty, mentions, snapshot } from "./helpers";
 import { FN_CASES, shared, type FnCase } from "./functions";
 import { PARENT, PARENT2, ROW } from "./rows";
 import { FUNCTIONS, TABLES } from "./coverage";
+import { PLATFORM_FUNCTIONS, createPlatformAdmin, signedInPlatformAdmin } from "../../support/platform";
+import { signedInClient } from "../../support/db";
 
 // Feature 18 — the cross-firm sweep (spec AC-1, AC-4–AC-13). Firm A's staff (Admin unless stated, spec X3) try every
 // door into Firm B. One seed per run (≈ 2 min on dev from a session), so the sections share this file and run in order
@@ -100,7 +102,7 @@ describe("seed (AC-1)", () => {
 });
 
 // ── Tables (AC-4, AC-5) ────────────────────────────────────────────────────────────────────────────────────────────
-const NO_APP_ACCESS = new Set(["doc_counter", "link_attempt"]); // no policies at all (AC-5)
+const NO_APP_ACCESS = new Set(["doc_counter", "link_attempt", "platform_access", "platform_audit"]); // no policies at all (AC-5)
 /** Who in Firm A can see Firm A's seeded row (the read control). Notification: only its recipient. */
 const reader = (table: string, f: Firm): SupabaseClient => (table === "notification" ? f.as.staff : f.as.admin);
 const noneOrRefused = (r: Res) => !!r.error || !Array.isArray(r.data) || r.data.length === 0;
@@ -428,8 +430,8 @@ describe("service-role functions and no-policy tables (AC-5, AC-10)", () => {
     expect(open).toEqual([]);
   }, 120_000);
 
-  it("tables with no app policies (login_attempt, test_lane, doc_counter, link_attempt) give Firm A nothing and refuse writes", async () => {
-    for (const table of ["login_attempt", "test_lane", "doc_counter", "link_attempt"]) {
+  it("tables with no app policies (login_attempt, test_lane, doc_counter, link_attempt, platform_access, platform_audit) give Firm A nothing and refuse writes", async () => {
+    for (const table of ["login_attempt", "test_lane", "doc_counter", "link_attempt", "platform_access", "platform_audit"]) {
       ran.add(`tables:no-policy:${table}`);
       expect(noneOrRefused(await A.as.admin.from(table).select("*").limit(1) as unknown as Res)).toBe(true);
       const w = await A.as.admin.from(table).insert({}).select("*");
@@ -524,6 +526,131 @@ describe("functions: Firm A calls with Firm B's IDs (AC-6–AC-8; run in order)"
     const covered = new Set(FN_CASES.map((c) => c.fn));
     expect(callable.filter((n) => !covered.has(n))).toEqual([]);
   });
+});
+
+// ── Super admins (19, spec Y9, AC-14) ──────────────────────────────────────────────────────────────────────────────
+// A super admin is outside every firm. Their doors: the platform tables, the platform functions (refused for staff and
+// deactivated super admins), the read views (only inside their own open window, only that firm's objects), and
+// everything else (refused, because a super admin has no office). Runs after the function cases: it opens a window on
+// Firm A, which adds Firm A activity rows; Firm B is never touched after the seed (the afterAll snapshot proves it).
+describe("platform: super admins (19)", () => {
+  let sa: { id: string; as: SupabaseClient };
+  let other: { id: string; as: SupabaseClient };
+  let dead: SupabaseClient;
+  const NOT_SA = /NOT_PLATFORM_ADMIN/;
+  /** Controls that reach past the caller check without changing anything (a too-short reason, an empty name …). */
+  const SAFE: Record<string, (o: string, c: string) => Record<string, unknown>> = {
+    platform_create_firm: () => ({ p: { name: "", branch: null } }),
+    platform_suspend_firm: (o) => ({ p_office: o, p_reason: "x" }),
+    platform_open_access: (o) => ({ p_office: o, p_reason: "x" }),
+  };
+  beforeAll(async () => {
+    sa = await signedInPlatformAdmin("xfirm-sa");
+    other = await signedInPlatformAdmin("xfirm-sa-2");
+    const d = await createPlatformAdmin("xfirm-sa-dead", "deactivated");
+    dead = await signedInClient(d.email);
+  }, 120_000);
+
+  it("platform tables: staff read and write nothing; a super admin reads only their own platform_admin row", async () => {
+    for (const t of ["platform_admin", "platform_access", "platform_audit"]) {
+      ran.add(`tables:platform:${t}`);
+      for (const who of [A.as.admin, A.as.limited, sa.as]) {
+        const col = t === "platform_audit" ? "id" : "id";
+        const r = await who.from(t).select(col).neq(col, t === "platform_audit" ? -1 : "00000000-0000-0000-0000-000000000000").limit(5) as unknown as Res;
+        if (!(who === sa.as && t === "platform_admin")) expect(noneOrRefused(r), `${t} read`).toBe(true);
+        expect((await who.from(t).insert({}).select(col)).error?.message ?? "inserted", `${t} insert`).toMatch(CLOSED);
+      }
+    }
+    const self = await sa.as.from("platform_admin").select("id");
+    expect((self.data ?? []).map((r) => r.id), "control: own row only").toEqual([sa.id]);
+    expect(noneOrRefused(await A.as.admin.from("platform_admin").select("id").eq("id", sa.id) as unknown as Res)).toBe(true);
+  }, 120_000); // ≈ 20 calls: the 30 s default isn't enough when dev is shared with a Regression run (like its neighbours)
+
+  it("every platform function refuses staff of Firm A and a deactivated super admin; an active one gets past the check", async () => {
+    ran.add("platform:callers");
+    const problems: string[] = [];
+    for (const [fn, args] of Object.entries(PLATFORM_FUNCTIONS)) {
+      for (const [who, client] of [["A limited", A.as.limited], ["A staff", A.as.staff], ["deactivated", dead]] as const) {
+        const r = await client.rpc(fn, args(A.office, A.ids.client)) as unknown as Res;
+        if (!r.error || !NOT_SA.test(r.error.message)) problems.push(`${fn} as ${who}: ${r.error?.message.slice(0, 60) ?? "ran"}`);
+      }
+      const ctl = await sa.as.rpc(fn, (SAFE[fn] ?? args)(A.office, A.ids.client)) as unknown as Res;
+      if (ctl.error && NOT_SA.test(ctl.error.message)) problems.push(`${fn}: control refused the active super admin`);
+    }
+    expect(problems).toEqual([]);
+  }, 300_000);
+
+  it("a window on Firm A opens nothing of Firm B, is the opener's only, and ends when closed", async () => {
+    ran.add("platform:window");
+    const access = (await sa.as.rpc("platform_open_access", { p_office: A.office, p_reason: "Cross-firm sweep window" })).data as string;
+    expect(access).toMatch(/^[0-9a-f-]{36}$/);
+    const VIEWS: Array<[string, (o: string, client: string, docId: string) => Record<string, unknown>]> = [
+      ["platform_clients", (o) => ({ p_office: o, p_query: null, p_page: 1 })],
+      ["platform_client", (o, c) => ({ p_office: o, p_client: c })],
+      ["platform_documents", (o, c) => ({ p_office: o, p_client: c, p_page: 1 })],
+      ["platform_document", (o, _c, d) => ({ p_office: o, p_document: d })],
+      ["platform_expected", (o, c) => ({ p_office: o, p_client: c, p_page: 1 })],
+      ["platform_activity", (o) => ({ p_office: o, p_page: 1 })],
+    ];
+    // IDs and the marker as text; a short number (B's activity row ID: 290 on CI's fresh database) would match any
+    // unrelated number, so it is checked exactly below instead (the same rule as "nothing outside", CI 41847…, PR #31)
+    const bNeedles = [B.marker, B.office, ...Object.values(B.ids).filter((v) => v !== null).map(String), ...Object.values(B.users).map((u) => u.id)]
+      .filter((n) => n.length >= 8);
+    const problems: string[] = [];
+    const lines: string[] = [];
+    for (const [fn, args] of VIEWS) {
+      const onB = await sa.as.rpc(fn, args(B.office, B.ids.client, B.ids.softDoc)) as unknown as Res;
+      const mixed = await sa.as.rpc(fn, args(A.office, B.ids.client, B.ids.softDoc)) as unknown as Res;
+      const noWindow = await other.as.rpc(fn, args(A.office, A.ids.client, A.ids.softDoc)) as unknown as Res;
+      const ctl = await sa.as.rpc(fn, args(A.office, A.ids.client, A.ids.softDoc)) as unknown as Res;
+      if (!onB.error || !/NO_ACCESS/.test(onB.error.message)) problems.push(`${fn} on B's office: ${onB.error?.message.slice(0, 60) ?? "ANSWERED"}`);
+      // views that take no B object answer A's data (fine) — they must never carry B's
+      const hits = mentions(mixed.data, bNeedles);
+      if (hits.length) problems.push(`${fn} mixed: LEAK ${hits.slice(0, 3).join(", ")}`);
+      if (["platform_client", "platform_document", "platform_expected"].includes(fn) || (fn === "platform_documents"))
+        if (!mixed.error || !/NOT_FOUND/.test(mixed.error.message)) problems.push(`${fn} with B's IDs: ${mixed.error?.message.slice(0, 60) ?? "ANSWERED"}`);
+      if (!noWindow.error || !/NO_ACCESS/.test(noWindow.error.message)) problems.push(`${fn} by another super admin: ${noWindow.error?.message.slice(0, 60) ?? "ANSWERED"}`);
+      if (ctl.error || isEmpty(ctl.data)) problems.push(`${fn}: control failed (${ctl.error?.message.slice(0, 60) ?? "empty"})`);
+      const rowIds = (r: Res) => ((r.data as { rows?: Array<{ id?: unknown }> } | null)?.rows ?? []).map((x) => x.id);
+      if (fn === "platform_activity" && [...rowIds(mixed), ...rowIds(ctl)].includes(B.ids.activity)) problems.push(`${fn}: LEAK — returns Firm B's activity row`);
+      else if (mentions(ctl.data, bNeedles).length) problems.push(`${fn}: control carries B`);
+      lines.push(`${fn}: B office ${onB.error ? "refused" : "ANSWERED"} · B IDs ${mixed.error ? "refused" : "A only"} · other admin ${noWindow.error ? "refused" : "ANSWERED"} · control ${ctl.error ? "FAILED" : "ok"}`);
+    }
+    expect(JSON.stringify((await sa.as.rpc("platform_clients", { p_office: A.office, p_query: null, p_page: 1 })).data)).toContain(A.marker);
+    // someone else's window can't be closed by another super admin; the opener closes it and the views stop
+    expect((await other.as.rpc("platform_close_access", { p_access: access })).error?.message ?? "closed").toMatch(/NOT_FOUND/);
+    expect((await sa.as.rpc("platform_clients", { p_office: A.office, p_query: null, p_page: 1 })).error).toBeNull();
+    expect((await sa.as.rpc("platform_close_access", { p_access: access })).error).toBeNull();
+    expect((await sa.as.rpc("platform_clients", { p_office: A.office, p_query: null, p_page: 1 })).error?.message ?? "answered").toMatch(/NO_ACCESS/);
+    note("platform window", lines);
+    expect(problems).toEqual([]);
+  }, 300_000);
+
+  it("a super admin reaches nothing outside the platform functions: no firm table, staff function, file or DSC", async () => {
+    const aBefore = await snapshot(A.office, firmTables);
+    const aNeedles = [A.marker, A.office, ...Object.values(A.ids).filter((v) => v !== null).map(String), ...Object.values(A.users).map((u) => u.id)]
+      .filter((n) => n.length >= 8); // IDs and the marker (short numbers like the activity id would match anything)
+    const problems: string[] = [];
+    for (const t of firmTables) {
+      if (!noneOrRefused(await sa.as.from(t).select("office_id").limit(1) as unknown as Res)) problems.push(`table ${t}: rows`);
+    }
+    for (const c of FN_CASES.filter((x) => !x.fn.startsWith("platform_") && x.fn !== "my_access_state")) {
+      const build = c.control ?? c.attempts.find((a) => a.control)?.control;
+      const args = build ? await build(A) : await c.attempts[0].args(A, A);
+      const r = await sa.as.rpc(c.fn, args) as unknown as Res;
+      // an answer may exist (e.g. today_items' date with empty cards); it must carry nothing of Firm A's
+      const hits = r.error ? [] : mentions(r.data, aNeedles);
+      if (hits.length) problems.push(`${c.fn}: answered with Firm A's ${hits.slice(0, 3).join(", ")}`);
+    }
+    for (const mode of ["download", "signed"] as const) {
+      const r = mode === "download" ? await sa.as.storage.from("documents").download(A.ids.softPath)
+        : await sa.as.storage.from("documents").createSignedUrl(A.ids.softPath, 60);
+      if (!r.error) problems.push(`storage ${mode}: allowed`);
+    }
+    expect((await sa.as.rpc("my_access_state")).data).toBe("platform");
+    expect(changedTables(aBefore, await snapshot(A.office, firmTables)), "Firm A changed by a super admin").toEqual([]);
+    expect(problems).toEqual([]);
+  }, 600_000);
 });
 
 // ── The coverage map's claims are the cases that ran (review B-1) ─────────────────────────────────────────────────

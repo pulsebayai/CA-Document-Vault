@@ -30,10 +30,13 @@ export async function inviteStaff(_prev: ActionResult | null, form: FormData): P
   const { fullName, email, role } = parsed.data;
 
   const admin = createAdminClient();
-  const { data: existing } = await admin.from("staff_user").select("id").eq("email", email).maybeSingle();
+  const [{ data: existing }, { data: platform }] = await Promise.all([
+    admin.from("staff_user").select("id").eq("email", email).maybeSingle(),
+    admin.from("platform_admin").select("id").eq("email", email).maybeSingle(), // 19 AC-1: a super admin is never staff
+  ]);
   // 17 (AC-12): one email = one firm. The refusal names no firm and doesn't say an account exists, so an Admin of one
   // firm learns nothing about another (the failure itself is the unavoidable residue, accepted in the spec).
-  if (existing) return { ok: false, error: "This email can't be invited. Use a different address." };
+  if (existing || platform) return { ok: false, error: "This email can't be invited. Use a different address." };
 
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";

@@ -13,6 +13,7 @@ export const ACTIVITY_CATEGORIES = [
   { id: "users", label: "Users" },
   { id: "dsc", label: "DSCs" }, // 14
   { id: "password_reveals", label: "Password reveals" }, // 14 AC-12: reveals only, for the weekly check
+  { id: "platform", label: "Support access" }, // 19 AC-13 (Sidambara 2026-11-04): Pulsebay support's reads, suspension, reactivation
   { id: "sign_ins", label: "Sign-ins" },
 ] as const;
 

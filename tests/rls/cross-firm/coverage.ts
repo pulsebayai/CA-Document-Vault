@@ -23,6 +23,9 @@ export const TABLES: Record<string, Coverage> = {
   doc_counter: T("read", "write-B", "no-policy"), link_attempt: T("read", "write-B", "no-policy"),
   login_attempt: T("no-policy"), test_lane: T("no-policy"),
   doc_type_usage: T("view"),
+  // 19: no policies (read and written only by the platform functions); "platform" = the super admin's doors in sweep.test.ts
+  platform_access: T("read", "write-B", "no-policy", "platform"), platform_audit: T("read", "write-B", "no-policy", "platform"),
+  platform_admin: T("platform"), // no office_id: staff read nothing (self-only policy), write nothing (no grant)
 };
 
 const F = (name: string): Coverage => ({ cases: [`functions:${name}`] });
@@ -48,6 +51,15 @@ export const FUNCTIONS: Record<string, Coverage> = {
     "update_document", "waive_expected",
   ].map((n) => [`public.${n}`, F(n)])),
 
+  // 19 — platform functions: refused for every staff member (functions.ts) and, for super admins, scoped to their own
+  // window and firm kind ("platform:*" cases in sweep.test.ts)
+  "public.my_access_state": F("my_access_state"),
+  ...Object.fromEntries(["whoami", "firms", "create_firm", "record_first_admin", "invite_target", "suspend_firm",
+    "reactivate_firm", "open_access", "close_access", "audit_list", "begin_reinvite", "signed_in"].map((n) => [`public.platform_${n}`,
+    { cases: [`functions:platform_${n}`, "platform:callers"] } as Coverage])),
+  ...Object.fromEntries(["clients", "client", "documents", "document", "expected", "activity"].map((n) => [`public.platform_${n}`,
+    { cases: [`functions:platform_${n}`, "platform:callers", "platform:window"] } as Coverage])),
+
   // public, service role only: refused for anon and staff (AC-10); 10's link functions also tried with Firm B's items (AC-9)
   "public.link_open": { cases: ["service-role", "links:open"] },
   "public.link_ticket": { cases: ["service-role", "links:ticket"] },
@@ -55,7 +67,7 @@ export const FUNCTIONS: Record<string, Coverage> = {
   ...Object.fromEntries([
     "acquire_test_lane", "release_test_lane", "bootstrap_office", "custody_backfill", "expected_job_info", "format_label",
     "format_of_path", "orphan_objects", "purge_link_attempts", "reset_test_office", "test_seed_dsc",
-    "test_seed_preferred_formats", "test_set_link_caps", "test_tenancy_probe", "test_schema_inventory",
+    "test_seed_preferred_formats", "test_set_link_caps", "test_tenancy_probe", "test_schema_inventory", "test_platform_probe",
   ].map((n) => [`public.${n}`, SVC])),
 
   // private SECURITY DEFINER (AC-11): reached through the cases of the objects named
@@ -115,6 +127,14 @@ export const FUNCTIONS: Record<string, Coverage> = {
   "private.rotate_upload_token": via("fn:retry_link_email"),
   "private.run_office_expected": via("fn:run_expected_generation"),
   "private.set_request_item": via("fn:cancel_request_item", "fn:reopen_request_item"),
+  // 19 — the platform checks, reached only through the platform functions' cases
+  "private.require_platform_admin": via("fn:platform_whoami", "fn:platform_clients"),
+  "private.platform_office": via("fn:platform_clients", "fn:platform_suspend_firm"),
+  "private.platform_access_ok": via("fn:platform_clients", "fn:platform_document"),
+  "private.platform_require_access": via("fn:platform_clients", "fn:platform_document"),
+  "private.platform_log": via("fn:platform_open_access", "fn:platform_clients"),
+  "private.platform_viewed": via("fn:platform_clients", "fn:platform_document"),
+  "private.platform_email_clash": via("table:platform_admin", "table:staff_user"),
   "private.run_daily_expected": { exempt: "pg_cron only (runs as the owner, no caller): loops over real offices itself and calls run_office_expected per office, which run_expected_generation covers" },
   "private.purge_link_attempts": { exempt: "pg_cron only: deletes link_attempt rows older than 7 days across offices; takes no input and returns nothing" },
   "private.seed_catalogue": { exempt: "called only by service-role bootstrap_office and reset_test_office for the office they are given (17 and 02 tests)" },

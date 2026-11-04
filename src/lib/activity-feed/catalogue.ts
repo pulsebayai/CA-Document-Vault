@@ -15,7 +15,22 @@ export type ActivityRowView = {
   data: Record<string, unknown>;
 };
 
-type Entry = { category: ActivityCategory; text: (r: ActivityRowView) => string };
+/** `actor`: who a row with no staff actor is shown as (default "Vault", the system). */
+type Entry = { category: ActivityCategory; text: (r: ActivityRowView) => string; actor?: (r: ActivityRowView) => string | null };
+
+/** 19: the platform operator, as a firm sees them in its own Activity (spec AC-13). */
+export const PLATFORM_ACTOR = "Pulsebay support";
+const platform = () => PLATFORM_ACTOR;
+const clientOr = (r: ActivityRowView, fallback: string) => r.client_name ?? fallback;
+/** 19: what support read, from the view name and the IDs the row carries (names resolved under the viewer's RLS). */
+const VIEWED: Record<string, (r: ActivityRowView) => string> = {
+  clients: () => "viewed the client list",
+  client: (r) => `viewed ${clientOr(r, "a client")}`,
+  documents: (r) => (r.client_name ? `viewed the documents of ${r.client_name}` : "viewed the document list"),
+  document: (r) => `viewed ${r.doc_code ?? "a document"}`,
+  expected: (r) => `viewed the expected documents of ${clientOr(r, "a client")}`,
+  activity: () => "viewed the firm's activity",
+};
 
 const doc = (r: ActivityRowView) => r.doc_type_name ?? "a document";
 const num = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0)) || 0;
@@ -116,7 +131,8 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   "doc_group.reordered": fixed("catalogue", "reordered the document groups"),
   "financial_year.added": fixed("catalogue", "added a financial year"),
   // Users (01)
-  "staff.invited": fixed("users", "invited a user"),
+  // 19: the first Admin of a firm set up from the console is invited by the platform (actor null, via 'platform')
+  "staff.invited": { category: "users", text: () => "invited a user", actor: (r) => (r.data.via === "platform" ? PLATFORM_ACTOR : null) },
   "staff.activated": fixed("users", "activated their account"),
   "staff.role_changed": fixed("users", "changed a user's role"),
   "staff.deactivated": fixed("users", "deactivated a user"),
@@ -124,15 +140,24 @@ export const ACTIVITY_CATALOGUE: Record<string, Entry> = {
   // Firm (17): the Admin's name/branch edit; the operator's bootstrap (actor null → shown as the system)
   "office.updated": fixed("users", "updated the firm's name or branch"),
   "office.bootstrapped": fixed("users", "set up the firm in the vault"),
+  // Super admin (19, spec AC-13): read-only support access, suspension. Actor null in the row = the platform.
+  // Their own Activity filter, "Support access" (approved Sidambara 2026-11-04).
+  "platform.access_opened": { category: "platform", actor: platform, text: () => "opened read-only access to the firm's data for 60 minutes" },
+  "platform.viewed": { category: "platform", actor: platform, text: (r) => (VIEWED[String(r.data.view)] ?? (() => "viewed the firm's data"))(r) },
+  "office.suspended": { category: "platform", actor: platform, text: () => "paused the firm's access to the vault" },
+  "office.reactivated": { category: "platform", actor: platform, text: () => "restored the firm's access to the vault" },
+  // written to the platform audit only (src/lib/platform/invite.ts), never to a firm's activity; listed for 08's scan
+  "staff.reinvited": { category: "platform", actor: platform, text: () => "sent the first Admin's invite again" },
   // Sign-ins (01)
   "auth.signed_in": fixed("sign_ins", "signed in"),
 };
 
-/** "Ravi Kumar" → "Ravi"; system rows → "Vault". */
-export const actorLabel = (name: string | null) => (name ? name.trim().split(/\s+/)[0] : "Vault");
+/** "Ravi Kumar" → "Ravi"; a row with no staff actor → its entry's actor ("Pulsebay support", 19) or "Vault" (the system). */
+export const actorLabel = (name: string | null, row?: ActivityRowView) =>
+  name ? name.trim().split(/\s+/)[0] : (row && ACTIVITY_CATALOGUE[row.action]?.actor?.(row)) || "Vault";
 
 export function describeActivity(r: ActivityRowView): { sentence: string; detail: string } {
-  const who = actorLabel(r.actor_name);
+  const who = actorLabel(r.actor_name, r);
   const entry = ACTIVITY_CATALOGUE[r.action];
   const sentence = entry ? `${who} ${entry.text(r)}` : `${who} · ${r.action}`;
   const detail = [r.client_name, r.doc_group_name, r.doc_code].filter(Boolean).join(" · ");

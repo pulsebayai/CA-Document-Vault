@@ -23,7 +23,7 @@ export function lastActivityLine(r: LastActivityRow | null, now: Date = new Date
   const entry = ACTIVITY_CATALOGUE[r.action];
   const view = { action: r.action, actor_name: r.actor_name, client_name: null, doc_code: null, doc_type_name: r.doc_type_name, doc_group_name: r.doc_group_name, data: r.data ?? {} };
   const sentence = entry ? entry.text(view) : r.action;
-  return `${actorLabel(r.actor_name)} · ${sentence} · ${whenText(r.at, now)}`;
+  return `${actorLabel(r.actor_name, view)} · ${sentence} · ${whenText(r.at, now)}`;
 }
 
 const IST = "Asia/Kolkata";
