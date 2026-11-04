@@ -182,6 +182,26 @@ describe("support access (AC-8 – AC-11)", () => {
     expect((await audit("viewed", A)).length).toBeGreaterThan(0);
   });
 
+  it("AC-13: the firm sees support access in its own Activity — the client viewed is named, and the document's own history shows the view", async () => {
+    type Row = { action: string; client_name: string | null; doc_code: string | null; actor_name: string | null; data: Record<string, unknown> };
+    const feed = async (who: SupabaseClient, p: Record<string, unknown>) => ((await must<{ rows: Row[] }>(rpc(who, "activity_feed", { p: { limit: 50, ...p } }))).rows);
+    await must(rpc(sa.as, "platform_client", { p_office: A, p_client: clientA }));
+    await must(rpc(sa.as, "platform_document", { p_office: A, p_document: docA }));
+    const rows = await feed(asAdminA, {});
+    expect(rows.some((r) => r.action === "platform.access_opened" && r.actor_name === null)).toBe(true);
+    const views = rows.filter((r) => r.action === "platform.viewed");
+    expect(views.find((r) => r.data.view === "client")?.client_name).toBe(`${marker} A client`);
+    expect(views.find((r) => r.data.view === "document")?.doc_code).toMatch(/^DOC-/);
+    // the document's own activity (15's lookups) shows that support viewed it
+    expect((await feed(asAdminA, { document_id: docA })).some((r) => r.action === "platform.viewed")).toBe(true);
+    // and the client's (08's client filter)
+    expect((await feed(asAdminA, { client_id: clientA })).some((r) => r.action === "platform.viewed")).toBe(true);
+    // IDs and the view name only: no PII, no reason
+    expect(JSON.stringify(views.map((r) => r.data))).not.toMatch(new RegExp(`${panA}|9876500077|${marker}`));
+    // Firm B's Admin sees none of it
+    expect((await feed(asAdminB, {})).some((r) => r.action.startsWith("platform."))).toBe(false);
+  });
+
   it("is refused for another firm, for another firm's IDs, and once closed or expired", async () => {
     expect((await rpc(sa.as, "platform_clients", { p_office: B, p_query: null, p_page: 1 })).error?.message).toMatch(/NO_ACCESS/);
     expect((await rpc(sa.as, "platform_client", { p_office: A, p_client: clientB })).error?.message).toMatch(/NOT_FOUND/);

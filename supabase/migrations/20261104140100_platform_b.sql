@@ -101,14 +101,24 @@ returns void language sql security definer set search_path = '' as $$
 $$;
 
 -- A read in an access window: one platform audit row and one firm activity row, before the data is returned.
+-- The activity row names what was read by ID (AC-13): `client_id` for a client's pages, `document_id` (+ its client)
+-- for a document, so 08's feed shows "viewed client C0004" and the client's and document's own activity show it too
+-- (08's client resolution, 15's document lookups). IDs and the view name only.
 create or replace function private.platform_viewed(p_admin uuid, p_office uuid, p_access uuid, p_view text, p_entity uuid)
 returns void language plpgsql security definer set search_path = '' as $$
+declare v_client uuid; v_doc uuid;
 begin
+  if p_view = 'document' then
+    v_doc := p_entity;
+    select d.client_id into v_client from public.document d where d.id = p_entity and d.office_id = p_office;
+  elsif p_view in ('client', 'documents', 'expected') then
+    v_client := p_entity;
+  end if;
   perform private.platform_log(p_admin, 'viewed', p_office, p_access,
     jsonb_strip_nulls(jsonb_build_object('view', p_view, 'entity_id', p_entity)));
   insert into public.activity (office_id, actor_id, action, entity_type, entity_id, data)
     values (p_office, null, 'platform.viewed', 'platform_access', p_access::text,
-            jsonb_strip_nulls(jsonb_build_object('access_id', p_access, 'view', p_view, 'entity_id', p_entity)));
+            jsonb_strip_nulls(jsonb_build_object('access_id', p_access, 'view', p_view, 'client_id', v_client, 'document_id', v_doc)));
 end $$;
 
 revoke all on function private.require_platform_admin(), private.platform_office(uuid, boolean),
