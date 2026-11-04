@@ -3,11 +3,14 @@ import { adminClient } from "../../support/db";
 
 // Feature 18 (spec X5) — before/after proof that nothing of Firm B changed, and small result helpers.
 
-type Res = { data: unknown; error: { message: string } | null };
 
 /** Every row of every office_id table of one office, hashed per table (service role). */
 export async function snapshot(office: string, tables: string[]): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
+  // the firm's own office row too (review I-2: name, branch, test clock — run_expected_generation is a definer)
+  const { data: officeRow, error: oe } = await adminClient().from("office").select("*").eq("id", office).single();
+  if (oe) throw new Error(`snapshot office: ${oe.message}`);
+  out.office = createHash("sha256").update(JSON.stringify(officeRow)).digest("hex").slice(0, 16);
   for (const t of tables) {
     const rows: unknown[] = [];
     for (let from = 0; ; from += 1000) {
@@ -25,12 +28,6 @@ export async function snapshot(office: string, tables: string[]): Promise<Record
 /** Tables whose hash differs between two snapshots. */
 export const changedTables = (before: Record<string, string>, after: Record<string, string>) =>
   Object.keys(before).filter((t) => before[t] !== after[t]);
-
-/** Refused (any error) or empty (null, [], {}, or an object whose arrays are all empty and counts all 0). */
-export function refusedOrEmpty(r: Res): boolean {
-  if (r.error) return true;
-  return isEmpty(r.data);
-}
 
 export function isEmpty(v: unknown): boolean {
   if (v === null || v === undefined) return true;

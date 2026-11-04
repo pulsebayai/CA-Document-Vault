@@ -4,19 +4,24 @@ import { createClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient } from "../../support/db";
+import { uploadObject } from "../../support/documents";
 import { inventory, type Inventory } from "./inventory";
 import { rowCounts, seedEmptyFirm, seedTwoFirms, type Firm } from "./seed";
 import { changedTables, isEmpty, mentions, snapshot } from "./helpers";
-import { FN_CASES } from "./functions";
-import { PARENT, ROW } from "./rows";
+import { FN_CASES, shared, type FnCase } from "./functions";
+import { PARENT, PARENT2, ROW } from "./rows";
+import { FUNCTIONS, TABLES } from "./coverage";
 
 // Feature 18 — the cross-firm sweep (spec AC-1, AC-4–AC-13). Firm A's staff (Admin unless stated, spec X3) try every
-// door into Firm B. One seed per run (plan step 2: ≈ 2 min on dev from a session), so the sections share this file.
-// Every refusal is paired with a control (plan: "Proving a refusal is the tenant refusal"): the same call on Firm A's
-// own object must work, so a case can't pass because of a bad argument.
+// door into Firm B. One seed per run (≈ 2 min on dev from a session), so the sections share this file and run in order
+// (later sections use Firm A state the earlier ones leave). Every refusal is paired with a **control** — the same call
+// with the same payload shape on Firm A's own objects, which must succeed — so a case can't pass because of a bad
+// argument (plan: "Proving a refusal is the tenant refusal"; pre-PR review I-4, I-6). afterAll proves Firm B is
+// unchanged (snapshot incl. its office row) and that no Firm A row or activity points at Firm B (review I-1, I-2).
 
 // Step 6 (AC-12 b): the app's own file-link code runs here as Firm A's signed-in Admin. Its Supabase client and
-// signed-in staff are swapped for Firm A's, so the RLS lookups before any signing are the real ones.
+// signed-in staff are swapped for Firm A's, so the RLS lookups before any signing are the real ones. Vitest isolates
+// mocks per file.
 const actAs = vi.hoisted(() => ({ client: null as unknown, staff: null as unknown }));
 vi.mock("server-only", () => ({}));
 vi.mock("next/cache", () => ({ revalidatePath: () => undefined, revalidateTag: () => undefined }));
@@ -32,6 +37,20 @@ const svc = () => adminClient();
 const note = (section: string, lines: string[]) => {
   if (process.env.XF_REPORT) appendFileSync(process.env.XF_REPORT, `[${section}]\n${lines.join("\n")}\n\n`);
 };
+/** Case IDs that actually ran (review B-1): the last describe checks every claim in coverage.ts against this set. */
+const ran = new Set<string>();
+
+type Res = { error: { message: string; code?: string } | null; data: unknown };
+/** Errors that say the *payload* is wrong, not that the object is someone else's: never proof (review I-6). */
+// By message, not SQLSTATE: our named tenant checks (CLIENT_OFFICE …) are raised with 23514 too.
+const INVALID = /duplicate key|null value in column|violates check constraint "|violates not-null|invalid input syntax|could not find the function/i;
+/** Error codes our triggers and functions raise when an argument is another firm's object: a tenant refusal by name. */
+const TENANT_REFUSAL = /_OFFICE\b|PLAN_MISMATCH|ASSIGNEE|INCHARGE|another office|\bPATH\b/;
+/** A refusal every caller gets for a direct write (RLS write policy closed, grant, or "only through the vault's functions"). */
+const CLOSED = /row-level security|permission denied/;
+const errText = (r: Res) => `${r.error?.message ?? ""} ${r.error?.code ?? ""}`;
+/** The same refusal for Firm A's own object: the change is closed for every caller (e.g. DSC_CLIENT_FIXED, IMMUTABLE). */
+const sameRefusal = (a: Res, c: Res | null) => !!a.error && !!c?.error && a.error.message.split(":")[0] === c.error.message.split(":")[0];
 
 /** The seeded row of `table` for firm f (service role). */
 async function rowOf(table: string, f: Firm) {
@@ -40,7 +59,6 @@ async function rowOf(table: string, f: Firm) {
   if (error) throw new Error(`rowOf ${table}: ${error.message}`);
   return data as Record<string, unknown> | null;
 }
-
 
 beforeAll(async () => {
   inv = await inventory();
@@ -51,9 +69,25 @@ beforeAll(async () => {
 }, 600_000);
 
 afterAll(async () => {
-  // X5: nothing Firm A did in this file changed any of Firm B's rows.
-  const after = await snapshot(B.office, firmTables);
-  expect(changedTables(before, after)).toEqual([]);
+  // X5: nothing Firm A did in this file changed any of Firm B's rows, its office row included (I-2).
+  expect(changedTables(before, await snapshot(B.office, firmTables)), "Firm B changed").toEqual([]);
+  // I-1: no Firm A row points at one of Firm B's objects through any foreign key — run after *every* section, so a
+  // void function that "succeeded" with a mixed argument is caught here.
+  const bIds = new Set([...Object.values(PARENT), ...Object.values(PARENT2)].map((p) => String(p(B))));
+  const found: string[] = [];
+  for (const t of inv.tables.filter((x) => x.office_id)) {
+    for (const f of t.fks.filter((x) => x.columns.length === 1 && x.references !== "office")) {
+      const { data, error } = await svc().from(t.name).select(f.columns[0]).eq("office_id", A.office).in(f.columns[0], [...bIds]);
+      if (error) throw new Error(`${t.name}.${f.columns[0]}: ${error.message}`);
+      if ((data ?? []).length) found.push(`${t.name}.${f.columns[0]}`);
+    }
+  }
+  expect(found, "a Firm A row points at Firm B").toEqual([]);
+  // …and no Firm A activity row or notification names one of Firm B's objects.
+  const uuids = [B.office, ...Object.values(B.ids), ...Object.values(B.users).map((u) => u.id)].map(String).filter((n) => /^[0-9a-f-]{36}$/.test(n));
+  const { data: acts } = await svc().from("activity").select("entity_id, data").eq("office_id", A.office).range(0, 9999);
+  const { data: notes } = await svc().from("notification").select("entity_id, data").eq("office_id", A.office);
+  expect(mentions([acts, notes], uuids), "Firm A's activity names Firm B").toEqual([]);
 }, 300_000);
 
 describe("seed (AC-1)", () => {
@@ -69,98 +103,119 @@ describe("seed (AC-1)", () => {
 const NO_APP_ACCESS = new Set(["doc_counter", "link_attempt"]); // no policies at all (AC-5)
 /** Who in Firm A can see Firm A's seeded row (the read control). Notification: only its recipient. */
 const reader = (table: string, f: Firm): SupabaseClient => (table === "notification" ? f.as.staff : f.as.admin);
+const noneOrRefused = (r: Res) => !!r.error || !Array.isArray(r.data) || r.data.length === 0;
 
 describe("tables: read (X4.1)", () => {
   it.each(Object.keys(ROW))("%s: Firm A reads none of Firm B's rows; the same read finds Firm A's own", async (table) => {
+    ran.add(`tables:read:${table}`);
     const r = ROW[table];
     for (const who of [reader(table, A), A.as.limited]) {
-      const theirs = await who.from(table).select(r.column).eq(r.column, r.value(B));
-      expect(theirs.error ?? theirs.data ?? []).toSatisfy((x: unknown) => !Array.isArray(x) || x.length === 0);
-      if (table !== "office") {
-        const all = await who.from(table).select("office_id").eq("office_id", B.office).limit(1);
-        expect(all.error ?? all.data ?? []).toSatisfy((x: unknown) => !Array.isArray(x) || x.length === 0);
-      }
+      expect(noneOrRefused(await who.from(table).select(r.column).eq(r.column, r.value(B)))).toBe(true);
+      if (table !== "office") expect(noneOrRefused(await who.from(table).select("office_id").eq("office_id", B.office).limit(1))).toBe(true);
     }
-    // select the key column only: dsc.password_ct and upload_request.token_hash are outside the column grant, and a
-    // refused `select *` would make the case pass for the wrong reason
+    // the key column only: dsc.password_ct / upload_request.token_hash are outside the column grant, and a refused
+    // `select *` would make the case pass for the wrong reason
     const mine = await reader(table, A).from(table).select(r.column).eq(r.column, r.value(A));
-    if (NO_APP_ACCESS.has(table)) expect(mine.error ?? mine.data).toSatisfy((x: unknown) => !Array.isArray(x) || x.length === 0);
+    if (NO_APP_ACCESS.has(table)) expect(noneOrRefused(mine)).toBe(true);
     else expect(mine.data?.length, `control: ${table} as A`).toBeGreaterThan(0);
   });
 
   it("doc_type_usage (the view) shows none of Firm B's types", async () => {
-    const theirs = await A.as.admin.from("doc_type_usage").select("*").in("doc_type_id", [B.ids.bankType, B.ids.proposedType]);
-    expect(theirs.error ?? theirs.data).toSatisfy((x: unknown) => !Array.isArray(x) || x.length === 0);
+    ran.add("tables:view:doc_type_usage");
+    expect(noneOrRefused(await A.as.admin.from("doc_type_usage").select("*").in("doc_type_id", [B.ids.bankType, B.ids.proposedType]))).toBe(true);
     const mine = await A.as.admin.from("doc_type_usage").select("*").in("doc_type_id", [A.ids.bankType]);
     expect(mine.data?.length, "control").toBeGreaterThan(0);
   });
 });
 
+/** A different valid value for a writable column (review I-3), so a successful write would change the snapshot. */
+const TEXT_COLS = /name|remark|note|reason|reference|comment|label|holder/;
+// `active` is left alone: switching a registration off deactivates more than the row (04's auto-waive), and the
+// change can't always be undone by setting it back
+function changed(col: string, v: unknown, marker: string): unknown | undefined {
+  if (col === "active") return undefined;
+  if (typeof v === "boolean") return !v;
+  if (typeof v === "number") return v + 1;
+  if (typeof v === "string" && TEXT_COLS.test(col)) return `${v.slice(0, 40)} ${marker}`;
+  return undefined;
+}
+
 describe("tables: change or delete Firm B's rows (X4.2)", () => {
-  it.each(Object.keys(ROW))("%s: an update of a writable column, and a delete, change none of Firm B's rows", async (table) => {
+  it.each(Object.keys(ROW))("%s: an update to a new value, and a delete, change none of Firm B's rows", async (table) => {
+    ran.add(`tables:write-B:${table}`);
     const r = ROW[table];
     const meta = inv.tables.find((t) => t.name === table)!;
-    const col = meta.update_cols.find((c) => c !== r.column);
     const theirs = await rowOf(table, B);
+    const mine = await rowOf(table, A);
+    const col = meta.update_cols.find((c) => c !== r.column && theirs && changed(c, theirs[c], "x") !== undefined);
+    const lines: string[] = [];
     if (col && theirs) {
-      const upd = await A.as.admin.from(table).update({ [col]: theirs[col] }).eq(r.column, r.value(B)).select(r.column);
-      expect(upd.error ?? upd.data).toSatisfy((x: unknown) => !Array.isArray(x) || x.length === 0);
-      note("update control", [`${table}.${col}: ${await updateControl(table, col)}`]);
-    }
+      const upd = await A.as.admin.from(table).update({ [col]: changed(col, theirs[col], A.marker) }).eq(r.column, r.value(B)).select(r.column);
+      expect(noneOrRefused(upd), `${table}.${col} on B's row`).toBe(true);
+      // control: the same change on Firm A's own row, then put back
+      const who = table === "notification" ? A.as.staff : A.as.admin;
+      const ctl = mine ? await who.from(table).update({ [col]: changed(col, mine[col], A.marker) }).eq(r.column, r.value(A)).select(r.column) : null;
+      if (mine && ctl && !ctl.error) {
+        await who.from(table).update({ [col]: mine[col] }).eq(r.column, r.value(A));
+        expect((await rowOf(table, A))?.[col], `${table}.${col}: control put back`).toEqual(mine[col]);
+      }
+      lines.push(`${table}.${col}: B 0 rows · control ${!ctl ? "no A row" : ctl.error ? `closed (${ctl.error.message.slice(0, 50)})` : `${(ctl.data as unknown[]).length} row(s)`}`);
+    } else lines.push(`${table}: no writable column with a different valid value — delete only (the snapshot covers B)`);
     const del = await A.as.admin.from(table).delete().eq(r.column, r.value(B)).select(r.column);
-    expect(del.error ?? del.data).toSatisfy((x: unknown) => !Array.isArray(x) || x.length === 0);
+    expect(noneOrRefused(del)).toBe(true);
     if (table !== "link_attempt") expect(await rowOf(table, B), `${table}: B's row still there`).not.toBeNull();
+    note("write-B", lines);
   });
 });
 
-/** The same update on Firm A's own row (value unchanged): "1 row" proves the column is writable, so B's 0 is the tenant. */
-async function updateControl(table: string, col: string) {
-  const r = ROW[table];
-  const mine = await rowOf(table, A);
-  if (!mine) return "no A row";
-  const who = table === "notification" ? A.as.staff : A.as.admin;
-  const res = await who.from(table).update({ [col]: mine[col] }).eq(r.column, r.value(A)).select(r.column);
-  return res.error ? `closed (${res.error.message.slice(0, 50)})` : `${res.data?.length ?? 0} row(s)`;
-}
-
-/** Firm A's seeded row cut to the columns staff may insert, made unique where a unique key needs it. */
-const payloadFrom = (row: Record<string, unknown>, cols: string[]) =>
-  Object.fromEntries(Object.entries(row).filter(([k]) => cols.includes(k) && k !== "id"));
-/** Text columns a unique key may need changed for a second copy of a row (others are left alone). */
+/** Firm A's seeded row cut to the columns staff may insert, with unique-ish columns changed up front (review I-6). */
 const MAKE_UNIQUE: Record<string, (v: unknown) => unknown> = {
-  pan: () => null, email: () => null, mobile: () => null,
+  pan: () => null, email: () => null, mobile: () => null, number: () => null,
   code: (v) => `${String(v).slice(0, 12)}x${Math.random().toString(36).slice(2, 6)}`,
   name: (v) => `${String(v).slice(0, 60)} ${Math.random().toString(36).slice(2, 7)}`,
-  number: () => null, label: (v) => `${String(v)} ${Math.random().toString(36).slice(2, 6)}`,
+  label: (v) => `${String(v)} ${Math.random().toString(36).slice(2, 6)}`,
 };
-async function insertWithRetry(who: SupabaseClient, table: string, payload: Record<string, unknown>, keep: string[]) {
-  // return only the key column: a `returning *` touches dsc.password_ct / upload_request.token_hash, which are outside
-  // the column grant, and that refusal would make any insert look refused
-  const key = ROW[table]?.column ?? "office_id";
-  let body = { ...payload };
-  for (let i = 0; i < 4; i++) {
-    const res = await who.from(table).insert(body).select(key);
-    if (!res.error || !/duplicate key/.test(res.error.message)) return { res, body };
-    const cols = Object.keys(MAKE_UNIQUE).filter((c) => c in body && !keep.includes(c) && body[c] !== null);
-    if (!cols.length) return { res, body };
-    body = { ...body, ...Object.fromEntries(cols.map((c) => [c, MAKE_UNIQUE[c](body[c])])) };
-  }
-  return { res: await who.from(table).insert(body).select(key), body };
+function insertBody(row: Record<string, unknown>, cols: string[], keep: string[]) {
+  const body = Object.fromEntries(Object.entries(row).filter(([k]) => cols.includes(k) && k !== "id"));
+  for (const [c, f] of Object.entries(MAKE_UNIQUE)) if (c in body && !keep.includes(c) && body[c] !== null) body[c] = f(body[c]);
+  return body;
+}
+// return only the key column: a `returning *` touches dsc.password_ct / upload_request.token_hash (outside the grant)
+const insert = (who: SupabaseClient, table: string, body: Record<string, unknown>) =>
+  who.from(table).insert(body).select(ROW[table]?.column ?? "office_id") as unknown as Promise<Res>;
+
+/** Why the attempt's refusal is the tenant check and not a bad payload; the control ran *after* the attempt. */
+function proof(attempt: Res, control: Res | null): string {
+  if (!attempt.error) return Array.isArray(attempt.data) && attempt.data.length > 0 ? "LEAK" : "no row";
+  if (TENANT_REFUSAL.test(attempt.error.message)) return "tenant check";
+  if (INVALID.test(attempt.error.message)) return `INCONCLUSIVE (payload: ${attempt.error.message.slice(0, 60)})`;
+  if (control && !control.error) return "control ok";
+  if (control && CLOSED.test(attempt.error.message) && CLOSED.test(control.error!.message)) return "closed for everyone";
+  if (sameRefusal(attempt, control)) return `closed for everyone (${attempt.error.message.split(":")[0]})`;
+  return `INCONCLUSIVE (${attempt.error.message.slice(0, 60)}${control?.error ? ` · control: ${control.error.message.slice(0, 40)}` : ""})`;
 }
 
-/** Error codes our triggers raise when a row points at another firm's object: a tenant refusal by name. */
-const TENANT_REFUSAL = /_OFFICE\b|PLAN_MISMATCH|ASSIGNEE|INCHARGE|another office/;
-/** A refusal every caller gets for a direct write (RLS write policy closed, grant, or "only through the vault's functions"). */
-const CLOSED = /row-level security|permission denied/;
-type Res = { error: { message: string } | null; data: unknown[] | null };
-/** proof = why the attempt's refusal is the tenant check and not a bad payload (plan: controls). */
-function proof(attempt: Res, control: Res): string {
-  if (!attempt.error) return (attempt.data?.length ?? 0) > 0 ? "LEAK" : "no row";
-  if (TENANT_REFUSAL.test(attempt.error.message)) return "tenant check";
-  if (!control.error) return "control ok";
-  if (CLOSED.test(attempt.error.message) && CLOSED.test(control.error.message)) return "closed for everyone";
-  return `INCONCLUSIVE (${attempt.error.message.slice(0, 60)})`;
-}
+describe("tables: insert into Firm B (X4.3)", () => {
+  it("no table takes a row carrying Firm B's office; the same row for Firm A is accepted or closed for everyone", async () => {
+    const leaks: string[] = [];
+    const report: string[] = [];
+    for (const t of inv.tables.filter((x) => x.office_id && x.policies.includes("INSERT") && x.name in ROW)) {
+      ran.add(`tables:insert-B:${t.name}`);
+      const mine = await rowOf(t.name, A);
+      if (!mine) throw new Error(`seed: no row of ${t.name} in A`);
+      // a financial year must be a new, valid year (a copy of the seeded one breaks its own checks)
+      const body = t.name === "financial_year" ? { code: "2040-41", start_date: "2040-04-01", end_date: "2041-03-31" }
+        : insertBody(mine, t.insert_cols, ["office_id"]);
+      const attempt = await insert(A.as.admin, t.name, { ...body, office_id: B.office });
+      const control = await insert(A.as.admin, t.name, { ...body, office_id: A.office });
+      const why = proof(attempt, control);
+      if (why === "LEAK" || why.startsWith("INCONCLUSIVE")) leaks.push(`${t.name}: ${why}`);
+      report.push(`${t.name}: ${why}`);
+    }
+    note("insert-B", report);
+    expect(leaks).toEqual([]);
+  }, 600_000);
+});
 
 describe("tables: point Firm A's rows at Firm B's objects (X4.4)", () => {
   type Fk = { table: string; column: string; references: string; update: boolean; insert: boolean; insertCols: string[] };
@@ -172,57 +227,61 @@ describe("tables: point Firm A's rows at Firm B's objects (X4.4)", () => {
         insert: t.policies.includes("INSERT") && t.insert_cols.includes(f.columns[0]),
       })));
 
-  it("no update can set a foreign key of Firm A's row to Firm B's object (control: setting it to its own value works or is closed for everyone)", async () => {
+  it("lists every foreign key it doesn't try, with the reason (review N-4)", () => {
+    const skipped = inv.tables.filter((t) => t.office_id).flatMap((t) => t.fks.filter((f) => f.references !== "office").flatMap((f) => {
+      const why = f.columns.length !== 1 ? "multi-column" : !(f.references in PARENT) ? "no seeded parent of that kind"
+        : !(t.name in ROW) ? "no seeded row"
+        : !t.update_cols.includes(f.columns[0]) && !t.insert_cols.includes(f.columns[0]) ? "column not writable by staff (grant)" : null;
+      return why ? [`${t.name}.${f.columns.join(",")} → ${f.references}: ${why}`] : [];
+    }));
+    note("fk not tried", skipped);
+    // a FOR ALL policy would hide insert/update from the case list: none exists today
+    expect(inv.tables.filter((t) => t.policies.includes("ALL")).map((t) => t.name)).toEqual([]);
+    expect(skipped.filter((s) => !/grant|no seeded/.test(s))).toEqual([]);
+  });
+
+  it("no update can set a foreign key of Firm A's row to Firm B's object (control: a second Firm A object is accepted)", async () => {
     const leaks: string[] = [];
     const report: string[] = [];
     for (const fk of fks().filter((f) => f.update)) {
+      ran.add(`tables:references:${fk.table}`);
       const mine = await rowOf(fk.table, A);
       if (!mine) throw new Error(`seed: no row of ${fk.table} in A`);
       const r = ROW[fk.table];
       const theirId = PARENT[fk.references](B);
-      const attempt = await A.as.admin.from(fk.table).update({ [fk.column]: theirId }).eq(r.column, r.value(A)).select(r.column);
+      const attempt = await A.as.admin.from(fk.table).update({ [fk.column]: theirId }).eq(r.column, r.value(A)).select(r.column) as unknown as Res;
       const after = await rowOf(fk.table, A);
-      if (after?.[fk.column] === theirId) leaks.push(`${fk.table}.${fk.column} → B's ${fk.references}: stored`);
-      const control = await A.as.admin.from(fk.table).update({ [fk.column]: mine[fk.column] }).eq(r.column, r.value(A)).select(r.column);
-      const why = attempt.error ? proof(attempt, control) : "not stored (value kept)";
+      if (after?.[fk.column] === theirId) leaks.push(`${fk.table}.${fk.column} → B's ${fk.references}: STORED`);
+      // control after the attempt: a second Firm A object of the same kind, then put the original back
+      const second = PARENT2[fk.references]?.(A);
+      const ctlValue = second && second !== mine[fk.column] ? second : mine[fk.column];
+      const control = await A.as.admin.from(fk.table).update({ [fk.column]: ctlValue }).eq(r.column, r.value(A)).select(r.column) as unknown as Res;
+      if (!control.error && ctlValue !== mine[fk.column]) await A.as.admin.from(fk.table).update({ [fk.column]: mine[fk.column] }).eq(r.column, r.value(A));
+      const why = attempt.error ? proof(attempt, control) : after?.[fk.column] === theirId ? "LEAK" : "not stored (value kept)";
       if (why.startsWith("INCONCLUSIVE")) leaks.push(`${fk.table}.${fk.column}: ${why}`);
-      report.push(`${fk.table}.${fk.column}: ${why}`);
+      report.push(`${fk.table}.${fk.column}: ${why}${ctlValue !== mine[fk.column] ? " (control: second A object)" : " (control: same value)"}`);
     }
     note("xref update", report);
     expect(leaks).toEqual([]);
   }, 600_000);
 
-  it("no insert can create a Firm A row whose foreign key is Firm B's object", async () => {
+  it("no insert can create a Firm A row whose foreign key is Firm B's object (control after, same body with A's object)", async () => {
     const leaks: string[] = [];
     const report: string[] = [];
     for (const fk of fks().filter((f) => f.insert)) {
+      ran.add(`tables:references:${fk.table}`);
       const mine = await rowOf(fk.table, A);
       if (!mine) throw new Error(`seed: no row of ${fk.table} in A`);
-      const theirId = PARENT[fk.references](B);
-      // control first (A's own parent), so the attempt uses a payload known to be accepted
-      const ctl = await insertWithRetry(A.as.admin, fk.table, payloadFrom(mine, fk.insertCols), ["office_id", fk.column]);
-      const control = ctl.res;
-      const attempt = (await insertWithRetry(A.as.admin, fk.table, { ...ctl.body, [fk.column]: theirId }, ["office_id", fk.column])).res;
+      const body = insertBody(mine, fk.insertCols, ["office_id", fk.column]);
+      const attempt = await insert(A.as.admin, fk.table, { ...body, [fk.column]: PARENT[fk.references](B) });
+      const control = await insert(A.as.admin, fk.table, { ...insertBody(mine, fk.insertCols, ["office_id", fk.column]), [fk.column]: PARENT[fk.references](A) });
       const why = proof(attempt, control);
-      if (why === "LEAK" || why === "control ok" && !attempt.error || why.startsWith("INCONCLUSIVE")) leaks.push(`${fk.table}.${fk.column} → B's ${fk.references}: ${why}`);
+      if (why === "LEAK" || why.startsWith("INCONCLUSIVE")) leaks.push(`${fk.table}.${fk.column} → B's ${fk.references}: ${why}`);
       report.push(`${fk.table}.${fk.column}: ${why}`);
     }
     note("xref insert", report);
     expect(leaks).toEqual([]);
   }, 600_000);
-
-  it("afterwards, no Firm A row references any of Firm B's seeded objects (service-role check over every foreign key)", async () => {
-    const bIds = new Set(Object.values(PARENT).map((p) => String(p(B))));
-    const found: string[] = [];
-    for (const t of inv.tables.filter((x) => x.office_id)) {
-      for (const f of t.fks.filter((x) => x.columns.length === 1 && x.references !== "office")) {
-        const { data, error } = await svc().from(t.name).select(f.columns[0]).eq("office_id", A.office).in(f.columns[0], [...bIds]);
-        if (error) throw new Error(`${t.name}.${f.columns[0]}: ${error.message}`);
-        if ((data ?? []).length) found.push(`${t.name}.${f.columns[0]}`);
-      }
-    }
-    expect(found).toEqual([]);
-  }, 300_000);
 });
 
 // ── Files (AC-12) ──────────────────────────────────────────────────────────────────────────────────────────────────
@@ -235,44 +294,32 @@ describe("files: Firm A gets no file of Firm B's (AC-12)", () => {
 
   it("(a) direct Storage calls on Firm B's object are refused: download, signed URL, list, upload, move", async () => {
     const st = A.as.admin.storage.from(BUCKET);
-    const dl = await st.download(B.ids.softPath);
-    expect(dl.data).toBeNull();
-    const signed = await st.createSignedUrl(B.ids.softPath, 60);
-    expect(signed.data?.signedUrl ?? null).toBeNull();
-    const list = await st.list(`office/${B.office}/doc`);
-    expect(list.data ?? []).toEqual([]);
-    const up = await st.upload(`office/${B.office}/doc/${B.ids.softDoc}/xf.pdf`, new Blob(["%PDF-1.4"]), { contentType: "application/pdf" });
-    expect(up.error).not.toBeNull();
-    const mv = await st.move(B.ids.softPath, `office/${A.office}/doc/${A.ids.softDoc}/stolen.pdf`);
-    expect(mv.error).not.toBeNull();
-    // control: Firm A's own object isn't reachable directly either (no Storage policies for app roles, 03): files go
-    // only through server-signed links, which (b) tests
+    expect((await st.download(B.ids.softPath)).data).toBeNull();
+    expect((await st.createSignedUrl(B.ids.softPath, 60)).data?.signedUrl ?? null).toBeNull();
+    expect((await st.list(`office/${B.office}/doc`)).data ?? []).toEqual([]);
+    expect((await st.upload(`office/${B.office}/doc/${B.ids.softDoc}/xf.pdf`, new Blob(["%PDF-1.4"]), { contentType: "application/pdf" })).error).not.toBeNull();
+    expect((await st.move(B.ids.softPath, `office/${A.office}/doc/${A.ids.softDoc}/stolen.pdf`)).error).not.toBeNull();
+    // Firm A's own object isn't reachable directly either (no Storage policies for app roles, 03): files go only
+    // through server-signed links, which (b) tests with controls
     expect((await st.download(A.ids.softPath)).data).toBeNull();
-    const { data: still } = await svc().storage.from(BUCKET).download(B.ids.softPath);
-    expect(still, "B's object still there").not.toBeNull();
+    expect((await svc().storage.from(BUCKET).download(B.ids.softPath)).data, "B's object still there").not.toBeNull();
   });
 
   it("(b) getFileLink signs nothing for Firm B's file version; Firm A's own version gets a link", async () => {
     const { getFileLink } = await import("@/lib/documents/actions");
-    for (const mode of ["download", "view"] as const) {
-      const theirs = await getFileLink(B.ids.softVersion, mode);
-      expect(theirs.ok, `B's version (${mode})`).toBe(false);
-    }
-    const mine = await getFileLink(A.ids.softVersion, "download");
-    expect(mine.ok, "control: A's own version").toBe(true);
+    for (const mode of ["download", "view"] as const) expect((await getFileLink(B.ids.softVersion, mode)).ok, `B's version (${mode})`).toBe(false);
+    expect((await getFileLink(A.ids.softVersion, "download")).ok, "control: A's own version").toBe(true);
   });
 
-  it("(b) the bulk zip lists and signs nothing of Firm B's; Firm A's own selection is listed", async () => {
+  it("(b) the bulk zip lists and signs nothing of Firm B's; Firm A's own selection is listed and signed", async () => {
     const { getZipManifest, getFileLinks } = await import("@/lib/bulk/actions");
-    const theirs = await getZipManifest([B.ids.softDoc, B.ids.linkDoc]);
-    expect(mentions(theirs, [B.ids.softPath, B.ids.softVersion, B.marker])).toEqual([]);
+    expect(mentions(await getZipManifest([B.ids.softDoc, B.ids.linkDoc]), [B.ids.softPath, B.ids.softVersion, B.marker])).toEqual([]);
     const links = await getFileLinks([B.ids.softVersion]);
     // one entry per ID asked for; a link is only one with a URL (08: url null = not available to you)
     expect(links.ok ? links.links.filter((l) => l.url).length : 0).toBe(0);
     const myLinks = await getFileLinks([A.ids.softVersion]);
     expect(myLinks.ok && myLinks.links.filter((l) => l.url).length, "control: A's own version is signed").toBe(1);
-    const mine = await getZipManifest([A.ids.softDoc]);
-    expect(JSON.stringify(mine), "control: A's own document").toContain(A.ids.softVersion);
+    expect(JSON.stringify(await getZipManifest([A.ids.softDoc])), "control: A's own document").toContain(A.ids.softVersion);
   });
 
   it("(b) currentFiles finds no file for Firm B's documents; Firm A's own is found", async () => {
@@ -284,10 +331,8 @@ describe("files: Firm A gets no file of Firm B's (AC-12)", () => {
 
   it("(b) startUpload won't issue an upload ticket for Firm B's document; a new file is always under Firm A's office", async () => {
     const { startUpload } = await import("@/lib/documents/actions");
-    const theirs = await startUpload({ name: "x.pdf", size: 100, type: "application/pdf", documentId: B.ids.softDoc });
-    expect(theirs.ok).toBe(false);
-    const mine = await startUpload({ name: "x.pdf", size: 100, type: "application/pdf", documentId: A.ids.softDoc });
-    expect(mine.ok, "control").toBe(true);
+    expect((await startUpload({ name: "x.pdf", size: 100, type: "application/pdf", documentId: B.ids.softDoc })).ok).toBe(false);
+    expect((await startUpload({ name: "x.pdf", size: 100, type: "application/pdf", documentId: A.ids.softDoc })).ok, "control").toBe(true);
     const fresh = await startUpload({ name: "x.pdf", size: 100, type: "application/pdf" });
     expect(fresh.ok && JSON.stringify(fresh).includes(`office/${A.office}/`)).toBe(true);
     expect(JSON.stringify(fresh)).not.toContain(B.office);
@@ -298,20 +343,28 @@ describe("files: Firm A gets no file of Firm B's (AC-12)", () => {
 describe("upload links: Firm A's valid link can't reach Firm B (AC-9)", () => {
   const ip = () => createHash("sha256").update(randomBytes(16)).digest("hex"); // a fresh IP each call: no throttle
   const sha = (s: string) => createHash("sha256").update(s).digest("hex");
+  const failed = (r: Res) => r.error !== null || (r.data as { error?: string } | null)?.error !== undefined;
   let tokenHash: string;
   let aItem: string;
 
   beforeAll(async () => {
-    // a fresh link of Firm A (the seeded one may be revoked by a later function control)
+    // a fresh link of Firm A with three open ad-hoc items: one for these cases, two for the function controls
+    // (create_document_for_item; cancel / reopen) — the seeded link may be revoked by a later function control
     tokenHash = sha(randomBytes(32).toString("base64url"));
-    const r = await A.as.staff.rpc("record_link_whatsapp", { p: { client_id: A.ids.client, token_hash: tokenHash,
-      items: [{ kind: "ad_hoc", doc_type_id: A.ids.bankType, note: "XF control" }] } });
+    const r = await A.as.staff.rpc("record_link_whatsapp", { p: { client_id: A.ids.client, token_hash: tokenHash, items: [
+      { kind: "ad_hoc", doc_type_id: A.ids.bankType, note: "XF link" }, { kind: "ad_hoc", doc_type_id: A.ids.bankType, note: "XF file" },
+      { kind: "ad_hoc", doc_type_id: A.ids.bankType, note: "XF cancel" },
+    ] } });
     if (r.error) throw new Error(`setup link: ${r.error.message}`);
-    const { data } = await svc().from("upload_request_item").select("id").eq("request_id", (r.data as { request_id: string }).request_id).single();
-    aItem = (data as { id: string }).id;
+    const { data } = await svc().from("upload_request_item").select("id, note").eq("request_id", (r.data as { request_id: string }).request_id);
+    const byNote = Object.fromEntries((data as Array<{ id: string; note: string }>).map((i) => [i.note, i.id]));
+    aItem = byNote["XF link"];
+    shared.aFileItem = byNote["XF file"];
+    shared.aOpenItem = byNote["XF cancel"];
   }, 60_000);
 
   it("link_open with Firm A's token lists only Firm A's items and nothing of Firm B's", async () => {
+    ran.add("links:open");
     const r = await svc().rpc("link_open", { p_token_hash: tokenHash, p_ip_hash: ip() });
     expect(r.error).toBeNull();
     expect(JSON.stringify(r.data)).toContain(aItem); // control: the link works
@@ -319,35 +372,46 @@ describe("upload links: Firm A's valid link can't reach Firm B (AC-9)", () => {
   });
 
   it("link_ticket for Firm B's items is refused and creates nothing; the same call for Firm A's item works", async () => {
+    ran.add("links:ticket");
     for (const item of [B.ids.adHocItem, B.ids.scheduledItem]) {
       const r = await svc().rpc("link_ticket", { p_token_hash: tokenHash, p_item_id: item, p_file: { ext: "pdf", size: 60 }, p_ip_hash: ip() });
-      const data = r.data as { error?: string; document_id?: string } | null;
-      expect(r.error !== null || (data?.error !== undefined && !data?.document_id), `ticket for B's item ${item}`).toBe(true);
+      expect(failed(r) && !(r.data as { document_id?: string } | null)?.document_id, `ticket for B's item ${item}`).toBe(true);
     }
     const ok = await svc().rpc("link_ticket", { p_token_hash: tokenHash, p_item_id: aItem, p_file: { ext: "pdf", size: 60 }, p_ip_hash: ip() });
     expect((ok.data as { document_id?: string } | null)?.document_id, "control: ticket for A's item").toBeTruthy();
   });
 
-  it("link_register can't file into Firm B's item, nor file Firm B's stored object under Firm A's item", async () => {
-    const intoB = await svc().rpc("link_register", { p_token_hash: tokenHash, p_item_id: B.ids.adHocItem,
-      p_file: { storage_path: B.ids.softPath, file_name: "x.pdf" }, p_ip_hash: ip() });
-    expect(intoB.error !== null || (intoB.data as { error?: string } | null)?.error !== undefined).toBe(true);
-    const stealB = await svc().rpc("link_register", { p_token_hash: tokenHash, p_item_id: aItem,
-      p_file: { storage_path: B.ids.softPath, file_name: "x.pdf" }, p_ip_hash: ip() });
-    expect(stealB.error !== null || (stealB.data as { error?: string } | null)?.error !== undefined).toBe(true);
+  it("link_register files nothing into Firm B's item and won't take Firm B's stored object; Firm A's own upload is filed (review I-8)", async () => {
+    ran.add("links:register");
+    const t = await svc().rpc("link_ticket", { p_token_hash: tokenHash, p_item_id: aItem, p_file: { ext: "pdf", size: 60 }, p_ip_hash: ip() });
+    const docId = (t.data as { document_id: string }).document_id;
+    const mine = await uploadObject(A.office, "pdf", docId);
+    // one change at a time: A's own fresh object, but B's item
+    expect(failed(await svc().rpc("link_register", { p_token_hash: tokenHash, p_item_id: B.ids.adHocItem,
+      p_file: { storage_path: mine.path, file_name: "x.pdf" }, p_ip_hash: ip() }))).toBe(true);
+    // A's item, but B's stored object
+    expect(failed(await svc().rpc("link_register", { p_token_hash: tokenHash, p_item_id: aItem,
+      p_file: { storage_path: B.ids.softPath, file_name: "x.pdf" }, p_ip_hash: ip() }))).toBe(true);
+    // control: A's item with A's object is filed
+    const ok = await svc().rpc("link_register", { p_token_hash: tokenHash, p_item_id: aItem,
+      p_file: { storage_path: mine.path, file_name: "x.pdf" }, p_ip_hash: ip() });
+    expect(failed(ok), `control: ${JSON.stringify(ok.error ?? ok.data).slice(0, 120)}`).toBe(false);
     const { count } = await svc().from("document_version").select("id", { count: "exact", head: true })
       .eq("office_id", A.office).eq("storage_path", B.ids.softPath);
     expect(count).toBe(0);
   });
 
-  it("Firm B's token never opens anything for Firm A's items", async () => {
+  it("Firm B's live token never opens anything for Firm A's items", async () => {
+    const open = await svc().rpc("link_open", { p_token_hash: B.ids.linkTokenHash, p_ip_hash: ip() });
+    expect(JSON.stringify(open.data), "control: B's token is live").toContain(B.ids.scheduledItem);
     const r = await svc().rpc("link_ticket", { p_token_hash: B.ids.linkTokenHash, p_item_id: aItem, p_file: { ext: "pdf", size: 60 }, p_ip_hash: ip() });
     expect((r.data as { document_id?: string } | null)?.document_id ?? null).toBeNull();
   });
 });
 
 describe("service-role functions and no-policy tables (AC-5, AC-10)", () => {
-  it("every service-role-only function is refused for anon and for Firm A's Admin", async () => {
+  it("every service-role-only function is refused for anon and for Firm A's Admin by the grant", async () => {
+    ran.add("service-role");
     const svcOnly = inv.functions.filter((f) => f.schema === "public" && f.service_role && !f.authenticated && !f.anon);
     expect(svcOnly.length).toBeGreaterThan(10);
     const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
@@ -355,107 +419,137 @@ describe("service-role functions and no-policy tables (AC-5, AC-10)", () => {
     const open: string[] = [];
     for (const f of svcOnly) {
       for (const [who, client] of [["anon", anon], ["admin", A.as.admin]] as const) {
-        // call with the function's own argument names (nulls), so PostgREST finds it and the answer is the grant's
+        // the function's own argument names (nulls), so PostgREST finds it and the answer is the grant's
         const args = Object.fromEntries(f.args.split(",").map((a) => a.trim().split(/\s+/)[0]).filter(Boolean).map((n) => [n, null]));
-        const r = await client.rpc(f.name, args);
-        if (!r.error) open.push(`${who}: ${f.name}`);
-        else if (!/permission denied|42501/.test(`${r.error.message} ${(r.error as { code?: string }).code ?? ""}`)) open.push(`${who}: ${f.name} (${r.error.message.slice(0, 60)})`);
+        const r = await client.rpc(f.name, args) as unknown as Res;
+        if (!r.error || !/permission denied|42501/.test(errText(r))) open.push(`${who}: ${f.name} (${r.error?.message.slice(0, 60) ?? "ran"})`);
       }
     }
     expect(open).toEqual([]);
   }, 120_000);
 
-  it("tables with no app policies (login_attempt, test_lane, doc_counter, link_attempt) give Firm A nothing and take no writes", async () => {
+  it("tables with no app policies (login_attempt, test_lane, doc_counter, link_attempt) give Firm A nothing and refuse writes", async () => {
     for (const table of ["login_attempt", "test_lane", "doc_counter", "link_attempt"]) {
-      const r = await A.as.admin.from(table).select("*").limit(1);
-      expect(r.error ?? r.data).toSatisfy((x: unknown) => !Array.isArray(x) || x.length === 0);
+      ran.add(`tables:no-policy:${table}`);
+      expect(noneOrRefused(await A.as.admin.from(table).select("*").limit(1) as unknown as Res)).toBe(true);
       const w = await A.as.admin.from(table).insert({}).select("*");
-      expect(w.error, `${table} insert`).not.toBeNull();
+      expect(w.error?.message ?? "inserted", `${table} insert`).toMatch(CLOSED);
     }
   });
 });
 
 // ── Functions staff can call (AC-6–AC-8) ───────────────────────────────────────────────────────────────────────────
-/** Error texts that name the refusal as "not yours / not found in your office" (the tenant check, by name). */
-const FN_TENANT = /NOT_FOUND|not found|_OFFICE|another office|MISMATCH|ASSIGNEE|INCHARGE|NOT_VISIBLE|can't see|cannot see|no such|this client's/i;
 /** Every leaf number is 0 and nothing else is non-empty (a firm with no data). */
 const allZero = (v: unknown): boolean =>
   v === null || v === undefined || v === 0 || v === false || v === "" ||
   (Array.isArray(v) ? v.every(allZero) : typeof v === "object" ? Object.values(v as object).every(allZero) : false);
-/** A write that did nothing: refused, empty, or only a list of skipped IDs. */
-const didNothing = (r: { error: unknown; data: unknown }) => {
-  if (r.error) return true;
-  // 08's bulk review answers one { id, result, reason } per ID: nothing happened when every one was skipped
-  if (Array.isArray(r.data) && r.data.length && r.data.every((x) => x && typeof x === "object" && (x as { result?: string }).result === "skipped")) return true;
-  if (r.data && typeof r.data === "object" && !Array.isArray(r.data)) {
-    const rest = Object.fromEntries(Object.entries(r.data as Record<string, unknown>).filter(([k]) => k !== "skipped"));
-    return isEmpty(rest);
-  }
-  return isEmpty(r.data);
-};
+/** A write that was refused: an error, or 08's bulk answer with every ID skipped. */
+const refused = (r: Res) => !!r.error ||
+  (Array.isArray(r.data) && r.data.length > 0 && r.data.every((x) => (x as { result?: string })?.result === "skipped")) ||
+  (!!r.data && typeof r.data === "object" && !Array.isArray(r.data) && "skipped" in r.data &&
+    isEmpty(Object.fromEntries(Object.entries(r.data as object).filter(([k]) => k !== "skipped"))));
 
-describe("functions: Firm A calls with Firm B's IDs (AC-6–AC-8)", () => {
+describe("functions: Firm A calls with Firm B's IDs (AC-6–AC-8; run in order)", () => {
   const bNeedles = () => [B.marker, B.office, ...Object.values(B.ids).map(String), ...Object.values(B.users).map((u) => u.id)];
-  it.each(FN_CASES.map((c) => [c.fn, c] as const))("%s", async (_name, c) => {
+  it.each(FN_CASES.map((c) => [c.fn, c] as const))("%s", async (_name, c: FnCase) => {
+    ran.add(`functions:${c.fn}`);
     const who = A.as[c.as ?? "admin"];
     const lines: string[] = [];
     const problems: string[] = [];
-    // attempts first, control after: a control changes Firm A's state (a merge, an archive), which must not be what
-    // makes a mixed attempt fail
-    const results: Array<{ label: string; r: { error: { message: string } | null; data: unknown } }> = [];
+    // attempts first, controls after: a control changes Firm A's state (a merge, an archive), which must not be what
+    // makes a mixed attempt fail. Attempts sharing the case's control run it once.
+    const results: Array<{ label: string; r: Res; control: Res | null }> = [];
     for (const at of c.attempts) {
       const args = await at.args(A, B);
-      results.push({ label: at.label, r: c.kind === "firm-wide" ? await C.admin.rpc(c.fn, args) : await who.rpc(c.fn, args) });
+      results.push({ label: at.label, r: (c.kind === "firm-wide" ? await C.admin.rpc(c.fn, args) : await who.rpc(c.fn, args)) as unknown as Res, control: null });
     }
-    const control = c.control ? await who.rpc(c.fn, await c.control(A)) : null;
-    const controlNote = !control ? "no control" : control.error ? `control refused (${control.error.message.slice(0, 50)})` : "control ok";
-    for (const { label, r } of results) {
-      const at = { label };
+    let caseControl: Res | null = null;
+    for (let i = 0; i < c.attempts.length; i++) {
+      const own = c.attempts[i].control;
+      if (own) results[i].control = await who.rpc(c.fn, await own(A)) as unknown as Res;
+      else if (c.control) results[i].control = caseControl ??= await who.rpc(c.fn, await c.control(A)) as unknown as Res;
+    }
+    for (const { label, r, control } of results) {
+      const ctl = !control ? "no control" : control.error ? `control FAILED (${control.error.message.slice(0, 60)})` : "control ok";
       if (c.kind === "firm-wide") {
-        if (r.error) problems.push(`${at.label}: Firm C refused (${r.error.message.slice(0, 60)})`);
-        else if (!allZero(r.data)) problems.push(`${at.label}: LEAK — Firm C sees ${JSON.stringify(r.data).slice(0, 120)}`);
-        lines.push(`${c.fn} · ${at.label}: ${r.error ? "error" : allZero(r.data) ? "all zero" : "NOT ZERO"}`);
-        continue;
-      }
-      if (c.kind === "read") {
+        if (r.error) problems.push(`${label}: Firm C refused (${r.error.message.slice(0, 60)})`);
+        else if (!allZero(r.data)) problems.push(`${label}: LEAK — Firm C sees ${JSON.stringify(r.data).slice(0, 120)}`);
+        // I-7: zero for Firm C proves isolation only if the same figure isn't zero for Firm A
+        if (!control || control.error || allZero(control.data)) problems.push(`${label}: Firm A's own figure is zero or failed — the case proves nothing`);
+        lines.push(`${c.fn} · ${label}: ${allZero(r.data) ? "Firm C all zero" : "NOT ZERO"} · ${ctl}${control && !control.error && !allZero(control.data) ? " (non-zero)" : ""}`);
+      } else if (c.kind === "read") {
         const hits = mentions(r.data, bNeedles());
-        if (hits.length) problems.push(`${at.label}: LEAK — returns ${hits.slice(0, 3).join(", ")}`);
-        lines.push(`${c.fn} · ${at.label}: ${r.error ? `error (${r.error.message.slice(0, 50)})` : hits.length ? "LEAK" : "nothing of B"}`);
+        if (hits.length) problems.push(`${label}: LEAK — returns ${hits.slice(0, 3).join(", ")}`);
+        if (!control || control.error || isEmpty(control.data)) problems.push(`${label}: read control failed or empty — ${ctl}`);
+        if (r.error && INVALID.test(r.error.message)) problems.push(`${label}: INCONCLUSIVE (payload: ${r.error.message.slice(0, 60)})`);
+        lines.push(`${c.fn} · ${label}: ${r.error ? `refused (${r.error.message.slice(0, 50)})` : hits.length ? "LEAK" : "nothing of B"} · ${ctl}`);
       } else if (c.kind === "own-office") {
-        lines.push(`${c.fn} · ${at.label}: ${r.error ? `error (${r.error.message.slice(0, 50)})` : "ran on own office"}`);
+        lines.push(`${c.fn} · ${label}: ${r.error ? `error (${r.error.message.slice(0, 50)})` : "ran on own office"} (afterAll: Firm B incl. its office row unchanged)`);
       } else {
-        const nothing = didNothing(r);
-        const why = !nothing ? "LEAK (accepted)" : !r.error ? "no effect"
-          : FN_TENANT.test(r.error.message) ? "tenant check"
-          : control && !control.error ? "control ok"
-          : `INCONCLUSIVE (${r.error.message.slice(0, 70)})`;
-        if (why.startsWith("LEAK") || why.startsWith("INCONCLUSIVE")) problems.push(`${at.label}: ${why}`);
-        lines.push(`${c.fn} · ${at.label}: ${why}${r.error ? ` [${r.error.message.slice(0, 60)}]` : ""}`);
+        let why: string;
+        if (!refused(r)) {
+          // a value back = something was done for Firm A with Firm B's argument; a void "success" is checked by the
+          // afterAll scans (Firm B unchanged; no A row or activity points at B), and needs a working control
+          why = r.data === null || r.data === undefined ? "accepted (void) — afterAll scans decide" : "LEAK (accepted with a result)";
+          if (why.startsWith("LEAK")) problems.push(`${label}: ${why}: ${JSON.stringify(r.data).slice(0, 100)}`);
+        } else if (r.error && INVALID.test(r.error.message)) {
+          why = `INCONCLUSIVE (payload: ${r.error.message.slice(0, 60)})`;
+        } else if (control && !control.error) {
+          why = "refused · control ok";
+        } else if (sameRefusal(r, control)) {
+          why = `refused · closed for everyone (${r.error!.message.split(":")[0]})`;
+        } else if (control) {
+          why = `INCONCLUSIVE (${ctl})`;
+        } else if (c.controlExempt && c.expect && r.error && c.expect.test(r.error.message)) {
+          why = `refused as expected (${r.error.message.slice(0, 40)}) · no control: ${c.controlExempt}`;
+        } else {
+          why = `INCONCLUSIVE (no control${c.controlExempt ? ` and not ${c.expect}` : ""})`;
+        }
+        if (why.startsWith("INCONCLUSIVE")) problems.push(`${label}: ${why}`);
+        lines.push(`${c.fn} · ${label}: ${why}${r.error ? ` [${r.error.message.slice(0, 60)}]` : ""}`);
       }
     }
-    lines.push(`${c.fn} · ${controlNote}`);
-    if (c.kind === "read" && control && !control.error && isEmpty(control.data)) problems.push("read control returned nothing for Firm A's own object");
     note("functions", lines);
     expect(problems).toEqual([]);
-  }, 120_000);
+  }, 180_000);
 
-  it("AC-7: Firm A's Limited user gets no ciphertext for Firm B's DSC", async () => {
+  it("Firm A's Limited user gets no ciphertext for Firm B's DSC (refused by role first: Limited never reveals; the tenant proof is the Admin case)", async () => {
     const r = await A.as.limited.rpc("dsc_reveal", { p_id: B.ids.dsc });
     expect(r.data ?? null).toBeNull();
     expect(r.error).not.toBeNull();
   });
 
-  it("every function staff can call has a case here (or is a test helper exempted in coverage.ts)", () => {
+  it("every function staff can call has a case here", () => {
     const callable = inv.functions.filter((f) => f.schema === "public" && f.authenticated).map((f) => f.name);
     const covered = new Set(FN_CASES.map((c) => c.fn));
     expect(callable.filter((n) => !covered.has(n))).toEqual([]);
   });
+});
 
-  it("afterwards, none of Firm A's activity or notifications names one of Firm B's objects", async () => {
-    const needles = bNeedles().filter((n) => /^[0-9a-f-]{36}$/.test(n));
-    const { data: acts, error } = await svc().from("activity").select("entity_id, data").eq("office_id", A.office).range(0, 4999);
-    if (error) throw error;
-    const { data: notes } = await svc().from("notification").select("entity_id, data").eq("office_id", A.office);
-    expect(mentions([acts, notes], needles)).toEqual([]);
-  }, 120_000);
+// ── The coverage map's claims are the cases that ran (review B-1) ─────────────────────────────────────────────────
+describe("coverage claims (B-1)", () => {
+  it("every case coverage.ts names for a table or function ran in this file", () => {
+    const missing: string[] = [];
+    for (const [table, c] of Object.entries(TABLES)) {
+      if (!("cases" in c)) continue;
+      for (const name of c.cases) {
+        const shape = name.replace(/^tables:/, "");
+        // "references" runs only for tables with a writable foreign key; others claim it through their insert/read cases
+        if (shape === "references" && !ran.has(`tables:references:${table}`)) {
+          const t = inv.tables.find((x) => x.name === table);
+          const writableFk = t?.fks.some((f) => f.references !== "office" && f.columns.length === 1 && f.references in PARENT &&
+            (t.update_cols.includes(f.columns[0]) || t.insert_cols.includes(f.columns[0])));
+          if (writableFk) missing.push(`${table}: references`);
+          continue;
+        }
+        if (shape === "insert-B" && !inv.tables.find((x) => x.name === table)?.policies.includes("INSERT")) continue;
+        if (!ran.has(`tables:${shape}:${table}`)) missing.push(`${table}: ${shape}`);
+      }
+    }
+    for (const [key, c] of Object.entries(FUNCTIONS)) {
+      if (!("cases" in c)) continue;
+      for (const name of c.cases) if (!ran.has(name)) missing.push(`${key}: ${name}`);
+    }
+    expect(missing).toEqual([]);
+  });
 });

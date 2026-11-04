@@ -59,3 +59,13 @@ export const PARENT: Record<string, Pick> = {
   upload_request: (f) => f.ids.request,
   upload_request_item: (f) => f.ids.adHocItem,
 };
+
+/** A second object of the same kind in the same firm (review I-6): an update control moves a foreign key to it and
+ * back, so the control proves a *changed* valid value is accepted, not just a no-op. */
+export const PARENT2: Record<string, Pick> = {
+  client: (f) => f.ids.client2,
+  staff_user: (f) => f.users.admin.id,
+  period: (f) => f.ids.laterPeriod,
+  doc_type: (f) => f.ids.otherType,
+  doc_group: (f) => f.ids.otherGroup,
+};

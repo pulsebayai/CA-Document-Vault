@@ -7,6 +7,7 @@ import {
 } from "../../support/documents";
 import { T, bankOnlyClient, expectedItem, generateAsOf, mustRpc } from "../../support/expected";
 import { FAKE_CT, mustSaveDsc, newDsc } from "../../support/dsc";
+import { seedPreferences } from "../../support/formats";
 import { testGstin, testPan } from "../../support/test-data";
 
 // Feature 18 (spec AC-1) — two firms on one database, each with an Admin, a Staff and a Limited user and at least one
@@ -27,7 +28,10 @@ export type Firm = {
     softDoc: string; softVersion: string; softPath: string; reviewedDoc: string; heldDoc: string; dispatchedDoc: string;
     dispatch: string; dispatchItem: string; followUp: string; request: string; scheduledItem: string; adHocItem: string;
     linkDoc: string; linkTokenHash: string; dsc: string; dscCustody: string; notification: string; activity: number;
-    review: string; custody: string; laterExpected: string;
+    review: string; custody: string; laterExpected: string; laterPeriod: string;
+    // second objects (review I-4, I-6): controls that need a fresh target of the same kind, or a second parent
+    client2: string; laterExpected2: string; readyDoc: string; proposedType2: string; proposedType3: string; proposedType4: string;
+    otherType: string; otherGroup: string; gstType: string; pan: string; emailFollowUp: string | null;
   };
 };
 
@@ -41,6 +45,7 @@ const one = async (q: PromiseLike<{ data: unknown; error: unknown }>, what: stri
 async function seedFirm(key: "a" | "b"): Promise<Firm> {
   const marker = `XF-${key.toUpperCase()}-${randomBytes(4).toString("hex")}`;
   const office = await createDocumentOffice(`xfirm-${key}`);
+  await seedPreferences(office); // 11's preferred formats, so Firm A's format figures aren't all zero (review I-7)
   const users = {
     admin: await createStaff(office, `xfirm-${key}-admin`, "admin"),
     staff: await createStaff(office, `xfirm-${key}-staff`, "staff"),
@@ -59,8 +64,14 @@ async function seedFirm(key: "a" | "b"): Promise<Firm> {
   ids.client = await bankOnlyClient(as.staff, office, {
     name: `${marker} Client`, incharge_id: users.limited.id, email: `${key}-client@example.test`, mobile: "9876500001",
   });
+  // a second client (no GSTIN) for controls that need a fresh client: link email, a group to switch off. Made at the
+  // same clock as the first, so it has the same March/April items.
+  ids.client2 = await bankOnlyClient(as.staff, office, {
+    name: `${marker} Client 2`, incharge_id: users.limited.id, email: `${key}-client2@example.test`, mobile: "9876500002",
+  });
   const pan = testPan("P", key === "a" ? 1801 : 1802);
   await one(as.staff.from("client").update({ pan }).eq("id", ids.client), "pan");
+  ids.pan = pan;
   ids.registration = (await one(as.staff.from("client_registration")
     .insert({ office_id: office, client_id: ids.client, kind: "gstin", number: testGstin(pan) }).select("id").single(), "registration")).id as string;
   ids.contact = (await one(as.staff.from("client_contact")
@@ -77,6 +88,12 @@ async function seedFirm(key: "a" | "b"): Promise<Firm> {
 
   // Proposed types (03, 05): one stays proposed; one is rejected by the Admin → a notification for the Staff proposer.
   ids.proposedType = await proposeType(as.staff, ids.client, ids.group, `${marker} Proposed`);
+  ids.proposedType2 = await proposeType(as.staff, ids.client, ids.group, `${marker} Proposed 2`);
+  ids.proposedType3 = await proposeType(as.staff, ids.client, ids.group, `${marker} Proposed 3`);
+  ids.proposedType4 = await proposeType(as.staff, ids.client, ids.group, `${marker} Proposed 4`);
+  ids.otherType = await typeId(office, "Form 16 from employer");
+  ids.otherGroup = await groupId(office, "Income Tax");
+  ids.gstType = await typeId(office, "Sales invoices / sales register"); // per-GSTIN: the type that takes a registration
   ids.rejectedType = await proposeType(as.staff, ids.client, ids.group, `${marker} Rejected`);
   await mustRpc(as.admin, "reject_proposed_type", { p_type: ids.rejectedType, p_comment: "not needed" });
   ids.notification = (await one(svc.from("notification").select("id").eq("recipient_id", users.staff.id)
@@ -107,10 +124,21 @@ async function seedFirm(key: "a" | "b"): Promise<Firm> {
   await mustSetCustody(as.staff, [sent.id], "ready");
   ids.dispatch = (await mustDispatch(as.staff, { client_id: ids.client, document_ids: [sent.id], dispatched_on: "2026-05-01", recipient_name: `${marker} Recipient` })).id;
   ids.dispatchItem = (await one(svc.from("dispatch_item").select("id").eq("dispatch_id", ids.dispatch).single(), "dispatch item")).id as string;
+  const ready = await mustCreateOriginal(as.staff, { client_id: ids.client, doc_type_id: ids.bankType, period_id: ids.period, received_on: "2026-04-07" }, as.staff);
+  ids.readyDoc = ready.id;
+  await mustSetCustody(as.staff, [ready.id], "in_office");
+  await mustSetCustody(as.staff, [ready.id], "ready");
 
   // Follow-up (06) on a later pending item, and an upload link (10) with a scheduled and an ad-hoc item + one upload.
   const later = await expectedItem(ids.client, T.bank, "2026-04");
   ids.laterExpected = later.id;
+  ids.laterPeriod = (await one(svc.from("expected_doc").select("period_id").eq("id", later.id).single(), "later period")).period_id as string;
+  ids.laterExpected2 = (await expectedItem(ids.client2, T.bank, "2026-04")).id;
+  // review I-5: Firm B gets a pending *email* follow-up (begin only; .test is never sent), the target for
+  // finish_email_reminder; Firm A gets none, so its own begin_email_reminder control isn't capped by the seed
+  ids.emailFollowUp = key === "b"
+    ? (await mustRpc<{ id: string }>(as.staff, "begin_email_reminder", { p_client: ids.client2, p_items: [ids.laterExpected2], p_daily_max: 200 })).id
+    : null;
   ids.followUp = await mustRpc<string>(as.staff, "record_follow_up", { p_client: ids.client, p_items: [later.id], p_channel: "phone" });
   const token = randomBytes(32).toString("base64url");
   ids.linkTokenHash = sha(token);

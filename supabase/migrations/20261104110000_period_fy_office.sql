@@ -11,5 +11,5 @@ alter policy period_insert on public.period
     office_id = (select private.current_office_id())
     and (select private.has_role(array['admin'::public.staff_role]))
     and exists (select 1 from public.financial_year f
-                 where f.id = financial_year_id and f.office_id = (select private.current_office_id()))
+                 where f.id = period.financial_year_id and f.office_id = (select private.current_office_id()))
   );
