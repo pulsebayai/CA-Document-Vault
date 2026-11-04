@@ -23,14 +23,18 @@ describe("cross-firm coverage guard", () => {
 
   it("every definer function and every function an app role can call has a case, a covering caller or an exemption", async () => {
     const inv = await inventory();
-    const keys = inv.functions.map(fnKey).sort();
+    const keys = inv.functions.map((f) => `${f.schema}.${f.name}`).sort();
+    const overloaded = keys.filter((k, i) => keys.indexOf(k) !== i);
     const missing = keys.filter((k) => !(k in FUNCTIONS));
     const stale = Object.keys(FUNCTIONS).filter((k) => !keys.includes(k));
     const weak = Object.entries(FUNCTIONS).filter(([, c]) => !valid(c)).map(([k]) => k);
     // a "via" must name objects that are themselves covered by cases
-    const badVia = Object.entries(FUNCTIONS).flatMap(([k, c]) =>
-      "via" in c ? c.via.filter((v) => !((v in FUNCTIONS && "cases" in FUNCTIONS[v]) || (v in TABLES && "cases" in TABLES[v]))).map((v) => `${k} → ${v}`) : []);
-    expect({ missing, stale, weak, badVia }).toEqual({ missing: [], stale: [], weak: [], badVia: [] });
+    const cased = (v: string) => {
+      const target = v.startsWith("table:") ? TABLES[v.slice(6)] : FUNCTIONS[v.startsWith("fn:") ? `public.${v.slice(3)}` : v];
+      return !!target && "cases" in target;
+    };
+    const badVia = Object.entries(FUNCTIONS).flatMap(([k, c]) => ("via" in c ? c.via.filter((v) => !cased(v)).map((v) => `${k} → ${v}`) : []));
+    expect({ overloaded, missing, stale, weak, badVia }).toEqual({ overloaded: [], missing: [], stale: [], weak: [], badVia: [] });
   });
 
   it("safety rules: RLS on every table, invoker views, nothing for anon, no Realtime tables, no Storage policies or public buckets", async () => {

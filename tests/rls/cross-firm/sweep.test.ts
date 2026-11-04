@@ -1,4 +1,6 @@
 import { appendFileSync } from "node:fs";
+import { createHash, randomBytes } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient } from "../../support/db";
@@ -213,6 +215,87 @@ describe("tables: point Firm A's rows at Firm B's objects (X4.4)", () => {
     }
     expect(found).toEqual([]);
   }, 300_000);
+});
+
+// ── Service-role functions: 10's public upload-link path (AC-9, AC-10) ───────────────────────────────────────────
+describe("upload links: Firm A's valid link can't reach Firm B (AC-9)", () => {
+  const ip = () => createHash("sha256").update(randomBytes(16)).digest("hex"); // a fresh IP each call: no throttle
+  const sha = (s: string) => createHash("sha256").update(s).digest("hex");
+  let tokenHash: string;
+  let aItem: string;
+
+  beforeAll(async () => {
+    // a fresh link of Firm A (the seeded one may be revoked by a later function control)
+    tokenHash = sha(randomBytes(32).toString("base64url"));
+    const r = await A.as.staff.rpc("record_link_whatsapp", { p: { client_id: A.ids.client, token_hash: tokenHash,
+      items: [{ kind: "ad_hoc", doc_type_id: A.ids.bankType, note: "XF control" }] } });
+    if (r.error) throw new Error(`setup link: ${r.error.message}`);
+    const { data } = await svc().from("upload_request_item").select("id").eq("request_id", (r.data as { request_id: string }).request_id).single();
+    aItem = (data as { id: string }).id;
+  }, 60_000);
+
+  it("link_open with Firm A's token lists only Firm A's items and nothing of Firm B's", async () => {
+    const r = await svc().rpc("link_open", { p_token_hash: tokenHash, p_ip_hash: ip() });
+    expect(r.error).toBeNull();
+    expect(JSON.stringify(r.data)).toContain(aItem); // control: the link works
+    expect(mentions(r.data, [B.marker, B.office, B.ids.adHocItem, B.ids.scheduledItem, B.ids.client])).toEqual([]);
+  });
+
+  it("link_ticket for Firm B's items is refused and creates nothing; the same call for Firm A's item works", async () => {
+    for (const item of [B.ids.adHocItem, B.ids.scheduledItem]) {
+      const r = await svc().rpc("link_ticket", { p_token_hash: tokenHash, p_item_id: item, p_file: { ext: "pdf", size: 60 }, p_ip_hash: ip() });
+      const data = r.data as { error?: string; document_id?: string } | null;
+      expect(r.error !== null || (data?.error !== undefined && !data?.document_id), `ticket for B's item ${item}`).toBe(true);
+    }
+    const ok = await svc().rpc("link_ticket", { p_token_hash: tokenHash, p_item_id: aItem, p_file: { ext: "pdf", size: 60 }, p_ip_hash: ip() });
+    expect((ok.data as { document_id?: string } | null)?.document_id, "control: ticket for A's item").toBeTruthy();
+  });
+
+  it("link_register can't file into Firm B's item, nor file Firm B's stored object under Firm A's item", async () => {
+    const intoB = await svc().rpc("link_register", { p_token_hash: tokenHash, p_item_id: B.ids.adHocItem,
+      p_file: { storage_path: B.ids.softPath, file_name: "x.pdf" }, p_ip_hash: ip() });
+    expect(intoB.error !== null || (intoB.data as { error?: string } | null)?.error !== undefined).toBe(true);
+    const stealB = await svc().rpc("link_register", { p_token_hash: tokenHash, p_item_id: aItem,
+      p_file: { storage_path: B.ids.softPath, file_name: "x.pdf" }, p_ip_hash: ip() });
+    expect(stealB.error !== null || (stealB.data as { error?: string } | null)?.error !== undefined).toBe(true);
+    const { count } = await svc().from("document_version").select("id", { count: "exact", head: true })
+      .eq("office_id", A.office).eq("storage_path", B.ids.softPath);
+    expect(count).toBe(0);
+  });
+
+  it("Firm B's token never opens anything for Firm A's items", async () => {
+    const r = await svc().rpc("link_ticket", { p_token_hash: B.ids.linkTokenHash, p_item_id: aItem, p_file: { ext: "pdf", size: 60 }, p_ip_hash: ip() });
+    expect((r.data as { document_id?: string } | null)?.document_id ?? null).toBeNull();
+  });
+});
+
+describe("service-role functions and no-policy tables (AC-5, AC-10)", () => {
+  it("every service-role-only function is refused for anon and for Firm A's Admin", async () => {
+    const svcOnly = inv.functions.filter((f) => f.schema === "public" && f.service_role && !f.authenticated && !f.anon);
+    expect(svcOnly.length).toBeGreaterThan(10);
+    const anon = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } });
+    const open: string[] = [];
+    for (const f of svcOnly) {
+      for (const [who, client] of [["anon", anon], ["admin", A.as.admin]] as const) {
+        // call with the function's own argument names (nulls), so PostgREST finds it and the answer is the grant's
+        const args = Object.fromEntries(f.args.split(",").map((a) => a.trim().split(/\s+/)[0]).filter(Boolean).map((n) => [n, null]));
+        const r = await client.rpc(f.name, args);
+        if (!r.error) open.push(`${who}: ${f.name}`);
+        else if (!/permission denied|42501/.test(`${r.error.message} ${(r.error as { code?: string }).code ?? ""}`)) open.push(`${who}: ${f.name} (${r.error.message.slice(0, 60)})`);
+      }
+    }
+    expect(open).toEqual([]);
+  }, 120_000);
+
+  it("tables with no app policies (login_attempt, test_lane, doc_counter, link_attempt) give Firm A nothing and take no writes", async () => {
+    for (const table of ["login_attempt", "test_lane", "doc_counter", "link_attempt"]) {
+      const r = await A.as.admin.from(table).select("*").limit(1);
+      expect(r.error ?? r.data).toSatisfy((x: unknown) => !Array.isArray(x) || x.length === 0);
+      const w = await A.as.admin.from(table).insert({}).select("*");
+      expect(w.error, `${table} insert`).not.toBeNull();
+    }
+  });
 });
 
 // ── Functions staff can call (AC-6–AC-8) ───────────────────────────────────────────────────────────────────────────
