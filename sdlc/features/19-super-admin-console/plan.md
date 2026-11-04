@@ -1,5 +1,5 @@
 # Plan: Super admin console
-Spec: ./spec.md (approved 2026-11-04) · Status: **draft — awaiting approval** · Date: 2026-11-04
+Spec: ./spec.md (approved 2026-11-04) · Status: **approved** (Sidambara, 2026-11-04 13:36) · Date: 2026-11-04
 
 ## Locks
 - At plan approval, a small roadmap PR on main gives **schema lock → 19, architecture lock → 19** and sets row 19 to `in progress`. PR #30 (18 shipped) merges first, so the lock commit applies cleanly.
