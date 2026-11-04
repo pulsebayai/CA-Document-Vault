@@ -3,8 +3,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient } from "../../support/db";
 import { inventory, type Inventory } from "./inventory";
-import { rowCounts, seedTwoFirms, type Firm } from "./seed";
-import { changedTables, snapshot } from "./helpers";
+import { rowCounts, seedEmptyFirm, seedTwoFirms, type Firm } from "./seed";
+import { changedTables, isEmpty, mentions, snapshot } from "./helpers";
+import { FN_CASES } from "./functions";
 import { PARENT, ROW } from "./rows";
 
 // Feature 18 — the cross-firm sweep (spec AC-1, AC-4–AC-13). Firm A's staff (Admin unless stated, spec X3) try every
@@ -13,6 +14,7 @@ import { PARENT, ROW } from "./rows";
 // own object must work, so a case can't pass because of a bad argument.
 
 let A: Firm, B: Firm, inv: Inventory;
+let C: { office: string; admin: SupabaseClient };
 let firmTables: string[];
 let before: Record<string, string>;
 const svc = () => adminClient();
@@ -34,6 +36,7 @@ beforeAll(async () => {
   inv = await inventory();
   firmTables = inv.tables.filter((t) => t.office_id).map((t) => t.name);
   ({ A, B } = await seedTwoFirms());
+  C = await seedEmptyFirm();
   before = await snapshot(B.office, firmTables);
 }, 600_000);
 
@@ -210,4 +213,89 @@ describe("tables: point Firm A's rows at Firm B's objects (X4.4)", () => {
     }
     expect(found).toEqual([]);
   }, 300_000);
+});
+
+// ── Functions staff can call (AC-6–AC-8) ───────────────────────────────────────────────────────────────────────────
+/** Error texts that name the refusal as "not yours / not found in your office" (the tenant check, by name). */
+const FN_TENANT = /NOT_FOUND|not found|_OFFICE|another office|MISMATCH|ASSIGNEE|INCHARGE|NOT_VISIBLE|can't see|cannot see|no such|this client's/i;
+/** Every leaf number is 0 and nothing else is non-empty (a firm with no data). */
+const allZero = (v: unknown): boolean =>
+  v === null || v === undefined || v === 0 || v === false || v === "" ||
+  (Array.isArray(v) ? v.every(allZero) : typeof v === "object" ? Object.values(v as object).every(allZero) : false);
+/** A write that did nothing: refused, empty, or only a list of skipped IDs. */
+const didNothing = (r: { error: unknown; data: unknown }) => {
+  if (r.error) return true;
+  // 08's bulk review answers one { id, result, reason } per ID: nothing happened when every one was skipped
+  if (Array.isArray(r.data) && r.data.length && r.data.every((x) => x && typeof x === "object" && (x as { result?: string }).result === "skipped")) return true;
+  if (r.data && typeof r.data === "object" && !Array.isArray(r.data)) {
+    const rest = Object.fromEntries(Object.entries(r.data as Record<string, unknown>).filter(([k]) => k !== "skipped"));
+    return isEmpty(rest);
+  }
+  return isEmpty(r.data);
+};
+
+describe("functions: Firm A calls with Firm B's IDs (AC-6–AC-8)", () => {
+  const bNeedles = () => [B.marker, B.office, ...Object.values(B.ids).map(String), ...Object.values(B.users).map((u) => u.id)];
+  it.each(FN_CASES.map((c) => [c.fn, c] as const))("%s", async (_name, c) => {
+    const who = A.as[c.as ?? "admin"];
+    const lines: string[] = [];
+    const problems: string[] = [];
+    // attempts first, control after: a control changes Firm A's state (a merge, an archive), which must not be what
+    // makes a mixed attempt fail
+    const results: Array<{ label: string; r: { error: { message: string } | null; data: unknown } }> = [];
+    for (const at of c.attempts) {
+      const args = await at.args(A, B);
+      results.push({ label: at.label, r: c.kind === "firm-wide" ? await C.admin.rpc(c.fn, args) : await who.rpc(c.fn, args) });
+    }
+    const control = c.control ? await who.rpc(c.fn, await c.control(A)) : null;
+    const controlNote = !control ? "no control" : control.error ? `control refused (${control.error.message.slice(0, 50)})` : "control ok";
+    for (const { label, r } of results) {
+      const at = { label };
+      if (c.kind === "firm-wide") {
+        if (r.error) problems.push(`${at.label}: Firm C refused (${r.error.message.slice(0, 60)})`);
+        else if (!allZero(r.data)) problems.push(`${at.label}: LEAK — Firm C sees ${JSON.stringify(r.data).slice(0, 120)}`);
+        lines.push(`${c.fn} · ${at.label}: ${r.error ? "error" : allZero(r.data) ? "all zero" : "NOT ZERO"}`);
+        continue;
+      }
+      if (c.kind === "read") {
+        const hits = mentions(r.data, bNeedles());
+        if (hits.length) problems.push(`${at.label}: LEAK — returns ${hits.slice(0, 3).join(", ")}`);
+        lines.push(`${c.fn} · ${at.label}: ${r.error ? `error (${r.error.message.slice(0, 50)})` : hits.length ? "LEAK" : "nothing of B"}`);
+      } else if (c.kind === "own-office") {
+        lines.push(`${c.fn} · ${at.label}: ${r.error ? `error (${r.error.message.slice(0, 50)})` : "ran on own office"}`);
+      } else {
+        const nothing = didNothing(r);
+        const why = !nothing ? "LEAK (accepted)" : !r.error ? "no effect"
+          : FN_TENANT.test(r.error.message) ? "tenant check"
+          : control && !control.error ? "control ok"
+          : `INCONCLUSIVE (${r.error.message.slice(0, 70)})`;
+        if (why.startsWith("LEAK") || why.startsWith("INCONCLUSIVE")) problems.push(`${at.label}: ${why}`);
+        lines.push(`${c.fn} · ${at.label}: ${why}${r.error ? ` [${r.error.message.slice(0, 60)}]` : ""}`);
+      }
+    }
+    lines.push(`${c.fn} · ${controlNote}`);
+    if (c.kind === "read" && control && !control.error && isEmpty(control.data)) problems.push("read control returned nothing for Firm A's own object");
+    note("functions", lines);
+    expect(problems).toEqual([]);
+  }, 120_000);
+
+  it("AC-7: Firm A's Limited user gets no ciphertext for Firm B's DSC", async () => {
+    const r = await A.as.limited.rpc("dsc_reveal", { p_id: B.ids.dsc });
+    expect(r.data ?? null).toBeNull();
+    expect(r.error).not.toBeNull();
+  });
+
+  it("every function staff can call has a case here (or is a test helper exempted in coverage.ts)", () => {
+    const callable = inv.functions.filter((f) => f.schema === "public" && f.authenticated).map((f) => f.name);
+    const covered = new Set(FN_CASES.map((c) => c.fn));
+    expect(callable.filter((n) => !covered.has(n))).toEqual([]);
+  });
+
+  it("afterwards, none of Firm A's activity or notifications names one of Firm B's objects", async () => {
+    const needles = bNeedles().filter((n) => /^[0-9a-f-]{36}$/.test(n));
+    const { data: acts, error } = await svc().from("activity").select("entity_id, data").eq("office_id", A.office).range(0, 4999);
+    if (error) throw error;
+    const { data: notes } = await svc().from("notification").select("entity_id, data").eq("office_id", A.office);
+    expect(mentions([acts, notes], needles)).toEqual([]);
+  }, 120_000);
 });

@@ -27,7 +27,7 @@ export type Firm = {
     softDoc: string; softVersion: string; softPath: string; reviewedDoc: string; heldDoc: string; dispatchedDoc: string;
     dispatch: string; dispatchItem: string; followUp: string; request: string; scheduledItem: string; adHocItem: string;
     linkDoc: string; linkTokenHash: string; dsc: string; dscCustody: string; notification: string; activity: number;
-    review: string; custody: string;
+    review: string; custody: string; laterExpected: string;
   };
 };
 
@@ -110,6 +110,7 @@ async function seedFirm(key: "a" | "b"): Promise<Firm> {
 
   // Follow-up (06) on a later pending item, and an upload link (10) with a scheduled and an ad-hoc item + one upload.
   const later = await expectedItem(ids.client, T.bank, "2026-04");
+  ids.laterExpected = later.id;
   ids.followUp = await mustRpc<string>(as.staff, "record_follow_up", { p_client: ids.client, p_items: [later.id], p_channel: "phone" });
   const token = randomBytes(32).toString("base64url");
   ids.linkTokenHash = sha(token);
@@ -128,7 +129,7 @@ async function seedFirm(key: "a" | "b"): Promise<Firm> {
   ids.linkDoc = t.document_id as string;
 
   // DSC (14): a record, a custody move and a per-client reminder setting.
-  ids.dsc = await mustSaveDsc(as.staff, newDsc(ids.client, { holder_name: `${marker} Holder`, password_ct: FAKE_CT }));
+  ids.dsc = await mustSaveDsc(as.staff, newDsc(ids.client, { holder_name: `${marker} Holder`, password_ct: FAKE_CT, expires_on: "2026-06-10" }));
   await mustRpc(as.staff, "dsc_custody_log", { p: { dsc_id: ids.dsc, direction: "out", person_name: `${marker} Person`, on_date: "2026-05-01" } });
   ids.dscCustody = (await one(svc.from("dsc_custody").select("id").eq("dsc_id", ids.dsc).limit(1).single(), "dsc custody")).id as string;
   await mustRpc(as.staff, "dsc_set_remind_days", { p_client_id: ids.client, p_days: 45 });
@@ -153,4 +154,11 @@ export async function rowCounts(office: string, tables: string[]): Promise<Recor
     out[t] = count ?? 0;
   }
   return out;
+}
+
+/** Firm C (spec AC-8): a firm with an Admin and nothing else, so every firm-wide figure it gets must be zero/empty. */
+export async function seedEmptyFirm(): Promise<{ office: string; admin: SupabaseClient }> {
+  const office = await createDocumentOffice("xfirm-c");
+  const u = await createStaff(office, "xfirm-c-admin", "admin");
+  return { office, admin: await signedInClient(u.email) };
 }
