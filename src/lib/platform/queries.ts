@@ -51,7 +51,9 @@ async function call<T>(fn: string, args: Record<string, unknown> = {}): Promise<
   const supabase = await createClient();
   const { data, error } = await supabase.rpc(fn, args);
   if (error) {
-    if (/^NOT_FOUND/.test(error.message)) notFound(); // another firm's ID, or an ID that doesn't exist
+    // not a super admin (Next renders nested layouts and pages in parallel, so this can answer before the Platform
+    // layout's own check), another firm's ID, or one that doesn't exist: all Not Found, never an error page
+    if (/^(NOT_FOUND|NOT_PLATFORM_ADMIN)/.test(error.message)) notFound();
     throw new Error(`${fn} failed`); // the segment's error state; no details reach the browser
   }
   return data as T;
@@ -62,7 +64,7 @@ async function view<T>(fn: string, args: Record<string, unknown>): Promise<ViewR
   const { data, error } = await supabase.rpc(fn, args);
   if (error) {
     if (/^NO_ACCESS/.test(error.message)) return { ok: false, reason: "no_access" };
-    if (/^NOT_FOUND/.test(error.message)) notFound();
+    if (/^(NOT_FOUND|NOT_PLATFORM_ADMIN)/.test(error.message)) notFound();
     throw new Error(`${fn} failed`);
   }
   return { ok: true, data: data as T };

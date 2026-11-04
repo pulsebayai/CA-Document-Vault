@@ -177,3 +177,15 @@ describe("suspend, reactivate, open and close access", () => {
     expect(await searchClients(OFFICE, "", 1)).toEqual({ ok: false, reason: "no_access" });
   });
 });
+
+describe("Platform reads for someone who isn't a super admin", () => {
+  it("are Not Found, never an error page, whichever check answers first (nested layouts render in parallel)", async () => {
+    h.rpc.mockResolvedValue({ data: null, error: { message: "NOT_PLATFORM_ADMIN" } });
+    const q = await import("@/lib/platform/queries");
+    expect(await caught(q.listFirms())).toBe("NOT_FOUND");
+    expect(await caught(q.inviteTarget(OFFICE))).toBe("NOT_FOUND");
+    expect(await caught(q.viewClients(OFFICE, null, 1))).toBe("NOT_FOUND");
+    h.rpc.mockResolvedValue({ data: null, error: { message: "statement timeout" } });
+    expect(await caught(q.listFirms())).toBe("platform_firms failed"); // a real failure still shows the error state
+  });
+});

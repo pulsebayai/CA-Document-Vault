@@ -15,7 +15,7 @@ import { appAlert, signIn, signInPlatform } from "./helpers";
 
 const marker = `XE${randomBytes(3).toString("hex")}`;
 const clientName = `${marker} Client`;
-const pan = testPan("E", 1931);
+const pan = testPan("P", 1931); // 4th letter P = individual (client_pan_fits_type)
 let firm: string;
 let admin: { id: string; email: string };
 let staff: { id: string; email: string };
@@ -139,6 +139,10 @@ test("AC-3: a staff member opening /platform gets Not Found and nothing of the c
   await page.goto("/platform");
   await expect(page.getByText(/could not be found/i)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Firms" })).toHaveCount(0);
-  await page.goto(`/platform/firms/${firm}`);
-  await expect(page.getByText(/could not be found/i)).toBeVisible();
+  // every Platform page, not just the list: a firm page, a read view, the audit log
+  for (const path of [`/platform/firms/${firm}`, `/platform/firms/${firm}/clients`, "/platform/firms/new", "/platform/audit"]) {
+    await page.goto(path);
+    await expect(page.getByText(/could not be found/i), path).toBeVisible();
+    await expect(page.getByText(clientName), path).toHaveCount(0);
+  }
 });
