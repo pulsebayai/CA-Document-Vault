@@ -143,7 +143,11 @@ begin
       'documents', (select count(*) from public.document d where d.office_id = o.id and d.archived_at is null),
       'storage_mb', round(coalesce((select sum((so.metadata->>'size')::bigint) from storage.objects so
                      where so.bucket_id = 'documents' and so.name like 'office/' || o.id::text || '/%'), 0) / 1048576.0, 1),
-      'last_activity_at', (select max(a.created_at) from public.activity a where a.office_id = o.id and a.action <> 'auth.signed_in')
+      'last_activity_at', (select max(a.created_at) from public.activity a where a.office_id = o.id and a.action <> 'auth.signed_in'),
+      -- the caller's own open window on this firm (for the countdown), or null
+      'my_access', (select jsonb_build_object('id', x.id, 'expires_at', x.expires_at) from public.platform_access x
+                     where x.admin_id = me.id and x.office_id = o.id and x.closed_at is null and x.expires_at > now()
+                     order by x.expires_at desc limit 1)
     ) order by lower(o.name), o.id)
     from public.office o where o.is_test = me.test), '[]'::jsonb);
 end $$;
@@ -214,7 +218,8 @@ begin
   update public.office set suspended_at = now(), suspended_by = me.id, suspend_reason = v_reason where id = o.id;
   insert into public.activity (office_id, actor_id, action, entity_type, entity_id, data)
     values (o.id, null, 'office.suspended', 'office', o.id::text, '{}');
-  perform private.platform_log(me.id, 'firm.suspended', o.id, null, '{}');
+  -- the reason goes with the log row: the office row's copy is cleared on reactivation (AC-12)
+  insert into public.platform_audit (admin_id, action, office_id, reason) values (me.id, 'firm.suspended', o.id, v_reason);
 end $$;
 
 create or replace function public.platform_reactivate_firm(p_office uuid)
@@ -407,7 +412,7 @@ begin
   return jsonb_build_object('rows', coalesce((select jsonb_agg(r) from (
     select jsonb_build_object('id', l.id, 'at', l.at, 'action', l.action, 'office_id', l.office_id, 'office_name', o.name,
              'admin_name', a.full_name, 'access_id', l.access_id, 'detail', l.detail,
-             'reason', case when l.action = 'access.opened' then x.reason when l.action = 'firm.suspended' then o.suspend_reason end) r
+             'reason', case when l.action = 'access.opened' then x.reason else l.reason end) r
       from public.platform_audit l
       join public.platform_admin a on a.id = l.admin_id
       left join public.office o on o.id = l.office_id

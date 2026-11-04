@@ -79,6 +79,9 @@ describe("suspend (AC-7)", () => {
     expect(await linkWorks()).toBe(true);
     expect((await svc().from("activity").select("id").eq("office_id", F).eq("action", "office.reactivated")).data?.length).toBeGreaterThan(0);
     expect((await rpc(sa.as, "platform_reactivate_firm", { p_office: F })).error?.message).toMatch(/NOT_SUSPENDED/);
+    // AC-12: the audit log keeps the suspension's reason after the firm is reactivated (the office row no longer has it)
+    const log = (await rpc(sa.as, "platform_audit_list", { p: { office_id: F, action: "firm.suspended" } })).data as { rows: Array<{ reason: string | null }> };
+    expect(log.rows[0]?.reason).toBe("Unpaid since October (test)");
   });
 
   it("the nightly job skips a suspended firm; the same firm unsuspended is generated (rolled-back probe on a real office, D3)", async () => {

@@ -94,6 +94,9 @@ create table public.platform_audit (
   office_id  uuid references public.office (id),
   access_id  uuid references public.platform_access (id),
   detail     jsonb not null default '{}', -- IDs and view names only: free text (reasons) stays on its own row
+  -- a suspension's reason (the office row clears it on reactivation, but the log keeps it); written only by
+  -- platform_suspend_firm. Read access reasons stay on platform_access.
+  reason     text check (reason is null or (action = 'firm.suspended' and length(btrim(reason)) between 10 and 500)),
   at         timestamptz not null default now()
 );
 create index platform_audit_office_idx on public.platform_audit (office_id, id desc);
