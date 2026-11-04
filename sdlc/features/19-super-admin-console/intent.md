@@ -1,5 +1,5 @@
 # Intent: Super admin console (platform-level firm management)
-Author: Sidambara (drafted with Claude) · Status: **approved** (Sidambara, 2026-11-04 13:27: Q1–Q5 as recommended — TOTP for super admins; reason + 60-minute window; firm sees access in Activity + bell; neutral suspended message; usage = staff, clients, documents, files stored, last activity) · Date: 2026-11-04
+Author: Sidambara (drafted with Claude) · Status: **approved** (Sidambara, 2026-11-04 13:27: Q1–Q5 as recommended, **except Q1 changed at the spec gate (13:31): no second factor in R1** — email code like staff, 2FA after R1; reason + 60-minute window; firm sees access in Activity + bell; neutral suspended message; usage = staff, clients, documents, files stored, last activity) · Date: 2026-11-04
 Roadmap item: 19-super-admin-console · Release: **R1** (Sidambara, 2026-11-04) · Moves product metric: none directly. It enables more firms, which matters because Kushal Associates distributes the vault to other CA firms.
 Decisions already made (Sidambara, 2026-11-04):
 - Super admin = **Pulsebay only**. Kushal asks Pulsebay to set up each firm.

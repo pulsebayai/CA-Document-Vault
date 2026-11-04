@@ -1,5 +1,5 @@
 # Spec: Super admin console
-Intent: ./intent.md (approved 2026-11-04) · Status: **draft — awaiting approval** · Date: 2026-11-04
+Intent: ./intent.md (approved 2026-11-04) · Status: **approved** (Sidambara, 2026-11-04 13:31: Y3 in the database; Y5a **shown in full**; Y6 shared check; **no second factor in R1** — super admins sign in with the email code like staff, 2FA after R1) · Date: 2026-11-04
 
 ## Summary of design decisions (proposed; marked Y-n for the gate)
 - **Y1 — `platform_admin` is its own table, outside every firm.**
@@ -8,17 +8,13 @@ Intent: ./intent.md (approved 2026-11-04) · Status: **draft — awaiting approv
   - Rows are added only by a new operator script, `scripts/add-platform-admin.mjs` (service role, dry run unless `--yes`, `--yes-production` on prod), as 17's bootstrap script does.
   - **An email is either staff in one firm or a super admin.** A database trigger on both tables refuses a clash. The staff invite keeps 17's neutral message.
   - `private.current_office_id()` is null for a super admin, so every firm RLS policy refuses them, exactly as 18 proved for non-staff.
-- **Y2 — Second factor (intent Q1).**
-  - Super admins enrol an authenticator app (Supabase Auth TOTP) at first sign-in, then enter its code after the email code at every sign-in.
-  - Each platform check requires the session's assurance level `aal = aal2` (the `aal` claim in the JWT, set by Supabase Auth after a verified second factor).
-  - With `aal1`, the Platform area shows only the "enter your code" or enrolment page.
-  - Staff sign-in is unchanged: no second factor for staff in R1.
+- **Y2 — Sign-in (changed at the gate, Sidambara 2026-11-04):** super admins sign in exactly like staff, with the **email one-time code**, and **no second factor in R1** (TOTP after R1). `private.require_platform_admin()` checks only an active `platform_admin` row. **Accepted risk (recorded in the decision log):** whoever controls a super admin's email inbox can open read access to any firm and see its PII in full (Y5a), and can create, suspend and reactivate firms. The mitigations in R1 are the reason + 60-minute window, the firm-visible activity and bell, and the platform audit log.
 - **Y3 — Every platform action is a SECURITY DEFINER function in `public`, checked in the database.**
-  - Each `platform_*` function starts with `private.require_platform_admin()`, which checks: active row, `aal2`, `search_path = ''`.
+  - Each `platform_*` function starts with `private.require_platform_admin()`, which checks for an active `platform_admin` row (`search_path = ''`).
   - It then works on the firm it is given **explicitly**, filtering every query on that `office_id`, and writes its audit row **in the same transaction before returning** (14's "log before return").
-  - These functions are executable by `authenticated`, but refuse everyone who isn't an active `aal2` super admin. They return IDs, counts and display fields, and never storage paths, `password_ct` or token hashes.
+  - These functions are executable by `authenticated`, but refuse everyone who isn't an active super admin. They return IDs, counts and display fields, and never storage paths, `password_ct` or token hashes.
   - **Why not a service-role server module:** the checks and the log would then live in TypeScript, and a coding slip would bypass both. In the database they hold for every caller, and 18's sweep can probe them like any other function.
-  - **The one exception is the email invite**, which needs Supabase's admin API (service role). It sits in one allow-listed server module, `src/lib/platform/invite.ts`. That module first calls `platform_whoami()` as the signed-in user and stops unless it confirms an `aal2` super admin.
+  - **The one exception is the email invite**, which needs Supabase's admin API (service role). It sits in one allow-listed server module, `src/lib/platform/invite.ts`. That module first calls `platform_whoami()` as the signed-in user and stops unless it confirms an active super admin.
 - **Y4 — Support access window (intent Q2).**
   - `platform_open_access(office, reason)` creates a `platform_access` row (`admin_id`, `office_id`, `reason` 10–500 characters, `opened_at`, `expires_at` = +60 minutes, `closed_at`).
   - Every read function requires an open, unexpired row for (this super admin, this firm). "Close access" ends it early.
@@ -34,14 +30,14 @@ Intent: ./intent.md (approved 2026-11-04) · Status: **draft — awaiting approv
   | View | Function | Shows |
   |---|---|---|
   | Clients | `platform_clients(office, query, page)` | code, name, type, incharge name, groups, archived; 20 per page |
-  | Client | `platform_client(office, client)` | details, registrations (masked), plan groups, counts |
+  | Client | `platform_client(office, client)` | details, registrations, plan groups, counts |
   | Documents | `platform_documents(office, client?, page)` | DOC-ID, type, period, received as/on, shown state, current file name and size; 20 per page |
   | Document | `platform_document(office, document)` | metadata, version list (file name, size, uploader, date), review history |
   | Expected | `platform_expected(office, client, page)` | items with derived state |
   | Activity | `platform_activity(office, page)` | 08's sentences from IDs; sign-ins excluded |
 
   - **Excluded everywhere (decided):** file view or download (no signed URLs, no storage paths), DSC records and passwords, upload-link tokens, follow-up recipient snapshots.
-  - **Masking (Y5a, for the gate):** PAN, GSTIN, mobile and email are shown masked (`ABCxxxx12F`, `a…@…`, `98xxxxxx01`), as 06 does for recipients. Support rarely needs them in full, and masking narrows what a stolen super admin session could take.
+  - **Y5a (decided at the gate): PAN, GSTIN, mobile and email are shown in full**, as staff see them. They still never reach activity or audit data (IDs and view names only), URLs or logs.
 - **Y6 — Suspend / reactivate (intent §4, Q4).**
   - New `office` columns: `suspended_at`, `suspended_by` (→ `platform_admin`), `suspend_reason`. Written only by `platform_suspend_firm(office, reason)` / `platform_reactivate_firm(office)`.
   - `private.current_office_id()` returns null when the staff member's office is suspended. Every RLS policy then refuses at once, with no change to the 61 policies.
@@ -74,18 +70,17 @@ Intent: ./intent.md (approved 2026-11-04) · Status: **draft — awaiting approv
   - Every new table and function gets a line in `coverage.ts` and a case.
   - The sweep gains a "platform" section, which checks that every `platform_*` function refuses:
     - Firm A's staff (Admin included);
-    - an `aal1` super admin;
-    - an `aal2` super admin without an open access window (for reads).
+    - a deactivated super admin;
+    - a super admin without an open access window, or with a window for another firm (for reads).
   - A "no path to writes, files or DSC" check lists every function a super admin can execute and asserts it's a `platform_*` function, or one that RLS already refuses for them.
 
 ## User stories & acceptance criteria
 ### Identity and sign-in
 - **AC-1** The operator adds a super admin with the script, which shows a dry run first. An email that is already staff anywhere is refused, and so is a staff invite for a super admin's email (neutral message, 17).
-- **AC-2** On first sign-in, a super admin is asked to enrol an authenticator app (QR code and secret), then enter a code. On later sign-ins they enter a code after the email code. Without `aal2` they see only those pages.
+- **AC-2** A super admin signs in with the email one-time code, exactly like staff (no second factor in R1).
 - **AC-3** A super admin lands on `/platform` and never sees a firm's header or screens. Opening `/today` or `/clients` sends them to `/platform`. A staff member opening `/platform` gets Not Found.
 - **AC-4** Every `platform_*` function refuses:
-  - anyone without an active `platform_admin` row;
-  - an active super admin at `aal1`.
+  - anyone without an active `platform_admin` row (every staff role, a deactivated super admin).
   
   It refuses with no data and no audit row (refusals are counted by Supabase's own logs only).
 
@@ -113,14 +108,14 @@ Intent: ./intent.md (approved 2026-11-04) · Status: **draft — awaiting approv
   - Each active firm Admin gets one bell notification.
   - The reason is stored on the access row only.
 - **AC-9** Within an open window, the six Y5 views work for that firm only, read-only.
-  - PAN, GSTIN, mobile and email are masked.
+  - PAN, GSTIN, mobile and email are shown in full (Y5a).
   - There is no file view or download, and nothing from DSC, upload-link tokens or follow-up recipients.
   - Each page read writes a platform audit row and a firm activity row `platform.viewed`.
 - **AC-10** Read views are refused:
   - outside an open window (expired, closed, never opened);
   - for another firm than the window's;
   - with IDs that belong to another firm (a client of firm B while the window is for firm A).
-- **AC-11** No platform function, view or server action can write firm data, sign a file URL, or return `password_ct`, token hashes, storage paths or full PII (18-style sweep, Y9).
+- **AC-11** No platform function, view or server action can write firm data, sign a file URL, or return `password_ct`, token hashes or storage paths (18-style sweep, Y9).
 
 ### Audit
 - **AC-12** **Platform › Audit** lists every super admin action, newest first, filterable by firm and action: who, when, what, reason where given. It is append-only: nobody updates or deletes it, the service role included (like 02's activity guard).
@@ -155,33 +150,33 @@ Intent: ./intent.md (approved 2026-11-04) · Status: **draft — awaiting approv
 
 ## Test strategy
 - **RLS / integration:**
-  - Super admin fixture: a `.test` email added with the script's core. Its TOTP is enrolled in the test using the factor secret, with codes computed by a small TOTP helper (RFC 6238, Node `crypto`, no new dependency) to reach `aal2`.
-  - Every `platform_*` function × {Firm A Admin, `aal1` super admin, `aal2` super admin without a window, with a window for another firm, with a window for this firm}.
+  - Super admin fixture: a `.test` email added with the script's core.
+  - Every `platform_*` function × {Firm A Admin, a deactivated super admin, a super admin without a window, with a window for another firm, with a window for this firm}.
   - Suspension effects (staff refused, links `NOT_ACTIVE`, nightly skip, reactivation).
-  - Masking and audit rows.
-- **Unit:** masking helpers, routing decisions, invite module (mocked admin client), catalogue sentences.
+  - Audit and firm activity rows (IDs only, no PII).
+- **Unit:** routing decisions, invite module (mocked admin client), catalogue sentences.
 - **e2e:**
-  - enrol → code → firms list → create a test firm → open access → view a client → see the firm-side activity line and bell → close;
+  - sign in → firms list → create a test firm → open access → view a client → see the firm-side activity line and bell → close;
   - suspend → the firm's staff see the paused page → reactivate.
 - **18's sweep extended (AC-14).**
 
 ## Proposed architecture changes (architecture lock)
-1. **Platform identity:** super admins are a separate table outside every firm, with TOTP required. They are never staff, and an email belongs to one side only.
-2. **Platform actions are definer functions** that check the caller (active super admin at `aal2`) and log before returning. The only service-role step is the invite email, in one allow-listed module. This refines 17's "operator access only through logged server-side tools".
-3. **Support access** is reason + 60-minute window + firm-visible log + bell, read-only and masked, with no files and no DSC.
+1. **Platform identity:** super admins are a separate table outside every firm, signing in with the email code (second factor after R1, accepted risk). They are never staff, and an email belongs to one side only.
+2. **Platform actions are definer functions** that check the caller (active super admin) and log before returning. The only service-role step is the invite email, in one allow-listed module. This refines 17's "operator access only through logged server-side tools".
+3. **Support access** is reason + 60-minute window + firm-visible log + bell, read-only, PII shown in full, with no files and no DSC.
 4. **Suspension lives in `current_office_id()`**, so every RLS policy honours it with no policy changes. 10's links and 04's nightly job also honour it.
-5. A decision-log row, plus an R1 checklist item: super admins on staging/prod are added with the script, and TOTP is enrolled before first use.
+5. A decision-log row (incl. the accepted risk of no second factor), plus an R1 checklist item: super admins on staging/prod are added with the script, each with a mailbox only that person can open.
 
 ## Risks & areas of concern
 - **[Likely] Changing `private.current_office_id()` touches every RLS query.** It's a one-row join to `office`, cached per statement (`select private.current_office_id()`). It's measured with 02's `clients-list` and 15's K4 timings before merge, and RUN_SLOW runs because every write path is affected.
-- **TOTP in automated tests:** codes are time-based. The helper computes the current code from the enrolled secret; [Uncertain] it may need a small retry at a 30-second boundary.
-- **Masking vs support needs:** if support needs a full value, there is no unmask in R1. Revisit after the pilot.
+- **No second factor + full PII (accepted, Sidambara 2026-11-04):** a super admin's email inbox is the key to every firm's client details. Keep super admins to a named few, each on a mailbox only that person controls; add TOTP first after R1.
 - **Bootstrap refactor:** moving `bootstrap_office`'s body into a helper must keep 17's tests unedited and green.
 
 ## Out of scope
-As in the intent. Also: staff TOTP, an unmask action, super admin roles (all super admins are equal in R1), and email notifications to firm Admins about support access (the bell only).
+As in the intent. Also: two-factor sign-in for super admins and staff (after R1), super admin roles (all super admins are equal in R1), and email notifications to firm Admins about support access (the bell only).
 
-## Open questions for the gate
-1. **Y3:** definer functions in the database, with one service-role step for the invite email (recommended), vs a service-role server module for everything.
-2. **Y5a:** mask PAN, GSTIN, mobile and email in support views (recommended), or show them in full.
-3. **Y6:** suspension via `current_office_id()` (recommended: one place, every policy). The cost is a re-timed RLS suite plus RUN_SLOW.
+## Decisions at the gate (Sidambara, 2026-11-04)
+1. **Y3:** in the database (definer functions; only the invite email uses the admin key).
+2. **Y5a:** PAN, GSTIN, mobile and email **shown in full** in support views.
+3. **Y6:** suspension via `current_office_id()`.
+4. **Y2:** **no second factor in R1**; super admins sign in with the email code; 2FA after R1.
