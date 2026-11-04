@@ -1,27 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { adminClient, signedInClient } from "./db";
 import { testEmail } from "./test-data";
+import { run } from "../../scripts/platform-admin-core.mjs";
 
 // Feature 19 — super admin fixtures. A test super admin has a `.test` email, so the database lets it touch test
 // offices only (and a real super admin real offices only): fixtures can never reach a real firm on staging/prod.
 
-/** Get-or-create a super admin (service role, as the operator script does) and reset it to `status`. */
+/** Get-or-create a super admin (service role, through the operator script's core) and reset it to `status`. */
 export async function createPlatformAdmin(label: string, status: "active" | "deactivated" = "active") {
   const admin = adminClient();
   const email = testEmail(label);
   const { data: existing } = await admin.from("platform_admin").select("id").eq("email", email).maybeSingle();
-  let id = existing?.id as string | undefined;
-  if (!id) {
-    const { data: found } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-    id = found?.users.find((u) => u.email === email)?.id;
-    if (!id) {
-      const { data: u, error } = await admin.auth.admin.createUser({ email, email_confirm: true });
-      if (error) throw error;
-      id = u.user.id;
-    }
-    const { error: e2 } = await admin.from("platform_admin").insert({ id, email, full_name: `Test ${label}`, status: "active" });
-    if (e2) throw e2;
-  }
+  // new: the operator's own path (spec: fixtures are added with the script's core), as `--test`
+  const id: string = existing?.id ?? (await run(admin, { action: "add", email, name: `Test ${label}`, test: true })).id;
   await admin.auth.admin.updateUserById(id, { ban_duration: "none" });
   const { error: e3 } = await admin.from("platform_admin").update({ status }).eq("id", id);
   if (e3) throw e3;
