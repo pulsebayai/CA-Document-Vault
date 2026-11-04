@@ -5,8 +5,8 @@
 -- financial year to be one the caller can see in their own office. Definer paths (seed, FY roll-over) are unchanged:
 -- they always pass the office's own year.
 
-drop policy if exists period_insert on public.period;
-create policy period_insert on public.period for insert to authenticated
+-- alter (not drop + create): same policy name, roles and command; only the check changes.
+alter policy period_insert on public.period
   with check (
     office_id = (select private.current_office_id())
     and (select private.has_role(array['admin'::public.staff_role]))
