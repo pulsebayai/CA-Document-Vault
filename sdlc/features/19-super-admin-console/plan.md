@@ -39,8 +39,8 @@ Both are applied to dev before review. Live function bodies are checked by md5 a
 **RUN_SLOW before merge** (CLAUDE.md): `current_office_id()` is used by every write path. Plus re-timing 02's `clients-list` and 15's K4 card (AC-15).
 
 ## Steps
-- [ ] 0. Locks PR on main (after #30); rebase the branch. — proof: roadmap shows locks → 19
-- [ ] 1. **Failing first:** `tests/rls/platform.test.ts` (identity, email clash, every `platform_*` refuses staff and deactivated super admins, read views need a window for this firm, IDs of another firm refused, audit + firm activity rows, IDs only) and `platform-suspend.test.ts` (staff refused at once, links `NOT_ACTIVE`, nightly skip, reactivate restores, test offices and single mode refused). Red until step 2. — proof: red run recorded
+- [x] 0. Locks PR on main (after #30); rebase the branch. *(the lock change was added to PR #30 itself, renamed "18 shipped + 19 started"; awaiting merge)* — proof: roadmap shows locks → 19
+- [x] 1. **Failing first:** `tests/rls/platform.test.ts` (identity, email clash, every `platform_*` refuses staff and deactivated super admins, read views need a window for this firm, IDs of another firm refused, audit + firm activity rows, IDs only) and `platform-suspend.test.ts` (staff refused at once, links `NOT_ACTIVE`, nightly skip, reactivate restores, test offices and single mode refused). Red until step 2. — proof: red run recorded
 - [ ] 2. **Migration A + B** on dev (md5 = file). Time `clients-list` and K4 before/after the `current_office_id` change (AC-15). Step 1 goes green; 17's `bootstrap` / `office` tests unedited and green. — proof: RLS run log + timings
 - [ ] 3. **18's guard + sweep:** coverage lines for every new object, plus a platform section in the sweep:
   - each `platform_*` function × {Firm A Admin, deactivated super admin, super admin without a window, window for another firm};
@@ -87,4 +87,7 @@ Both are applied to dev before review. Live function bodies are checked by md5 a
 - 9–10 ≈ 1–2 days plus review fixes.
 
 ## Deviations
-(none yet)
+- **D1 (step 1): test super admins touch test firms only.** A super admin whose email ends in `.test` sees and acts on test offices only, and a real super admin on real offices only. Test fixtures can then never reach a real firm on staging or prod, and `platform_create_firm` by a `.test` super admin takes 17's test path, so the deployment mode is never set on dev. Each test run creates one new test firm (its first Admin can't be removed: no hard delete); the growth is small (≈ a few per day) and these offices are purged like any test office.
+- **D2 (step 1):** first Admin = two steps. `platform_create_firm` returns the office; the server's invite module invites by email (admin API, which also creates the auth user), then `platform_record_first_admin(office, user, name, email)` records the staff row. A failed invite leaves a staff-less firm that can be retried, as 17's script does.
+- **D3 (step 1):** the nightly-skip check (AC-7) needs a real office (`run_daily_expected` skips test offices), so it is proven with a rolled-back probe in step 2, as 17's `test_tenancy_probe` does; `it.todo` until then.
+- **Step 1 red run (2026-11-04):** `tests/rls/platform.test.ts` + `platform-suspend.test.ts` fail at setup (`public.platform_admin` doesn't exist), 17 tests not reached.
