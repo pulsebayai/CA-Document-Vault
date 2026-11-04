@@ -452,7 +452,14 @@ const refused = (r: Res) => !!r.error ||
     isEmpty(Object.fromEntries(Object.entries(r.data as object).filter(([k]) => k !== "skipped"))));
 
 describe("functions: Firm A calls with Firm B's IDs (AC-6–AC-8; run in order)", () => {
-  const bNeedles = () => [B.marker, B.office, ...Object.values(B.ids).map(String), ...Object.values(B.users).map((u) => u.id)];
+  // IDs and the marker as text. B's activity row ID is a short number on a fresh database (290 on CI's local stack,
+  // main CI 41897661172) and would match any number in Firm A's answer, so short values are checked exactly instead
+  // (numericIds below), as 19's window case does.
+  const bNeedles = () => [B.marker, B.office, ...Object.values(B.ids).filter((v) => v !== null).map(String), ...Object.values(B.users).map((u) => u.id)]
+    .filter((n) => n.length >= 8);
+  /** Every number stored under an "id" key anywhere in a result (activity rows are identified by bigint IDs). */
+  const numericIds = (v: unknown): number[] => Array.isArray(v) ? v.flatMap(numericIds)
+    : v && typeof v === "object" ? Object.entries(v).flatMap(([k, x]) => (k === "id" && typeof x === "number" ? [x] : numericIds(x))) : [];
   it.each(FN_CASES.map((c) => [c.fn, c] as const))("%s", async (_name, c: FnCase) => {
     ran.add(`functions:${c.fn}`);
     const who = A.as[c.as ?? "admin"];
@@ -480,7 +487,7 @@ describe("functions: Firm A calls with Firm B's IDs (AC-6–AC-8; run in order)"
         if (!control || control.error || allZero(control.data)) problems.push(`${label}: Firm A's own figure is zero or failed — the case proves nothing`);
         lines.push(`${c.fn} · ${label}: ${allZero(r.data) ? "Firm C all zero" : "NOT ZERO"} · ${ctl}${control && !control.error && !allZero(control.data) ? " (non-zero)" : ""}`);
       } else if (c.kind === "read") {
-        const hits = mentions(r.data, bNeedles());
+        const hits = [...mentions(r.data, bNeedles()), ...(numericIds(r.data).includes(Number(B.ids.activity)) ? [`activity row ${B.ids.activity}`] : [])];
         if (hits.length) problems.push(`${label}: LEAK — returns ${hits.slice(0, 3).join(", ")}`);
         if (!control || control.error || isEmpty(control.data)) problems.push(`${label}: read control failed or empty — ${ctl}`);
         if (r.error && INVALID.test(r.error.message)) problems.push(`${label}: INCONCLUSIVE (payload: ${r.error.message.slice(0, 60)})`);
