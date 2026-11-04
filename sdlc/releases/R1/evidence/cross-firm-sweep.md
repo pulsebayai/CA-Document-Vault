@@ -65,7 +65,8 @@ Also tightened (no exposure): six internal trigger functions from feature 02 sti
   - the full database suite: 66 files, 1,013 passed, 0 failed, 17 skipped (the volume and slow tests that are off by default);
   - unit tests: 702 passed;
   - the browser test, locally: 3/3.
-- **PR CI on fresh local test databases:** see the PR. Its run ID and time are added here when it finishes.
+- **PR CI on fresh local test databases:** run 41793679106 on 318d254, all jobs green; the cross-firm sweep (141 tests) took 5.4 s on the local stack, so AC-15 (≤ 3 min) is met.
+- **Dev Regression (quick check, `only` = `rls/cross-firm e2e/cross-firm`):** run 41793684617, green.
 - **Pre-PR review:** independent `sdlc-reviewer` pass. It found 1 blocker and 9 important issues, all in the test logic, and all are fixed. None was a leak in the product.
 
 ## How to re-run
