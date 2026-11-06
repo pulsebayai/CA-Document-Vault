@@ -2,8 +2,10 @@ import Link from "next/link";
 import { signOut } from "@/lib/auth/actions";
 import { requirePlatformAdmin } from "@/lib/platform/guard";
 import { BrandMark } from "@/components/ui";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Platform" }; // never a firm's name: the console spans every firm
 
 /** 19 (spec AC-3): the Platform area. Its own header: never a firm's name, nav or bell. */
 export default async function PlatformLayout({ children }: LayoutProps<"/platform">) {

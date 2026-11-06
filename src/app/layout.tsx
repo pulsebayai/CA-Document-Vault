@@ -13,9 +13,11 @@ const plex = localFont({
   display: "swap",
 });
 
+// 17: one codebase serves many firms, so nothing outside a signed-in firm names one (the root title was Kushal's
+// from 01). Signed-in staff see their own firm through the (app) layout; the console says "Platform".
 export const metadata: Metadata = {
-  title: "CA Document Vault — Kushal Associates",
-  description: "Document collection and vault for Kushal Associates",
+  title: { default: "CA Document Vault", template: "%s · CA Document Vault" },
+  description: "Document collection and vault for CA firms",
   robots: { index: false, follow: false },
 };
 
