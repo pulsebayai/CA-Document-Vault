@@ -38,7 +38,7 @@ describe("inviteStaff across firms", () => {
   it("19 AC-1: a super admin's email gets the same neutral refusal, before any invite (a super admin is never staff)", async () => {
     existing.platform = { id: "super-admin" };
     const r = await inviteStaff(null, form("ops@pulsebay.com"));
-    expect(r).toEqual({ ok: false, error: "This email can't be invited. Use a different address." });
+    expect(r).toEqual({ ok: false, error: "This email is already in use. Use a different address." });
     expect(invite).not.toHaveBeenCalled();
     expect(createUser).not.toHaveBeenCalled();
   });
@@ -46,7 +46,7 @@ describe("inviteStaff across firms", () => {
   it("an email already used anywhere gets a neutral refusal that names no firm and no account (AC-12)", async () => {
     existing.row = { id: "someone-at-firm-a" };
     const r = await inviteStaff(null, form("person@firm-a.in"));
-    expect(r).toEqual({ ok: false, error: "This email can't be invited. Use a different address." });
+    expect(r).toEqual({ ok: false, error: "This email is already in use. Use a different address." });
     expect(invite).not.toHaveBeenCalled();
     expect(insert).not.toHaveBeenCalled();
   });

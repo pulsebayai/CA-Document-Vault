@@ -129,9 +129,9 @@ describe("inviteFirstAdmin (service role, after the database confirms the caller
   it("an email that is staff anywhere or a super admin is refused with 17's neutral message, before any invite", async () => {
     h.admin.staff = { id: "s" };
     const { inviteFirstAdmin } = await import("@/lib/platform/invite");
-    expect(await inviteFirstAdmin(p)).toEqual({ ok: false, error: "This email can't be invited. Use a different address." });
+    expect(await inviteFirstAdmin(p)).toEqual({ ok: false, error: "This email is already in use. Use a different address." });
     h.admin.staff = null; h.admin.platform = { id: "x" };
-    expect(await inviteFirstAdmin(p)).toEqual({ ok: false, error: "This email can't be invited. Use a different address." });
+    expect(await inviteFirstAdmin(p)).toEqual({ ok: false, error: "This email is already in use. Use a different address." });
     expect(h.admin.invite).not.toHaveBeenCalled();
   });
 
@@ -147,7 +147,7 @@ describe("inviteFirstAdmin (service role, after the database confirms the caller
     h.rpc.mockImplementation(async (fn: string) => (fn === "platform_firms" ? firms()
       : { data: null, error: { code: "23505", message: "EMAIL_IN_USE: this email can't be used" } }));
     const { inviteFirstAdmin } = await import("@/lib/platform/invite");
-    expect(await inviteFirstAdmin(p)).toEqual({ ok: false, error: "This email can't be invited. Use a different address." });
+    expect(await inviteFirstAdmin(p)).toEqual({ ok: false, error: "This email is already in use. Use a different address." });
     expect(h.admin.del).toHaveBeenCalledWith("u1");
   });
 
