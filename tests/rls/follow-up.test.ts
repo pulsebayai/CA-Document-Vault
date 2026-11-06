@@ -273,7 +273,9 @@ describe("activity (AC-17)", () => {
       expect(f).toBeDefined();
       expect(Object.keys(a.data).sort()).toEqual(["channel", "client_id", "items", "status"]);
       expect(a.data).toMatchObject({ client_id: f.client_id, channel: f.channel, status: f.status });
-      const text = JSON.stringify(a.data);
+      // UUIDs out first: client_id (checked exactly above) can hold ten digits in a row that look like a mobile number
+      // (roadmap Later, approved by Raja; flaky in CI 41897661172 and on PR #32). A real address, note or mobile still fails.
+      const text = JSON.stringify(a.data).replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, "<id>");
       expect(text).not.toMatch(/@|accountant|[6-9][0-9]{9}/);
     }
     // Every finished email has exactly one row; pending ones have none yet.
