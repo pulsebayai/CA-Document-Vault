@@ -36,7 +36,7 @@ export async function inviteStaff(_prev: ActionResult | null, form: FormData): P
   ]);
   // 17 (AC-12): one email = one firm. The refusal names no firm and doesn't say an account exists, so an Admin of one
   // firm learns nothing about another (the failure itself is the unavoidable residue, accepted in the spec).
-  if (existing || platform) return { ok: false, error: "This email can't be invited. Use a different address." };
+  if (existing || platform) return { ok: false, error: "This email is already in use. Use a different address." };
 
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";

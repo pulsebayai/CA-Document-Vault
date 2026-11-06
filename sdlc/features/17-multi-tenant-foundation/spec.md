@@ -31,7 +31,7 @@ Intent: ./intent.md · Status: **approved** (Sidambara, 2026-11-03: S1–S6 as p
 - **AC-11** No user can change any other `office` column (is_test, counters, test clock, FY start) or any other firm's row.
 
 ### Invites
-- **AC-12** Given an Admin invites an email that already belongs to a staff record **in any firm**, Then the message is "This email can't be invited. Use a different address." (no "already has an account", no firm name). The invite still fails (one email = one firm). *Accepted residue:* the failure itself tells the inviting Admin that the address is in use somewhere; it never says where.
+- **AC-12** Given an Admin invites an email that already belongs to a staff record **in any firm**, Then the message is "This email can't be invited. Use a different address." (no "already has an account", no firm name). *Changed 2026-11-06 (owner): the message is now "This email is already in use. Use a different address." (still no firm name).* The invite still fails (one email = one firm). *Accepted residue:* the failure itself tells the inviting Admin that the address is in use somewhere; it never says where.
 - **AC-13** The invite email carries the firm's name to Supabase's template as `data.firm` (so the template can read "You've been invited to {{ .Data.firm }} on CA Document Vault"). Changing the hosted template is a staging/prod checklist step, not code.
 
 ### Bootstrap a firm
