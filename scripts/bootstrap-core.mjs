@@ -97,7 +97,7 @@ export async function staffLessNamesakes(db, o) {
 export async function runBootstrap(db, o) {
   const { data: taken, error: e0 } = await db.from("staff_user").select("id").eq("email", o.adminEmail).maybeSingle();
   if (e0) throw new Error(`Could not check the email (${e0.code ?? "error"}). Nothing written.`);
-  if (taken) throw new Error("This email can't be invited (one email = one firm). Use a different address. Nothing written.");
+  if (taken) throw new Error("This email is already in use (one email = one firm). Use a different address. Nothing written.");
 
   const { data: boot, error: e1 } = await db.rpc("bootstrap_office", {
     p: { name: o.name, ...(o.branch ? { branch: o.branch } : {}), mode: o.mode, test: o.test, ...(o.officeId ? { office_id: o.officeId } : {}) },

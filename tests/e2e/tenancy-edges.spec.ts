@@ -39,7 +39,7 @@ test("AC-12, AC-21: firm B's Admin inviting firm A's staff gets a neutral refusa
   await dialog.getByLabel("Work email").fill(staffA.email);
   await dialog.getByRole("button", { name: "Send invite" }).click();
   const alert = dialog.getByRole("alert");
-  await expect(alert).toHaveText("This email can't be invited. Use a different address.");
+  await expect(alert).toHaveText("This email is already in use. Use a different address.");
   await expect(alert).not.toContainText(testOfficeName("tenancy-edge-a"));
   await expect(alert).not.toContainText("account");
 });

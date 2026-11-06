@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { expect, test } from "./fixtures";
 import "../support/setup-env";
-import { createStaff, retireStaff, signedInClient } from "../support/db";
+import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import { insertClient } from "../support/catalogue";
 import { createDocumentOffice, mustCreateDocument, type NewDocument } from "../support/documents";
 import { mustSaveDsc, newDsc } from "../support/dsc";
@@ -16,11 +16,16 @@ let adminA: { id: string; email: string };
 let staffB: { id: string; email: string };
 const ids = {} as Record<"aClient" | "aDoc" | "bClient" | "bDoc" | "bDsc", string>;
 const aMarker = `XFA${randomBytes(4).toString("hex")}`;
+const names = { a: "", b: "" };
 
 test.beforeAll(async () => {
   test.setTimeout(180_000);
   const a = await createDocumentOffice("xfirm-e2e-a");
   const b = await createDocumentOffice("xfirm-e2e-b");
+  const { data: offices, error } = await adminClient().from("office").select("id, name").in("id", [a, b]);
+  if (error) throw error;
+  names.a = offices!.find((o) => o.id === a)!.name as string;
+  names.b = offices!.find((o) => o.id === b)!.name as string;
   adminA = await createStaff(a, "xfirm-e2e-a-admin", "admin");
   staffB = await createStaff(b, "xfirm-e2e-b-staff", "staff");
   const asA = await signedInClient(adminA.email);
@@ -49,6 +54,15 @@ test("AC-13: Firm B's client page, on every tab, is Not Found for Firm A's Admin
   }
   await page.goto(`/clients/${ids.aClient}?tab=dsc`);
   await expect(page.getByRole("heading", { name: `${aMarker} own client` })).toBeVisible();
+});
+
+test("17: the tab title names the signed-in staff member's own firm, never another firm's; signed out it names no firm", async ({ page, baseURL }) => {
+  await page.goto("/login");
+  await expect(page).toHaveTitle("CA Document Vault");
+  await signIn(page, adminA.email, baseURL);
+  await expect(page).toHaveTitle(`${names.a} · CA Document Vault`);
+  await page.goto(`/clients/${ids.bClient}`);
+  expect(await page.title()).not.toContain(names.b);
 });
 
 test("AC-13: Firm B's document page is Not Found; its activity and Firm B's DSC never show", async ({ page, baseURL }) => {

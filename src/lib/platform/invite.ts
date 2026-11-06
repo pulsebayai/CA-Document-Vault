@@ -11,7 +11,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 export type InviteResult = { ok: true } | { ok: false; error: string };
 
-const IN_USE = "This email can't be invited. Use a different address."; // 17's neutral wording: names no firm
+const IN_USE = "This email is already in use. Use a different address."; // names no firm (17); wording changed 2026-11-06
 
 async function confirmedSuperAdmin(): Promise<{ id: string; test: boolean } | null> {
   const supabase = await createClient();
