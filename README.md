@@ -6,8 +6,8 @@ Product docs: `sdlc/product/` · Working rules for Claude: `CLAUDE.md` · Review
 ## Environments
 | Env | Supabase project | Data |
 |---|---|---|
-| dev | `dev - CA Document Vault` (ysddbwskljzhbjjohool) · Vercel `ca-document-vault` → https://ca-document-vault.vercel.app (team `cad-oc-vault`) | synthetic only; all automated tests run here |
-| staging | `staging - CA Document Vault` | created before the pilot; migrations rehearsed here |
+| dev | `dev - CA Document Vault` (ysddbwskljzhbjjohool) · Vercel `ca-document-vault` → https://ca-document-vault.vercel.app (team `pulsebay-ai`) | synthetic only; all automated tests run here |
+| staging | `staging - CA Document Vault` (uszjymzaggyobxwycrde) · Vercel `ca-document-vault-staging` → https://ca-document-vault-staging.vercel.app (deploys from branch `staging`) | test firms and fixture users only; migrations rehearsed here |
 | prod | `prod - CA Document Vault` | the only place real client data lives |
 
 ## Run locally
@@ -20,8 +20,8 @@ Product docs: `sdlc/product/` · Working rules for Claude: `CLAUDE.md` · Review
 Tests use fixed test offices (`e2e office …`) and reusable test users on the reserved `.test` domain (reset each run; no emails are ever sent to them), so they never touch real users and the database does not fill up. Only the invite test adds one new user per run. Staff/audit rows cannot be deleted by design; see "Dev maintenance".
 
 ## Create a new environment (staging / prod) — target < 30 min
-1. **Supabase** (org Pulsebay, region **ap-south-1**): create `<env> - CA Document Vault`. Plan: Pro for prod (backups).
-2. **Auth settings**: Authentication → Sign In / Providers → turn **off** "Allow new users to sign up". Emails → *Magic Link* and *Invite user* templates must show `{{ .Token }}` (6-digit code). URL configuration → Site URL = the env's app URL. For staging/prod configure **custom SMTP** with the environment's own **Brevo** account (architecture: Brevo replaced SES, 2026-10-01) — Supabase's built-in email only delivers to project team members.
+1. **Supabase** (org **Pulsebay Ai**, region **ap-south-1**): create `<env> - CA Document Vault`. Plan: Pro (backups).
+2. **Auth settings**: Authentication → Sign In / Providers → turn **off** "Allow new users to sign up". Emails → *Magic Link* and *Invite user* templates must show `{{ .Token }}` (6-digit code). URL configuration → Site URL = the env's app URL. For staging/prod configure **custom SMTP** with **AWS SES (Mumbai)** SMTP credentials (2026-11-06; until SES is approved, staging uses Gmail SMTP with an App Password, like dev) — Supabase's built-in email only delivers to project team members.
 3. **Schema**: apply every file in `supabase/migrations/` in order (Supabase CLI `supabase db push --db-url …` or the SQL editor). Staging first, always.
 4. **First Admin**: Authentication → Users → Invite the Admin's email, then run in the SQL editor:
    ```sql
