@@ -1,11 +1,13 @@
 // Feature 06 — the mailer (spec "Functional requirements: Mailer interface", AC-13, AC-14; architecture change 1).
 // Pure and dependency-injected so the rules are unit-tested without a network: the app wires real transports in
-// ./index.ts (server-only). Nothing here reads secrets; only ./brevo.ts may read BREVO_API_KEY (ESLint fence).
+// ./index.ts (server-only). Nothing here reads secrets; only ./brevo.ts may read BREVO_API_KEY and only ./ses.ts the
+// SES_* credentials (ESLint fences).
 //
 // Safety rules, applied inside deliver() BEFORE any transport is chosen:
 //   1. an address ending ".test" is never sent, in any environment (fixture users and clients);
 //   2. outside production (APP_ENV ≠ "production"), only addresses on EMAIL_ALLOWLIST are sent;
-//   3. MAIL_TRANSPORT unset → "test", which never makes a network call. Production/staging set "brevo" on purpose.
+//   3. MAIL_TRANSPORT unset → "test", which never makes a network call. Staging/prod set "ses" on purpose
+//      (chore ses-mailer, 2026-11-06); dev may set "brevo".
 
 export type MailAddress = { email: string; name?: string };
 
@@ -19,16 +21,18 @@ export type MailMessage = {
 };
 
 export type SendStatus = "sent" | "failed" | "suppressed";
-/** errorCode matches follow_up.error_code: ^[A-Z0-9_]{1,64}$. providerId is Brevo's message ID. */
+/** errorCode matches follow_up.error_code: ^[A-Z0-9_]{1,64}$. providerId is the provider's message ID (Brevo or SES). */
 export type SendResult = { status: SendStatus; providerId: string | null; errorCode: string | null };
 
+export type TransportName = "brevo" | "ses" | "test";
+
 export type Transport = {
-  name: "brevo" | "test";
+  name: TransportName;
   send(message: MailMessage & { from: MailAddress }): Promise<SendResult>;
 };
 
 export type MailConfig = {
-  transport: "brevo" | "test";
+  transport: TransportName;
   production: boolean;
   allowlist: ReadonlySet<string>;
   from: MailAddress | null;
@@ -46,14 +50,14 @@ const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 /** Reads the mail settings. Unset transport → "test"; an unknown value is a configuration error, not a guess. */
 export function readMailConfig(e: MailEnv): MailConfig {
   const raw = (e.MAIL_TRANSPORT ?? "").trim().toLowerCase();
-  if (raw !== "" && raw !== "brevo" && raw !== "test") throw new Error("MAIL_TRANSPORT must be brevo or test");
+  if (raw !== "" && raw !== "brevo" && raw !== "ses" && raw !== "test") throw new Error("MAIL_TRANSPORT must be brevo, ses or test");
   const allowlist = new Set(
     (e.EMAIL_ALLOWLIST ?? "").split(/[,\s]+/).map((s) => s.trim().toLowerCase()).filter((s) => EMAIL.test(s)),
   );
   const max = Number.parseInt(e.EMAIL_DAILY_MAX ?? "", 10);
   const fromEmail = (e.MAIL_FROM_EMAIL ?? "").trim().toLowerCase();
   return {
-    transport: raw === "brevo" ? "brevo" : "test",
+    transport: raw === "brevo" || raw === "ses" ? raw : "test",
     production: (e.APP_ENV ?? "").trim().toLowerCase() === "production",
     allowlist,
     from: EMAIL.test(fromEmail) ? { email: fromEmail, name: (e.MAIL_FROM_NAME ?? "").trim() || undefined } : null,
@@ -90,17 +94,19 @@ const suppressed: SendResult = { status: "suppressed", providerId: null, errorCo
 
 /**
  * Sends one message through the configured transport, after the safety rules. Never throws: a transport error is
- * a "failed" result with a code (the follow-up shows Failed + Retry). `transports.brevo` is created lazily so the
- * Brevo key is never read when the transport is "test".
+ * a "failed" result with a code (the follow-up shows Failed + Retry). `transports.brevo` / `transports.ses` are created
+ * lazily, so a provider's credentials are read only when that provider is the configured one.
  */
 export async function deliver(
-  message: MailMessage, cfg: MailConfig, transports: { test: Transport; brevo: () => Transport }, opts: SendOptions = {},
+  message: MailMessage, cfg: MailConfig, transports: { test: Transport; brevo: () => Transport; ses?: () => Transport }, opts: SendOptions = {},
 ): Promise<SendResult> {
   if (!recipientAllowed(message.to, cfg)) return suppressed;
   if (cfg.transport === "test") return transports.test.send({ ...message, from: fromFor(cfg.from ?? { email: "vault@example.test" }, opts) });
   if (!cfg.from) return { status: "failed", providerId: null, errorCode: "MAIL_FROM_MISSING" };
   try {
-    return await transports.brevo().send({ ...message, from: fromFor(cfg.from, opts) });
+    const make = cfg.transport === "ses" ? transports.ses : transports.brevo;
+    if (!make) return { status: "failed", providerId: null, errorCode: "MAIL_CONFIG" };
+    return await make().send({ ...message, from: fromFor(cfg.from, opts) });
   } catch {
     return { status: "failed", providerId: null, errorCode: "MAIL_CONFIG" };
   }

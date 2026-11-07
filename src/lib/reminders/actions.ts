@@ -13,7 +13,7 @@ import { maskEmail, reminderErrorMessage, type FollowUpStatus } from "./shape";
 // Server actions are POSTs: no client data in URLs. Errors are logged as a code + request ID only.
 //
 // Email is two-phase (spec "Sending"): begin_email_reminder records a pending follow-up and enforces the cap and the
-// office ceiling in the database → the mailer (test transport unless MAIL_TRANSPORT=brevo; allow-list outside
+// office ceiling in the database → the mailer (test transport unless MAIL_TRANSPORT=brevo or ses; allow-list outside
 // production; .test never) → finish_email_reminder records Sent / Failed / Suppressed.
 
 type Failure = { ok: false; error: string };

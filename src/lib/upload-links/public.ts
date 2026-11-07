@@ -42,7 +42,7 @@ function ipSalt(): string {
   const salt = process.env.LINK_IP_SALT;
   if (salt && salt.length >= 16) return salt;
   // Review N5: fail closed wherever real clients could arrive (prod, a Vercel production deploy, real email).
-  if (process.env.APP_ENV === "production" || process.env.VERCEL_ENV === "production" || process.env.MAIL_TRANSPORT === "brevo") {
+  if (process.env.APP_ENV === "production" || process.env.VERCEL_ENV === "production" || process.env.MAIL_TRANSPORT === "brevo" || process.env.MAIL_TRANSPORT === "ses") {
     throw new Error("LINK_IP_SALT is not set");
   }
   return "dev-only-link-ip-salt"; // dev, CI and previews only; staging and prod set their own (R1 env checklist)

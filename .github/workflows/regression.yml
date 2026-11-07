@@ -15,7 +15,7 @@ on:
         options: [dev, staging, prod]
         default: dev
       base_url:
-        description: "Deployed URL (leave empty for dev: https://ca-document-vault.vercel.app)"
+        description: "Deployed URL (empty = the target's own site: dev https://ca-document-vault.vercel.app, staging https://ca-document-vault-staging.vercel.app)"
         required: false
       only:
         description: "Quick check: run only test files whose path contains these words (space-separated, e.g. 'inbox add-document'). Empty = full suite. A filtered run is NOT release evidence."
@@ -40,18 +40,36 @@ jobs:
     timeout-minutes: 110
     env:
       TARGET: ${{ inputs.target || 'dev' }}
-      E2E_BASE_URL: ${{ inputs.base_url || 'https://ca-document-vault.vercel.app' }}
+      # Each target defaults to its own site, so staging is never tested against dev's deployment.
+      E2E_BASE_URL: ${{ inputs.base_url || (inputs.target == 'staging' && 'https://ca-document-vault-staging.vercel.app') || 'https://ca-document-vault.vercel.app' }}
       ONLY: ${{ inputs.only || '' }}
       # Dev values by default. Staging/prod secrets are added when those environments exist.
       NEXT_PUBLIC_SUPABASE_URL: ${{ (inputs.target == 'staging' && vars.STAGING_SUPABASE_URL) || vars.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ (inputs.target == 'staging' && vars.STAGING_SUPABASE_PUBLISHABLE_KEY) || vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-      SUPABASE_SECRET_KEY: ${{ (inputs.target == 'staging' && secrets.STAGING_SUPABASE_SECRET_KEY) || (inputs.target != 'prod' && secrets.DEV_SUPABASE_SECRET_KEY) || '' }}
+      # Each target gets only its own key: never dev's key against staging (fails closed in "Check the target's settings").
+      SUPABASE_SECRET_KEY: ${{ (inputs.target == 'staging' && secrets.STAGING_SUPABASE_SECRET_KEY) || ((inputs.target || 'dev') == 'dev' && secrets.DEV_SUPABASE_SECRET_KEY) || '' }}
       # Vercel › Deployment Protection › Protection Bypass for Automation. Lets e2e reach protected previews
       # (tests/e2e/preview-access.ts); sent only to E2E_BASE_URL's origin. Never needed for prod smoke.
-      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ inputs.target != 'prod' && secrets.VERCEL_AUTOMATION_BYPASS_SECRET || '' }}
+      # One secret per Vercel project: staging has its own (ca-document-vault-staging).
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ (inputs.target == 'staging' && secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET) || ((inputs.target || 'dev') == 'dev' && secrets.VERCEL_AUTOMATION_BYPASS_SECRET) || '' }}
       # Test lanes: up to 2 runs share a database, each with its own fixture offices/users (not needed for prod smoke).
       TEST_LANE_HOLDER: regression-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
+      - name: Check the target's settings
+        if: env.TARGET == 'staging'
+        env:
+          HAS_URL: ${{ vars.STAGING_SUPABASE_URL != '' }}
+          HAS_PUB: ${{ vars.STAGING_SUPABASE_PUBLISHABLE_KEY != '' }}
+          HAS_SECRET: ${{ secrets.STAGING_SUPABASE_SECRET_KEY != '' }}
+          HAS_BYPASS: ${{ secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET != '' }}
+        run: |
+          missing=""
+          [ "$HAS_URL" = true ] || missing="$missing vars.STAGING_SUPABASE_URL"
+          [ "$HAS_PUB" = true ] || missing="$missing vars.STAGING_SUPABASE_PUBLISHABLE_KEY"
+          [ "$HAS_SECRET" = true ] || missing="$missing secrets.STAGING_SUPABASE_SECRET_KEY"
+          [ "$HAS_BYPASS" = true ] || missing="$missing secrets.STAGING_VERCEL_AUTOMATION_BYPASS_SECRET"
+          if [ -n "$missing" ]; then echo "::error::Staging settings missing:$missing"; exit 1; fi
+          case "$NEXT_PUBLIC_SUPABASE_URL" in *uszjymzaggyobxwycrde*) ;; *) echo "::error::STAGING_SUPABASE_URL is not the staging project"; exit 1;; esac
       - name: Check the quick-check filter
         if: env.ONLY != ''
         run: |
