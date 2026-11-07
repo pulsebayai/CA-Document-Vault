@@ -25,7 +25,8 @@ describe("readMailConfig", () => {
   });
 
   it("rejects an unknown transport instead of guessing", () => {
-    expect(() => readMailConfig({ MAIL_TRANSPORT: "ses" })).toThrow(/MAIL_TRANSPORT/);
+    // "ses" became a real transport on 2026-11-06 (chore ses-mailer, owner decision); "smtp" is still unknown.
+    expect(() => readMailConfig({ MAIL_TRANSPORT: "smtp" })).toThrow(/MAIL_TRANSPORT/);
   });
 });
 
