@@ -1,5 +1,6 @@
 import "server-only";
 import { brevoFromEnv } from "./brevo";
+import { sesFromEnv } from "./ses";
 import { deliver, readMailConfig, type MailConfig, type MailMessage, type SendOptions, type SendResult } from "./core";
 import { testTransport } from "./test-transport";
 
@@ -21,5 +22,5 @@ export function mailConfig(): MailConfig {
 
 /** 17: `opts.fromName` = the sending firm's name (From display name on the platform address). */
 export function sendMail(message: MailMessage, cfg: MailConfig = mailConfig(), opts: SendOptions = {}): Promise<SendResult> {
-  return deliver(message, cfg, { test: testTransport, brevo: brevoFromEnv }, opts);
+  return deliver(message, cfg, { test: testTransport, brevo: brevoFromEnv, ses: sesFromEnv }, opts);
 }
