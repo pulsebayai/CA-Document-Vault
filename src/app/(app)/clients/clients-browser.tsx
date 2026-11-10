@@ -13,6 +13,10 @@ type Filters = { query: string; clientType: string; inchargeId: string; includeA
 const EMPTY: Filters = { query: "", clientType: "", inchargeId: "", includeArchived: false, hasOverdue: false, page: 1 };
 
 const control = "h-9 rounded-full border border-line-2 bg-panel px-3 text-[13.5px] text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft";
+// F1 fix (R1 staging re-check, 2026-11-10): a toggle chip gets its colours from exactly one set. Adding "bg-bad text-white"
+// on top of `control` left two classes per property, and Tailwind's CSS order let bg-panel win with text-white: white on white.
+const chip = "h-9 rounded-full border px-3 text-[13.5px] font-medium outline-none focus:ring-2 focus:ring-accent-soft";
+const chipOff = "border-line-2 bg-panel text-ink focus:border-accent";
 
 /**
  * Clients list with search/filters (mockup 03, spec AC-7). State lives only in this component and is sent
@@ -84,12 +88,12 @@ export function ClientsBrowser({ initial, staff, canAdd, mine }: {
       {/* 04 AC-15: a toggle chip; its state goes to the server action like the other filters, never the URL.
           F1 (R1 staging, 2026-11-10): "on" is a tick + solid fill, not a colour shift alone (WCAG 1.4.1). */}
       <button type="button" aria-pressed={filters.hasOverdue} onClick={() => set({ hasOverdue: !filters.hasOverdue })}
-        className={`${control} font-medium ${filters.hasOverdue ? "border-bad bg-bad text-white" : ""}`}>
+        className={`${chip} ${filters.hasOverdue ? "border-bad bg-bad text-white" : chipOff}`}>
         <PressedMark on={filters.hasOverdue} />Has overdue
       </button>
       {mine && (
         <button type="button" aria-pressed={!!filters.mine} onClick={() => setMine(!filters.mine)}
-          className={`${control} font-medium ${filters.mine ? "border-accent bg-accent text-white" : ""}`}>
+          className={`${chip} ${filters.mine ? "border-accent bg-accent text-white" : chipOff}`}>
           <PressedMark on={!!filters.mine} />My clients
         </button>
       )}
