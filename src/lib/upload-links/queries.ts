@@ -8,6 +8,8 @@ import type { AdHocItem } from "@/lib/reminders/message";
 export type LinkTypeOption = {
   id: string; name: string; group: string; groupSort: number;
   periodKind: "month" | "quarter" | "year" | "none"; registrationKind: "gstin" | "tan" | null; proposed: boolean;
+  /** F4 (R1 staging, 2026-11-10): what 12's type-ahead field needs — plan types first, aliases matched. */
+  groupId: string; frequency: string; aliases: string[]; inPlan: boolean;
 };
 export type LinkPeriodOption = { id: string; kind: "month" | "quarter" | "year"; label: string; start: string };
 export type LinkRegistrationOption = { id: string; kind: "gstin" | "tan"; label: string };
@@ -41,20 +43,23 @@ export function linkBase(): string | null {
 /** Types usable for an ad-hoc item: client-source, active, in an active group; approved, or proposed for this client. */
 export async function linkOptionsAs(clientId: string): Promise<LinkOptions> {
   const supabase = await createClient();
-  const [types, periods, regs] = await Promise.all([
+  const [types, periods, regs, plan] = await Promise.all([
     supabase.from("doc_type")
-      .select("id, name, period_kind, registration_kind, status, proposed_for_client_id, source, doc_group:doc_group_id (name, sort, active)")
+      .select("id, name, aliases, default_frequency, doc_group_id, period_kind, registration_kind, status, proposed_for_client_id, source, doc_group:doc_group_id (name, sort, active)")
       .eq("active", true).eq("source", "client"),
     supabase.from("period").select("id, kind, label, start_date").order("start_date", { ascending: false }).limit(200),
     supabase.from("client_registration").select("id, kind, number, state_code").eq("client_id", clientId).eq("active", true),
+    supabase.from("client_doc_type").select("doc_type_id, frequency").eq("client_id", clientId).neq("state", "removed"),
   ]);
-  const failed = [types, periods, regs].find((r) => r.error);
+  const failed = [types, periods, regs, plan].find((r) => r.error);
   if (failed) {
     console.error("upload_links.options_failed", { code: failed.error?.code });
     throw new Error("Could not load document types.");
   }
-  type T = { id: string; name: string; period_kind: LinkTypeOption["periodKind"]; registration_kind: "gstin" | "tan" | null;
+  type T = { id: string; name: string; aliases: string[] | null; default_frequency: string; doc_group_id: string;
+    period_kind: LinkTypeOption["periodKind"]; registration_kind: "gstin" | "tan" | null;
     status: string; proposed_for_client_id: string | null; doc_group: { name: string; sort: number; active: boolean } | null };
+  const inPlan = new Map(((plan.data ?? []) as Array<{ doc_type_id: string; frequency: string }>).map((r) => [r.doc_type_id, r.frequency]));
   const base = linkBase();
   return {
     enabled: base !== null,
@@ -62,7 +67,8 @@ export async function linkOptionsAs(clientId: string): Promise<LinkOptions> {
     types: ((types.data ?? []) as unknown as T[])
       .filter((t) => t.doc_group?.active && (t.status === "approved" || (t.status === "proposed" && t.proposed_for_client_id === clientId)))
       .map((t) => ({ id: t.id, name: t.name, group: t.doc_group!.name, groupSort: t.doc_group!.sort, periodKind: t.period_kind,
-        registrationKind: t.registration_kind, proposed: t.status === "proposed" }))
+        registrationKind: t.registration_kind, proposed: t.status === "proposed",
+        groupId: t.doc_group_id, frequency: inPlan.get(t.id) ?? t.default_frequency, aliases: t.aliases ?? [], inPlan: inPlan.has(t.id) }))
       .sort((a, b) => a.groupSort - b.groupSort || a.name.localeCompare(b.name)),
     periods: ((periods.data ?? []) as Array<{ id: string; kind: "month" | "quarter" | "year"; label: string; start_date: string }>)
       .map((p) => ({ id: p.id, kind: p.kind, label: p.label, start: p.start_date })),

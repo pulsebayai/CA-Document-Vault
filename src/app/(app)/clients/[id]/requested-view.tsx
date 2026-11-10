@@ -10,6 +10,7 @@ import { whatsappUrl } from "@/lib/reminders/message";
 import {
   cancelRequestItem, recordLinkWhatsApp, reopenRequestItem, revokeLink, sendAgainPlan, sendLinkEmail, type SendAgainPlan,
 } from "@/lib/upload-links/actions";
+import { RequestDocumentsButton } from "../remind-dialog";
 import type { LinkState, RequestedItem, Requested, RequestSummary } from "@/lib/upload-links/requested";
 
 // Feature 10 step 9 — Client › Requested (spec AC-16, AC-18): the client's ad-hoc requested documents (open first,
@@ -19,9 +20,15 @@ const LINK_STATE: Record<LinkState, string> = { active: "Link open", expired: "L
 
 type Perms = { canAct: boolean; meId: string; isManager: boolean; mobile: string | null; hasEmail: boolean };
 
-export function RequestedView({ clientId, data, today, perms }: { clientId: string; data: Requested; today: string; perms: Perms }) {
+export function RequestedView({ clientId, clientName, data, today, perms }: {
+  clientId: string; clientName: string; data: Requested; today: string; perms: Perms;
+}) {
   return (
     <div className="space-y-5">
+      {/* F3: ask for documents that aren't on the plan, without going through Remind. */}
+      {perms.canAct && (
+        <div className="flex justify-end"><RequestDocumentsButton clientId={clientId} clientName={clientName} /></div>
+      )}
       <Card>
         <section aria-labelledby="requested-h">
           <header className="flex items-center justify-between border-b border-line px-5 py-3">
@@ -30,7 +37,7 @@ export function RequestedView({ clientId, data, today, perms }: { clientId: stri
           </header>
           {data.items.length === 0 ? (
             <p className="px-5 py-4 text-[13.5px] text-ink-2">
-              Nothing requested yet. Use Remind with &ldquo;Include upload link&rdquo; and &ldquo;+ Request another document&rdquo; to ask for a document that isn&apos;t on the plan.
+              Nothing requested yet. Use Request documents to ask the client for a document that isn&apos;t on the plan.
             </p>
           ) : (
             <ul aria-label="Requested documents" className="divide-y divide-line">

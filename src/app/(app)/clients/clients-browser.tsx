@@ -81,12 +81,17 @@ export function ClientsBrowser({ initial, staff, canAdd, mine }: {
         <input type="checkbox" checked={filters.includeArchived} onChange={(e) => set({ includeArchived: e.target.checked })} className="h-4 w-4 accent-accent" />
         Show archived
       </label>
-      {/* 04 AC-15: a toggle chip; its state goes to the server action like the other filters, never the URL. */}
+      {/* 04 AC-15: a toggle chip; its state goes to the server action like the other filters, never the URL.
+          F1 (R1 staging, 2026-11-10): "on" is a tick + solid fill, not a colour shift alone (WCAG 1.4.1). */}
       <button type="button" aria-pressed={filters.hasOverdue} onClick={() => set({ hasOverdue: !filters.hasOverdue })}
-        className={`${control} font-medium ${filters.hasOverdue ? "border-bad bg-bad-soft text-bad" : ""}`}>Has overdue</button>
+        className={`${control} font-medium ${filters.hasOverdue ? "border-bad bg-bad text-white" : ""}`}>
+        <PressedMark on={filters.hasOverdue} />Has overdue
+      </button>
       {mine && (
         <button type="button" aria-pressed={!!filters.mine} onClick={() => setMine(!filters.mine)}
-          className={`${control} font-medium ${filters.mine ? "border-accent bg-accent-soft text-accent" : ""}`}>My clients</button>
+          className={`${control} font-medium ${filters.mine ? "border-accent bg-accent text-white" : ""}`}>
+          <PressedMark on={!!filters.mine} />My clients
+        </button>
       )}
       {filtered && <Button type="button" size="sm" variant="secondary" onClick={() => setFilters(filters.mine ? { ...EMPTY, mine: true } : EMPTY)}>Clear</Button>}
       <span role="status" aria-live="polite" className="sr-only">
@@ -120,4 +125,9 @@ export function ClientsBrowser({ initial, staff, canAdd, mine }: {
         </span>
       ) : undefined} />
   );
+}
+
+/** F1: the visible "on" mark of a toggle chip. Hidden from screen readers, which already hear aria-pressed. */
+function PressedMark({ on }: { on: boolean }) {
+  return on ? <span aria-hidden="true" data-pressed-mark="" className="mr-1">✓</span> : null;
 }
