@@ -150,7 +150,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       ) : tab === "requested" ? (
         <div>
           <h2 className="sr-only">Requested documents</h2>
-          <RequestedView clientId={c.id} data={requested!} today={expected.today}
+          <RequestedView clientId={c.id} clientName={c.name} data={requested!} today={expected.today}
             perms={{ canAct: !c.archived, meId: me.id, isManager: canManageCatalogue(me.role), mobile: c.mobile, hasEmail: !!c.email }} />
         </div>
       ) : tab === "dsc" ? (
