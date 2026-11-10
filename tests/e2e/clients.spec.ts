@@ -89,3 +89,29 @@ test("AC-12: a Limited user lists only clients they are incharge of", async ({ p
   await page.getByRole("searchbox", { name: "Search clients" }).fill("kaveri");
   await expect(page.getByText("No clients match")).toBeVisible();
 });
+
+// R1 staging finding F1, re-check (2026-11-10): the class-name unit test passed while the browser drew white text on a
+// white chip (two Tailwind classes per property). This checks what is actually painted, on and off, for both chips.
+test("F1: Has overdue and My clients are readable on and off, with a tick only when on", async ({ page, baseURL }) => {
+  await signIn(page, staff.email, baseURL);
+  await page.goto("/clients");
+  const paint = (name: string) => page.getByRole("button", { name }).evaluate((el) => {
+    const s = getComputedStyle(el);
+    const lum = (c: string) => {
+      const [r, g, b] = (c.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number).map((v) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const [a, b] = [lum(s.color), lum(s.backgroundColor)].sort((x, y) => y - x);
+    return { bg: s.backgroundColor, contrast: (a + 0.05) / (b + 0.05), tick: !!el.querySelector("[data-pressed-mark]") };
+  });
+  for (const name of ["My clients", "Has overdue"]) {
+    const chip = page.getByRole("button", { name });
+    const before = await paint(name);
+    await chip.click();
+    await expect(chip).toHaveAttribute("aria-pressed", before.tick ? "false" : "true");
+    const after = await paint(name);
+    for (const p of [before, after]) expect(p.contrast).toBeGreaterThanOrEqual(4.5); // WCAG AA text
+    expect(after.bg).not.toBe(before.bg);
+    expect(after.tick).toBe(!before.tick);
+  }
+});
