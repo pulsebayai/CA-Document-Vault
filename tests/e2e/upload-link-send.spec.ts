@@ -3,7 +3,7 @@ import "../support/setup-env";
 import { adminClient, createStaff, retireStaff, signedInClient } from "../support/db";
 import { createDocumentOffice } from "../support/documents";
 import { T, bankOnlyClient, generateAsOf } from "../support/expected";
-import { signIn } from "./helpers";
+import { pickType, signIn } from "./helpers";
 
 // Feature 10 step 6 — sending an upload link from the Remind dialog (spec AC-1…AC-4, AC-18). The client's address
 // ends in .test, so the email is recorded as suppressed (06: nothing leaves the vault) — the link flow is the same.
@@ -39,7 +39,7 @@ test("AC-4: a note with personal data is flagged as you type and sending is bloc
   const dialog = await openRemind(page);
   await dialog.getByRole("switch", { name: "Include upload link" }).click();
   await dialog.getByRole("button", { name: "+ Request another document" }).click();
-  await dialog.getByLabel("Document type").selectOption({ label: T.notice });
+  await pickType(page, T.notice); // F4 (R1 staging, owner 2026-11-10): the type-ahead field replaced the dropdown
   await dialog.getByLabel("Note for the client (optional)").fill("PAN ABCDE1234F");
   await expect(dialog.getByText("Notes are shown to anyone with the link — remove numbers and IDs.").first()).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Send email" })).toBeDisabled();
@@ -50,7 +50,7 @@ test("AC-1, AC-2, AC-18: link with a scheduled and an ad-hoc item; preview witho
   const dialog = await openRemind(page);
   await dialog.getByRole("switch", { name: "Include upload link" }).click();
   await dialog.getByRole("button", { name: "+ Request another document" }).click();
-  await dialog.getByLabel("Document type").selectOption({ label: T.notice });
+  await pickType(page, T.notice); // F4 (R1 staging, owner 2026-11-10): the type-ahead field replaced the dropdown
   await dialog.getByLabel("Needed by (optional)").fill("2026-05-30");
   await dialog.getByLabel("Note for the client (optional)").fill("for the new office lease");
   const preview = dialog.getByRole("region", { name: "Message preview" });

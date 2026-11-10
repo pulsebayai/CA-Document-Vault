@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { inputCls } from "@/components/dialog";
 import { Button } from "@/components/ui";
+import { TypeCombobox, type ComboType } from "@/components/type-combobox";
 import type { AdHocItem } from "@/lib/reminders/message";
 import { linkOptions } from "@/lib/upload-links/actions";
 import { NOTE_MAX, NOTE_PII_MESSAGE, notePii } from "@/lib/upload-links/note";
@@ -52,13 +53,17 @@ export function AdHocEditor({ rows, setRows, options, today, disabled }: {
   rows: AdHocRow[]; setRows: (r: AdHocRow[]) => void; options: LinkOptions; today: string; disabled: boolean;
 }) {
   const update = (key: string, patch: Partial<AdHocRow>) => setRows(rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
-  const groups = [...new Set(options.types.map((t) => t.group))];
+  // F4 (R1 staging, 2026-11-10): 12's type-ahead field, the same as the document form (plan types first, aliases).
+  const comboTypes: ComboType[] = useMemo(() => options.types.map((t) => ({
+    id: t.id, name: t.name, groupId: t.groupId, groupName: t.group, groupSort: t.groupSort, frequency: t.frequency,
+    inPlan: t.inPlan, proposed: t.proposed, aliases: t.aliases,
+  })), [options.types]);
   return (
     <div>
       <h3 className="mb-1 text-[13px] font-medium text-ink-2">Other documents to request</h3>
       {rows.length === 0 && <p className="text-[13px] text-ink-3">For &ldquo;as needed&rdquo; or one-off documents. Each needs a type.</p>}
       <ul className="space-y-3">
-        {rows.map((r, n) => <AdHocRowEditor key={r.key} n={n + 1} row={r} groups={groups} options={options} today={today} disabled={disabled}
+        {rows.map((r, n) => <AdHocRowEditor key={r.key} n={n + 1} row={r} comboTypes={comboTypes} options={options} today={today} disabled={disabled}
           onChange={(patch) => update(r.key, patch)} onRemove={() => setRows(rows.filter((x) => x.key !== r.key))} />)}
       </ul>
       {rows.length < 20 && (
@@ -70,8 +75,8 @@ export function AdHocEditor({ rows, setRows, options, today, disabled }: {
   );
 }
 
-function AdHocRowEditor({ n, row, groups, options, today, disabled, onChange, onRemove }: {
-  n: number; row: AdHocRow; groups: string[]; options: LinkOptions; today: string; disabled: boolean;
+function AdHocRowEditor({ n, row, comboTypes, options, today, disabled, onChange, onRemove }: {
+  n: number; row: AdHocRow; comboTypes: ComboType[]; options: LinkOptions; today: string; disabled: boolean;
   onChange: (p: Partial<AdHocRow>) => void; onRemove: () => void;
 }) {
   const id = useId();
@@ -86,15 +91,10 @@ function AdHocRowEditor({ n, row, groups, options, today, disabled, onChange, on
         <div className="grid gap-2 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label htmlFor={`${id}-type`} className="text-[13px] font-medium text-ink-2">Document type</label>
-            <select id={`${id}-type`} className={inputCls} value={row.docTypeId} required
-              onChange={(e) => onChange({ docTypeId: e.target.value, periodId: "", registrationId: "" })}>
-              <option value="">Choose a type…</option>
-              {groups.map((g) => (
-                <optgroup key={g} label={g}>
-                  {options.types.filter((t) => t.group === g).map((t) => <option key={t.id} value={t.id}>{t.name}{t.proposed ? " (proposed)" : ""}</option>)}
-                </optgroup>
-              ))}
-            </select>
+            {/* A request asks only for types that exist (approved, or proposed for this client): no new type here. */}
+            <TypeCombobox id={`${id}-type`} types={comboTypes} value={row.docTypeId} disabled={disabled}
+              onChange={(docTypeId) => onChange({ docTypeId, periodId: "", registrationId: "" })}
+              canPropose={false} onPropose={() => undefined} />
           </div>
           {periods.length > 0 && (
             <div>

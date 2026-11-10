@@ -7,7 +7,7 @@ import { Button, Switch } from "@/components/ui";
 import { addDays } from "@/lib/expected/schedule";
 import { buildReminderMessage, whatsappUrl } from "@/lib/reminders/message";
 import { recordLinkWhatsApp, retryLinkEmail, revokeLink, sendLinkEmail, type LinkEmailResult } from "@/lib/upload-links/actions";
-import { AdHocEditor, adHocPreview, adHocProblems, useLinkOptions, type AdHocRow } from "./link-section";
+import { AdHocEditor, adHocPreview, adHocProblems, newRow, useLinkOptions, type AdHocRow } from "./link-section";
 import { logCall, recordWhatsApp, remindDialog, sendEmailReminder, type SendEmailResult } from "@/lib/reminders/actions";
 import type { RemindDialogData } from "@/lib/reminders/queries";
 import type { DialogItem } from "@/lib/reminders/shape";
@@ -23,7 +23,7 @@ export type ReminderProps = { clientName: string; history: Record<string, string
 
 const TIME = new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" });
 
-function useDialogData(clientId: string) {
+function useDialogData(clientId: string, tickDefaults = true) {
   const [state, setState] = useState<{ data?: RemindDialogData; error?: string }>({});
   const [ticked, setTicked] = useState<Set<string>>(new Set());
   useEffect(() => {
@@ -32,17 +32,17 @@ function useDialogData(clientId: string) {
       if (!live) return;
       if (r.ok) {
         setState({ data: r.data });
-        setTicked(new Set(r.data.items.filter((i) => i.ticked).map((i) => i.id)));
+        setTicked(new Set(tickDefaults ? r.data.items.filter((i) => i.ticked).map((i) => i.id) : []));
       } else setState({ error: r.error });
     }, () => live && setState({ error: "Could not load this client's open documents. Please try again." }));
     return () => { live = false; };
-  }, [clientId]);
+  }, [clientId, tickDefaults]);
   const toggle = (id: string) => setTicked((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   return { ...state, ticked, toggle };
 }
 
-function ItemPicker({ items, ticked, toggle }: { items: DialogItem[]; ticked: Set<string>; toggle: (id: string) => void }) {
-  if (items.length === 0) return <p className="text-ink-2">This client has no open documents.</p>;
+function ItemPicker({ items, ticked, toggle, request }: { items: DialogItem[]; ticked: Set<string>; toggle: (id: string) => void; request?: boolean }) {
+  if (items.length === 0) return request ? null : <p className="text-ink-2">This client has no open documents.</p>;
   return (
     <fieldset>
       <legend className="mb-2 text-[13px] font-medium text-ink-2">Open documents</legend>
@@ -77,16 +77,30 @@ export function RemindButton({ clientId, clientName }: { clientId: string; clien
   );
 }
 
-function RemindBody({ clientId, close }: { clientId: string; close: () => void }) {
+/**
+ * R1 staging finding F3 (owner 2026-11-10): Client › Requested › "Request documents" — the same dialog with the upload
+ * link on, one empty "other document" row and no open items ticked, so staff can ask for a document that isn't on the
+ * plan (or for a client with nothing due). Same roles, server actions and rules as Remind with a link.
+ */
+export function RequestDocumentsButton({ clientId, clientName }: { clientId: string; clientName: string }) {
+  return (
+    <Modal trigger="Request documents" title={`Request documents from ${clientName}`} triggerVariant="primary"
+      triggerLabel={`Request documents from ${clientName}`}>
+      {(close) => <RemindBody clientId={clientId} close={close} request />}
+    </Modal>
+  );
+}
+
+function RemindBody({ clientId, close, request = false }: { clientId: string; close: () => void; request?: boolean }) {
   const router = useRouter();
-  const { data, error, ticked, toggle } = useDialogData(clientId);
+  const { data, error, ticked, toggle } = useDialogData(clientId, !request);
   const [pending, start] = useTransition();
   const [sent, setSent] = useState<SendEmailResult | null>(null);
   const [wa, setWa] = useState<{ ok: boolean; error?: string } | null>(null);
   const previewId = useId();
   // Feature 10: "Include upload link" (off by default — the dialog is 06's own until it's switched on).
-  const [linkOn, setLinkOn] = useState(false);
-  const [rows, setRows] = useState<AdHocRow[]>([]);
+  const [linkOn, setLinkOn] = useState(request);
+  const [rows, setRows] = useState<AdHocRow[]>(() => (request ? [newRow()] : []));
   const [linkSent, setLinkSent] = useState<LinkEmailResult | null>(null);
   const [linkWa, setLinkWa] = useState<{ ok: true; openUntil: string; requestId: string } | { ok: false; error: string } | null>(null);
   const [revoked, setRevoked] = useState<string | null>(null);
@@ -178,14 +192,14 @@ function RemindBody({ clientId, close }: { clientId: string; close: () => void }
   const linkDone = (linkSent?.ok && linkSent.status !== "failed") || linkWa?.ok;
   return (
     <div className="space-y-4">
-      <ItemPicker items={data.items} ticked={ticked} toggle={toggle} />
+      <ItemPicker items={data.items} ticked={ticked} toggle={toggle} request={request} />
       <div className="rounded-lg border border-line p-3">
         <div className="flex items-center justify-between gap-3">
           <div>
             <p className="font-medium">Include upload link</p>
             <p className="text-[12.5px] text-ink-3">The client uploads these documents straight into the vault. Open for 14 days.</p>
           </div>
-          <Switch checked={linkOn} label="Include upload link" disabled={pending || Boolean(linkDone)} onChange={setLinkOn} />
+          <Switch checked={linkOn} label="Include upload link" disabled={request || pending || Boolean(linkDone)} onChange={setLinkOn} />
         </div>
         {linkOn && link.data?.enabled && (
           <div className="mt-3">
