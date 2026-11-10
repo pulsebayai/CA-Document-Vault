@@ -14,6 +14,12 @@ const { ClientsBrowser } = await import("@/app/(app)/clients/clients-browser");
 
 const initial: ClientSearchResult = { rows: [], matched: 0, total: 3 };
 const tick = (el: HTMLElement) => el.querySelector('[aria-hidden="true"][data-pressed-mark]');
+// Re-check fix: two classes for one property (bg-panel + bg-bad) let Tailwind's CSS order pick white on white.
+const oneEach = (el: HTMLElement) => {
+  const c = el.className.split(/\s+/);
+  expect(c.filter((x) => /^bg-/.test(x))).toHaveLength(1);
+  expect(c.filter((x) => /^text-(?!\[)/.test(x))).toHaveLength(1);
+};
 
 describe("filter toggles show their state without relying on colour (F1)", () => {
   it("Has overdue: no tick when off, a tick when on, and the name stays the same", async () => {
@@ -26,6 +32,9 @@ describe("filter toggles show their state without relying on colour (F1)", () =>
     expect(tick(chip)).toHaveTextContent("✓");
     expect(chip.className).toMatch(/\bbg-bad\b/);
     expect(chip.className).toMatch(/\btext-white\b/);
+    oneEach(chip);
+    await user.click(chip);
+    oneEach(chip);
   });
 
   it("My clients: on by default for Staff shows the tick and a solid fill; switching off removes both", async () => {
@@ -39,5 +48,6 @@ describe("filter toggles show their state without relying on colour (F1)", () =>
     expect(chip).toHaveAttribute("aria-pressed", "false");
     expect(tick(chip)).toBeNull();
     expect(chip.className).not.toMatch(/\bbg-accent\b/);
+    oneEach(chip);
   });
 });
