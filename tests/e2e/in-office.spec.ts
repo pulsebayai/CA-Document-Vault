@@ -7,14 +7,15 @@ import { T } from "../support/expected";
 import { signIn } from "./helpers";
 
 // Feature 13 addendum (AC-21, AC-22) — Client › In office (R1 feedback, Sankar 2026-11-12): every hard copy the firm holds
-// for the client, any FY: a custody step and not in a live packet. Includes a copy that shows Needs correction.
+// for the client, any FY, not in a live packet. Round 2 (Sankar, 2026-11-12: "everything we physically hold"): at any step —
+// untagged, To review, reviewed but not yet placed, Document in office, Ready, Needs correction.
 
 let officeId: string;
 let staff: { id: string; email: string };
 let limited: { id: string; email: string };
 let clientId: string;
 let emptyClientId: string;
-const doc = {} as Record<"older" | "ready" | "correction" | "notPlaced" | "soft" | "other", { id: string; doc_code: string }>;
+const doc = {} as Record<"older" | "ready" | "correction" | "notPlaced" | "toReview" | "untagged" | "soft" | "other", { id: string; doc_code: string }>;
 
 test.beforeAll(async () => {
   test.setTimeout(120_000);
@@ -40,6 +41,10 @@ test.beforeAll(async () => {
   doc.correction = await hard(clientId, bank, "2026-05");
   doc.notPlaced = await hard(clientId, bank, "2026-06");
   doc.other = await hard(otherClientId, bank, "2026-04");
+  doc.toReview = await hard(clientId, bank, "2026-07");
+  // Untagged: the client is known, the type isn't yet (13's Log receipt without a type).
+  doc.untagged = await mustCreateDocument(as, { client_id: clientId, received_as: "hard_copy", received_on: "2026-05-02",
+    handed_over_name: "Client's accountant", channel: "hand_delivery" } as never);
   const obj = await uploadObject(officeId, "pdf");
   doc.soft = await mustCreateDocument(as, { received_as: "soft_copy", channel: "email", client_id: clientId, doc_type_id: bank,
     period_id: await periodId(officeId, "2026-03"), file: { storage_path: obj.path, file_name: "soft.pdf" } });
@@ -69,16 +74,19 @@ test("AC-21, AC-22: the tab lists every held copy of this client (any FY, Needs 
   await expect(tabs.getByRole("link", { name: "In office" })).toHaveAttribute("aria-current", "page");
 
   const rows = page.getByRole("list", { name: "Hard copies in office" });
-  await expect(rows.getByRole("listitem")).toHaveCount(3);
-  await expect(page.getByText("3 documents")).toBeVisible();
-  // Order: marked in office first → last.
-  await expect(rows.getByRole("listitem").nth(0)).toContainText(doc.older.doc_code);
-  await expect(rows.getByRole("listitem").nth(1)).toContainText(doc.ready.doc_code);
-  await expect(rows.getByRole("listitem").nth(2)).toContainText(doc.correction.doc_code);
-  await expect(rows.getByRole("listitem").nth(1)).toContainText("Ready to dispatch");
-  await expect(rows.getByRole("listitem").nth(2)).toContainText("Needs correction"); // still held, with its own state
-  // Not held: reviewed but not placed, another client's copy.
-  await expect(rows).not.toContainText(doc.notPlaced.doc_code);
+  await expect(rows.getByRole("listitem")).toHaveCount(6);
+  await expect(page.getByText("6 documents · 3 not yet placed in office")).toBeVisible();
+  // Order: not yet placed (held since received on, 2 May) by DOC-ID, then marked in office first → last.
+  const order = [doc.notPlaced, doc.toReview, doc.untagged, doc.older, doc.ready, doc.correction];
+  for (const [i, d] of order.entries()) await expect(rows.getByRole("listitem").nth(i)).toContainText(d.doc_code);
+  const row = (d: { doc_code: string }) => rows.getByRole("listitem").filter({ hasText: d.doc_code });
+  await expect(row(doc.notPlaced).getByTestId("doc-state")).toHaveText(/^Reviewed/);
+  await expect(row(doc.notPlaced).getByRole("button", { name: /^Mark in office/ })).toBeVisible(); // its next step, here too
+  await expect(row(doc.toReview).getByTestId("doc-state")).toHaveText("To review");
+  await expect(row(doc.untagged).getByTestId("doc-state")).toHaveText("Untagged");
+  await expect(row(doc.ready)).toContainText("Ready to dispatch");
+  await expect(row(doc.correction)).toContainText("Needs correction"); // still held, with its own state
+  // Not here: another client's copy, a soft copy.
   await expect(rows).not.toContainText(doc.other.doc_code);
   await expect(rows).not.toContainText(doc.soft.doc_code);
   expect(await seriousAxe(page)).toEqual([]);
@@ -96,7 +104,7 @@ test("AC-21, AC-22: a Limited user sees the tab for a client they can see; 390 p
   await page.setViewportSize({ width: 390, height: 844 });
   await signIn(page, limited.email, baseURL);
   await page.goto(`/clients/${clientId}?tab=office`);
-  await expect(page.getByRole("list", { name: "Hard copies in office" }).getByRole("listitem")).toHaveCount(3);
+  await expect(page.getByRole("list", { name: "Hard copies in office" }).getByRole("listitem")).toHaveCount(6);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   expect(await seriousAxe(page)).toEqual([]);
 });

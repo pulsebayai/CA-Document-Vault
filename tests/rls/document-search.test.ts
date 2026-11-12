@@ -493,3 +493,31 @@ describe("search is read-only (AC-11)", () => {
     expect(await activityCount()).toBe(before);
   });
 });
+
+// R1 feedback round 2 (Sankar, 2026-11-12): `no_fy` keeps only documents with no period (so no financial year), in
+// results and in facet counts; an older caller that never sends it is unchanged (the filter tests above).
+describe("no financial year (no_fy)", () => {
+  const n = {} as Record<"dated" | "undated", string>;
+  beforeAll(async () => {
+    n.dated = (await mustCreateDocument(as.staff, {
+      remark: "zqnofy dated", client_id: clientA, doc_type_id: t.sales, period_id: p.month,
+      received_as: "hard_copy", channel: "courier", received_on: "2026-08-06",
+    })).id;
+    n.undated = (await mustCreateDocument(as.staff, { remark: "zqnofy undated", received_as: "hard_copy", channel: "email", received_on: "2026-08-07" })).id;
+  });
+
+  it("keeps only documents with no period", async () => {
+    expect(idSet(await mustSearch("staff", { text: "zqnofy", filters: { no_fy: true } }))).toEqual(new Set([n.undated]));
+    expect(idSet(await mustSearch("staff", { text: "zqnofy", filters: { no_fy: false } }))).toEqual(new Set([n.dated, n.undated]));
+    expect(idSet(await mustSearch("staff", { text: "zqnofy" }))).toEqual(new Set([n.dated, n.undated]));
+  });
+
+  it("with an FY too, nothing matches (a document with no period has no FY)", async () => {
+    expect((await mustSearch("staff", { text: "zqnofy", filters: { no_fy: true, fy_id: fy.current } })).total).toBe(0);
+  });
+
+  it("facets count the same rows as the results", async () => {
+    const fs = facetOf(await facets("staff", { text: "zqnofy", filters: { no_fy: true } }), "channel");
+    expect(fs.map((x) => [x.value, x.n])).toEqual([["email", 1]]);
+  });
+});

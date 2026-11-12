@@ -166,3 +166,30 @@ describe("expanded row (AC-7)", () => {
     expect(documentEvents).toHaveBeenCalledTimes(2);
   });
 });
+
+// R1 feedback round 2 (Sankar, 2026-11-12): the FY select offers "No financial year".
+describe("No financial year", () => {
+  it("is offered after the years, kept as fy=none, and hides the Period select", async () => {
+    view({ fy: null });
+    await screen.findByText(/DOC-FY26-27-00042/);
+    const fy = screen.getByRole("combobox", { name: "FY" });
+    const names = within(fy).getAllByRole("option").map((o) => o.textContent);
+    expect(names.at(-1)).toBe("FY: No financial year");
+    await userEvent.selectOptions(fy, "none");
+    expect(push).toHaveBeenCalledWith(`/clients/${C}?tab=all&fy=none`, { scroll: false });
+  });
+
+  it("searches this client with no FY and no Period select", async () => {
+    view({ fy: "none" });
+    await screen.findByText(/DOC-FY26-27-00042/);
+    expect(searchDocuments).toHaveBeenCalledWith(expect.objectContaining({ filters: expect.objectContaining({ client: C, fy: "none" }) }));
+    expect(screen.queryByRole("combobox", { name: "Period" })).toBeNull();
+  });
+
+  it("nothing without an FY: says so and links to All years", async () => {
+    searchDocuments.mockResolvedValue({ ok: true, total: 0, rows: [] });
+    view({ fy: "none" });
+    expect(await screen.findByText("No documents without a financial year.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Show all years" })).toBeTruthy();
+  });
+});

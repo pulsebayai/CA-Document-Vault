@@ -50,7 +50,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   const [plan, docCount, documents, expected, fys, planGroups, requestedCount, dscCount, dscs, remindDays, allOptions] = await Promise.all([
     tab === "settings" ? getClientPlan(c.id) : null,
     countClientDocuments(c.id),
-    tab === "documents" ? listClientDocuments(c.id) : tab === "office" ? listHeldDocuments(c.id) : [], // 13 AC-21: office reads only copies with a custody step
+    tab === "documents" ? listClientDocuments(c.id) : tab === "office" ? listHeldDocuments(c.id) : [], // 13 AC-21 (R1 round 2): every hard copy of the client; the view drops live packets
     listClientExpected(me.officeId, c.id, { status: "all" }),
     tab !== "settings" ? listFinancialYears() : [],
     tab === "documents" ? listPlanGroups(c.id) : [],

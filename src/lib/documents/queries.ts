@@ -239,6 +239,8 @@ export type ClientDocument = {
   dispatchedOn: string | null; dispatchMethod: string | null;
   /** 13: the stored custody step and when it was marked in office. */
   custody?: "in_office" | "ready" | null; inOfficeAt?: string | null;
+  /** R1 feedback round 2: an untagged hard copy (client known, no type yet) on Client › In office; `typeName` is a label. */
+  untagged?: boolean;
 };
 
 type ClientDocRow = {
@@ -272,21 +274,38 @@ export async function listClientDocuments(clientId: string): Promise<ClientDocum
 }
 
 /**
- * 13 (AC-21): every filed, non-archived document of the client that has a custody step (in office or ready). No explicit
- * limit (the API's max_rows, 1000, still applies): only documents with a step are read, so an old held copy can't fall
- * off the newest-N list of `listClientDocuments`. The caller drops the ones in a live packet (`dispatchedOn`).
+ * 13 (AC-21, changed by R1 feedback round 2, Sankar 2026-11-12: "everything we physically hold"): every non-archived hard
+ * copy of the client, filed or untagged, reviewed or not, with or without a custody step. No explicit limit (the API's
+ * max_rows, 1000, still applies): only hard copies are read, so an old one can't fall off the newest-N list of
+ * `listClientDocuments`. The caller drops the ones in a live packet (`dispatchedOn`). Untagged rows have no type, so they
+ * are mapped here with `untagged` (Client › Documents never lists them).
  */
 export async function listHeldDocuments(clientId: string): Promise<ClientDocument[]> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("document")
     .select(CLIENT_DOCUMENTS_SELECT)
-    .eq("client_id", clientId).not("classified_at", "is", null).is("archived_at", null).not("custody", "is", null)
-    .order("in_office_at", { ascending: true, nullsFirst: true });
+    .eq("client_id", clientId).eq("received_as", "hard_copy").is("archived_at", null)
+    .order("received_on", { ascending: true });
   if (error) {
     console.error("documents.client_held_failed", { code: error.code });
     throw new Error("Could not load documents.");
   }
-  return toClientDocuments((data ?? []) as unknown as ClientDocRow[]);
+  const rows = (data ?? []) as unknown as ClientDocRow[];
+  return [...toClientDocuments(rows), ...rows.filter((r) => !r.doc_type).map(toUntagged)];
+}
+
+/** An untagged hard copy (no type, so no group): the row shows "Untagged document" and 03's Untagged state. */
+function toUntagged(r: ClientDocRow): ClientDocument {
+  return {
+    id: r.id, docCode: r.doc_code, typeName: "Untagged document", groupId: "", groupName: "", groupSort: 0,
+    periodLabel: r.period?.label ?? null, periodStart: r.period?.start_date ?? null,
+    fyCode: r.period?.financial_year?.code ?? fyOfDate(r.received_on),
+    receivedOn: r.received_on, receivedBy: r.receiver?.full_name ?? "—", receivedAs: r.received_as, returnable: r.returnable,
+    correctionKind: r.correction_kind, versionCount: r.version_count, current: r.current ? { id: r.current.id, mimeType: r.current.mime_type } : null,
+    proposed: false, fromLink: r.channel === "upload_link", notPreferred: null,
+    custody: r.custody, inOfficeAt: r.in_office_at, untagged: true,
+    ...reviewFields(r),
+  };
 }
 
 function toClientDocuments(rows: ClientDocRow[]): ClientDocument[] {

@@ -120,3 +120,34 @@ test("AC-1: a Limited user sees the tab for a client they can see; 390 px fits",
   await page.goto(`/clients/${otherClientId}?tab=all`);
   await expect(page.getByRole("heading", { name: "Other Docs Client" })).toHaveCount(0);
 });
+
+// R1 feedback round 2 (Sankar, 2026-11-12): "No financial year" in the FY select, kept as fy=none.
+test("AC-2: No financial year lists only this client's undated documents and is kept in the URL", async ({ page, baseURL }) => {
+  const asStaff = await signedInClient(staff.email);
+  const { data, error } = await asStaff.rpc("create_client", { p: { name: "Undated Docs Client", client_type: "individual", incharge_id: staff.id } });
+  if (error) throw error;
+  const undatedClient = data.id as string;
+  const obj = await uploadObject(officeId, "pdf");
+  const undated = await mustCreateDocument(asStaff, {
+    received_as: "soft_copy", channel: "email", client_id: undatedClient, doc_type_id: await typeId(officeId, "Statutory registers"),
+    file: { storage_path: obj.path, file_name: "registers.pdf" },
+  });
+  const dated = await mustCreateDocument(asStaff, {
+    received_as: "soft_copy", channel: "email", client_id: undatedClient, doc_type_id: await typeId(officeId, "Sales invoices / sales register"),
+    period_id: await periodId(officeId, "2026-08"), file: { storage_path: (await uploadObject(officeId, "pdf")).path, file_name: "sales.pdf" },
+  });
+
+  await signIn(page, staff.email, baseURL);
+  await page.goto(`/clients/${undatedClient}?tab=all`);
+  const rows = page.getByRole("list", { name: "Documents" });
+  await expect(rows.getByRole("listitem")).toHaveCount(2);
+  await page.getByRole("combobox", { name: "FY" }).selectOption({ label: "FY: No financial year" });
+  await expect(page).toHaveURL(new RegExp(`/clients/${undatedClient}\\?tab=all&fy=none$`));
+  await expect(rows.getByRole("listitem")).toHaveCount(1);
+  await expect(rows).toContainText(undated.doc_code);
+  await expect(rows).not.toContainText(dated.doc_code);
+  await expect(page.getByRole("combobox", { name: "Period" })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: "FY" })).toHaveValue("none");
+  await expect(rows.getByRole("listitem")).toHaveCount(1);
+});

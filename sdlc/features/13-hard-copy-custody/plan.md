@@ -149,3 +149,6 @@ All ACs mapped to passing tests in the PR table; PR CI green; RLS quick check on
 ### 2026-11-12 (R1 feedback addendum, steps 12–14)
 - Sankar's R1 testing found three things; the second is this feature's (hard copies in office had no client-level view). Spec 13 gained AC-21/AC-22; Opus reviewed the change and the 15 AC-2 change together (approve with changes: filter by custody; uncapped query; doc wording).
 - Local e2e (cloud container, `npm run build` + `E2E_PREBUILT=1`, dev DB, `DSC_ENC_KEYS` = the public test key): in-office 3/3, all-documents 4/4, client-documents 4/4, custody 5/5, dsc 7/7 (AC-5 `networkidle` timed out twice on the first build and passed on a rebuild of the same code; not reproduced, treated as environmental; watch it in PR CI). Unit 785/785, lint and typecheck clean.
+
+### 2026-11-12 (R1 feedback round 2, chore/r1-sankar-feedback-2)
+- Sankar: In office must list everything physically held. AC-21/22 widened (untagged, To review, To place in office now listed; heading counts those not yet placed). `listHeldDocuments` reads every hard copy; changed tests listed in `sdlc/feedback/2026-11-12-sankar-r1-testing.md` › Round 2. No migration for this part.
