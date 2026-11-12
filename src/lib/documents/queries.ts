@@ -268,7 +268,29 @@ export async function listClientDocuments(clientId: string): Promise<ClientDocum
     console.error("documents.client_list_failed", { code: error.code });
     throw new Error("Could not load documents.");
   }
-  return ((data ?? []) as unknown as ClientDocRow[]).filter((r) => r.doc_type?.doc_group).map((r) => ({
+  return toClientDocuments((data ?? []) as unknown as ClientDocRow[]);
+}
+
+/**
+ * 13 (AC-21): every filed, non-archived document of the client that has a custody step (in office or ready), with no
+ * row cap: only documents with a step are read, so an old held copy can't fall off the newest-2000 list. The caller
+ * drops the ones in a live packet (`dispatchedOn`).
+ */
+export async function listHeldDocuments(clientId: string): Promise<ClientDocument[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("document")
+    .select(CLIENT_DOCUMENTS_SELECT)
+    .eq("client_id", clientId).not("classified_at", "is", null).is("archived_at", null).not("custody", "is", null)
+    .order("in_office_at", { ascending: true, nullsFirst: true });
+  if (error) {
+    console.error("documents.client_held_failed", { code: error.code });
+    throw new Error("Could not load documents.");
+  }
+  return toClientDocuments((data ?? []) as unknown as ClientDocRow[]);
+}
+
+function toClientDocuments(rows: ClientDocRow[]): ClientDocument[] {
+  return rows.filter((r) => r.doc_type?.doc_group).map((r) => ({
     id: r.id, docCode: r.doc_code, typeName: r.doc_type!.name, groupId: r.doc_type!.doc_group!.id,
     groupName: r.doc_type!.doc_group!.name, groupSort: r.doc_type!.doc_group!.sort,
     periodLabel: r.period?.label ?? null, periodStart: r.period?.start_date ?? null,

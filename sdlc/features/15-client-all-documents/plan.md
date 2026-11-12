@@ -31,7 +31,7 @@ One (A). Applied on dev at step 3; md5 of `activity_feed` and `document_last_act
 - [x] 2. **Equality harness:** capture 08's current `activity_feed` results for the reference set as a fixture inside the test (no temp function in a shared DB). — proof: harness green against today's function
 - [x] 3. **Migration A** (indexes, `activity_feed` UNION, `document_last_activity`). — proof: equality + last-activity + K4 RLS green on dev (Staff and Limited < 1 s); md5 = file
 - [x] 4. **Lib layer** (scope URL, last-activity line, queries, actions). — proof: unit green
-- [x] 5. **SearchView scope + All documents tab** (FY default, client locked, URL on the client page, bulk bar). — proof: unit + e2e part; `/documents` e2e unchanged
+- [x] 5. **SearchView scope + All documents tab** (All years default [R1 revision 2026-11-12], client locked, URL on the client page, bulk bar). — proof: unit + e2e part; `/documents` e2e unchanged
 - [x] 6. **Last activity column + expanded row.** — proof: unit + e2e part; axe; 390 px
 - [x] 7. **Docs** (ui-reference, architecture items drafted in plan, K4 addendum in 09's evidence file). — proof: review
 - [ ] 8. **Pre-PR review** (`sdlc-reviewer`; the `activity_feed` rewrite gets a second, focused look at RLS: the UNION must not let a Limited user see a row `activity_select` hides). Fix findings failing-first. — proof: no open Important finding
@@ -72,4 +72,9 @@ One (A). Applied on dev at step 3; md5 of `activity_feed` and `document_last_act
 ### 2026-11-03 (after merge)
 - **Merged 2026-11-01 (PR #21, 6ca0ad0).** Nightly 41563529058 (3 Nov) failed at Unit: `all-documents-view` "one call for the page" counted `lastActivity` calls at the first render, before the page's effect ran (0 calls on a slow runner; green in PR CI and locally). **Existing-test change, approved by Sidambara 2026-11-03:** the test now waits for the Last activity line, then checks exactly one call; what it proves is unchanged. 5/5 green locally. In `chore/15-shipped` with the roadmap update.
 - The other red nightlies (29 Oct–1 Nov) are dev load and dev-ahead-of-main drift, not 15 (roadmap batch J). 15's own K4 card timing missed once at 1.13 s under the nightly's load.
+
+### 2026-11-12 (R1 revision: AC-2 default FY → All years; Opus-reviewed)
+- Sankar's R1 feedback: a document with no financial year never matches an FY filter, so the current-FY default hid it and the tab count (2) disagreed with its rows (1). AC-2 now defaults to All years; a chosen FY stays in the URL (`fy=<id>`), `fy=all` kept. `scopeFilters(clientId, filters)` lost its `currentFyId` parameter; `SearchScope` and `AllDocumentsView` lost the prop; Clear filters returns to All years; AC-4 empty-state text updated.
+- Tests changed with the requirement (listed in spec): `scope-url.test.ts`, `all-documents-view.test.tsx`, `all-documents.spec.ts` (new unit case: default has no FY filter). All green (unit 785/785; e2e 4/4 locally).
+- Open: picking a specific FY still hides documents with no FY (a "No financial year" option is a later choice). Pagination (20 per page, newest first) is unchanged.
 

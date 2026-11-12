@@ -3,7 +3,8 @@ import { filtersToQuery, parseDocumentSearchParams, type DocumentFilters } from 
 // Feature 15 (spec AC-2, U4) — /documents' table scoped to one client, on the client page's All documents tab.
 // The filters live in the client page's URL (`?tab=all&…`, IDs, enums, dates and the page only, as 03b), never with a
 // `client` parameter: the client is the page's own, and a hand-edited one is ignored. The FY defaults to the current
-// FY; `fy=all` keeps "All years" across a reload.
+// FY. R1 feedback (Sankar, 2026-11-12): the default is **All years**: a document with no financial year (undated types) never
+// matches an FY filter, so a current-FY default hid it. An FY is a filter the user picks (`fy=<id>`); `fy=all` is kept in the URL.
 
 /** The URL value for "All years" (03b's parser drops it as a non-UUID, so it is read here). */
 export const ALL_YEARS = "all";
@@ -17,9 +18,9 @@ export function parseScopeParams(params: Params): DocumentFilters {
   return fy === ALL_YEARS ? { ...f, fy: ALL_YEARS } : f;
 }
 
-/** The filters the table searches with: this client always; the current FY unless the URL chose one or All years. */
-export function scopeFilters(clientId: string, filters: DocumentFilters, currentFyId: string | null): DocumentFilters {
-  const fy = filters.fy === ALL_YEARS ? null : (filters.fy ?? currentFyId);
+/** The filters the table searches with: this client always; every year unless the URL chose an FY. */
+export function scopeFilters(clientId: string, filters: DocumentFilters): DocumentFilters {
+  const fy = filters.fy === ALL_YEARS ? null : filters.fy;
   return { ...filters, client: clientId, fy };
 }
 

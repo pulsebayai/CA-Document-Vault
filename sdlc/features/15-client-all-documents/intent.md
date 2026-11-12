@@ -11,7 +11,7 @@ Source: Kushal review 2026-10-29 → `sdlc/feedback/2026-10-29-kushal-review-pla
 **Cost:** slower answers to client calls; staff fall back to memory or WhatsApp threads; the document page's history breaks within months at full volume.
 
 ## Proposed outcome
-1. A client tab **All documents** (after Documents; the grouped **Documents** tab keeps its name and stays the default): the `/documents` table for this one client, **current FY by default** with an FY switch, **20 per page, newest received first** (Q6). The same filters, row actions, selection and bulk actions as `/documents` where they make sense for one client.
+1. A client tab **All documents** (after Documents; the grouped **Documents** tab keeps its name and stays the default): the `/documents` table for this one client, **All years by default** (revised 2026-11-12, R1 feedback, Sankar 2026-11-12; reviewed by Opus: documents with no financial year never match an FY filter) with an FY switch, **20 per page, newest received first** (Q6). The same filters, row actions, selection and bulk actions as `/documents` where they make sense for one client.
 2. A **Last activity** column: who · what · when (the sentence from 08's catalogue, e.g. "Priya · marked ready to dispatch · 2 Nov").
 3. An **expandable row** with the document's **5 latest events** and **See all** → `/activity?document=<id>` (08's full feed).
 4. **K4 fixed:** the document page's Activity card, the expanded row and the Last activity column each return in **< 1 s at 200k activity rows**, proven by a test that seeds that volume in its own test office.
@@ -46,7 +46,7 @@ Source: Kushal review 2026-10-29 → `sdlc/feedback/2026-10-29-kushal-review-pla
 
 ## Decisions (Sidambara, 2026-11-01)
 - **Q1 — tab names:** "Documents" (grouped, default) + "All documents".
-- **Q2 — default view:** current FY, newest received first, FY switch, 20 per page.
+- **Q2 — default view:** All years (revised 2026-11-12; was current FY), newest received first, FY switch, 20 per page.
 - **Q3 — See all:** `/activity?document=<id>` (no new screen).
 - **Q4 — K4 proof:** a test seeds ≈ 200k activity rows in its own test office (09's `seed_test_activity`) and asserts < 1 s. Whether it runs on every PR or only with RUN_SLOW depends on how long the seed takes on CI's local stack (measured at plan step 1; the spec records the answer).
 

@@ -23,17 +23,22 @@ const TONE: Record<ShownStateKind, string> = {
   needs_correction: "text-bad", in_office: "text-ok", reviewed: "text-ok", to_review: "text-warn", // 13: in_office
 };
 
+/** The inputs of `documentState()` for a client document (shared with Client › In office). */
+function stateInput(d: ClientDocument, clientId: string) {
+  return { archived: false, clientId, docTypeId: d.typeName ? "filed" : null, receivedAs: d.receivedAs, status: d.status,
+    returnable: d.returnable, correctionKind: d.correctionKind, // 12
+    reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
+    dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod,
+    custody: d.custody ?? null, inOfficeAt: d.inOfficeAt ?? null }; // 13
+}
+
 export function DocumentRow({ d, clientId, clientName, today, selected, onToggle }: {
   d: ClientDocument; clientId: string; clientName?: string | null; today: string;
   /** 08 AC-1: bulk selection (absent = no checkbox). */
   selected?: boolean; onToggle?: () => void;
 }) {
   const [msg, setMsg] = useState<RowMessage | null>(null);
-  const input = { archived: false, clientId, docTypeId: d.typeName ? "filed" : null, receivedAs: d.receivedAs, status: d.status,
-    returnable: d.returnable, correctionKind: d.correctionKind, // 12
-    reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
-    dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod,
-    custody: d.custody ?? null, inOfficeAt: d.inOfficeAt ?? null }; // 13
+  const input = stateInput(d, clientId);
   const state = documentState(input, today);
   const held = heldDays({ ...input, receivedOn: d.receivedOn }, today);
   const paper = paperBadge(d); // 12

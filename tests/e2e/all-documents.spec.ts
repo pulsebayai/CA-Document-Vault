@@ -54,7 +54,7 @@ async function seriousAxe(page: Page) {
   return axe.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? "")).map((v) => v.id);
 }
 
-test("AC-1, AC-2: the tab after Documents shows this client's current FY; All years is kept in the URL", async ({ page, baseURL }) => {
+test("AC-1, AC-2: the tab after Documents shows all years by default; an FY can be chosen and is kept in the URL", async ({ page, baseURL }) => {
   await signIn(page, staff.email, baseURL);
   await page.goto(`/clients/${clientId}`);
   const tabs = page.getByRole("navigation", { name: "Client sections" });
@@ -64,15 +64,18 @@ test("AC-1, AC-2: the tab after Documents shows this client's current FY; All ye
   await expect(page).toHaveURL(new RegExp(`/clients/${clientId}\\?tab=all$`));
 
   const rows = page.getByRole("list", { name: "Documents" });
-  await expect(rows.getByRole("listitem")).toHaveCount(1);
-  await expect(rows).toContainText(current.doc_code);
   await expect(page.getByRole("searchbox", { name: "Client" })).toHaveCount(0); // the client is fixed
-  await expect(page.getByRole("combobox", { name: "FY" })).toHaveValue(/.+/); // the current FY is chosen
+  await expect(page.getByRole("combobox", { name: "FY" })).toHaveValue(""); // R1 feedback: All years by default
+  await expect(rows.getByRole("listitem")).toHaveCount(2); // the tab's count and its rows agree
+  await expect(rows).toContainText(current.doc_code);
+  await expect(rows).toContainText(older.doc_code);
 
+  await page.getByRole("combobox", { name: "FY" }).selectOption({ index: 1 }); // an FY is a filter the user picks
+  await expect(page).toHaveURL(new RegExp(`/clients/${clientId}\\?tab=all&fy=[0-9a-f-]{36}$`));
+  await expect(rows.getByRole("listitem")).toHaveCount(1);
   await page.getByRole("combobox", { name: "FY" }).selectOption({ label: "FY: All years" });
   await expect(page).toHaveURL(new RegExp(`/clients/${clientId}\\?tab=all&fy=all$`));
   await expect(rows.getByRole("listitem")).toHaveCount(2);
-  await expect(rows).toContainText(older.doc_code);
   await expect(rows).not.toContainText(otherDoc.doc_code); // another client's document never shows
   expect(page.url()).not.toContain("client=");
 });

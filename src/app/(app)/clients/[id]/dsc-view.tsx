@@ -240,6 +240,17 @@ function useSubmit<T extends { ok: boolean; error?: string; fieldErrors?: Fe }>(
   return { pending, error, fe, run };
 }
 
+/** An eye (password hidden: click to show) or a slashed eye (shown: click to hide). Decorative: the button carries the name. */
+function EyeIcon({ off }: { off: boolean }) {
+  return (
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+      {off && <path d="M3 3l18 18" />}
+    </svg>
+  );
+}
+
 function DscForm({ clientId, existing, onDone }: { clientId: string; existing?: DscRecord; onDone: () => void }) {
   const uid = useId();
   const { pending, error, fe, run } = useSubmit(onDone);
@@ -267,12 +278,14 @@ function DscForm({ clientId, existing, onDone }: { clientId: string; existing?: 
       {!existing && (
         <>
           <label className="block text-[13.5px] font-medium" htmlFor={`${uid}-pw`}>Token PIN / password</label>
-          <div className="flex gap-2">
-            <input id={`${uid}-pw`} name="password" required maxLength={MAX_PASSWORD} {...secretField(showPw)} className={inputCls} {...a("password")} />
-            {/* N-6: one fixed label; aria-pressed carries the state. */}
-            <Button type="button" size="sm" variant="secondary" className="mt-1" aria-pressed={showPw} onClick={() => setShowPw((s) => !s)}>
-              Show password
-            </Button>
+          {/* R1 feedback (Sankar): the toggle is an eye icon inside the field, so it can't wrap or misalign.
+              N-6: one fixed accessible name ("Show password"); aria-pressed carries the state. */}
+          <div className="relative">
+            <input id={`${uid}-pw`} name="password" required maxLength={MAX_PASSWORD} {...secretField(showPw)} className={`${inputCls} pr-11`} {...a("password")} />
+            <button type="button" aria-label="Show password" aria-pressed={showPw} onClick={() => setShowPw((s) => !s)}
+              className="absolute right-1 top-[calc(50%+2px)] flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-[7px] text-ink-3 hover:bg-canvas hover:text-ink focus-visible:outline-2 focus-visible:outline-accent">
+              <EyeIcon off={showPw} />
+            </button>
           </div>
           <FieldError id={`${uid}-password`} message={fe.password} />
           <p className="text-[12.5px] text-ink-3">Stored encrypted. Every time someone shows it, that is recorded in Activity.</p>
