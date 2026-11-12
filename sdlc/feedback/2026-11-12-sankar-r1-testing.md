@@ -29,4 +29,4 @@ Branch `chore/r1-sankar-feedback-2`. Decisions relayed by the owner the same day
 
 **Verification (session, 2026-11-12):** lint 0/0 · typecheck 0 · unit 88 files / 800 tests · build 0 · RLS on dev: `document-search` 54 (the 3 new `no_fy` cases failed before the migration, pass after), `cross-firm/guard`, `custody`, `custody-today`, `format-reads`, `returnable`, `review-dispatch` 97 passed · e2e locally against dev: `in-office.spec` 3 + `all-documents.spec` 5 (incl. the new No financial year test) passed.
 
-**Still open:** a dev Regression dispatch with `only` = `rls/document-search` (CLAUDE.md rule for PRs with a migration); staging/prod get the migration at the next release replay.
+**Done:** PR CI 43170169049 and dev Regression `rls/document-search` 43170176008 green; merged as `3cdf463`; shipped the same day as hotfix **R1.1** (staging + prod, migration on both; `sdlc/releases/R1.1.md`). **Open:** Sankar re-tests on prod.
