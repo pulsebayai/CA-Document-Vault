@@ -5,7 +5,7 @@ import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { createDocumentOffice, mustCreateDocument, periodId, typeId, uploadObject } from "../support/documents";
 import { signIn } from "./helpers";
 
-// Feature 15 — Client › All documents (spec AC-1…AC-7): the /documents table for one client, current FY by default,
+// Feature 15 — Client › All documents (spec AC-1…AC-7): the /documents table for one client, all years by default,
 // with Last activity and the expandable row. The K4 timings are RLS tests (k4-volume.test.ts); this spec covers the screen.
 
 let officeId: string;
@@ -70,9 +70,11 @@ test("AC-1, AC-2: the tab after Documents shows all years by default; an FY can 
   await expect(rows).toContainText(current.doc_code);
   await expect(rows).toContainText(older.doc_code);
 
-  await page.getByRole("combobox", { name: "FY" }).selectOption({ index: 1 }); // an FY is a filter the user picks
+  await page.getByRole("combobox", { name: "FY" }).selectOption({ label: "FY: 2026-27" }); // an FY is a filter the user picks
   await expect(page).toHaveURL(new RegExp(`/clients/${clientId}\\?tab=all&fy=[0-9a-f-]{36}$`));
   await expect(rows.getByRole("listitem")).toHaveCount(1);
+  await expect(rows).toContainText(current.doc_code);
+  await expect(rows).not.toContainText(older.doc_code);
   await page.getByRole("combobox", { name: "FY" }).selectOption({ label: "FY: All years" });
   await expect(page).toHaveURL(new RegExp(`/clients/${clientId}\\?tab=all&fy=all$`));
   await expect(rows.getByRole("listitem")).toHaveCount(2);

@@ -11,4 +11,4 @@ Source: three WhatsApp screenshots from Sankar (Pulsebay), 2026-11-12 06:45–06
 Open point: picking a specific FY still hides documents with no FY. Acceptable (it is what a filter means); a later option is an "No financial year" entry in the FY select.
 
 ## Review
-Opus reviewed both spec changes on 2026-11-12: approve with changes. Applied: filter by custody (not shown state), uncapped `listHeldDocuments`, 13 AC-21/22, 15 AC-1/AC-2/AC-4 + intent Q2 + architecture + ui-reference wording. Still to do: e2e `in-office.spec.ts` (run locally first), a 13 plan addendum step, move to a chore branch, re-run the release gate for the next R1 release.
+Opus reviewed both spec changes on 2026-11-12: approve with changes. Applied: filter by custody (not shown state), `listHeldDocuments` (no explicit limit; `max_rows` 1000 applies), 13 AC-21/22, 15 AC-1/AC-2/AC-4 + intent Q2 + architecture + ui-reference wording. Still to do: e2e `in-office.spec.ts` (run locally first), a 13 plan addendum step, move to a chore branch, re-run the release gate for the next R1 release.

@@ -272,9 +272,9 @@ export async function listClientDocuments(clientId: string): Promise<ClientDocum
 }
 
 /**
- * 13 (AC-21): every filed, non-archived document of the client that has a custody step (in office or ready), with no
- * row cap: only documents with a step are read, so an old held copy can't fall off the newest-2000 list. The caller
- * drops the ones in a live packet (`dispatchedOn`).
+ * 13 (AC-21): every filed, non-archived document of the client that has a custody step (in office or ready). No explicit
+ * limit (the API's max_rows, 1000, still applies): only documents with a step are read, so an old held copy can't fall
+ * off the newest-N list of `listClientDocuments`. The caller drops the ones in a live packet (`dispatchedOn`).
  */
 export async function listHeldDocuments(clientId: string): Promise<ClientDocument[]> {
   const supabase = await createClient();

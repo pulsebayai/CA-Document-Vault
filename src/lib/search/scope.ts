@@ -2,8 +2,7 @@ import { filtersToQuery, parseDocumentSearchParams, type DocumentFilters } from 
 
 // Feature 15 (spec AC-2, U4) — /documents' table scoped to one client, on the client page's All documents tab.
 // The filters live in the client page's URL (`?tab=all&…`, IDs, enums, dates and the page only, as 03b), never with a
-// `client` parameter: the client is the page's own, and a hand-edited one is ignored. The FY defaults to the current
-// FY. R1 feedback (Sankar, 2026-11-12): the default is **All years**: a document with no financial year (undated types) never
+// `client` parameter: the client is the page's own, and a hand-edited one is ignored. R1 feedback (Sankar, 2026-11-12): the default is **All years**: a document with no financial year (undated types) never
 // matches an FY filter, so a current-FY default hid it. An FY is a filter the user picks (`fy=<id>`); `fy=all` is kept in the URL.
 
 /** The URL value for "All years" (03b's parser drops it as a non-UUID, so it is read here). */
