@@ -7,6 +7,15 @@ In Vercel › project › Settings › Deployment Protection, create **Protectio
 GitHub Actions secret `VERCEL_AUTOMATION_BYPASS_SECRET`. `tests/e2e/preview-access.ts` sends it once per browser context,
 to the tested URL's own origin only, and uses the cookie Vercel returns. Not used for `target = prod` (smoke only).
 
+## A release or hotfix with a migration (R1.1, owner 2026-11-12)
+Prod deploys on every merge to `main`, so the database goes first. Every migration is **backward compatible** (architecture.md › Environments & deploy).
+1. PR CI green; dev migrated (md5 = file) and Regression `only` = its RLS files green.
+2. **Staging:** apply the migration (md5 = file), then `staging` ← the PR branch (or main) and wait for the staging deployment; Regression `target = staging`, `only` = the affected files (quick check) or empty (release evidence).
+3. **Prod:** the owner confirms in chat; apply the migration (md5 = file).
+4. **Merge** the PR: Vercel deploys prod.
+5. **Prod smoke:** Regression `target = prod` **and** `base_url = https://vault.pulsebay.in` (without it the run tests dev's URL, R1.1 run 43175134825).
+6. Release record with the md5s per environment and the runs.
+
 ## Quick checks
 Regression → *Run workflow* has an `only` box (space-separated words matched against test file paths). Use it to prove a fix
 on a deployed preview in minutes. A filtered run's summary says **"Quick check — partial run; not release evidence"**

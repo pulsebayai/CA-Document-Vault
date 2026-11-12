@@ -33,6 +33,7 @@ Subagents: `verifier` (after each step), `sdlc-reviewer` (before a PR). Hook: `.
 - Never work directly on main except roadmap/product docs.
 - On a feature branch, do not edit roadmap.md, and edit architecture.md only if this feature holds the architecture lock.
 - Only the feature holding the schema lock may add database migrations.
+- **Every migration is backward compatible** (expand now, contract in a later release) and is applied to dev, staging and prod (md5 = file each) **before** its PR merges, because prod deploys on every merge to `main`. Prod needs the owner's confirmation in chat. Order and details: architecture.md › Environments & deploy (R1.1, 2026-11-12).
 - Super admin (platform) actions are `public.platform_*` SECURITY DEFINER functions that check the caller (`private.require_platform_admin()`) and write the platform audit before returning; the only service-role step is the invite email in `src/lib/platform/invite.ts` (19). A super admin is never a staff member, and support access never returns files or DSC passwords.
 - Every new table, view or database function gets a cross-firm case and a line in `tests/rls/cross-firm/coverage.ts` in the same PR (18; the guard test fails otherwise).
 - All data access goes through RLS-protected tables; never use the service-role key in client-reachable code.
