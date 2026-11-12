@@ -24,10 +24,10 @@ Screens: no mockup screen (new tab). Client page tabs (mockups 10–11), `/docum
 ## User stories & acceptance criteria
 
 ### A. The tab
-- **AC-1** The client page gets an **All documents** tab after Documents (Documents · All documents · Expected · Requested · DSC · Settings), `?tab=all`, with the client's document count. Every role that can see the client sees it. Documents stays the default tab (Q1).
-- **AC-2** It shows the `/documents` table for this client only: **current FY by default** (office date), an FY select ("All years" included), **20 per page, newest received first** (Q2). The client filter is not shown and can't be changed; every other `/documents` filter, facet and chip works, and the URL keeps them (IDs, enums, dates; never search text).
+- **AC-1** The client page gets an **All documents** tab after Documents (Documents · All documents · In office · Expected · Requested · DSC · Settings; In office is 13 AC-21), `?tab=all`, with the client's document count. Every role that can see the client sees it. Documents stays the default tab (Q1).
+- **AC-2** It shows the `/documents` table for this client only: **All years by default** (R1 feedback, Sankar 2026-11-12: a document with no financial year never matches an FY filter, so the earlier current-FY default hid it and the tab's count disagreed with its rows; was "current FY by default"), an FY select ("All years" included; a chosen FY is kept in the URL), **20 per page, newest received first** (Q2). The client filter is not shown and can't be changed; every other `/documents` filter, facet and chip works, and the URL keeps them (IDs, enums, dates; never search text).
 - **AC-3** Row content and actions are `/documents`' (DOC-ID, type, period, received, state badges, View / Download, Edit, review and custody buttons), and selection + bulk actions work on the selected rows (U5). An Untagged document of this client (no type) shows too, as on `/documents` with a client filter.
-- **AC-4** Empty states: "No documents for <FY> yet" with a link to All years; a filtered empty state with "Clear filters". Loading and error states as every screen (02 rule).
+- **AC-4** Empty states: with All years, "No documents for this client yet."; with an FY chosen, "No documents for <FY> yet." with a link to All years; a filtered empty state with "Clear filters" (back to All years). Loading and error states as every screen (02 rule).
 
 ### B. Last activity
 - **AC-5** A **Last activity** column: the latest event the viewer may see for that document, as "<who> · <sentence> · <when>" (08's catalogue; "Vault" for system rows; relative within 7 days, then a date). A document with no visible event shows "—".
@@ -70,12 +70,12 @@ Screens: no mockup screen (new tab). Client page tabs (mockups 10–11), `/docum
 ## Test strategy
 | AC | Unit | RLS (db) | e2e |
 |---|---|---|---|
-| 1–4 | scope URL builder; empty-state text | — | `all-documents.spec.ts` (tab, FY default + switch, filter, page 2, bulk zip on 2 rows, axe, 390 px) |
+| 1–4 | scope URL builder; empty-state text | — | `all-documents.spec.ts` (tab, All years default + choose an FY + back to All years, filter, page 2, bulk zip on 2 rows, axe, 390 px) |
 | 5–7 | Last-activity line (sentence, "Vault", relative/absolute time) | `document-last-activity.test.ts` (latest per doc, Limited sees only visible events, dispatch / requested refs) | expand → 5 events → See all link |
 | 8–10 | — | `activity-doc-filter.test.ts`: **equality** of old vs new `activity_feed` results for a set of documents (entity rows, dispatch packet, item removed, requested item), all roles; `k4-volume.test.ts` (U6 seed, Staff + Limited timings) | — |
 | 11 | full unit suite | full RLS suite | full e2e suite |
 
-**Existing tests that change:** none. **RUN_SLOW:** not needed (no 02/03 write path); the K4 seed runs in normal runs (U6).
+**Existing tests that change (AC-2, R1 feedback, Sankar 2026-11-12; reviewed by Opus):** `tests/unit/scope-url.test.ts`, `tests/unit/all-documents-view.test.tsx`, `tests/e2e/all-documents.spec.ts` (the "no current FY known" case went with its parameter). **RUN_SLOW:** not needed (no 02/03 write path); the K4 seed runs in normal runs (U6).
 
 ## Proposed architecture changes
 1. **Activity lookups by document are indexed per reference kind** (entity, `data->>'document_id'`, `data->'document_ids'`), and every "activity of a document" query is a UNION of those lookups, never an OR — the rule for any future per-entity activity read (K4).

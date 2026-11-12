@@ -6,7 +6,7 @@ import { canManageCatalogue } from "@/lib/auth/roles";
 import { getClient } from "@/lib/clients/queries";
 import { CLIENT_TYPE_LABEL } from "@/lib/validation/client";
 import { getClientPlan } from "@/lib/plan/queries";
-import { countClientDocuments, listClientDocuments } from "@/lib/documents/queries";
+import { countClientDocuments, listClientDocuments, listHeldDocuments } from "@/lib/documents/queries";
 import { fyCodeOf } from "@/lib/documents/period";
 import { DocumentsView } from "./documents-view";
 import { listClientExpected, listFinancialYears, listPlanGroups } from "@/lib/expected/queries";
@@ -24,6 +24,7 @@ import { DscRemindCard } from "./dsc-remind-card";
 import { filterOptionsAs } from "@/lib/search/queries";
 import { parseScopeParams, scopeFilters } from "@/lib/search/scope";
 import { AllDocumentsView } from "./all-documents-view";
+import { InOfficeView } from "./in-office-view";
 
 /**
  * Client page (mockups 10–11; 02 AC-18, 03 AC-10, 04 AC-13/14): header and tabs Documents (default, 04 AC-14) ·
@@ -45,11 +46,11 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
   // 14 AC-1: DSC, with the live count on the tab.
   // 15 AC-1: All documents (?tab=all), the /documents table for this client, with the same document count.
   const tab = sp.tab === "settings" ? "settings" : sp.tab === "expected" ? "expected" : sp.tab === "requested" ? "requested"
-    : sp.tab === "dsc" ? "dsc" : sp.tab === "all" ? "all" : "documents";
+    : sp.tab === "dsc" ? "dsc" : sp.tab === "all" ? "all" : sp.tab === "office" ? "office" : "documents";
   const [plan, docCount, documents, expected, fys, planGroups, requestedCount, dscCount, dscs, remindDays, allOptions] = await Promise.all([
     tab === "settings" ? getClientPlan(c.id) : null,
     countClientDocuments(c.id),
-    tab === "documents" ? listClientDocuments(c.id) : [],
+    tab === "documents" ? listClientDocuments(c.id) : tab === "office" ? listHeldDocuments(c.id) : [], // 13 AC-21: office reads only copies with a custody step
     listClientExpected(me.officeId, c.id, { status: "all" }),
     tab !== "settings" ? listFinancialYears() : [],
     tab === "documents" ? listPlanGroups(c.id) : [],
@@ -109,6 +110,7 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
       <nav aria-label="Client sections" className="relative overflow-x-auto border-b border-line">
         <ul className="flex gap-1 whitespace-nowrap">
           {([["documents", `Documents`, `/clients/${c.id}`], ["all", "All documents", `/clients/${c.id}?tab=all`],
+            ["office", "In office", `/clients/${c.id}?tab=office`],
             ["expected", "Expected", `/clients/${c.id}?tab=expected`],
             ["requested", "Requested", `/clients/${c.id}?tab=requested`],
             ["dsc", "DSC", `/clients/${c.id}?tab=dsc`],
@@ -133,10 +135,15 @@ export default async function ClientPage({ params, searchParams }: PageProps<"/c
             expected={expected.items} planGroups={planGroups} fys={fys} canUpload={!c.archived} today={expected.today} clientName={c.name}
             reminders={reminders} />
         </div>
+      ) : tab === "office" ? (
+        <div>
+          <h2 className="sr-only">In office</h2>
+          <InOfficeView clientId={c.id} clientName={c.name} documents={documents} today={expected.today} />
+        </div>
       ) : tab === "all" ? (
         <div>
           <h2 className="sr-only">All documents</h2>
-          <AllDocumentsView clientId={c.id} filters={scopeFilters(c.id, parseScopeParams(sp), currentFyId)} options={allOptions!} currentFyId={currentFyId} />
+          <AllDocumentsView clientId={c.id} filters={scopeFilters(c.id, parseScopeParams(sp))} options={allOptions!} />
         </div>
       ) : tab === "expected" ? (
         <div>

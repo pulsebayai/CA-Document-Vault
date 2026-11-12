@@ -124,13 +124,11 @@ type Answer = { key: string; total: number; rows: DocumentHit[]; facets: FacetVa
 
 /**
  * 15 (spec U4): the same view scoped to one client (Client › All documents). The client is fixed and not offered,
- * the URL stays on the client page, the FY defaults to the current FY (`currentFyId`; null in `filters.fy` = All
- * years), and each row adds Last activity (one call per page) and the expandable activity row. /documents passes
+ * the URL stays on the client page, the FY defaults to All years (null in `filters.fy`), and each row adds Last activity (one call per page) and the expandable activity row. /documents passes
  * no scope and is unchanged.
  */
 export type SearchScope = {
   clientId: string;
-  currentFyId: string | null;
   /** One call per page (the caller passes the server action, so /documents imports nothing new). */
   loadLast: (ids: string[]) => Promise<{ ok: true; rows: Array<LastActivityRow & { document_id: string }> } | { ok: false; error: string }>;
   /** The row's expandable activity (AC-7). */
@@ -186,8 +184,8 @@ export function SearchView({ filters, options, scope }: { filters: DocumentFilte
     const q = filtersToQuery(next);
     router.push(q ? `/documents?${q}` : "/documents", { scroll: false });
   };
-  /** Clear all / Clear filters: back to no filters (15: this client's current FY). */
-  const cleared = (): DocumentFilters => ({ ...DEFAULT_FILTERS, sort: filters.sort, ...(scope ? { client: scope.clientId, fy: scope.currentFyId } : {}) });
+  /** Clear all / Clear filters: back to no filters (15: this client, All years). */
+  const cleared = (): DocumentFilters => ({ ...DEFAULT_FILTERS, sort: filters.sort, ...(scope ? { client: scope.clientId, fy: null } : {}) });
 
   // 15 (AC-5, AC-6): Last activity for the page's rows, one call per page; a failure leaves every row at "—".
   const [last, setLast] = useState<{ key: string; rows: Map<string, LastActivityRow> } | null>(null);
