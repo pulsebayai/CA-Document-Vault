@@ -1,0 +1,964 @@
+<testsuites id="" name="" tests="179" failures="0" skipped="0" errors="0" time="1839.102886">
+<testsuite name="activity.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="3" failures="0" skipped="0" time="25.638" errors="0">
+<testcase name="AC-5, AC-8, AC-9: the feed reads as sentences under day headings; sign-ins only on request; rows link" classname="activity.spec.ts" time="12.507">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-11 on screen: Limited sees its clients&apos; events only, with its own subtitle; ≤ 390 px" classname="activity.spec.ts" time="6.465">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-10: the document page&apos;s Activity card and the client page&apos;s Activity link" classname="activity.spec.ts" time="6.666">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="add-document.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="5" failures="0" skipped="0" time="34.857" errors="0">
+<testcase name="AC-1 … AC-5: from a client page, a soft copy is filed in ≤ 3 clicks after choosing the file" classname="add-document.spec.ts" time="13.023">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-1, AC-4: a hard copy with no file goes to the Inbox from the header button" classname="add-document.spec.ts" time="5.734">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-1, AC-2, AC-4: errors are inline, in plain words, and nothing is saved" classname="add-document.spec.ts" time="4.148">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-15: a new type is offered only after the closest existing ones, and joins the client&apos;s plan" classname="add-document.spec.ts" time="9.656">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="NFR: Add document fits a 390 px phone screen" classname="add-document.spec.ts" time="2.296">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="all-documents.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="4" failures="0" skipped="0" time="28.808" errors="0">
+<testcase name="AC-1, AC-2: the tab after Documents shows this client&apos;s current FY; All years is kept in the URL" classname="all-documents.spec.ts" time="11.563">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-5, AC-7: Last activity per row; Show activity lists the latest events with See all" classname="all-documents.spec.ts" time="5.876">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-3: selection and the bulk bar work on the tab" classname="all-documents.spec.ts" time="3.214">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-1: a Limited user sees the tab for a client they can see; 390 px fits" classname="all-documents.spec.ts" time="8.155">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="auth.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="8" failures="0" skipped="0" time="29.417" errors="0">
+<testcase name="AC-14: signed-out users are sent to /login" classname="auth.spec.ts" time="1.136">
+</testcase>
+<testcase name="AC-2: unknown email gets the same neutral message and no user is created" classname="auth.spec.ts" time="2.566">
+</testcase>
+<testcase name="AC-1 (link), AC-12, AC-13, AC-4: admin signs in, sees the shell and empty Clients, signs out" classname="auth.spec.ts" time="5.779">
+</testcase>
+<testcase name="AC-1 (code): entering the emailed 6-digit code signs in" classname="auth.spec.ts" time="4.09">
+</testcase>
+<testcase name="AC-3: wrong code shows an error; five wrong codes lock the email" classname="auth.spec.ts" time="6.084">
+</testcase>
+<testcase name="login page is accessible" classname="auth.spec.ts" time="1.626">
+</testcase>
+<testcase name="AC-1 (link): the emailed sign-in link signs an invited user in and activates them" classname="auth.spec.ts" time="6.199">
+</testcase>
+<testcase name="a used or foreign link shows a clear message" classname="auth.spec.ts" time="1.937">
+</testcase>
+</testsuite>
+<testsuite name="bulk.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="2" failures="0" skipped="0" time="16.187" errors="0">
+<testcase name="AC-1, AC-2: select on /documents, download a zip of the files; the selection is per page" classname="bulk.spec.ts" time="11.187">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-1, AC-3: Client › Documents select all → Mark reviewed → result; ≤ 390 px" classname="bulk.spec.ts" time="5">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="catalogue.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="2" failures="0" skipped="0" time="20.605" errors="0">
+<testcase name="AC-2, AC-3, AC-23: admin edits a type&apos;s name and schedule, toggles a group; both are logged" classname="catalogue.spec.ts" time="12.485">
+</testcase>
+<testcase name="AC-6: staff see the catalogue read-only; Users and roles stays Admin only" classname="catalogue.spec.ts" time="8.12">
+</testcase>
+</testsuite>
+<testsuite name="chasing.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="2" failures="0" skipped="0" time="11.216" errors="0">
+<testcase name="AC-15: a Manager sees chasing load — per document, share needing a reminder, per channel — and its definition" classname="chasing.spec.ts" time="6.012">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-15: Staff can&apos;t open it" classname="chasing.spec.ts" time="5.204">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="client-documents.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="4" failures="0" skipped="0" time="30.611" errors="0">
+<testcase name="AC-10: Documents tab groups by group → type → period with FY and group filters; View and Download" classname="client-documents.spec.ts" time="8.638">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-11: document page — details, current file, a new version keeps the DOC-ID and becomes current" classname="client-documents.spec.ts" time="6.522">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-11: a manager archives with a reason; it leaves the client&apos;s list; unarchive brings it back" classname="client-documents.spec.ts" time="10.419">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-12: a Limited user gets Not Found for a document of a client they can&apos;t see" classname="client-documents.spec.ts" time="5.032">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="client-edit.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="2" failures="0" skipped="0" time="23.161" errors="0">
+<testcase name="AC-8, AC-9, AC-23: staff adds a client with a GSTIN and a group; the vault assigns the code" classname="client-edit.spec.ts" time="9.558">
+</testcase>
+<testcase name="AC-10, AC-11: staff edit but can&apos;t change incharge or archive; a manager archives with a reason and unarchives" classname="client-edit.spec.ts" time="13.603">
+</testcase>
+</testsuite>
+<testsuite name="client-plan.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="2" failures="0" skipped="0" time="27.396" errors="0">
+<testcase name="AC-18, AC-19, AC-21: staff enables GST, edits the plan, disables and re-enables it without duplicates" classname="client-plan.spec.ts" time="15.898">
+<properties>
+<property name="serial" value="">
+</property>
+<property name="slow" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-20: a manager pauses and resumes the group with a remark, reassigns it, and adds a type" classname="client-plan.spec.ts" time="11.498">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="clients.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="3" failures="0" skipped="0" time="18.528" errors="0">
+<testcase name="AC-7: search by name, PAN and previous reference, filter by type, show archived — nothing typed reaches the URL" classname="clients.spec.ts" time="11.295">
+</testcase>
+<testcase name="AC-12: a Limited user lists only clients they are incharge of" classname="clients.spec.ts" time="5.108">
+</testcase>
+<testcase name="F1: Has overdue and My clients are readable on and off, with a tick only when on" classname="clients.spec.ts" time="2.125">
+</testcase>
+</testsuite>
+<testsuite name="collection.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="4" failures="0" skipped="0" time="25.939" errors="0">
+<testcase name="AC-16: a Manager sees on-time %, counts, the per-group table, Overdue now and the definition; axe; 390 px" classname="collection.spec.ts" time="7.468">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-16: an Admin sees it too" classname="collection.spec.ts" time="5.789">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-16: staff gets no Collection item and Not Found on the URL" classname="collection.spec.ts" time="6.351">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-16: limited gets no Collection item and Not Found on the URL" classname="collection.spec.ts" time="6.331">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="cross-firm.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="4" failures="0" skipped="0" time="27.908" errors="0">
+<testcase name="AC-13: Firm B&apos;s client page, on every tab, is Not Found for Firm A&apos;s Admin; Firm A&apos;s own client opens" classname="cross-firm.spec.ts" time="13.877">
+<properties>
+<property name="slow" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="17: the tab title names the signed-in staff member&apos;s own firm, never another firm&apos;s; signed out it names no firm" classname="cross-firm.spec.ts" time="2.861">
+</testcase>
+<testcase name="AC-13: Firm B&apos;s document page is Not Found; its activity and Firm B&apos;s DSC never show" classname="cross-firm.spec.ts" time="5.209">
+</testcase>
+<testcase name="AC-13: searching for Firm B&apos;s text finds nothing of Firm B&apos;s (header suggestions and /documents)" classname="cross-firm.spec.ts" time="5.961">
+</testcase>
+</testsuite>
+<testsuite name="custody.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="5" failures="0" skipped="0" time="43.753" errors="0">
+<testcase name="AC-9, AC-6: document page — Mark in office, Ready to dispatch, dispatch; undo dispatch keeps Ready; axe" classname="custody.spec.ts" time="17.721">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-4, S3: Undo steps back one step at a time, with no reason asked" classname="custody.spec.ts" time="5.958">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-9: a Client › Documents row offers Mark in office; a plain hard copy then shows Document in office" classname="custody.spec.ts" time="4.196">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-9, AC-12: /documents bulk Mark in office skips what doesn&apos;t qualify; the Custody filter lists them" classname="custody.spec.ts" time="10.834">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-11: Today counts To place in office and opens its rows with Mark in office" classname="custody.spec.ts" time="5.044">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="document-screenshots.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="1" failures="0" skipped="0" time="18.549" errors="0">
+<testcase name="screens vs mockups 02 / 10 / 12 + document page, desktop and phone width; no serious/critical axe issues" classname="document-screenshots.spec.ts" time="18.549">
+<properties>
+<property name="slow" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="document-type-field.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="6" failures="0" skipped="0" time="18.865" errors="0">
+<testcase name="AC-1, AC-4: an empty field lists the client&apos;s plan types under group headings; axe with the list open" classname="document-type-field.spec.ts" time="5.816">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-2, AC-3: typing matches aliases; other types follow under &apos;Not in existing category plan&apos;" classname="document-type-field.spec.ts" time="2.385">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-4, AC-6: keyboard pick shows the group line; Esc restores the last pick" classname="document-type-field.spec.ts" time="2.956">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-5: no match offers &apos;+ Propose a new type…&apos;, which opens the new-type step with the typed name" classname="document-type-field.spec.ts" time="2.588">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-4: the field and its open list fit a 390 px screen" classname="document-type-field.spec.ts" time="2.488">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-20: Edit says where the document moves and that its review resets" classname="document-type-field.spec.ts" time="2.632">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="dsc.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="7" failures="0" skipped="0" time="53.034" errors="0">
+<testcase name="AC-1, AC-2, AC-3, AC-4: add a DSC, see its expiry status, renew it; axe; 390 px" classname="dsc.spec.ts" time="8.581">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-7: Show password reveals it for 30 seconds with Copy, then hides; Hide hides at once" classname="dsc.spec.ts" time="5.073">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-8, AC-9: give out and receive back; the record is re-used and the log shows both" classname="dsc.spec.ts" time="4.111">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-4: Change password needs it twice; the reveal shows the new one" classname="dsc.spec.ts" time="5.046">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-5: a Manager archives with a reason and unarchives; Staff sees no Archive" classname="dsc.spec.ts" time="12.147">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="T4: Limited sees the tab and logs custody, but can&apos;t add, edit or show the password" classname="dsc.spec.ts" time="7.476">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-10, AC-11: remind days in Settings; Today shows DSC expiring on Mine, linked to the DSC tab" classname="dsc.spec.ts" time="10.6">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="expected-screenshots.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="1" failures="0" skipped="0" time="17.045" errors="0">
+<testcase name="04 screens vs mockups 03 / 10 + Expected tab + Collection, desktop and phone width; no serious/critical axe issues" classname="expected-screenshots.spec.ts" time="17.045">
+</testcase>
+</testsuite>
+<testsuite name="expected.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="9" failures="0" skipped="0" time="56.135" errors="0">
+<testcase name="AC-13: Expected tab — count, states as text, GSTIN shown when the client has two; axe; 390 px" classname="expected.spec.ts" time="7.904">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-9: Staff marks an item not needed with a reason (required); it leaves Open and the count" classname="expected.spec.ts" time="4.349">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-9: a Limited user sees the client&apos;s items but can&apos;t mark them not needed" classname="expected.spec.ts" time="4.761">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-10: a Manager undoes “Not needed”; the item is open again" classname="expected.spec.ts" time="6.407">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-8 + AC-11: Upload pre-fills Add document (0 choices); saving links it → Received; Reopen → open again" classname="expected.spec.ts" time="10.074">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-14: Documents is the default tab; each card lists open items first (Overdue, most late first), then documents" classname="expected.spec.ts" time="3.801">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-14 + AC-8: Upload from a card pre-fills, returns to Documents, and the item moves from open to received" classname="expected.spec.ts" time="10.331">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-14 + AC-5: a collected group with nothing open and no documents is &apos;All caught up&apos;; the plan row says why" classname="expected.spec.ts" time="3.637">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-15: Clients list shows &apos;N overdue · N due today&apos;; the Has overdue chip filters without touching the URL" classname="expected.spec.ts" time="4.871">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="format-preferences.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="5" failures="0" skipped="0" time="36.509" errors="0">
+<testcase name="AC-1, AC-3: the Admin sets preferred formats on a type; the catalogue row shows them" classname="format-preferences.spec.ts" time="8.831">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-19, AC-16: staff are warned about a PDF, save it anyway, and the document is flagged" classname="format-preferences.spec.ts" time="12.61">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-21: /documents filters to documents not in a preferred format" classname="format-preferences.spec.ts" time="5.043">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-5, AC-20: a per-client exception removes the warning; the plan row says so" classname="format-preferences.spec.ts" time="6.863">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-24: Settings › Collection shows the preferred-format figures and the exceptions by type; axe; 390 px" classname="format-preferences.spec.ts" time="3.162">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="governance-screenshots.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="3" failures="0" skipped="0" time="43.443" errors="0">
+<testcase name="05 screens vs mockup 05 + dialogs + bell + collection — desktop; no serious/critical axe issues" classname="governance-screenshots.spec.ts" time="18.926">
+</testcase>
+<testcase name="05 screens vs mockup 05 + dialogs + bell + collection — phone; no serious/critical axe issues" classname="governance-screenshots.spec.ts" time="14.543">
+</testcase>
+<testcase name="05 bell (no mockup) — desktop and phone; axe" classname="governance-screenshots.spec.ts" time="9.974">
+</testcase>
+</testsuite>
+<testsuite name="import.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="2" failures="0" skipped="0" time="21.391" errors="0">
+<testcase name="AC-13…16: template, preview with errors and duplicates, import, error file round trip" classname="import.spec.ts" time="13.029">
+</testcase>
+<testcase name="AC-14: Limited users can&apos;t open the import page" classname="import.spec.ts" time="8.362">
+</testcase>
+</testsuite>
+<testsuite name="inbox.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="5" failures="0" skipped="0" time="35.438" errors="0">
+<testcase name="AC-7, AC-9: staff see every unclassified document, newest first, with what&apos;s missing and how long it waited" classname="inbox.spec.ts" time="6.014">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-9: a Limited user sees only the Inbox items they added" classname="inbox.spec.ts" time="5.294">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-8: Assign opens the form with what is known; client + type files it and records classified_at once" classname="inbox.spec.ts" time="9.156">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-4: a document added from the Inbox (header button) comes back to the Inbox with its DOC-ID" classname="inbox.spec.ts" time="5.87">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-7: an empty Inbox says so" classname="inbox.spec.ts" time="9.104">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="intake-fixes.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="12" failures="0" skipped="0" time="70.817" errors="0">
+<testcase name="AC-18: Untagged rows have View and Download; a hard copy without a file says No file yet" classname="intake-fixes.spec.ts" time="8.86">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-18, AC-19: /documents rows have file buttons and Edit; a hard copy without a file says No file yet" classname="intake-fixes.spec.ts" time="7.754">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-19: Edit from Client › Documents saves and comes back to the client" classname="intake-fixes.spec.ts" time="7.709">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-19: the Needs-correction message offers Edit details" classname="intake-fixes.spec.ts" time="3.963">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-18: Today&apos;s To review rows have Download (and View for a PDF)" classname="intake-fixes.spec.ts" time="2.618">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-21, AC-22: Wrong file offers Upload corrected file first" classname="intake-fixes.spec.ts" time="6.232">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-22, AC-23: Wrong details → Edit details → a changed received-on date sends it back to To review" classname="intake-fixes.spec.ts" time="5.854">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-25: /documents shows 20 per page with N–M of T" classname="intake-fixes.spec.ts" time="5.688">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-13: the Returnable filter lists returnable hard copies only, as a URL flag" classname="intake-fixes.spec.ts" time="6.085">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-26: Client › Documents pages each card by 20, newest received first" classname="intake-fixes.spec.ts" time="4.889">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-27: My clients is on by default for Staff; off shows every client and is kept in the URL" classname="intake-fixes.spec.ts" time="5.067">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-27: My clients is off by default for a Manager" classname="intake-fixes.spec.ts" time="6.098">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="log-receipt.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="2" failures="0" skipped="0" time="17.314" errors="0">
+<testcase name="AC-13 … AC-15: three papers with a type — three filed hard copies, references to write on them; axe" classname="log-receipt.spec.ts" time="13.624">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-14, AC-16: no type → untagged for the client; the form fits 390 px" classname="log-receipt.spec.ts" time="3.69">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="office-settings.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="3" failures="0" skipped="0" time="16.594" errors="0">
+<testcase name="AC-9: an Admin renames the firm; the header follows and one activity row names the fields" classname="office-settings.spec.ts" time="7.597">
+</testcase>
+<testcase name="AC-9: an empty firm name is refused with a message on the field" classname="office-settings.spec.ts" time="3.487">
+</testcase>
+<testcase name="AC-10: a Manager sees no Office item, and the URL shows Not Found" classname="office-settings.spec.ts" time="5.51">
+</testcase>
+</testsuite>
+<testsuite name="platform.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="3" failures="0" skipped="0" time="46.381" errors="0">
+<testcase name="AC-2/3/5/8/9/13: sign in → firms → create a firm → open access → read a client → the firm sees it → close" classname="platform.spec.ts" time="25.121">
+<properties>
+<property name="serial" value="">
+</property>
+<property name="slow" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-7: suspending a firm locks its staff out at once; reactivating lets them back in" classname="platform.spec.ts" time="16.041">
+<properties>
+<property name="serial" value="">
+</property>
+<property name="slow" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-3: a staff member opening /platform gets Not Found and nothing of the console" classname="platform.spec.ts" time="5.219">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="proposed-types.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="3" failures="0" skipped="0" time="15.774" errors="0">
+<testcase name="AC-16: an Admin sees the proposal with its group, proposer, client and document count — with the decisions" classname="proposed-types.spec.ts" time="8.132">
+</testcase>
+<testcase name="AC-16: Staff don&apos;t get the approval panel" classname="proposed-types.spec.ts" time="5.287">
+</testcase>
+<testcase name="AC-15: Client › Settings shows the proposed type in its own group, badged &apos;Proposed&apos;" classname="proposed-types.spec.ts" time="2.355">
+</testcase>
+</testsuite>
+<testsuite name="reminders.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="2" failures="0" skipped="0" time="8.314" errors="0">
+<testcase name="AC-12: Client › Documents expected rows show the history and offer Remind / Log call" classname="reminders.spec.ts" time="5.942">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-12: Client › Expected rows carry the history; the Reminders list shows newest first with the call note" classname="reminders.spec.ts" time="2.372">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="request-documents.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="1" failures="0" skipped="0" time="9.52" errors="0">
+<testcase name="F3: Request documents on Client › Requested sends a link with only the other document" classname="request-documents.spec.ts" time="9.52">
+</testcase>
+</testsuite>
+<testsuite name="review-dispatch.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="5" failures="0" skipped="0" time="46.284" errors="0">
+<testcase name="AC-1, AC-2, AC-11, AC-12: rows show their state and the next action; Mark reviewed and Needs correction" classname="review-dispatch.spec.ts" time="9.599">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-8: Mark dispatched lists the client&apos;s ready originals and saves one packet" classname="review-dispatch.spec.ts" time="7.433">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-13, AC-5, AC-10: the document page&apos;s Review and Dispatch panels; Admin/Manager undo" classname="review-dispatch.spec.ts" time="11.334">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-4: a corrected file for a Needs-correction document asks when it arrived; that date replaces received on" classname="review-dispatch.spec.ts" time="5.215">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-14: /documents Status and Return filters round-trip through the URL as enums and rows show the state" classname="review-dispatch.spec.ts" time="12.703">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="screenshots.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="1" failures="0" skipped="0" time="19.621" errors="0">
+<testcase name="screens vs mockups 03 / 05 / 11 + import + add client, desktop and phone width; no serious/critical axe issues" classname="screenshots.spec.ts" time="19.621">
+</testcase>
+</testsuite>
+<testsuite name="search-screenshots.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="1" failures="0" skipped="0" time="20.578" errors="0">
+<testcase name="header search and /documents, desktop and phone width; no serious/critical axe issues" classname="search-screenshots.spec.ts" time="20.578">
+</testcase>
+</testsuite>
+<testsuite name="search.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="8" failures="0" skipped="0" time="47.707" errors="0">
+<testcase name="AC-1, AC-2: &quot;/&quot; focuses the box; suggestions are grouped; arrow keys + Enter open a client" classname="search.spec.ts" time="6.527">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-2, AC-3: documents are suggested, and a typed DOC-ID opens the document" classname="search.spec.ts" time="4.057">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-3: a DOC-ID the user can&apos;t open says so and stays put" classname="search.spec.ts" time="7.453">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-4, AC-11: Enter opens /documents; the text goes through session storage and never into any URL" classname="search.spec.ts" time="3.473">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-1: at 390 px the header fits and a Search button opens a full-width field" classname="search.spec.ts" time="3.519">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-5, AC-6, AC-7, AC-11: results for the header text; a filter with counts goes in the URL; Back and refresh keep the state; the text never enters a URL" classname="search.spec.ts" time="11.953">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-9, AC-10: no match offers to clear; a Limited user sees only what they can open" classname="search.spec.ts" time="5.405">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="NFR: /documents has no serious axe issues and fits 390 px" classname="search.spec.ts" time="5.32">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="smoke.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="4" failures="0" skipped="0" time="5.751" errors="0">
+<testcase name="app is up and signed-out visitors see the sign-in page" classname="smoke.spec.ts" time="1.2">
+</testcase>
+<testcase name="pages are served with a nonce-based Content-Security-Policy and no console CSP errors" classname="smoke.spec.ts" time="2.312">
+</testcase>
+<testcase name="the client upload page without a link shows &apos;no longer active&apos; with private headers" classname="smoke.spec.ts" time="1.051">
+</testcase>
+<testcase name="the storage sweep route refuses a call without the cron secret" classname="smoke.spec.ts" time="1.188">
+</testcase>
+</testsuite>
+<testsuite name="tenancy-edges.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="2" failures="0" skipped="0" time="7.214" errors="0">
+<testcase name="AC-3: the login page shows the platform name and no firm&apos;s name" classname="tenancy-edges.spec.ts" time="1.005">
+</testcase>
+<testcase name="AC-12, AC-21: firm B&apos;s Admin inviting firm A&apos;s staff gets a neutral refusal that names neither firm nor account" classname="tenancy-edges.spec.ts" time="6.209">
+</testcase>
+</testsuite>
+<testsuite name="today-documents.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="1" failures="0" skipped="0" time="9.231" errors="0">
+<testcase name="step 9: To review and Ready to dispatch on Today — counts, rows, Mark reviewed; axe" classname="today-documents.spec.ts" time="9.231">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="today-screenshots.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="1" failures="0" skipped="0" time="20.182" errors="0">
+<testcase name="06 screens vs mockups 01 / 10 + dialogs + Reminders list + chasing load, desktop and phone; no serious/critical axe issues" classname="today-screenshots.spec.ts" time="20.182">
+<properties>
+<property name="slow" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="today.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="6" failures="0" skipped="0" time="34.879" errors="0">
+<testcase name="AC-1: Today is the landing page and first in the nav; the logo goes there" classname="today.spec.ts" time="8.035">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-2…AC-5: counts, scope, filter in the URL as enums, card content; axe; 390 px" classname="today.spec.ts" time="6.572">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-3: Limited sees only their own clients, even under Everyone" classname="today.spec.ts" time="5.705">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-7…AC-10, AC-13: Remind from Today — ticks, preview, Send email (suppressed: .test), cap, history; axe on the dialog" classname="today.spec.ts" time="5.339">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-9: Open WhatsApp opens a wa.me chat and records it; no email on file is explained" classname="today.spec.ts" time="4.711">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-11: Log call records a call with its date and note" classname="today.spec.ts" time="4.517">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="type-governance.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="9" failures="0" skipped="0" time="57.741" errors="0">
+<testcase name="AC-1: Admin sees the queue with the four decisions; Reject is disabled while documents use the type (AC-9)" classname="type-governance.spec.ts" time="8.181">
+</testcase>
+<testcase name="AC-5, AC-8: Merge into… shows what will happen, then moves the document" classname="type-governance.spec.ts" time="7.612">
+</testcase>
+<testcase name="AC-9: Reject needs a reason, then retires the type" classname="type-governance.spec.ts" time="5.412">
+</testcase>
+<testcase name="AC-2, AC-3: Approve as proposed, and Edit &amp; approve with a new name" classname="type-governance.spec.ts" time="6.297">
+</testcase>
+<testcase name="AC-10: Staff don&apos;t get the queue" classname="type-governance.spec.ts" time="5.404">
+</testcase>
+<testcase name="AC-13: the proposer&apos;s bell — count, the decisions&apos; text, opening marks them read; 390 px; axe" classname="type-governance.spec.ts" time="6.552">
+</testcase>
+<testcase name="AC-16: Settings › Collection shows metric 3 and the queue&apos;s age" classname="type-governance.spec.ts" time="5.056">
+</testcase>
+<testcase name="AC-11: a decision another admin already made shows &apos;Already decided by &lt;name&gt;&apos; (review I-2)" classname="type-governance.spec.ts" time="9.859">
+</testcase>
+<testcase name="AC-15: a merged type is gone from the /documents type filter and the catalogue lists (review I-6)" classname="type-governance.spec.ts" time="3.368">
+</testcase>
+</testsuite>
+<testsuite name="upload-link-formats.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="3" failures="0" skipped="0" time="15.208" errors="0">
+<testcase name="AC-9, AC-12: the item shows its preferred formats; a PDF gets a warning the client can pass; 390 px; axe" classname="upload-link-formats.spec.ts" time="5.877">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-10: a preferred file uploads with no warning and no flag" classname="upload-link-formats.spec.ts" time="4.416">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-10, AC-13 (review I-1, I-2): the warning is announced, and &apos;Choose another file&apos; opens the picker; the new file counts as switched" classname="upload-link-formats.spec.ts" time="4.915">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="upload-link-requested.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="5" failures="0" skipped="0" time="31.947" errors="0">
+<testcase name="AC-16: the Requested tab lists the ad-hoc items with their count, and passes axe at phone width" classname="upload-link-requested.spec.ts" time="6.389">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-16: Cancel needs a reason and closes the item" classname="upload-link-requested.spec.ts" time="4.275">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-16: Upload opens Add document pre-filled; saving files it for the item, which becomes Received; Reopen" classname="upload-link-requested.spec.ts" time="10.865">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-18: Send again by WhatsApp carries the open items to a new link and the old one stops" classname="upload-link-requested.spec.ts" time="4.916">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-23: Settings › Collection shows the upload-link section to an Admin" classname="upload-link-requested.spec.ts" time="5.502">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="upload-link-review.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="3" failures="0" skipped="0" time="14.279" errors="0">
+<testcase name="AC-15: the requester&apos;s bell says files arrived, naming the client" classname="upload-link-review.spec.ts" time="5.478">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-13, D3: Client › Documents shows the badge and no View until the document is reviewed" classname="upload-link-review.spec.ts" time="3.895">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-13: /documents filters by channel Upload link and shows the badge; the document page names the channel" classname="upload-link-review.spec.ts" time="4.906">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="upload-link-send.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="3" failures="0" skipped="0" time="20.261" errors="0">
+<testcase name="AC-4: a note with personal data is flagged as you type and sending is blocked" classname="upload-link-send.spec.ts" time="7.048">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-1, AC-2, AC-18: link with a scheduled and an ad-hoc item; preview without the token; send; revoke" classname="upload-link-send.spec.ts" time="7.808">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-2: WhatsApp with a link opens wa.me with the link in the text and records the request" classname="upload-link-send.spec.ts" time="5.405">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="upload-link-today.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="2" failures="0" skipped="0" time="12.333" errors="0">
+<testcase name="AC-17: the requester&apos;s Today shows the Requested count, the overdue row with Upload, and the undated note" classname="upload-link-today.spec.ts" time="6.8">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-17: the incharge&apos;s Today (Mine) doesn&apos;t show someone else&apos;s request" classname="upload-link-today.spec.ts" time="5.533">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="upload-link.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="5" failures="0" skipped="0" time="12.283" errors="0">
+<testcase name="AC-10: /u without a token shows &apos;not active&apos; with no-referrer, noindex and no-store headers" classname="upload-link.spec.ts" time="1.025">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-6: the page shows the firm, the requester, dates and the items — nothing about the client; 390 px; axe" classname="upload-link.spec.ts" time="2.502">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-7, AC-11, AC-13: a PDF uploads, is filed for the requester To review, and the expected item becomes received" classname="upload-link.spec.ts" time="5.139">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="D3: a ZIP is refused before upload with a plain message" classname="upload-link.spec.ts" time="2.581">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+<testcase name="AC-10: staff pages still need sign-in" classname="upload-link.spec.ts" time="1.036">
+<properties>
+<property name="serial" value="">
+</property>
+</properties>
+</testcase>
+</testsuite>
+<testsuite name="users.spec.ts" timestamp="2026-11-10T19:25:47.233Z" hostname="chromium" tests="5" failures="0" skipped="0" time="36.558" errors="0">
+<testcase name="AC-10: non-admins do not see Users and roles; the URL shows Not Found and no staff data" classname="users.spec.ts" time="5.52">
+</testcase>
+<testcase name="AC-7, AC-9, AC-11: admin changes a role; last admin controls are disabled; changes are logged" classname="users.spec.ts" time="6.862">
+</testcase>
+<testcase name="AC-8: a deactivated user is removed on their next request" classname="users.spec.ts" time="10.021">
+</testcase>
+<testcase name="AC-5, AC-6, AC-11: admin invites a person, who signs in and becomes Active" classname="users.spec.ts" time="11.307">
+</testcase>
+<testcase name="08 AC-12: &apos;What each role can do&apos; shows every row of the permissions matrix" classname="users.spec.ts" time="2.848">
+</testcase>
+</testsuite>
+</testsuites>

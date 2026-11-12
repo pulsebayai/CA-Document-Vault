@@ -86,6 +86,16 @@ Each replaced function is copied from its latest definition (12's migrations B/C
 - [x] 10. **Docs:** architecture.md, ui-reference.md, Settings › Users rows. — proof: review
 - [x] 11. **Full verification:** lint, typecheck, unit, full RLS on dev, new/changed e2e locally; push → PR CI (asked first); dispatch Regression `only` = the new RLS files (migration rule; asked first); `sdlc-reviewer`; fix Important findings failing-first → PR with the AC table. — proof: CI green + AC table
 
+### R1 addendum — Client › In office (spec AC-21, AC-22; Sankar's R1 feedback 2026-11-12; spec change reviewed by Opus 2026-11-12)
+Branch `chore-r1-sankar-feedback`. No migration, no schema or RLS change (this feature's lock is not used).
+- [x] 12. **Lib:** `listHeldDocuments(clientId)` in `lib/documents/queries.ts` (filed, not archived, `custody` not null, no explicit limit; shares `toClientDocuments` with `listClientDocuments`). — proof: used by the tab; unit below
+- [x] 13. **Screen:** `clients/[id]/in-office-view.tsx` (`inOfficeDocuments`: hard copy, custody set, no live packet; longest held first; reuses `DocumentRow`), tab `In office` (`?tab=office`) after All documents in `clients/[id]/page.tsx`. Filter is by custody, not shown state, so a copy that shows Needs correction or To review stays listed (Opus review). — proof: unit `in-office-view.test.tsx` (3 tests; the filter test covers Needs correction, To review, dispatched and soft copy)
+- [x] 14. **e2e** `tests/e2e/in-office.spec.ts` (3): list + order + exclusions + axe; empty state + link; Limited user + 390 px. — proof: 3/3 green locally (cloud container, local build, dev DB) 2026-11-12
+- [ ] 15. **PR CI** green on the last commit (asked first); then the release gate for the next R1 release (new entry, not the old R1 evidence). — proof: CI run id here
+
+Follow-ups (Opus triage 2026-11-12): (a) `supabase/config.toml` `max_rows = 1000` also cuts `listClientDocuments`' `.limit(2000)` to 1000: raise the config or paginate if a client can exceed it; (b) the row's Edit link returns to the Documents tab because `safeReturn` (assign page) accepts only `/clients/<uuid>`: widening it is a security-check change, do it on its own; (c) custody buttons show on an archived client's rows (Documents and In office tabs alike; `set_custody` checks the document, not the client): decide whether archived clients should be read-only.
+Not done on purpose: a count on the tab label (needs the live-packet join; possible later via `search_document_facets`); pagination (single list; revisit after user feedback, Sidambara 2026-11-12). To check: whether row custody buttons show on an archived client's In office tab, as on the Documents tab (Opus: uncertain).
+
 ## Risks
 - **Function copies drift** (six replaced functions, one with 12's changes only a day old). Mitigation: copy from the latest file, mark changed lines, diff in review, schema fingerprint.
 - **`today_items` (K3)**: two more document sets. Mitigation: the same CTE as To review / Ready, office-first; dev timing before/after recorded.
@@ -135,3 +145,10 @@ All ACs mapped to passing tests in the PR table; PR CI green; RLS quick check on
 ### 2026-10-31 (PR and merge)
 - PR #16: CI 41215418432 green on bfb7488 (local Supabase: unit, RLS, 3 e2e shards). The dev Regression `only` = 13's RLS files was not run (owner's choice); RUN_SLOW deferred to after 13–16.
 - Merged by Sidambara's OK (merge 35ebe5d); main CI 41216148924 green. Locks released (roadmap PR).
+
+### 2026-11-12 (R1 feedback addendum, steps 12–14)
+- Sankar's R1 testing found three things; the second is this feature's (hard copies in office had no client-level view). Spec 13 gained AC-21/AC-22; Opus reviewed the change and the 15 AC-2 change together (approve with changes: filter by custody; uncapped query; doc wording).
+- Local e2e (cloud container, `npm run build` + `E2E_PREBUILT=1`, dev DB, `DSC_ENC_KEYS` = the public test key): in-office 3/3, all-documents 4/4, client-documents 4/4, custody 5/5, dsc 7/7 (AC-5 `networkidle` timed out twice on the first build and passed on a rebuild of the same code; not reproduced, treated as environmental; watch it in PR CI). Unit 785/785, lint and typecheck clean.
+
+### 2026-11-12 (R1 feedback round 2, chore/r1-sankar-feedback-2)
+- Sankar: In office must list everything physically held. AC-21/22 widened (untagged, To review, To place in office now listed; heading counts those not yet placed). `listHeldDocuments` reads every hard copy; changed tests listed in `sdlc/feedback/2026-11-12-sankar-r1-testing.md` › Round 2. No migration for this part.

@@ -1,0 +1,1915 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="789" failures="0" errors="0" time="30.455712715">
+    <testsuite name="tests/unit/activity-catalogue.test.ts" timestamp="2026-11-10T18:25:50.864Z" hostname="runnervm7aw5e" tests="13" failures="0" errors="0" skipped="0" time="0.045528189">
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="activity catalogue (AC-6) &gt; finds the actions written today (sanity: the scan works)" time="0.002908627">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="activity catalogue (AC-6) &gt; knows every dynamic action form" time="0.000967792">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="activity catalogue (AC-6) &gt; has a sentence for every action string in src/ and supabase/migrations/" time="0.000537908">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="activity catalogue (AC-6) &gt; every entry is a well-formed action in a known category" time="0.006255883">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="activity catalogue (AC-6) &gt; the Sign-ins category holds only sign-ins, and no other category holds them (AC-8)" time="0.002885803">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="activity catalogue (AC-6) &gt; categories match the spec&apos;s filter list, in order" time="0.000353329">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="activity catalogue (AC-6) &gt; Password reveals holds only reveals (14 AC-12)" time="0.000483154">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="sentences (AC-5, AC-6) &gt; reads as &apos;&lt;actor first name&gt; &lt;verb&gt; &lt;object&gt;&apos; with a &apos; · &apos;-joined detail line" time="0.000473997">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="sentences (AC-5, AC-6) &gt; system rows read &apos;Vault&apos;" time="0.001353904">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="sentences (AC-5, AC-6) &gt; an unknown action still renders" time="0.000359931">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="sentences (AC-5, AC-6) &gt; names a client or type it can&apos;t see as hidden, never blank" time="0.000352428">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="day headings and times in IST (AC-5) &gt; Today / Yesterday / weekday, day month" time="0.024798997">
+        </testcase>
+        <testcase classname="tests/unit/activity-catalogue.test.ts" name="day headings and times in IST (AC-5) &gt; time is HH:MM in IST" time="0.000629231">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/activity-view.test.tsx" timestamp="2026-11-10T18:25:50.868Z" hostname="runnervm7aw5e" tests="9" failures="0" errors="0" skipped="0" time="0.55560235">
+        <testcase classname="tests/unit/activity-view.test.tsx" name="URL filters (AC-7) &gt; keeps IDs, a known category and dates; drops anything else" time="0.00427887">
+        </testcase>
+        <testcase classname="tests/unit/activity-view.test.tsx" name="URL filters (AC-7) &gt; round-trips through the query string and builds the feed argument (sign-ins only by category)" time="0.001506922">
+        </testcase>
+        <testcase classname="tests/unit/activity-view.test.tsx" name="URL filters (AC-7) &gt; chips name the filter and its value" time="0.021364465">
+        </testcase>
+        <testcase classname="tests/unit/activity-view.test.tsx" name="rows (AC-5, AC-9) &gt; group by IST day" time="0.001344335">
+        </testcase>
+        <testcase classname="tests/unit/activity-view.test.tsx" name="rows (AC-5, AC-9) &gt; link to the document, else the client, else the settings page the row is about" time="0.000776009">
+        </testcase>
+        <testcase classname="tests/unit/activity-view.test.tsx" name="ActivityView (AC-5) &gt; shows day headings, time, sentence and detail; the sentence links; Load earlier appends the next page" time="0.410893589">
+        </testcase>
+        <testcase classname="tests/unit/activity-view.test.tsx" name="ActivityView (AC-5) &gt; Limited&apos;s subtitle; empty and error states" time="0.027332787">
+        </testcase>
+        <testcase classname="tests/unit/activity-view.test.tsx" name="ActivityView (AC-5) &gt; filters change the URL (IDs and enums only); a chip removes its filter" time="0.084236438">
+        </testcase>
+        <testcase classname="tests/unit/activity-view.test.tsx" name="URL dates (pre-PR review nit 6) &gt; drops impossible calendar days instead of sending them to the feed" time="0.001035601">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/adhoc-type-field.test.tsx" timestamp="2026-11-10T18:25:50.871Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.59448581">
+        <testcase classname="tests/unit/adhoc-type-field.test.tsx" name="ad-hoc request type field (F4) &gt; is the type-ahead combobox, not a dropdown" time="0.277845738">
+        </testcase>
+        <testcase classname="tests/unit/adhoc-type-field.test.tsx" name="ad-hoc request type field (F4) &gt; matches an old/new form name and sets the chosen type on the row" time="0.235213539">
+        </testcase>
+        <testcase classname="tests/unit/adhoc-type-field.test.tsx" name="ad-hoc request type field (F4) &gt; lists the client&apos;s plan types first and offers no new type" time="0.078988469">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/all-documents-view.test.tsx" timestamp="2026-11-10T18:25:50.871Z" hostname="runnervm7aw5e" tests="9" failures="0" errors="0" skipped="0" time="1.17048053">
+        <testcase classname="tests/unit/all-documents-view.test.tsx" name="All documents tab (AC-2) &gt; searches this client in the current FY, with no client picker and no client chip" time="0.304922973">
+        </testcase>
+        <testcase classname="tests/unit/all-documents-view.test.tsx" name="All documents tab (AC-2) &gt; a filter stays on the client page (tab=all), never with a client parameter" time="0.142440689">
+        </testcase>
+        <testcase classname="tests/unit/all-documents-view.test.tsx" name="All documents tab (AC-2) &gt; the FY select offers All years, kept as fy=all" time="0.10790179">
+        </testcase>
+        <testcase classname="tests/unit/all-documents-view.test.tsx" name="empty states (AC-4) &gt; nothing in the current FY: says so and links to All years" time="0.061577772">
+        </testcase>
+        <testcase classname="tests/unit/all-documents-view.test.tsx" name="empty states (AC-4) &gt; filtered and empty: Clear filters goes back to this client&apos;s current FY" time="0.071196479">
+        </testcase>
+        <testcase classname="tests/unit/all-documents-view.test.tsx" name="Last activity (AC-5, AC-6) &gt; one call for the page; who · sentence · when; a document without a visible event shows —" time="0.079286938">
+        </testcase>
+        <testcase classname="tests/unit/all-documents-view.test.tsx" name="Last activity (AC-5, AC-6) &gt; a failed call leaves the column at — with no error banner" time="0.052273132">
+        </testcase>
+        <testcase classname="tests/unit/all-documents-view.test.tsx" name="expanded row (AC-7) &gt; toggle with aria-expanded loads 5 events once, and See all opens the document&apos;s Activity" time="0.202780037">
+        </testcase>
+        <testcase classname="tests/unit/all-documents-view.test.tsx" name="expanded row (AC-7) &gt; no events: says so; an error shows inline with Retry" time="0.145557201">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/bootstrap-script.test.ts" timestamp="2026-11-10T18:25:50.874Z" hostname="runnervm7aw5e" tests="15" failures="0" errors="0" skipped="0" time="0.016009069">
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="parseArgs &gt; reads the firm, the first Admin and the environment; unset mode is multi" time="0.003156147">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="parseArgs &gt; refuses what it can&apos;t do safely" time="0.000898441">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="parseArgs &gt; a .test address needs --test, and --test takes only a .test address" time="0.000466503">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="parseArgs &gt; production (--env prod, or APP_ENV=production even with another --env) needs --yes-production, and never --test" time="0.000326421">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="parseArgs &gt; --office takes an office ID only (review I-5: reuse is by ID, never by name)" time="0.000600704">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="parseArgs &gt; readMode mirrors src/lib/tenancy.ts" time="0.001080442">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="parseArgs &gt; the plan names the project, the mode and the firm, but not the email address" time="0.000396923">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="runBootstrap &gt; checks the email, then the office, the invite (with the firm for the template), the staff row and one activity row" time="0.002156095">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="runBootstrap &gt; an email already used anywhere stops before anything is written" time="0.001544781">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="runBootstrap &gt; a failed invite leaves the firm set up and says to run again" time="0.000738052">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="runBootstrap &gt; a failed staff row withdraws the invite, so a re-run can invite again" time="0.000608709">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="runBootstrap &gt; a failed activity row is reported, not swallowed (AC-14)" time="0.000498133">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="runBootstrap &gt; passes the office ID when given" time="0.000579144">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="runBootstrap &gt; the dry run lists only staff-less namesakes" time="0.00036932">
+        </testcase>
+        <testcase classname="tests/unit/bootstrap-script.test.ts" name="runBootstrap &gt; --test creates the account without an email and marks it active" time="0.000592068">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/bulk-custody.test.tsx" timestamp="2026-11-10T18:25:50.876Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.631758063">
+        <testcase classname="tests/unit/bulk-custody.test.tsx" name="bulk custody (AC-9) &gt; Mark in office: confirms, sends chunks of ≤ 200, lists skipped DOC-IDs with the reason, and clears the selection" time="0.431245469">
+        </testcase>
+        <testcase classname="tests/unit/bulk-custody.test.tsx" name="bulk custody (AC-9) &gt; Ready to dispatch sends the ready step; a failed chunk says how many were handled" time="0.112333329">
+        </testcase>
+        <testcase classname="tests/unit/bulk-custody.test.tsx" name="bulk custody (AC-9) &gt; Cancel closes without calling the server" time="0.085945775">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/catalogue-schema.test.ts" timestamp="2026-11-10T18:25:50.877Z" hostname="runnervm7aw5e" tests="16" failures="0" errors="0" skipped="0" time="0.015618136">
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="validateDocType &gt; accepts a scheduled client document and converts form strings" time="0.003864606">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="validateDocType &gt; requires a name (≤ 120 characters)" time="0.000726005">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="validateDocType &gt; a scheduled type needs complete offsets within range" time="0.000467706">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="validateDocType &gt; overdue cannot come before the ask date (same rule as the DB check)" time="0.000602912">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="validateDocType &gt; &apos;as needed&apos; clears the schedule and reminders" time="0.001370134">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="validateDocType &gt; frequency must fit the type&apos;s period (a yearly document can&apos;t be collected monthly)" time="0.000539822">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="validateDocType &gt; firm records are never scheduled or reminded, whatever the form says" time="0.00049642">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="validateDocType &gt; unchecked boxes are false; long &apos;Used for&apos; is rejected" time="0.000475089">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="parseAliases &gt; splits on commas/new lines, trims, drops blanks and case-insensitive duplicates" time="0.000926924">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="parseAliases &gt; limits count and length" time="0.000531255">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="allowedFrequencies &gt; follows the period kind" time="0.000439612">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="validateDocGroup &gt; requires a name ≤ 80 characters" time="0.000389647">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="schedule wording (offsets from period end) &gt; describes offsets in plain words" time="0.000386001">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="schedule wording (offsets from period end) &gt; summarises a type&apos;s schedule" time="0.000395649">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="codeFromName &gt; makes a DB-safe code with a unique suffix" time="0.00049674">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-schema.test.ts" name="catalogue roles (AC-5, AC-6) &gt; Admin and Manager manage the catalogue; only Admin adds a financial year" time="0.000362607">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/catalogue-view.test.tsx" timestamp="2026-11-10T18:25:50.880Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.661043868">
+        <testcase classname="tests/unit/catalogue-view.test.tsx" name="CatalogueView (spec 02 AC-1, AC-4, AC-6) &gt; shows groups, types with schedule, usage, firm records and FYs" time="0.470527175">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-view.test.tsx" name="CatalogueView (spec 02 AC-1, AC-4, AC-6) &gt; read-only for Staff/Limited: no edit controls, switches disabled" time="0.04606762">
+        </testcase>
+        <testcase classname="tests/unit/catalogue-view.test.tsx" name="CatalogueView (spec 02 AC-1, AC-4, AC-6) &gt; editable for Admin/Manager; reminders switch disabled for &apos;as needed&apos; types" time="0.142019384">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/ci-changes.test.ts" timestamp="2026-11-10T18:25:50.880Z" hostname="runnervm7aw5e" tests="7" failures="0" errors="0" skipped="0" time="0.009964552">
+        <testcase classname="tests/unit/ci-changes.test.ts" name="CI change classifier &gt; treats sdlc/ files and Markdown anywhere as docs" time="0.003118719">
+        </testcase>
+        <testcase classname="tests/unit/ci-changes.test.ts" name="CI change classifier &gt; treats code, tests, migrations, workflows, scripts and config as code" time="0.000936857">
+        </testcase>
+        <testcase classname="tests/unit/ci-changes.test.ts" name="CI change classifier &gt; is docs only when every changed file is docs" time="0.000389928">
+        </testcase>
+        <testcase classname="tests/unit/ci-changes.test.ts" name="CI change classifier &gt; fails safe: no changed files means run everything" time="0.000258292">
+        </testcase>
+        <testcase classname="tests/unit/ci-changes.test.ts" name="changed test files, by suite &gt; picks unit, RLS and e2e test files; helpers, specs&apos; support files and other code are not run on their own" time="0.001623609">
+        </testcase>
+        <testcase classname="tests/unit/ci-changes.test.ts" name="changed test files, by suite &gt; ignores names that aren&apos;t plain paths (they are passed to a shell)" time="0.000365562">
+        </testcase>
+        <testcase classname="tests/unit/ci-changes.test.ts" name="changed test files, by suite &gt; nothing changed → nothing to run first" time="0.000619165">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/client-form.test.ts" timestamp="2026-11-10T18:25:50.882Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.010379617">
+        <testcase classname="tests/unit/client-form.test.ts" name="clientInputFromForm &gt; pairs registration kinds with numbers and drops blank rows; de-duplicates groups" time="0.006531006">
+        </testcase>
+        <testcase classname="tests/unit/client-form.test.ts" name="clientErrorMessage &gt; maps database refusals to fields and plain words" time="0.001045782">
+        </testcase>
+        <testcase classname="tests/unit/client-form.test.ts" name="clientErrorMessage &gt; never echoes identifier values from the database message" time="0.000424051">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/client-schema.test.ts" timestamp="2026-11-10T18:25:50.883Z" hostname="runnervm7aw5e" tests="8" failures="0" errors="0" skipped="0" time="0.015871195">
+        <testcase classname="tests/unit/client-schema.test.ts" name="validateClient &gt; has the 11 client types from intent decision 3" time="0.003260292">
+        </testcase>
+        <testcase classname="tests/unit/client-schema.test.ts" name="validateClient &gt; accepts a minimal client (PAN optional) and normalises fields" time="0.005285071">
+        </testcase>
+        <testcase classname="tests/unit/client-schema.test.ts" name="validateClient &gt; requires name, type and incharge" time="0.000738953">
+        </testcase>
+        <testcase classname="tests/unit/client-schema.test.ts" name="validateClient &gt; reports PAN/type mismatch as an error, society mismatch as a warning" time="0.000882492">
+        </testcase>
+        <testcase classname="tests/unit/client-schema.test.ts" name="validateClient &gt; GSTIN must contain the client&apos;s PAN; state is derived" time="0.001146406">
+        </testcase>
+        <testcase classname="tests/unit/client-schema.test.ts" name="validateClient &gt; GSTIN without a client PAN is allowed (PAN optional) but TAN format is checked" time="0.000747299">
+        </testcase>
+        <testcase classname="tests/unit/client-schema.test.ts" name="validateClient &gt; flags a duplicate registration on the row where it repeats" time="0.000638104">
+        </testcase>
+        <testcase classname="tests/unit/client-schema.test.ts" name="validateClient &gt; limits previous reference to 60 characters and never echoes PAN values in messages" time="0.000623587">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/clients-list.test.tsx" timestamp="2026-11-10T18:25:50.884Z" hostname="runnervm7aw5e" tests="8" failures="0" errors="0" skipped="0" time="0.325918242">
+        <testcase classname="tests/unit/clients-list.test.tsx" name="parseClientSearch &gt; fills defaults for an empty request" time="0.005485772">
+        </testcase>
+        <testcase classname="tests/unit/clients-list.test.tsx" name="parseClientSearch &gt; trims the query and caps it at 100 characters" time="0.001836896">
+        </testcase>
+        <testcase classname="tests/unit/clients-list.test.tsx" name="parseClientSearch &gt; drops unknown client types and malformed ids instead of failing" time="0.001926093">
+        </testcase>
+        <testcase classname="tests/unit/clients-list.test.tsx" name="parseClientSearch &gt; keeps page within 1…1000" time="0.001262746">
+        </testcase>
+        <testcase classname="tests/unit/clients-list.test.tsx" name="parseClientSearch &gt; pages are 50 clients" time="0.000461869">
+        </testcase>
+        <testcase classname="tests/unit/clients-list.test.tsx" name="ClientsView with clients (mockup 03) &gt; shows name, then type · PAN · incharge · enabled groups, paused groups and archived badges" time="0.290946098">
+        </testcase>
+        <testcase classname="tests/unit/clients-list.test.tsx" name="ClientsView with clients (mockup 03) &gt; says when a search finds nothing (not the first-run empty state)" time="0.008357664">
+        </testcase>
+        <testcase classname="tests/unit/clients-list.test.tsx" name="ClientsView with clients (mockup 03) &gt; shows the range when results are filtered or paged" time="0.012802483">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/clients-mine.test.tsx" timestamp="2026-11-10T18:25:50.886Z" hostname="runnervm7aw5e" tests="2" failures="0" errors="0" skipped="0" time="0.084598598">
+        <testcase classname="tests/unit/clients-mine.test.tsx" name="My clients empty state (AC-27) &gt; says none of the user&apos;s clients and how to see every client" time="0.071709625">
+        </testcase>
+        <testcase classname="tests/unit/clients-mine.test.tsx" name="My clients empty state (AC-27) &gt; without My clients, an empty office still says No clients yet" time="0.010682449">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/clients-overdue.test.tsx" timestamp="2026-11-10T18:25:50.886Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.340347583">
+        <testcase classname="tests/unit/clients-overdue.test.tsx" name="openText (AC-15) &gt; shows only the parts that are not 0" time="0.002163987">
+        </testcase>
+        <testcase classname="tests/unit/clients-overdue.test.tsx" name="ClientsView rows (AC-15) &gt; shows the overdue text on the right of the row, and nothing for a client with nothing open" time="0.230846465">
+        </testcase>
+        <testcase classname="tests/unit/clients-overdue.test.tsx" name="Has overdue chip (AC-15) &gt; is a toggle button; pressing it searches with hasOverdue and leaves the URL alone" time="0.105616539">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/clients-page.test.tsx" timestamp="2026-11-10T18:25:50.887Z" hostname="runnervm7aw5e" tests="1" failures="0" errors="0" skipped="0" time="0.142117364">
+        <testcase classname="tests/unit/clients-page.test.tsx" name="Clients page (empty state) &gt; shows the page heading and zero count" time="0.140379482">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/clients-toggle-state.test.tsx" timestamp="2026-11-10T18:25:50.887Z" hostname="runnervm7aw5e" tests="2" failures="0" errors="0" skipped="0" time="0.37516604">
+        <testcase classname="tests/unit/clients-toggle-state.test.tsx" name="filter toggles show their state without relying on colour (F1) &gt; Has overdue: no tick when off, a tick when on, and the name stays the same" time="0.320342439">
+        </testcase>
+        <testcase classname="tests/unit/clients-toggle-state.test.tsx" name="filter toggles show their state without relying on colour (F1) &gt; My clients: on by default for Staff shows the tick and a solid fill; switching off removes both" time="0.052601725">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/correction-kind-dialog.test.tsx" timestamp="2026-11-10T18:25:50.887Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.7647131">
+        <testcase classname="tests/unit/correction-kind-dialog.test.tsx" name="Needs correction kind (AC-21) &gt; offers Wrong file and Wrong details, none chosen" time="0.360024811">
+        </testcase>
+        <testcase classname="tests/unit/correction-kind-dialog.test.tsx" name="Needs correction kind (AC-21) &gt; with a reason but no kind, asks for the kind and saves nothing" time="0.202348117">
+        </testcase>
+        <testcase classname="tests/unit/correction-kind-dialog.test.tsx" name="Needs correction kind (AC-21) &gt; sends the chosen kind with the reason" time="0.199749404">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/csp.test.ts" timestamp="2026-11-10T18:25:50.888Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.006988741">
+        <testcase classname="tests/unit/csp.test.ts" name="Content-Security-Policy &gt; allows scripts only with the request nonce" time="0.002624515">
+        </testcase>
+        <testcase classname="tests/unit/csp.test.ts" name="Content-Security-Policy &gt; blocks framing and plugins, and limits connections to our Supabase project" time="0.000588827">
+        </testcase>
+        <testcase classname="tests/unit/csp.test.ts" name="Content-Security-Policy &gt; generates a different nonce each time" time="0.0015168">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/csv.test.ts" timestamp="2026-11-10T18:25:50.889Z" hostname="runnervm7aw5e" tests="23" failures="0" errors="0" skipped="0" time="0.061916843">
+        <testcase classname="tests/unit/csv.test.ts" name="template (AC-13) &gt; has the exact header and one synthetic example row that validates" time="0.006594283">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="file checks (AC-14) &gt; rejects a wrong header, naming what is missing or unknown" time="0.001041189">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="file checks (AC-14) &gt; accepts the columns in any order and in any case, and a trailing error column (re-upload of the error file)" time="0.000632825">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="file checks (AC-14) &gt; rejects duplicate columns" time="0.000381013">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="file checks (AC-14) &gt; rejects more than 2,000 rows and files over 1 MB" time="0.026553582">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="file checks (AC-14) &gt; rejects a file with no data rows" time="0.000653383">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="file checks (AC-14) &gt; strips a UTF-8 BOM, skips blank lines, numbers rows as in a spreadsheet (header = row 1)" time="0.000796631">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="file checks (AC-14) &gt; flags a row with the wrong number of columns instead of guessing" time="0.00120226">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="file checks (AC-14) &gt; decodes UTF-8 and refuses other encodings" time="0.001194416">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="row validation (AC-14, same rules as the Add client form) &gt; valid row → import payload with incharge, registrations and groups resolved" time="0.006031149">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="row validation (AC-14, same rules as the Add client form) &gt; accepts client_type as the stored value or the label, in any case" time="0.002671701">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="row validation (AC-14, same rules as the Add client form) &gt; reports every problem in plain words with its column, and never echoes PAN/GSTIN/mobile values" time="0.002509267">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="row validation (AC-14, same rules as the Add client form) &gt; a GSTIN that doesn&apos;t contain the row&apos;s PAN is an error on the gstins column" time="0.000401502">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="row validation (AC-14, same rules as the Add client form) &gt; PAN letter that doesn&apos;t fit the type: error for most types, warning (importable) for society" time="0.000682648">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="row validation (AC-14, same rules as the Add client form) &gt; incharge is required; blank groups use the office&apos;s &apos;Enabled for new clients&apos; defaults" time="0.000558515">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="row validation (AC-14, same rules as the Add client form) &gt; cells over 500 characters are rejected (defensive limit)" time="0.000310862">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="duplicates and warnings (AC-15) &gt; PAN of an existing active client → Duplicate — skipped (with that client&apos;s code)" time="0.001183035">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="duplicates and warnings (AC-15) &gt; PAN earlier in the same file → later row is Duplicate — skipped (case/space-insensitive)" time="0.000519783">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="duplicates and warnings (AC-15) &gt; an earlier row with errors doesn&apos;t make a later row a duplicate (only rows that will be imported count)" time="0.001322856">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="duplicates and warnings (AC-15) &gt; no PAN but same name as an existing client → warning, still importable" time="0.000638545">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="duplicates and warnings (AC-15) &gt; a GSTIN/TAN already on another client, or used by an earlier row, is an error (the DB would refuse the whole chunk)" time="0.000621984">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="chunks and error file (AC-16) &gt; splits ready rows into chunks of at most 200, in file order" time="0.000473776">
+        </testcase>
+        <testcase classname="tests/unit/csv.test.ts" name="chunks and error file (AC-16) &gt; error file = template columns + error column; round-trips through the parser; formula-looking cells are neutralised" time="0.002082899">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/custody-controls.test.tsx" timestamp="2026-11-10T18:25:50.893Z" hostname="runnervm7aw5e" tests="8" failures="0" errors="0" skipped="0" time="0.64266277">
+        <testcase classname="tests/unit/custody-controls.test.tsx" name="row custody click (AC-9) &gt; a reviewed hard copy offers Mark in office; the click calls set_custody and announces the result" time="0.348110206">
+        </testcase>
+        <testcase classname="tests/unit/custody-controls.test.tsx" name="row custody click (AC-9) &gt; a returnable copy in office offers Ready to dispatch; a plain one in office offers nothing (the firm keeps it)" time="0.049576386">
+        </testcase>
+        <testcase classname="tests/unit/custody-controls.test.tsx" name="row custody click (AC-9) &gt; S1: a Needs-correction hard copy offers Mark in office next to its review actions (pre-PR review nit 1)" time="0.038503721">
+        </testcase>
+        <testcase classname="tests/unit/custody-controls.test.tsx" name="row custody click (AC-9) &gt; a skipped document says why" time="0.043622665">
+        </testcase>
+        <testcase classname="tests/unit/custody-controls.test.tsx" name="row custody click (AC-9) &gt; P1: &quot;In office N days&quot; shows only past 30 days; 07&apos;s Held N days stays" time="0.03311673">
+        </testcase>
+        <testcase classname="tests/unit/custody-controls.test.tsx" name="document page Custody card (AC-4, AC-9, S3) &gt; shows the step with who and when, the next click and Undo (no reason asked)" time="0.102278121">
+        </testcase>
+        <testcase classname="tests/unit/custody-controls.test.tsx" name="document page Custody card (AC-4, AC-9, S3) &gt; a migrated step says when custody started; a plain copy says the firm keeps it" time="0.004482619">
+        </testcase>
+        <testcase classname="tests/unit/custody-controls.test.tsx" name="document page Custody card (AC-4, AC-9, S3) &gt; Ready shows both dates; with no step it says Not in office yet and offers Mark in office" time="0.020523489">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/custody-state.test.ts" timestamp="2026-11-10T18:25:50.894Z" hostname="runnervm7aw5e" tests="10" failures="0" errors="0" skipped="0" time="0.038580054">
+        <testcase classname="tests/unit/custody-state.test.ts" name="shown state with custody (AC-8) &gt; Document in office: custody set and Reviewed" time="0.003848903">
+        </testcase>
+        <testcase classname="tests/unit/custody-state.test.ts" name="shown state with custody (AC-8) &gt; Needs correction still wins over In office; To review wins over a kept custody step (Q4)" time="0.000441776">
+        </testcase>
+        <testcase classname="tests/unit/custody-state.test.ts" name="shown state with custody (AC-8) &gt; Ready to dispatch comes before Needs correction for a returnable copy marked ready (07&apos;s order)" time="0.000260648">
+        </testcase>
+        <testcase classname="tests/unit/custody-state.test.ts" name="shown state with custody (AC-8) &gt; a reviewed copy with no step stays Reviewed; a soft copy never shows a custody state" time="0.000264375">
+        </testcase>
+        <testcase classname="tests/unit/custody-state.test.ts" name="To place and the next custody action (AC-9, AC-11) &gt; To place = filed, live hard copy with a review decision and no custody step" time="0.000608108">
+        </testcase>
+        <testcase classname="tests/unit/custody-state.test.ts" name="To place and the next custody action (AC-9, AC-11) &gt; the next action is Mark in office, then Ready to dispatch for returnable copies, then none" time="0.000542495">
+        </testcase>
+        <testcase classname="tests/unit/custody-state.test.ts" name="In office N days (AC-10, P1) &gt; counts office days since marking in office (India date), for returnable copies not yet dispatched" time="0.02194414">
+        </testcase>
+        <testcase classname="tests/unit/custody-state.test.ts" name="In office N days (AC-10, P1) &gt; held = more than 30 days" time="0.000815416">
+        </testcase>
+        <testcase classname="tests/unit/custody-state.test.ts" name="/documents Custody filter (AC-12) &gt; round-trips to_place / in_office and the held flag through the URL; old return=ready keeps working" time="0.006791371">
+        </testcase>
+        <testcase classname="tests/unit/custody-state.test.ts" name="/documents Custody filter (AC-12) &gt; passes held to the search functions as true" time="0.000478847">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/dispatch-dialog.test.tsx" timestamp="2026-11-10T18:25:50.896Z" hostname="runnervm7aw5e" tests="10" failures="0" errors="0" skipped="0" time="1.154810104">
+        <testcase classname="tests/unit/dispatch-dialog.test.tsx" name="DispatchForm (AC-8, AC-9) &gt; lists the client&apos;s ready originals with this one ticked, and held days" time="0.355728705">
+        </testcase>
+        <testcase classname="tests/unit/dispatch-dialog.test.tsx" name="DispatchForm (AC-8, AC-9) &gt; asks for courier details only for Courier, and saves one packet with every ticked original" time="0.442917146">
+        </testcase>
+        <testcase classname="tests/unit/dispatch-dialog.test.tsx" name="DispatchForm (AC-8, AC-9) &gt; when an original is no longer ready, re-lists the valid ones and drops its tick (AC-9)" time="0.219268221">
+        </testcase>
+        <testcase classname="tests/unit/dispatch-dialog.test.tsx" name="DispatchForm (AC-8, AC-9) &gt; shows field errors from the server next to their fields" time="0.045183385">
+        </testcase>
+        <testcase classname="tests/unit/dispatch-dialog.test.tsx" name="DispatchForm (AC-8, AC-9) &gt; empty state" time="0.006844144">
+        </testcase>
+        <testcase classname="tests/unit/dispatch-dialog.test.tsx" name="DocumentRow (AC-11, AC-12) &gt; To review: state text + Mark reviewed + Needs correction…" time="0.038348307">
+        </testcase>
+        <testcase classname="tests/unit/dispatch-dialog.test.tsx" name="DocumentRow (AC-11, AC-12) &gt; Needs correction shows the reason and keeps the review actions" time="0.01471327">
+        </testcase>
+        <testcase classname="tests/unit/dispatch-dialog.test.tsx" name="DocumentRow (AC-11, AC-12) &gt; Reviewed copy: text only, no action, no held days" time="0.009700429">
+        </testcase>
+        <testcase classname="tests/unit/dispatch-dialog.test.tsx" name="DocumentRow (AC-11, AC-12) &gt; Ready original: Mark dispatched + Held N days" time="0.008779163">
+        </testcase>
+        <testcase classname="tests/unit/dispatch-dialog.test.tsx" name="DocumentRow (AC-11, AC-12) &gt; Dispatched original: dispatch text, no action, no held days" time="0.010282079">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/document-db-messages.test.ts" timestamp="2026-11-10T18:25:50.897Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.005114812">
+        <testcase classname="tests/unit/document-db-messages.test.ts" name="documentDbError &gt; CUSTODY_SOFT_COPY: undo Document in office first (on Received as)" time="0.002401593">
+        </testcase>
+        <testcase classname="tests/unit/document-db-messages.test.ts" name="documentDbError &gt; CUSTODY_READY: undo Ready to dispatch first (on Returnable)" time="0.000494623">
+        </testcase>
+        <testcase classname="tests/unit/document-db-messages.test.ts" name="documentDbError &gt; keeps the earlier mappings and the generic fallback" time="0.000505683">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/document-form-client-race.test.tsx" timestamp="2026-11-10T18:25:50.898Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.329009561">
+        <testcase classname="tests/unit/document-form-client-race.test.tsx" name="document form: client picked, type chosen while the client&apos;s types load &gt; keeps the chosen type when the client&apos;s list still contains it" time="0.159157368">
+            <system-err>
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/document-form-client-race.test.tsx" name="document form: client picked, type chosen while the client&apos;s types load &gt; still clears the type when the client&apos;s list doesn&apos;t contain it" time="0.078302825">
+            <system-err>
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/document-form-client-race.test.tsx" name="document form: client picked, type chosen while the client&apos;s types load &gt; keeps a period chosen while the client&apos;s types load" time="0.089213341">
+            <system-err>
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/document-form-hydration.test.tsx" timestamp="2026-11-10T18:25:50.900Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.230515825">
+        <testcase classname="tests/unit/document-form-hydration.test.tsx" name="Add document — a file chosen before the page is interactive &gt; is uploaded once the form hydrates, not dropped" time="0.160400469">
+            <system-err>
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/document-form-hydration.test.tsx" name="Add document — a file chosen before the page is interactive &gt; keeps Save disabled until the form is interactive (a native submit would put field values in the URL)" time="0.041787542">
+            <system-err>
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/document-form-hydration.test.tsx" name="Add document — a file chosen before the page is interactive &gt; does nothing when no file was chosen" time="0.025834514">
+            <system-err>
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/document-period.test.ts" timestamp="2026-11-10T18:25:50.901Z" hostname="runnervm7aw5e" tests="8" failures="0" errors="0" skipped="0" time="0.034175525">
+        <testcase classname="tests/unit/document-period.test.ts" name="istDate &gt; gives the India calendar date of an instant" time="0.026797375">
+        </testcase>
+        <testcase classname="tests/unit/document-period.test.ts" name="fyCodeOf / docIdFy / formatDocId (AC-6, D7) &gt; FY starts on 1 April" time="0.000758099">
+        </testcase>
+        <testcase classname="tests/unit/document-period.test.ts" name="fyCodeOf / docIdFy / formatDocId (AC-6, D7) &gt; formats the DOC-ID with the full FY; numbers pad to 5 and grow past 99,999" time="0.000562804">
+        </testcase>
+        <testcase classname="tests/unit/document-period.test.ts" name="defaultPeriod (AC-3): the period that just ended &gt; monthly → last month, across the year boundary" time="0.001393157">
+        </testcase>
+        <testcase classname="tests/unit/document-period.test.ts" name="defaultPeriod (AC-3): the period that just ended &gt; quarterly → last FY quarter (Q1 = Apr–Jun), across the FY boundary" time="0.000771153">
+        </testcase>
+        <testcase classname="tests/unit/document-period.test.ts" name="defaultPeriod (AC-3): the period that just ended &gt; yearly → last FY" time="0.000419696">
+        </testcase>
+        <testcase classname="tests/unit/document-period.test.ts" name="defaultPeriod (AC-3): the period that just ended &gt; as needed → Not needed" time="0.000338433">
+        </testcase>
+        <testcase classname="tests/unit/document-period.test.ts" name="allowedPeriodKinds (same rule as the DB trigger) &gt; month-types take month/quarter/year; quarter-types quarter/year; year-types year; untyped any" time="0.000406671">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/document-refs.test.ts" timestamp="2026-11-10T18:25:50.902Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.007206105">
+        <testcase classname="tests/unit/document-refs.test.ts" name="activity rows that name a document in their data (spec risk 2) &gt; finds the activity inserts (sanity)" time="0.002569685">
+        </testcase>
+        <testcase classname="tests/unit/document-refs.test.ts" name="activity rows that name a document in their data (spec risk 2) &gt; every action that stores document_id / document_ids is a known reference action" time="0.001777185">
+        </testcase>
+        <testcase classname="tests/unit/document-refs.test.ts" name="activity rows that name a document in their data (spec risk 2) &gt; no activity insert uses another key for a document" time="0.000660312">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/document-rules.test.ts" timestamp="2026-11-10T18:25:50.903Z" hostname="runnervm7aw5e" tests="20" failures="0" errors="0" skipped="0" time="0.019880914">
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateFile (AC-2) &gt; accepts every allow-listed extension with its usual browser type and maps it to one stored type" time="0.004637799">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateFile (AC-2) &gt; accepts the other types browsers declare for the same files (Windows zip, Excel-owned CSV, HEIF, none)" time="0.000446887">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateFile (AC-2) &gt; rejects other extensions, and a declared type that contradicts the extension" time="0.000427881">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateFile (AC-2) &gt; rejects empty files and files over 25 MB; exactly 25 MB is fine" time="0.000335267">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateFile (AC-2) &gt; the map matches the database&apos;s canonical list (same 10 extensions, 9 stored types)" time="0.001131347">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateFile (AC-2) &gt; errors never repeat the file name (it may contain a client&apos;s name)" time="0.000420317">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="sanitiseFileName (AC-2, DB check document_version_file_name) &gt; keeps ordinary names as they are" time="0.000551632">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="sanitiseFileName (AC-2, DB check document_version_file_name) &gt; removes path separators, control characters and leading dots; tidies spaces" time="0.000440525">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="sanitiseFileName (AC-2, DB check document_version_file_name) &gt; removes bidirectional/format control characters (right-to-left override spoofing)" time="0.000756616">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="sanitiseFileName (AC-2, DB check document_version_file_name) &gt; caps at 180 characters and keeps the extension" time="0.000426268">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="sanitiseFileName (AC-2, DB check document_version_file_name) &gt; falls back to &apos;document.&lt;ext&gt;&apos; when nothing is left" time="0.000342261">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="sanitiseFileName (AC-2, DB check document_version_file_name) &gt; output always satisfies the DB rule" time="0.000752158">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="canView &gt; offers View for PDF and browser images only (HEIC is download-only)" time="0.000329146">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateDocumentMeta (AC-1, AC-4) &gt; lists received-as and channel options in the agreed order" time="0.00037915">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateDocumentMeta (AC-1, AC-4) &gt; Save to inbox needs only received-as, channel and date" time="0.001436248">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateDocumentMeta (AC-1, AC-4) &gt; Save to vault needs a client and a type" time="0.00261336">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateDocumentMeta (AC-1, AC-4) &gt; a soft copy needs a file; a hard copy or original doesn&apos;t" time="0.000554548">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateDocumentMeta (AC-1, AC-4) &gt; received on is a real date, not in the future (India date)" time="0.000282188">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateDocumentMeta (AC-1, AC-4) &gt; rejects unknown received-as / channel values and remarks over 500 characters" time="0.000242143">
+        </testcase>
+        <testcase classname="tests/unit/document-rules.test.ts" name="validateDocumentMeta (AC-1, AC-4) &gt; ignores malformed IDs rather than passing them on" time="0.000390772">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/document-search.test.ts" timestamp="2026-11-10T18:25:50.906Z" hostname="runnervm7aw5e" tests="19" failures="0" errors="0" skipped="0" time="0.015007697">
+        <testcase classname="tests/unit/document-search.test.ts" name="parseDocumentSearchParams (AC-6) &gt; with no params gives the defaults: no filters, newest received first, page 1, archived hidden" time="0.004993285">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="parseDocumentSearchParams (AC-6) &gt; reads every filter from its URL key" time="0.00125614">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="parseDocumentSearchParams (AC-6) &gt; drops malformed values instead of failing (a bad shared link still opens the page)" time="0.00049179">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="parseDocumentSearchParams (AC-6) &gt; takes the first value when a key repeats" time="0.000401">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="parseDocumentSearchParams (AC-6) &gt; caps the page number" time="0.000471964">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="parseDocumentSearchParams (AC-6) &gt; keeps GSTIN/TAN only when a client is chosen" time="0.000532677">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="parseDocumentSearchParams (AC-6) &gt; swaps a reversed date range" time="0.000369081">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="parseDocumentSearchParams (AC-6) &gt; ignores any text-like key: search text is never read from the URL" time="0.000355695">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="filtersToQuery (AC-6, AC-11) &gt; writes only non-default values, in a stable order" time="0.000880478">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="filtersToQuery (AC-6, AC-11) &gt; round-trips through the parser" time="0.00068397">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="filtersToQuery (AC-6, AC-11) &gt; has no way to carry search text (the type has no text field, and output keys are the fixed filter keys)" time="0.000414316">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="normaliseSearchText (AC-8) &gt; trims, collapses spaces and keeps at most 5 words of at most 50 characters" time="0.00038474">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="normaliseSearchText (AC-8) &gt; keeps %, _ and \ as typed (the database escapes them)" time="0.000113202">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="normaliseSearchText (AC-8) &gt; returns an empty string for blank input" time="0.00017642">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="parseDocId (AC-3) &gt; recognises a complete DOC-ID in any case with surrounding spaces, and returns it upper-cased" time="0.000211886">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="parseDocId (AC-3) &gt; rejects partial or decorated IDs" time="0.000177922">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="toSearchInput (the search_documents / search_document_facets argument) &gt; maps URL filters to the function&apos;s keys and adds the normalised text" time="0.000342661">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="toSearchInput (the search_documents / search_document_facets argument) &gt; omits empty text and unset filters" time="0.000201938">
+        </testcase>
+        <testcase classname="tests/unit/document-search.test.ts" name="isFiltered &gt; is false for defaults and ignores sort and page" time="0.000221875">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/document-state.test.ts" timestamp="2026-11-10T18:25:50.908Z" hostname="runnervm7aw5e" tests="21" failures="0" errors="0" skipped="0" time="0.042390588">
+        <testcase classname="tests/unit/document-state.test.ts" name="documentState: first match wins (spec order) &gt; 1 Archived beats everything" time="0.002332896">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="documentState: first match wins (spec order) &gt; 2 In inbox when client or type is missing, whatever the status" time="0.000493313">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="documentState: first match wins (spec order) &gt; 3 Dispatched &lt;date&gt; · &lt;method&gt; for an original in a live packet" time="0.00104214">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="documentState: first match wins (spec order) &gt; 4 Ready to dispatch: a reviewed or Needs-correction original marked ready, not yet sent" time="0.00028353">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="documentState: first match wins (spec order) &gt; 5 Needs correction · &lt;reason&gt;" time="0.000373549">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="documentState: first match wins (spec order) &gt; 6 Reviewed &lt;date&gt; by &lt;name&gt; (date in India time)" time="0.021173153">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="documentState: first match wins (spec order) &gt; 7 To review" time="0.000505636">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="predicates shared with Today (06) and the SQL &gt; To review = filed, live, status received" time="0.000628396">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="predicates shared with Today (06) and the SQL &gt; Ready to dispatch = filed, live original, reviewed or Needs correction, marked ready, not dispatched" time="0.001146636">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="predicates shared with Today (06) and the SQL &gt; 13: a reviewed original not marked ready (or only in office) is not Ready to dispatch" time="0.000422621">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="held days (AC-11) &gt; counts days since received for originals not yet dispatched" time="0.000482233">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="held days (AC-11) &gt; is null for copies, dispatched or archived originals" time="0.000324327">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="next action on Client › Documents (AC-12) &gt; Mark reviewed on To review and Needs correction; Mark dispatched on Ready; nothing otherwise" time="0.000618628">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="validateReason (AC-2, AC-5) &gt; needs 1–500 characters after trimming" time="0.000781021">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="validateDispatch (AC-8) &gt; accepts a complete packet, trims the recipient and de-duplicates the documents" time="0.002985988">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="validateDispatch (AC-8) &gt; keeps courier details only for Courier" time="0.000726659">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="validateDispatch (AC-8) &gt; refuses: no originals, a future date, a date before receipt, no method, no or long recipient, long courier fields" time="0.002036962">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="/documents Status and Return values (AC-14) &gt; offers To review · Reviewed · Needs correction, and To place · In office · Ready to dispatch · Dispatched" time="0.000377807">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="/documents Status and Return values (AC-14) &gt; round-trips the new values through the URL (enums only, no text)" time="0.001761256">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="/documents Status and Return values (AC-14) &gt; passes return to the search functions and counts as a filter" time="0.000537637">
+        </testcase>
+        <testcase classname="tests/unit/document-state.test.ts" name="packetSummary (AC-10) &gt; says how many items were removed, and Cancelled when all were" time="0.000333114">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/dsc-crypto.test.ts" timestamp="2026-11-10T18:25:50.911Z" hostname="runnervm7aw5e" tests="14" failures="0" errors="0" skipped="0" time="2.418563549">
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="DSC password encryption (AC-6) &gt; round-trips, including non-ASCII and the 100-character maximum" time="0.004787107">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="DSC password encryption (AC-6) &gt; produces the stored shape, names its key, and never contains the plain value" time="0.001085921">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="DSC password encryption (AC-6) &gt; uses a fresh IV every time (same password, different ciphertext)" time="0.001467243">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="DSC password encryption (AC-6) &gt; refuses a tampered ciphertext, IV or tag" time="0.001513074">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="DSC password encryption (AC-6) &gt; decrypts by the ciphertext&apos;s key ID after a rotation; an unknown ID is refused" time="0.000896282">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="DSC password encryption (AC-6) &gt; a wrong key under the same ID fails as BAD_CIPHERTEXT, not as a wrong password" time="0.000509531">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="DSC password encryption (AC-6) &gt; fails closed when the key is missing or malformed" time="0.001231682">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="DSC password encryption (AC-6) &gt; error messages never carry the key or the plain value" time="0.008038458">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="DSC password encryption (AC-6) &gt; the fixed test key works in tests and is refused in production (plan Risks)" time="0.00165026">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="step 10 security review &gt; I-1: the public test key is refused in production under any key ID, not only &apos;test&apos;" time="0.000772812">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="step 10 security review &gt; N-7: a key that isn&apos;t strict base64 of 32 bytes is refused (no silently ignored characters)" time="0.000573055">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="step 10 security review &gt; AC-6: a failed decrypt logs nothing and its error carries no secret" time="0.003232528">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="key fence (spec FR: only crypto.ts reads DSC_ENC_KEYS) &gt; any other module reading DSC_ENC_KEYS is a lint error; crypto.ts may" time="2.375896943">
+        </testcase>
+        <testcase classname="tests/unit/dsc-crypto.test.ts" name="key fence (spec FR: only crypto.ts reads DSC_ENC_KEYS) &gt; crypto.ts still may not read the other secrets" time="0.013543157">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/dsc-expiry.test.ts" timestamp="2026-11-10T18:25:50.913Z" hostname="runnervm7aw5e" tests="6" failures="0" errors="0" skipped="0" time="0.0087738">
+        <testcase classname="tests/unit/dsc-expiry.test.ts" name="expiryStatus (AC-3) &gt; ok outside the window: &apos;Valid till 12 Mar 2027&apos;" time="0.003498107">
+        </testcase>
+        <testcase classname="tests/unit/dsc-expiry.test.ts" name="expiryStatus (AC-3) &gt; warn inside the window: &apos;Expires in N days&apos;, &apos;Expires tomorrow&apos;, &apos;Expires today&apos;" time="0.000951906">
+        </testcase>
+        <testcase classname="tests/unit/dsc-expiry.test.ts" name="expiryStatus (AC-3) &gt; bad once passed: &apos;Expired 4 days ago&apos;, &apos;Expired yesterday&apos;" time="0.00036444">
+        </testcase>
+        <testcase classname="tests/unit/dsc-expiry.test.ts" name="expiryStatus (AC-3) &gt; the window follows the client&apos;s setting" time="0.000423009">
+        </testcase>
+        <testcase classname="tests/unit/dsc-expiry.test.ts" name="expiryStatus (AC-3) &gt; isDue matches the warn and bad tones; the default window is 30 days" time="0.000592705">
+        </testcase>
+        <testcase classname="tests/unit/dsc-expiry.test.ts" name="custodyText (AC-8) &gt; &apos;In office&apos; with no move or after a return; &apos;With &lt;name&gt; since &lt;date&gt;&apos; when out" time="0.000333543">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/dsc-validation.test.ts" timestamp="2026-11-10T18:25:50.914Z" hostname="runnervm7aw5e" tests="11" failures="0" errors="0" skipped="0" time="0.020410759">
+        <testcase classname="tests/unit/dsc-validation.test.ts" name="validateDsc (AC-2, AC-4) &gt; trims, keeps the optional fields and drops empty ones" time="0.004973628">
+        </testcase>
+        <testcase classname="tests/unit/dsc-validation.test.ts" name="validateDsc (AC-2, AC-4) &gt; the password is kept exactly as typed (no trimming: spaces may be part of a PIN)" time="0.00048116">
+        </testcase>
+        <testcase classname="tests/unit/dsc-validation.test.ts" name="validateDsc (AC-2, AC-4) &gt; requires holder, a real expiry date and, on create, the password" time="0.001127159">
+        </testcase>
+        <testcase classname="tests/unit/dsc-validation.test.ts" name="validateDsc (AC-2, AC-4) &gt; an edit carries no password (it changes only through Change password)" time="0.00048068">
+        </testcase>
+        <testcase classname="tests/unit/dsc-validation.test.ts" name="validateDsc (AC-2, AC-4) &gt; an expired date is allowed (a DSC entered after it lapsed is still tracked)" time="0.000306093">
+        </testcase>
+        <testcase classname="tests/unit/dsc-validation.test.ts" name="validateDsc (AC-2, AC-4) &gt; refuses an unknown class and long issuer or notes; offers the spec&apos;s class and issuer lists" time="0.003844906">
+        </testcase>
+        <testcase classname="tests/unit/dsc-validation.test.ts" name="validatePassword (AC-4 Change password) &gt; needs 1–100 characters typed the same twice" time="0.000702625">
+        </testcase>
+        <testcase classname="tests/unit/dsc-validation.test.ts" name="validateCustody (AC-8) &gt; needs a name (1–120) and a date not in the future; the note is optional (≤ 200)" time="0.000892941">
+        </testcase>
+        <testcase classname="tests/unit/dsc-validation.test.ts" name="validateCustody (AC-8) &gt; the date defaults to today" time="0.000885357">
+        </testcase>
+        <testcase classname="tests/unit/dsc-validation.test.ts" name="validateRemindDays (AC-10) and validateArchiveReason (AC-5) &gt; remind days are a whole number 1–180" time="0.000894024">
+        </testcase>
+        <testcase classname="tests/unit/dsc-validation.test.ts" name="validateRemindDays (AC-10) and validateArchiveReason (AC-5) &gt; an archive reason is required, ≤ 500" time="0.000460943">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/dsc-view.test.tsx" timestamp="2026-11-10T18:25:50.916Z" hostname="runnervm7aw5e" tests="5" failures="0" errors="0" skipped="0" time="0.49906306">
+        <testcase classname="tests/unit/dsc-view.test.tsx" name="Reveal: hides by the clock, clears the clipboard (security I-3, review I-5) &gt; hides once 30 s of real time have passed, even if the timer only fired once (a background tab)" time="0.26738229">
+        </testcase>
+        <testcase classname="tests/unit/dsc-view.test.tsx" name="Reveal: hides by the clock, clears the clipboard (security I-3, review I-5) &gt; a copied password is overwritten on the clipboard when it hides" time="0.064707269">
+        </testcase>
+        <testcase classname="tests/unit/dsc-view.test.tsx" name="Reveal: hides by the clock, clears the clipboard (security I-3, review I-5) &gt; a password that was never copied leaves the clipboard alone" time="0.036685439">
+        </testcase>
+        <testcase classname="tests/unit/dsc-view.test.tsx" name="Label in name (review I-2, WCAG 2.5.3) &gt; every DSC card button&apos;s accessible name starts with its visible text" time="0.06253691">
+        </testcase>
+        <testcase classname="tests/unit/dsc-view.test.tsx" name="Password fields stay out of password managers (security I-2) &gt; Add DSC&apos;s password field is marked not to be saved" time="0.065191879">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/expected-prefill.test.ts" timestamp="2026-11-10T18:25:50.917Z" hostname="runnervm7aw5e" tests="5" failures="0" errors="0" skipped="0" time="0.006100447">
+        <testcase classname="tests/unit/expected-prefill.test.ts" name="prefillFrom (AC-8) &gt; keeps a valid type, period and registration" time="0.002947567">
+        </testcase>
+        <testcase classname="tests/unit/expected-prefill.test.ts" name="prefillFrom (AC-8) &gt; drops a type the client can&apos;t file, and anything that isn&apos;t a UUID" time="0.000397294">
+        </testcase>
+        <testcase classname="tests/unit/expected-prefill.test.ts" name="prefillFrom (AC-8) &gt; drops a period that doesn&apos;t exist or whose kind the type doesn&apos;t allow" time="0.000320209">
+        </testcase>
+        <testcase classname="tests/unit/expected-prefill.test.ts" name="prefillFrom (AC-8) &gt; drops a registration of another kind or client; picks the only one of the kind by default" time="0.000398516">
+        </testcase>
+        <testcase classname="tests/unit/expected-prefill.test.ts" name="prefillFrom (AC-8) &gt; returns to the Expected tab" time="0.000203842">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/expected-schedule.test.ts" timestamp="2026-11-10T18:25:50.918Z" hostname="runnervm7aw5e" tests="22" failures="0" errors="0" skipped="0" time="0.012365401">
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; 2026-09-30 + 1 months, day 1 → 2026-10-01" time="0.001984371">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; 2026-09-30 + 1 months, day 5 → 2026-10-05" time="0.000324039">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; 2026-03-31 + 1 months, day 31 → 2026-04-30" time="0.000169308">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; 2026-03-31 + 2 months, day 31 → 2026-05-31" time="0.000216818">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; 2027-12-31 + 2 months, day 31 → 2028-02-29" time="0.000314081">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; 2026-12-31 + 2 months, day 31 → 2027-02-28" time="0.000277722">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; 2026-12-31 + 1 months, day 7 → 2027-01-07" time="0.000242716">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; 2026-03-31 + 2 months, day 16 → 2026-05-16" time="0.000218611">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; 2028-03-31 + 0 months, day 15 → 2028-03-15" time="0.000860929">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; 2028-03-31 + 0 months, day 31 → 2028-03-31" time="0.00034575">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; 2026-06-30 + 13 months, day 31 → 2027-07-31" time="0.000259277">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="offsetDate (period end + N months, on day D clamped to the month&apos;s last day) &gt; rejects malformed input instead of guessing" time="0.00116506">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="scheduleDates &gt; gives ask date, overdue-from date and due-by (the day before overdue from)" time="0.001008777">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="todayInIndia &gt; is the calendar date in IST (UTC+5:30)" time="0.000179898">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="expectedState (spec Shown state; AC-13 state text) &gt; Due &lt;date&gt; before the due-by day" time="0.000269718">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="expectedState (spec Shown state; AC-13 state text) &gt; Due today on the due-by day" time="0.000648249">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="expectedState (spec Shown state; AC-13 state text) &gt; Overdue · N days late from the overdue-from date (1 day late on that date)" time="0.000355338">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="expectedState (spec Shown state; AC-13 state text) &gt; shows the year when the due-by date is in another year" time="0.000132038">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="expectedState (spec Shown state; AC-13 state text) &gt; On hold for a pending item of a paused row or group, whatever the dates" time="0.000124314">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="expectedState (spec Shown state; AC-13 state text) &gt; Received &lt;date&gt; · DOC-ID" time="0.000296698">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="expectedState (spec Shown state; AC-13 state text) &gt; Not needed · reason (waived)" time="0.000248027">
+        </testcase>
+        <testcase classname="tests/unit/expected-schedule.test.ts" name="expectedState (spec Shown state; AC-13 state text) &gt; isOpen: Due, Due today and Overdue count; On hold, Received and Not needed don&apos;t (Expected tab count, AC-13)" time="0.000258656">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/expected-shape.test.ts" timestamp="2026-11-10T18:25:50.921Z" hostname="runnervm7aw5e" tests="25" failures="0" errors="0" skipped="0" time="0.030444615">
+        <testcase classname="tests/unit/expected-shape.test.ts" name="toItem &gt; derives the shown state and open flag from the dates and today" time="0.002805231">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="toItem &gt; On hold when the row or its group is paused — not open" time="0.000565489">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="toItem &gt; Received shows the date and the completing DOC-ID" time="0.000401272">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="toItem &gt; Not needed shows the reason; system waivers say System, manual ones the person" time="0.000299841">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="toItem &gt; shows the GSTIN/TAN only when the client has more than one active of that kind (AC-13)" time="0.000654545">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="toItem &gt; assigned staff: the row&apos;s own assignee, else the group&apos;s" time="0.000195175">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="filters, sort, count &gt; status filter: Open = pending (incl. on hold), Received, Not needed, All" time="0.001229321">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="filters, sort, count &gt; sorts group → type → newest period first" time="0.007190799">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="filters, sort, count &gt; the tab count is Due + Overdue only" time="0.000574365">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="officeToday (private.office_today) &gt; uses the test clock only in a test office" time="0.000326672">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="expectedErrorMessage &gt; ROLE_REQUIRED: Limited users cannot waive expected documents" time="0.000260207">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="expectedErrorMessage &gt; ROLE_REQUIRED: only Admin or Manager can undo a waiver" time="0.000103754">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="expectedErrorMessage &gt; REASON_REQUIRED: give a reason of 1–500 characters" time="0.00012775">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="expectedErrorMessage &gt; NOT_PENDING: only an open item can be marked not needed" time="0.000083747">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="expectedErrorMessage &gt; NOT_WAIVED: this item is not marked not needed" time="0.000068308">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="expectedErrorMessage &gt; NOT_RECEIVED: only a received item can be reopened" time="0.000067766">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="expectedErrorMessage &gt; NOT_FOUND: expected document" time="0.000065653">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="expectedErrorMessage &gt; something else" time="0.000100488">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="actions &gt; waive: trims the reason, calls waive_expected and refreshes the client page" time="0.001904145">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="actions &gt; waive: refuses Limited, an empty or over-long reason, or a bad id — without calling the database" time="0.000948896">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="actions &gt; undo is Admin/Manager only; reopen is for anyone signed in" time="0.001091432">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="actions &gt; maps database errors to plain messages and logs only a code + request ID (never the reason)" time="0.000879606">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="openForCards (AC-14: Documents cards) &gt; Overdue (most days late first), then Due today, then Due; received and on-hold items are left out" time="0.000254437">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="openForCards (AC-14: Documents cards) &gt; the current FY also shows still-open items of earlier FYs; a past FY shows only its own" time="0.000137818">
+        </testcase>
+        <testcase classname="tests/unit/expected-shape.test.ts" name="onTimePct / pctText (AC-16) &gt; one decimal; null (shown as —) when nothing fell due" time="0.007551245">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/expected-view.test.tsx" timestamp="2026-11-10T18:25:50.925Z" hostname="runnervm7aw5e" tests="7" failures="0" errors="0" skipped="0" time="0.91491848">
+        <testcase classname="tests/unit/expected-view.test.tsx" name="ExpectedView (AC-13) &gt; defaults to Open items of the current FY, grouped by group" time="0.264299366">
+        </testcase>
+        <testcase classname="tests/unit/expected-view.test.tsx" name="ExpectedView (AC-13) &gt; status and FY filters, and the empty state" time="0.206618866">
+        </testcase>
+        <testcase classname="tests/unit/expected-view.test.tsx" name="ExpectedView (AC-13) &gt; offers Upload + Waive on open items, Reopen on received, Undo on not needed" time="0.239990281">
+        </testcase>
+        <testcase classname="tests/unit/expected-view.test.tsx" name="ExpectedView (AC-13) &gt; Limited: no Waive or Undo; archived client: no actions at all" time="0.086822263">
+        </testcase>
+        <testcase classname="tests/unit/expected-view.test.tsx" name="uploadHref (AC-8) &gt; carries IDs only, and returns to the Expected tab" time="0.001353573">
+        </testcase>
+        <testcase classname="tests/unit/expected-view.test.tsx" name="uploadHref (AC-8) &gt; labels show the GSTIN only when the item carries one (client has several)" time="0.000316553">
+        </testcase>
+        <testcase classname="tests/unit/expected-view.test.tsx" name="ExpectedView — earlier FYs (review Important 2) &gt; lists still-pending earlier-FY items only under the current FY, and not in Received / Not needed" time="0.113252911">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/format-warning.test.tsx" timestamp="2026-11-10T18:25:50.926Z" hostname="runnervm7aw5e" tests="6" failures="0" errors="0" skipped="0" time="0.317344181">
+        <testcase classname="tests/unit/format-warning.test.tsx" name="staff format warning (AC-19) &gt; warns when the file isn&apos;t in a preferred format, and saving stays enabled" time="0.0849819">
+            <system-err>
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/format-warning.test.tsx" name="staff format warning (AC-19) &gt; is announced: the warning sits in a polite live region that exists before it appears (review I-2)" time="0.055500966">
+            <system-err>
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/format-warning.test.tsx" name="staff format warning (AC-19) &gt; says nothing for a preferred file, a type with no preference, or a client with an exception" time="0.072794867">
+            <system-err>
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/format-warning.test.tsx" name="staff format warning (AC-19) &gt; says nothing for a document with no file" time="0.019180264">
+            <system-err>
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/format-warning.test.tsx" name="staff format warning (AC-19) &gt; Staff+ can allow any format in two steps; the warning then goes away" time="0.049170645">
+            <system-err>
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/format-warning.test.tsx" name="staff format warning (AC-19) &gt; offers no exception link to Limited users, or for a type that isn&apos;t on the client&apos;s plan" time="0.033107174">
+            <system-err>
+The current testing environment is not configured to support act(...)
+
+The current testing environment is not configured to support act(...)
+
+            </system-err>
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/formats.test.ts" timestamp="2026-11-10T18:25:50.928Z" hostname="runnervm7aw5e" tests="29" failures="0" errors="0" skipped="0" time="0.012571613">
+        <testcase classname="tests/unit/formats.test.ts" name="normaliseFormat &gt; statement.PDF → pdf" time="0.001915745">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="normaliseFormat &gt; photo.jpeg → jpg" time="0.000311236">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="normaliseFormat &gt; photo.JPG → jpg" time="0.00014884">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="normaliseFormat &gt; xlsx → xlsx" time="0.000298532">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="normaliseFormat &gt; .csv → csv" time="0.000226867">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="normaliseFormat &gt; office/x/doc/y/z.heic → heic" time="0.000290978">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="normaliseFormat &gt; archive.tar.zip → zip" time="0.000313109">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="normaliseFormat &gt; returns null when there is nothing to read" time="0.000397508">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="isValidPreference (mirrors the database check) &gt; accepts null and any distinct subset of the choices" time="0.001064572">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="isValidPreference (mirrors the database check) &gt; refuses []" time="0.000347844">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="isValidPreference (mirrors the database check) &gt; refuses [&quot;zip&quot;]" time="0.000263045">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="isValidPreference (mirrors the database check) &gt; refuses [&quot;PDF&quot;]" time="0.000179718">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="isValidPreference (mirrors the database check) &gt; refuses [&quot;jpeg&quot;]" time="0.000121609">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="isValidPreference (mirrors the database check) &gt; refuses [&quot;pdf&quot;,&quot;pdf&quot;]" time="0.000115949">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="isValidPreference (mirrors the database check) &gt; refuses [&quot;exe&quot;]" time="0.000190218">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="toStoredPreference &gt; empty → null; order follows the choices list" time="0.001111371">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="formatLabel &gt; [&quot;xlsx&quot;,&quot;xls&quot;,&quot;csv&quot;] → Excel or CSV" time="0.000321735">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="formatLabel &gt; [&quot;pdf&quot;,&quot;xlsx&quot;,&quot;xls&quot;,&quot;csv&quot;] → PDF, Excel or CSV" time="0.000144452">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="formatLabel &gt; [&quot;xlsx&quot;] → Excel" time="0.000123192">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="formatLabel &gt; [&quot;csv&quot;] → CSV" time="0.000114735">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="formatLabel &gt; [&quot;jpg&quot;,&quot;png&quot;,&quot;heic&quot;] → Image" time="0.000104637">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="formatLabel &gt; [&quot;docx&quot;] → Word" time="0.000109807">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="formatLabel &gt; [&quot;pdf&quot;,&quot;docx&quot;] → PDF or Word" time="0.000123593">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="formatLabel &gt; [&quot;pdf&quot;,&quot;jpg&quot;,&quot;png&quot;,&quot;heic&quot;,&quot;xlsx&quot;,&quot;xls&quot;,&quot;csv&quot;,&quot;docx&quot;] → PDF, Excel, CSV, Image or Word" time="0.000149842">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="formatLabel &gt; null or empty → null" time="0.000161644">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="preferenceApplies and isPreferred &gt; no preference or an exception → nothing applies, every file is fine" time="0.000251413">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="preferenceApplies and isPreferred &gt; a preference applies → only its formats are preferred" time="0.000256132">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="preferenceApplies and isPreferred &gt; jpeg counts as jpg" time="0.000162115">
+        </testcase>
+        <testcase classname="tests/unit/formats.test.ts" name="sharePct (AC-24) &gt; gives a one-decimal percentage, and null when there is nothing to divide" time="0.000259518">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/governance-actions.test.ts" timestamp="2026-11-10T18:25:50.932Z" hostname="runnervm7aw5e" tests="9" failures="0" errors="0" skipped="0" time="0.023123745">
+        <testcase classname="tests/unit/governance-actions.test.ts" name="roles (AC-10) &gt; Staff and Limited are refused before the database is called" time="0.007410408">
+        </testcase>
+        <testcase classname="tests/unit/governance-actions.test.ts" name="approve / edit &amp; approve (AC-2, AC-3) &gt; Approve calls approve_proposed_type with the trimmed comment and refreshes the catalogue and collection pages" time="0.002412137">
+        </testcase>
+        <testcase classname="tests/unit/governance-actions.test.ts" name="approve / edit &amp; approve (AC-2, AC-3) &gt; Edit &amp; approve validates with 02&apos;s rules and sends the edits in the database&apos;s column names" time="0.002968921">
+        </testcase>
+        <testcase classname="tests/unit/governance-actions.test.ts" name="approve / edit &amp; approve (AC-2, AC-3) &gt; a period that doesn&apos;t fit lists the documents (AC-3)" time="0.001637159">
+        </testcase>
+        <testcase classname="tests/unit/governance-actions.test.ts" name="merge and reject (AC-5, AC-7, AC-9) &gt; Merge passes the database&apos;s argument names and reports how many documents moved" time="0.000985626">
+        </testcase>
+        <testcase classname="tests/unit/governance-actions.test.ts" name="merge and reject (AC-5, AC-7, AC-9) &gt; Merge without a target is refused before the database" time="0.000725193">
+        </testcase>
+        <testcase classname="tests/unit/governance-actions.test.ts" name="merge and reject (AC-5, AC-7, AC-9) &gt; Reject requires a reason of 1–500 characters" time="0.001085776">
+        </testcase>
+        <testcase classname="tests/unit/governance-actions.test.ts" name="decided once (AC-11) and logging &gt; someone else decided first: &apos;Already decided by &lt;name&gt;&apos;, marked stale, logged as a code only" time="0.001413947">
+        </testcase>
+        <testcase classname="tests/unit/governance-actions.test.ts" name="decided once (AC-11) and logging &gt; the preview returns the database&apos;s counts and conflicts" time="0.001379862">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/governance-messages.test.ts" timestamp="2026-11-10T18:25:50.934Z" hostname="runnervm7aw5e" tests="19" failures="0" errors="0" skipped="0" time="0.01768371">
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; ALREADY_DECIDED: 1b6…" time="0.002722199">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; DUPLICATE_TYPE: an approved type with this name already exists in this group" time="0.000438044">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; PERIOD_KIND: 2 documents don&apos;t fit a year type" time="0.000313449">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; HAS_DOCUMENTS: 3 documents use this type" time="0.000323969">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; TARGET_INVALID: merge into an approved, active type" time="0.000258897">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; REASON_REQUIRED: give a reason" time="0.000346382">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; COMMENT_TOO_LONG: a comment has at most 500 characters" time="0.000281649">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; ROLE_REQUIRED: only Admin or Manager can decide proposed types" time="0.000215396">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; new row for relation &quot;doc_type&quot; violates check constraint &quot;doc_type_offsets_complete&quot;" time="0.001084339">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; deadlock detected" time="0.000463341">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; never echoes the database text for something unknown" time="0.000455767">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="governanceErrorMessage &gt; stale decisions are recognised and the decider&apos;s id is read from the code" time="0.000685108">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="notificationText (AC-13) &gt; the three decisions, as in the spec" time="0.000359125">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="notificationText (AC-13) &gt; an approval that moved group names the new type" time="0.000256051">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="validateTypeEdits (AC-3: 02&apos;s add-type rules) &gt; as needed: no offsets, no reminders; aliases de-duplicated" time="0.001832185">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="validateTypeEdits (AC-3: 02&apos;s add-type rules) &gt; scheduled: offsets required and overdue on or after ask" time="0.002713542">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="validateTypeEdits (AC-3: 02&apos;s add-type rules) &gt; frequency can&apos;t be more often than the period; group and period are required" time="0.000944877">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="validateDecisionComment (AC-9, AC-12) &gt; optional comment: blank → null, trimmed, ≤ 500" time="0.000405503">
+        </testcase>
+        <testcase classname="tests/unit/governance-messages.test.ts" name="validateDecisionComment (AC-9, AC-12) &gt; Reject&apos;s reason is required, 1–500" time="0.000254499">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/handed-over-rules.test.ts" timestamp="2026-11-10T18:25:50.937Z" hostname="runnervm7aw5e" tests="8" failures="0" errors="0" skipped="0" time="0.009838486">
+        <testcase classname="tests/unit/handed-over-rules.test.ts" name="validateHandedOver (AC-14, D1) &gt; a new hard copy needs it; the text is trimmed" time="0.00360163">
+        </testcase>
+        <testcase classname="tests/unit/handed-over-rules.test.ts" name="validateHandedOver (AC-14, D1) &gt; refuses more than 120 characters" time="0.000479936">
+        </testcase>
+        <testcase classname="tests/unit/handed-over-rules.test.ts" name="validateHandedOver (AC-14, D1) &gt; a soft copy never carries it (cleared, no error)" time="0.000334384">
+        </testcase>
+        <testcase classname="tests/unit/handed-over-rules.test.ts" name="validateHandedOver (AC-14, D1) &gt; changing a soft copy to a hard copy needs it" time="0.001251244">
+        </testcase>
+        <testcase classname="tests/unit/handed-over-rules.test.ts" name="validateHandedOver (AC-14, D1) &gt; an existing hard copy recorded before 12 (none set) can be edited without it" time="0.000322322">
+        </testcase>
+        <testcase classname="tests/unit/handed-over-rules.test.ts" name="validateHandedOver (AC-14, D1) &gt; once set it can be changed but not cleared" time="0.00058955">
+        </testcase>
+        <testcase classname="tests/unit/handed-over-rules.test.ts" name="validateHandedOver (AC-14, D1) &gt; legacy &apos;original&apos; input (no UI sends it) is not asked for it" time="0.000341567">
+        </testcase>
+        <testcase classname="tests/unit/handed-over-rules.test.ts" name="Received as options (AC-8) &gt; staff choose Soft copy or Hard copy; Returnable is a separate checkbox" time="0.000451682">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/header-search.test.tsx" timestamp="2026-11-10T18:25:50.938Z" hostname="runnervm7aw5e" tests="16" failures="0" errors="0" skipped="0" time="1.324989184">
+        <testcase classname="tests/unit/header-search.test.tsx" name="the &quot;/&quot; shortcut (AC-1) &gt; focuses the search box from anywhere that isn&apos;t a field" time="0.231473388">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="the &quot;/&quot; shortcut (AC-1) &gt; does nothing while the user is typing in an input, textarea or editable element" time="0.135721781">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="the &quot;/&quot; shortcut (AC-1) &gt; ignores Ctrl/Cmd + /" time="0.021692825">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="suggestions (AC-2) &gt; waits for 2 characters and a 250 ms pause, then asks once" time="0.054655659">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="suggestions (AC-2) &gt; shows Clients and Documents groups and a final &quot;See all results&quot; option" time="0.045929711">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="suggestions (AC-2) &gt; says when nothing matches, and shows Inbox for an unclassified document" time="0.064554511">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="suggestions (AC-2) &gt; ignores an answer that arrives after a newer one" time="0.067820608">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="keyboard (AC-1) &gt; arrow keys move through the options (aria-activedescendant) and wrap; Enter opens the highlighted one" time="0.115512669">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="keyboard (AC-1) &gt; Enter on a document option opens the document; clicking an option works too" time="0.041132337">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="keyboard (AC-1) &gt; Esc closes the list and keeps the text" time="0.05078229">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="DOC-ID jump (AC-3) &gt; Enter on a complete DOC-ID opens that document" time="0.08035067">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="DOC-ID jump (AC-3) &gt; says so when the user can&apos;t open it" time="0.091663827">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="See all (AC-4, AC-11) &gt; Enter with nothing highlighted hands the text over in session storage and opens /documents with no text in the URL" time="0.124594108">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="See all (AC-4, AC-11) &gt; the &quot;See all results&quot; option does the same" time="0.055127889">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="See all (AC-4, AC-11) &gt; no navigation ever carries the typed text" time="0.090132357">
+        </testcase>
+        <testcase classname="tests/unit/header-search.test.tsx" name="phones (AC-1) &gt; a Search button opens the field, and Close closes it" time="0.050807845">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/identifiers.test.ts" timestamp="2026-11-10T18:25:50.940Z" hostname="runnervm7aw5e" tests="42" failures="0" errors="0" skipped="0" time="0.01070477">
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN &gt; accepts AAAAA9999A after trimming/upper-casing" time="0.001951813">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN &gt; rejects AAAPZ9999" time="0.000281798">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN &gt; rejects AAAP99999Z" time="0.000142506">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN &gt; rejects AAAPZ9999ZZ" time="0.000122469">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN &gt; rejects 1AAPZ9999Z" time="0.000148447">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN &gt; rejects " time="0.000186789">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAAPZ9999Z fits individual" time="0.000250249">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAAPZ9999Z fits proprietorship" time="0.000285355">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAAHZ9999Z fits huf" time="0.000467956">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAAFZ9999Z fits partnership" time="0.00018715">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAAFZ9999Z fits llp" time="0.000210443">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAACZ9999Z fits private_ltd" time="0.000087614">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAACZ9999Z fits public_ltd" time="0.000068237">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAATZ9999Z fits trust" time="0.000060023">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAAAZ9999Z fits aop_boi" time="0.000114244">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAABZ9999Z fits aop_boi" time="0.000076322">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAAAZ9999Z fits society" time="0.000058759">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; AAAAZ9999Z fits cooperative" time="0.000054201">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; a clear mismatch is an error (company PAN on an individual)" time="0.000089688">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; society / co-operative mismatches only warn" time="0.000117079">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; government / local authority / juridical letters (AAAGZ9999Z) warn, never block" time="0.000125985">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; government / local authority / juridical letters (AAALZ9999Z) warn, never block" time="0.00006948">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="PAN 4th letter vs client type &gt; government / local authority / juridical letters (AAAJZ9999Z) warn, never block" time="0.000058039">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="GSTIN &gt; accepts 15 chars: state + PAN + entity + Z + check char" time="0.000168155">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="GSTIN &gt; rejects 33AAAPZ9999Z1Z" time="0.00012827">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="GSTIN &gt; rejects 3AAAAPZ9999Z1Z5" time="0.000063368">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="GSTIN &gt; rejects 99AAAPZ9999Z1Z5X" time="0.000057327">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="GSTIN &gt; rejects 00AAAPZ9999Z1Z5" time="0.00005872">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="GSTIN &gt; rejects 33AAAPZ9999Z0Z5" time="0.000054533">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="GSTIN &gt; derives state from the first 2 digits and PAN from chars 3–12" time="0.000829512">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="GSTIN &gt; state list covers 01–38 and 97 (Other Territory)" time="0.000570608">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="TAN &gt; accepts AAAA99999A" time="0.000151403">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="TAN &gt; rejects CHE999999Z" time="0.00012792">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="TAN &gt; rejects CHEZ9999Z" time="0.000070161">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="TAN &gt; rejects CHEZ99999" time="0.000061826">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="Indian mobile &gt; normalises 9876543210" time="0.000210283">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="Indian mobile &gt; normalises +91 98765 43210" time="0.000129402">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="Indian mobile &gt; normalises 098765-43210" time="0.000076292">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="Indian mobile &gt; rejects 5876543210" time="0.000123962">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="Indian mobile &gt; rejects 987654321" time="0.000067897">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="Indian mobile &gt; rejects 98765432101" time="0.000062076">
+        </testcase>
+        <testcase classname="tests/unit/identifiers.test.ts" name="Indian mobile &gt; rejects abc" time="0.000057207">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/last-activity-line.test.ts" timestamp="2026-11-10T18:25:50.946Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.032506841">
+        <testcase classname="tests/unit/last-activity-line.test.ts" name="lastActivityLine (AC-5) &gt; who · sentence · when, from 08&apos;s catalogue" time="0.003044641">
+        </testcase>
+        <testcase classname="tests/unit/last-activity-line.test.ts" name="lastActivityLine (AC-5) &gt; a system row says Vault; a missing event is a dash; an unknown action still says something" time="0.000807216">
+        </testcase>
+        <testcase classname="tests/unit/last-activity-line.test.ts" name="whenText (AC-5) &gt; relative within 7 days, then the date" time="0.026271938">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/link-salt.test.ts" timestamp="2026-11-10T18:25:50.946Z" hostname="runnervm7aw5e" tests="4" failures="0" errors="0" skipped="0" time="0.03361304">
+        <testcase classname="tests/unit/link-salt.test.ts" name="ipHash salt &gt; refuses to run without LINK_IP_SALT when MAIL_TRANSPORT=brevo" time="0.023631062">
+        </testcase>
+        <testcase classname="tests/unit/link-salt.test.ts" name="ipHash salt &gt; refuses to run without LINK_IP_SALT when MAIL_TRANSPORT=ses" time="0.002294005">
+        </testcase>
+        <testcase classname="tests/unit/link-salt.test.ts" name="ipHash salt &gt; refuses on production too, and uses the dev salt only where no real client can arrive" time="0.00299551">
+        </testcase>
+        <testcase classname="tests/unit/link-salt.test.ts" name="ipHash salt &gt; with a salt set, hashes and never returns the IP" time="0.002056116">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/login-brand.test.ts" timestamp="2026-11-10T18:25:50.947Z" hostname="runnervm7aw5e" tests="5" failures="0" errors="0" skipped="0" time="0.013095433">
+        <testcase classname="tests/unit/login-brand.test.ts" name="loginBrand &gt; multi (unset): the platform name, no branch, and no database client at all" time="0.004562272">
+        </testcase>
+        <testcase classname="tests/unit/login-brand.test.ts" name="loginBrand &gt; multi (explicit): same" time="0.000718521">
+        </testcase>
+        <testcase classname="tests/unit/login-brand.test.ts" name="loginBrand &gt; single: the deployment&apos;s one non-test office (test offices never shown)" time="0.002405819">
+        </testcase>
+        <testcase classname="tests/unit/login-brand.test.ts" name="loginBrand &gt; single with no real office yet: the platform name" time="0.000869072">
+        </testcase>
+        <testcase classname="tests/unit/login-brand.test.ts" name="loginBrand &gt; an invalid mode fails closed" time="0.002104847">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/mail-ses.test.ts" timestamp="2026-11-10T18:25:50.948Z" hostname="runnervm7aw5e" tests="9" failures="0" errors="0" skipped="0" time="0.045142035">
+        <testcase classname="tests/unit/mail-ses.test.ts" name="readMailConfig &gt; accepts ses (any case), as staging and prod set it" time="0.005587237">
+        </testcase>
+        <testcase classname="tests/unit/mail-ses.test.ts" name="formatAddress &gt; quotes an ASCII name, encodes a non-ASCII one, and drops quotes, brackets and control characters" time="0.002344509">
+        </testcase>
+        <testcase classname="tests/unit/mail-ses.test.ts" name="createSesTransport &gt; sends one SendEmail with From = firm name on the platform address, Reply-To = the staff member, both bodies" time="0.004846124">
+        </testcase>
+        <testcase classname="tests/unit/mail-ses.test.ts" name="createSesTransport &gt; maps every failure to a follow_up.error_code (^[A-Z0-9_]{1,64}$)" time="0.002465167">
+        </testcase>
+        <testcase classname="tests/unit/mail-ses.test.ts" name="createSesTransport &gt; gives up after its time limit (the follow-up shows Failed + Retry)" time="0.021320879">
+        </testcase>
+        <testcase classname="tests/unit/mail-ses.test.ts" name="deliver with ses &gt; uses the ses transport, with the firm&apos;s name as the From name (17)" time="0.001429787">
+        </testcase>
+        <testcase classname="tests/unit/mail-ses.test.ts" name="deliver with ses &gt; the safety rules run before SES: .test never, the allow-list outside production, no From → Failed" time="0.000534842">
+        </testcase>
+        <testcase classname="tests/unit/mail-ses.test.ts" name="deliver with ses &gt; missing credentials or a region other than Mumbai is MAIL_CONFIG, never a send" time="0.000974735">
+        </testcase>
+        <testcase classname="tests/unit/mail-ses.test.ts" name="deliver with ses &gt; a caller that doesn&apos;t offer ses gets MAIL_CONFIG, not Brevo" time="0.000737597">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/mailer.test.ts" timestamp="2026-11-10T18:25:50.949Z" hostname="runnervm7aw5e" tests="16" failures="0" errors="0" skipped="0" time="0.049558065">
+        <testcase classname="tests/unit/mailer.test.ts" name="readMailConfig &gt; defaults to the test transport, non-production, empty allow-list and a 200/day ceiling" time="0.004379155">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="readMailConfig &gt; reads brevo, production, the allow-list (lower-cased) and the sender" time="0.001006253">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="readMailConfig &gt; rejects an unknown transport instead of guessing" time="0.001339486">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="recipientAllowed (AC-13) &gt; .test addresses are never sent, in any environment" time="0.000602698">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="recipientAllowed (AC-13) &gt; outside production only allow-listed addresses go out" time="0.000551903">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="recipientAllowed (AC-13) &gt; in production any valid address goes out" time="0.00042193">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="deliver &gt; with the default (test) transport makes zero network calls, for allowed and suppressed recipients alike" time="0.003382931">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="deliver &gt; suppresses before choosing a transport: brevo is never created for a blocked recipient" time="0.000583733">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="deliver &gt; brevo without a sender, or with a missing key, fails with a code instead of throwing" time="0.001223049">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="createBrevoTransport &gt; posts sender, to, replyTo, subject, text and html with the api-key header; 201 → sent with the message ID" time="0.006295561">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="createBrevoTransport &gt; any other status → failed BREVO_&lt;status&gt;; a network error → NETWORK; no answer in time → TIMEOUT" time="0.022146718">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="From name = the sending firm (17) &gt; the firm&apos;s name replaces MAIL_FROM_NAME; the address stays the platform&apos;s" time="0.001387967">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="From name = the sending firm (17) &gt; two firms on one deployment each send under their own name (test transport too)" time="0.000480479">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="From name = the sending firm (17) &gt; without a firm name, MAIL_FROM_NAME is the fallback (unchanged behaviour)" time="0.000343463">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="From name = the sending firm (17) &gt; header-breaking characters are removed and the name is cut to 70 characters (AC-7)" time="0.001360386">
+        </testcase>
+        <testcase classname="tests/unit/mailer.test.ts" name="From name = the sending firm (17) &gt; control and format characters go too, and the cut never splits a character (review nit 6)" time="0.000610933">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/notification-bell.test.tsx" timestamp="2026-11-10T18:25:50.952Z" hostname="runnervm7aw5e" tests="4" failures="0" errors="0" skipped="0" time="0.386464963">
+        <testcase classname="tests/unit/notification-bell.test.tsx" name="NotificationBell (AC-13) &gt; names the count, opens the newest notifications and marks them read (S4)" time="0.270508212">
+        </testcase>
+        <testcase classname="tests/unit/notification-bell.test.tsx" name="NotificationBell (AC-13) &gt; Esc closes the panel and returns focus to the bell" time="0.028934182">
+        </testcase>
+        <testcase classname="tests/unit/notification-bell.test.tsx" name="NotificationBell (AC-13) &gt; a failed load shows the error with Try again" time="0.054396627">
+        </testcase>
+        <testcase classname="tests/unit/notification-bell.test.tsx" name="NotificationBell (AC-13) &gt; follows the layout&apos;s count after it mounted: a later decision shows the badge without a reload (review I-3)" time="0.030089254">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/office-settings.test.tsx" timestamp="2026-11-10T18:25:50.953Z" hostname="runnervm7aw5e" tests="5" failures="0" errors="0" skipped="0" time="0.390868883">
+        <testcase classname="tests/unit/office-settings.test.tsx" name="officeSchema &gt; trims and collapses spaces; an empty branch is null" time="0.006510807">
+        </testcase>
+        <testcase classname="tests/unit/office-settings.test.tsx" name="officeSchema &gt; requires a name; both fields ≤ 120 characters" time="0.002007445">
+        </testcase>
+        <testcase classname="tests/unit/office-settings.test.tsx" name="officeSchema &gt; changedFields lists names only, for the activity row" time="0.000613935">
+        </testcase>
+        <testcase classname="tests/unit/office-settings.test.tsx" name="OfficeForm &gt; shows the current values and announces the result" time="0.334325625">
+        </testcase>
+        <testcase classname="tests/unit/office-settings.test.tsx" name="OfficeForm &gt; marks a field invalid with its message" time="0.044931854">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/permissions.test.ts" timestamp="2026-11-10T18:25:50.954Z" hostname="runnervm7aw5e" tests="2" failures="0" errors="0" skipped="0" time="0.009166317">
+        <testcase classname="tests/unit/permissions.test.ts" name="permissions matrix (AC-12) &gt; row IDs are unique and every row has a cell for every role" time="0.005810052">
+        </testcase>
+        <testcase classname="tests/unit/permissions.test.ts" name="permissions matrix (AC-12) &gt; reads exactly as approved" time="0.000911665">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/plan-schema.test.ts" timestamp="2026-11-10T18:25:50.954Z" hostname="runnervm7aw5e" tests="7" failures="0" errors="0" skipped="0" time="0.013999219">
+        <testcase classname="tests/unit/plan-schema.test.ts" name="validatePlanType &gt; accepts a scheduled type and converts form strings" time="0.004293769">
+        </testcase>
+        <testcase classname="tests/unit/plan-schema.test.ts" name="validatePlanType &gt; frequency can&apos;t be more often than the type&apos;s period" time="0.000691762">
+        </testcase>
+        <testcase classname="tests/unit/plan-schema.test.ts" name="validatePlanType &gt; the start period must be a period of the chosen frequency" time="0.001692514">
+        </testcase>
+        <testcase classname="tests/unit/plan-schema.test.ts" name="validatePlanType &gt; &apos;as needed&apos; clears the schedule, reminders and start period" time="0.001502447">
+        </testcase>
+        <testcase classname="tests/unit/plan-schema.test.ts" name="validatePlanType &gt; offsets must be complete, in range, and overdue on or after ask" time="0.001040949">
+        </testcase>
+        <testcase classname="tests/unit/plan-schema.test.ts" name="periodKindFor &gt; maps a frequency to the period its start period is taken from" time="0.000390775">
+        </testcase>
+        <testcase classname="tests/unit/plan-schema.test.ts" name="validateRemark &gt; is optional, trimmed and at most 500 characters" time="0.00071226">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/platform-actions.test.ts" timestamp="2026-11-10T18:25:50.956Z" hostname="runnervm7aw5e" tests="18" failures="0" errors="0" skipped="0" time="0.220204528">
+        <testcase classname="tests/unit/platform-actions.test.ts" name="createFirm &gt; creates the firm, invites the first Admin by email (firm name for the template), records them and lands on the firm" time="0.169885704">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="createFirm &gt; field errors come back without any call" time="0.006092874">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="createFirm &gt; a test super admin invites .test addresses only, and a real one real addresses only" time="0.008949001">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="createFirm &gt; a failed invite still lands on the new firm, which offers the invite again" time="0.003636005">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="createFirm &gt; a staff action can&apos;t run it: the Platform guard refuses before any write (Not Found)" time="0.002560382">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="inviteFirstAdmin (service role, after the database confirms the caller) &gt; review L-3: the firm&apos;s name in the email comes from the database, and a firm with staff is refused before any email" time="0.001707336">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="inviteFirstAdmin (service role, after the database confirms the caller) &gt; never touches the admin API unless platform_whoami confirms an active super admin" time="0.000953395">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="inviteFirstAdmin (service role, after the database confirms the caller) &gt; an email that is staff anywhere or a super admin is refused with 17&apos;s neutral message, before any invite" time="0.000951491">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="inviteFirstAdmin (service role, after the database confirms the caller) &gt; a .test address gets the account without an email" time="0.001613821">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="inviteFirstAdmin (service role, after the database confirms the caller) &gt; a refused record removes the account it created (a retry starts clean) and says why in plain words" time="0.003516441">
+            <system-err>
+platform.first_admin_failed { code: [32m&apos;23505&apos;[39m, reason: [32m&apos;EMAIL_IN_USE&apos;[39m }
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="inviteFirstAdmin (service role, after the database confirms the caller) &gt; review M-3: an account that existed before this call (an invite returns it) is never deleted" time="0.001481012">
+            <system-err>
+platform.first_admin_failed { code: [32m&apos;23505&apos;[39m, reason: [32m&apos;ALREADY_SET_UP&apos;[39m }
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="inviteFirstAdmin (service role, after the database confirms the caller) &gt; review I-4: resend asks the database first (logged there), then emails the address it returns; no service-role write" time="0.001149752">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="inviteFirstAdmin (service role, after the database confirms the caller) &gt; resend with nobody waiting sends nothing" time="0.000966168">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="suspend, reactivate, open and close access &gt; suspend needs a 10–500 character reason, then calls the database with it" time="0.003514829">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="suspend, reactivate, open and close access &gt; database refusals become plain messages; no codes or details reach the browser" time="0.002558208">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="suspend, reactivate, open and close access &gt; open and close access pass the firm and the window; a malformed ID never reaches the database" time="0.003194168">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="suspend, reactivate, open and close access &gt; client search posts the text (never a URL) and trims it; a closed window comes back as no_access" time="0.002482126">
+        </testcase>
+        <testcase classname="tests/unit/platform-actions.test.ts" name="Platform reads for someone who isn&apos;t a super admin &gt; are Not Found, never an error page, whichever check answers first (nested layouts render in parallel)" time="0.001035588">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/platform-admin-script.test.ts" timestamp="2026-11-10T18:25:50.958Z" hostname="runnervm7aw5e" tests="16" failures="0" errors="0" skipped="0" time="0.023027047">
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="parseArgs &gt; reads the email, the name and the environment; adding is the default action" time="0.004396197">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="parseArgs &gt; refuses what it can&apos;t do safely" time="0.00104735">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="parseArgs &gt; a .test address needs --test, and --test takes only a .test address" time="0.000400559">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="parseArgs &gt; production (--env prod, or APP_ENV=production even with another --env) needs --yes-production, and never --test" time="0.000450574">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="parseArgs &gt; the plan names the project and the action, but not the email address" time="0.000712704">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="run: add &gt; checks both roles, creates a confirmed account (no email), records the row and one audit row" time="0.003113175">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="run: add &gt; an email that is staff anywhere stops before anything is written, with a message that names no firm" time="0.002401284">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="run: add &gt; an existing super admin is refused (deactivated: points at --reactivate)" time="0.001222197">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="run: add &gt; reuses an auth account that already exists without a staff row, and never deletes it on failure" time="0.001434835">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="run: add &gt; a failed row removes the account this run created, so a re-run starts clean" time="0.000987473">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="run: add &gt; a failed account creation writes nothing" time="0.001091142">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="run: add &gt; a failed audit row is reported, not swallowed" time="0.000513571">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="run: add &gt; no message carries the email address" time="0.000624148">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="run: deactivate / reactivate &gt; deactivating sets the status, closes their open windows and writes one audit row; nothing is deleted" time="0.000761285">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="run: deactivate / reactivate &gt; reactivating sets the status back; already in that state changes nothing" time="0.000382426">
+        </testcase>
+        <testcase classname="tests/unit/platform-admin-script.test.ts" name="run: deactivate / reactivate &gt; an unknown email is refused" time="0.000544519">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/platform-notifications.test.ts" timestamp="2026-11-10T18:25:50.962Z" hostname="runnervm7aw5e" tests="9" failures="0" errors="0" skipped="0" time="0.017292134">
+        <testcase classname="tests/unit/platform-notifications.test.ts" name="Activity sentences (AC-13) &gt; support&apos;s reads name what was read, as Pulsebay support" time="0.002184569">
+        </testcase>
+        <testcase classname="tests/unit/platform-notifications.test.ts" name="Activity sentences (AC-13) &gt; a name the viewer can&apos;t see falls back instead of going blank (08&apos;s rule)" time="0.000442247">
+        </testcase>
+        <testcase classname="tests/unit/platform-notifications.test.ts" name="Activity sentences (AC-13) &gt; suspension, reactivation and the first Admin&apos;s invite from the console" time="0.000269684">
+        </testcase>
+        <testcase classname="tests/unit/platform-notifications.test.ts" name="Activity sentences (AC-13) &gt; other system rows stay &quot;Vault&quot;, and staff rows keep the staff member&apos;s first name" time="0.000379621">
+        </testcase>
+        <testcase classname="tests/unit/platform-notifications.test.ts" name="Activity sentences (AC-13) &gt; 15&apos;s Last activity line uses the same actor" time="0.000483736">
+        </testcase>
+        <testcase classname="tests/unit/platform-notifications.test.ts" name="Activity sentences (AC-13) &gt; the Support access filter holds exactly the platform&apos;s actions (decided 2026-11-04)" time="0.001465623">
+        </testcase>
+        <testcase classname="tests/unit/platform-notifications.test.ts" name="Activity sentences (AC-13) &gt; every platform action is in the catalogue" time="0.000297758">
+        </testcase>
+        <testcase classname="tests/unit/platform-notifications.test.ts" name="the bell (AC-8) &gt; a platform_access notification reads as support access, with no reason, name or ID in the text" time="0.00843659">
+        </testcase>
+        <testcase classname="tests/unit/platform-notifications.test.ts" name="the bell (AC-8) &gt; type decisions still read as before (the type lookup is only for them)" time="0.001409007">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/platform-routing.test.ts" timestamp="2026-11-10T18:25:50.964Z" hostname="runnervm7aw5e" tests="23" failures="0" errors="0" skipped="0" time="0.21816485">
+        <testcase classname="tests/unit/platform-routing.test.ts" name="finishSignIn: what the signed-in user is &gt; active staff of a working firm → staff, with the sign-in audit row" time="0.041369201">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="finishSignIn: what the signed-in user is &gt; invited staff are activated on first sign-in (unchanged from 01)" time="0.00229742">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="finishSignIn: what the signed-in user is &gt; staff of a suspended firm → suspended, signed out, an invite is not activated and nothing is logged" time="0.001615744">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="finishSignIn: what the signed-in user is &gt; deactivated staff → none, signed out (the platform check is never asked for a staff member)" time="0.001484688">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="finishSignIn: what the signed-in user is &gt; an active super admin → platform: the database records the sign-in as the user (review I-4: no service-role write)" time="0.001477926">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="finishSignIn: what the signed-in user is &gt; a super admin whose sign-in can&apos;t be recorded is signed out (fail closed)" time="0.003488579">
+            <system-err>
+platform.sign_in_audit_failed { code: [32m&apos;x&apos;[39m }
+
+            </system-err>
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="finishSignIn: what the signed-in user is &gt; a deactivated super admin, or nobody we know (the database refuses: NOT_PLATFORM_ADMIN) → none, signed out" time="0.001797533">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="login actions: where sign-in lands &gt; code sign-in as staff → REDIRECT:/today" time="0.09660322">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="login actions: where sign-in lands &gt; code sign-in as platform → REDIRECT:/platform" time="0.003180672">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="login actions: where sign-in lands &gt; code sign-in for a suspended firm&apos;s staff or a removed user shows the notice in the form" time="0.006389718">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="login actions: where sign-in lands &gt; link and invite sign-in as staff → /today" time="0.002043344">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="login actions: where sign-in lands &gt; link and invite sign-in as platform → /platform" time="0.001661479">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="login actions: where sign-in lands &gt; link and invite sign-in as suspended → /login?reason=paused" time="0.001670786">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="login actions: where sign-in lands &gt; link and invite sign-in as none → /login?reason=removed" time="0.001569838">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="login actions: where sign-in lands &gt; a sign-in code is sent to an active super admin, never to a deactivated one (no account is created)" time="0.006078986">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="requireStaff: a staff page opened by someone who isn&apos;t working staff &gt; my_access_state platform → /platform" time="0.031344887">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="requireStaff: a staff page opened by someone who isn&apos;t working staff &gt; my_access_state suspended → /auth/paused" time="0.000904142">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="requireStaff: a staff page opened by someone who isn&apos;t working staff &gt; my_access_state none → /auth/removed" time="0.000785991">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="requireStaff: a staff page opened by someone who isn&apos;t working staff &gt; my_access_state staff → /auth/removed" time="0.000864327">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="requireStaff: a staff page opened by someone who isn&apos;t working staff &gt; my_access_state null → /auth/removed" time="0.001702626">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="requireStaff: a staff page opened by someone who isn&apos;t working staff &gt; signed out → /login; active staff get through without the extra database call" time="0.001213822">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="requirePlatformAdmin: the Platform area &gt; signed out → /login; staff or a deactivated super admin (platform_whoami refuses) → Not Found" time="0.004140198">
+        </testcase>
+        <testcase classname="tests/unit/platform-routing.test.ts" name="requirePlatformAdmin: the Platform area &gt; an active super admin gets through, as the database describes them" time="0.001216606">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/proposal-queue.test.tsx" timestamp="2026-11-10T18:25:50.968Z" hostname="runnervm7aw5e" tests="7" failures="0" errors="0" skipped="0" time="1.334096075">
+        <testcase classname="tests/unit/proposal-queue.test.tsx" name="the queue (AC-1) &gt; one row per item: name, group, proposers, date, documents, clients and the four decisions in the mockup&apos;s order" time="0.427738835">
+        </testcase>
+        <testcase classname="tests/unit/proposal-queue.test.tsx" name="the queue (AC-1) &gt; Reject is disabled with the reason when the item has documents (AC-9); enabled without" time="0.136409744">
+        </testcase>
+        <testcase classname="tests/unit/proposal-queue.test.tsx" name="the queue (AC-1) &gt; empty: &apos;No proposed types waiting.&apos;; Staff/Limited get no panel" time="0.057948107">
+        </testcase>
+        <testcase classname="tests/unit/proposal-queue.test.tsx" name="dialogs (AC-8, AC-11) &gt; Merge: pick a target, see what will happen, merge" time="0.337908214">
+        </testcase>
+        <testcase classname="tests/unit/proposal-queue.test.tsx" name="dialogs (AC-8, AC-11) &gt; Merge: a period conflict lists the documents and blocks the button (AC-7)" time="0.152766341">
+        </testcase>
+        <testcase classname="tests/unit/proposal-queue.test.tsx" name="dialogs (AC-8, AC-11) &gt; Approve: someone else decided first — the message, Close instead of Approve, and a refresh (AC-11)" time="0.21799286">
+        </testcase>
+        <testcase classname="tests/unit/proposal-queue.test.tsx" name="previewLines (AC-8 wording) &gt; merge and approve, with plan adds and received counts" time="0.000511594">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/receipt-validation.test.ts" timestamp="2026-11-10T18:25:50.969Z" hostname="runnervm7aw5e" tests="5" failures="0" errors="0" skipped="0" time="0.013687238">
+        <testcase classname="tests/unit/receipt-validation.test.ts" name="validateReceipt &gt; defaults: hand delivery, today, not returnable, no type or period" time="0.006101815">
+        </testcase>
+        <testcase classname="tests/unit/receipt-validation.test.ts" name="validateReceipt &gt; keeps the type, its period and the other fields" time="0.0018061">
+        </testcase>
+        <testcase classname="tests/unit/receipt-validation.test.ts" name="validateReceipt &gt; a period without a type is dropped" time="0.000482371">
+        </testcase>
+        <testcase classname="tests/unit/receipt-validation.test.ts" name="validateReceipt &gt; refuses a missing client, a count outside 1–20, a missing or long name, a future date, an unknown channel" time="0.002708373">
+        </testcase>
+        <testcase classname="tests/unit/receipt-validation.test.ts" name="validateReceipt &gt; the paper reference is client code + DOC-ID (Sankar #6)" time="0.000435974">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/regression-summary.test.ts" timestamp="2026-11-10T18:25:50.970Z" hostname="runnervm7aw5e" tests="6" failures="0" errors="0" skipped="0" time="0.0153988">
+        <testcase classname="tests/unit/regression-summary.test.ts" name="regression evidence summary &gt; reports every suite when all result files exist" time="0.004893899">
+        </testcase>
+        <testcase classname="tests/unit/regression-summary.test.ts" name="regression evidence summary &gt; marks a quick check (filtered run) as partial, never as release evidence" time="0.001377328">
+        </testcase>
+        <testcase classname="tests/unit/regression-summary.test.ts" name="regression evidence summary &gt; flags an expected suite whose result file is missing" time="0.000720649">
+        </testcase>
+        <testcase classname="tests/unit/regression-summary.test.ts" name="regression evidence summary &gt; counts failures and errors from JUnit" time="0.000928168">
+        </testcase>
+        <testcase classname="tests/unit/regression-summary.test.ts" name="regression evidence summary &gt; adds the volume timings table (09) with missed targets marked, only when the file exists" time="0.001322185">
+        </testcase>
+        <testcase classname="tests/unit/regression-summary.test.ts" name="regression evidence summary &gt; Playwright&apos;s outputDir is not the shared test-results/ folder it would empty" time="0.002790873">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/remind-dialog.test.tsx" timestamp="2026-11-10T18:25:50.972Z" hostname="runnervm7aw5e" tests="7" failures="0" errors="0" skipped="0" time="1.136413507">
+        <testcase classname="tests/unit/remind-dialog.test.tsx" name="Remind dialog (AC-7…AC-10) &gt; lists every open item; reminders-off items are shown and unticked; the preview is the message" time="0.320929094">
+        </testcase>
+        <testcase classname="tests/unit/remind-dialog.test.tsx" name="Remind dialog (AC-7…AC-10) &gt; Send email sends the ticked items and shows the masked recipient" time="0.153897078">
+        </testcase>
+        <testcase classname="tests/unit/remind-dialog.test.tsx" name="Remind dialog (AC-7…AC-10) &gt; a failed send offers Retry" time="0.122681267">
+        </testcase>
+        <testcase classname="tests/unit/remind-dialog.test.tsx" name="Remind dialog (AC-7…AC-10) &gt; explains why Send email is disabled: no email, already emailed today, daily limit" time="0.127676405">
+        </testcase>
+        <testcase classname="tests/unit/remind-dialog.test.tsx" name="Remind dialog (AC-7…AC-10) &gt; Open WhatsApp opens wa.me from the click, then records the follow-up; disabled without a mobile" time="0.108699629">
+        </testcase>
+        <testcase classname="tests/unit/remind-dialog.test.tsx" name="Remind dialog (AC-7…AC-10) &gt; with nothing ticked, both buttons say why they are disabled" time="0.112227314">
+        </testcase>
+        <testcase classname="tests/unit/remind-dialog.test.tsx" name="Log call dialog (AC-11) &gt; saves the ticked items with the date (default today, max today) and a note" time="0.182959355">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/reminder-actions.test.ts" timestamp="2026-11-10T18:25:50.973Z" hostname="runnervm7aw5e" tests="9" failures="0" errors="0" skipped="0" time="0.019015137">
+        <testcase classname="tests/unit/reminder-actions.test.ts" name="sendEmailReminder (AC-8: two-phase) &gt; builds the message, begins (cap + ceiling in the DB), sends with Reply-To = the sender, then finishes" time="0.007280342">
+        </testcase>
+        <testcase classname="tests/unit/reminder-actions.test.ts" name="sendEmailReminder (AC-8: two-phase) &gt; a refusal from the database (already emailed today) sends nothing" time="0.001278881">
+        </testcase>
+        <testcase classname="tests/unit/reminder-actions.test.ts" name="sendEmailReminder (AC-8: two-phase) &gt; a provider failure is recorded as failed and offered for retry" time="0.001152231">
+        </testcase>
+        <testcase classname="tests/unit/reminder-actions.test.ts" name="sendEmailReminder (AC-8: two-phase) &gt; items that closed meanwhile never reach begin; invalid input never reaches the database" time="0.000933407">
+        </testcase>
+        <testcase classname="tests/unit/reminder-actions.test.ts" name="sendEmailReminder (AC-8: two-phase) &gt; retries recording the result once; if it still fails after a real send, says so instead of Sent (review N-2)" time="0.001139026">
+        </testcase>
+        <testcase classname="tests/unit/reminder-actions.test.ts" name="sendEmailReminder (AC-8: two-phase) &gt; logs a code and request ID only — never the address or text" time="0.000613251">
+        </testcase>
+        <testcase classname="tests/unit/reminder-actions.test.ts" name="recordWhatsApp and logCall (AC-9, AC-11) &gt; records WhatsApp as a follow-up" time="0.000557295">
+        </testcase>
+        <testcase classname="tests/unit/reminder-actions.test.ts" name="recordWhatsApp and logCall (AC-9, AC-11) &gt; logs a call with its date and trimmed note; refuses a long note before the database" time="0.002638856">
+        </testcase>
+        <testcase classname="tests/unit/reminder-actions.test.ts" name="recordWhatsApp and logCall (AC-9, AC-11) &gt; maps the database&apos;s FUTURE_DATE refusal to plain text" time="0.000888863">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/reminder-message.test.ts" timestamp="2026-11-10T18:25:50.975Z" hostname="runnervm7aw5e" tests="10" failures="0" errors="0" skipped="0" time="0.017243944">
+        <testcase classname="tests/unit/reminder-message.test.ts" name="buildReminderMessage (AC-10) &gt; greets the client, lists one line per item and signs off with the sender and the firm" time="0.0047118">
+        </testcase>
+        <testcase classname="tests/unit/reminder-message.test.ts" name="buildReminderMessage (AC-10) &gt; says &apos;due today&apos; on the due date and keeps quarter / year labels" time="0.000927924">
+        </testcase>
+        <testcase classname="tests/unit/reminder-message.test.ts" name="buildReminderMessage (AC-10) &gt; names a registration by its state or kind, never by number" time="0.000602213">
+        </testcase>
+        <testcase classname="tests/unit/reminder-message.test.ts" name="buildReminderMessage (AC-10) &gt; never carries PAN, GSTIN/TAN numbers, links or DOC-IDs, even if a name contains one" time="0.001396275">
+        </testcase>
+        <testcase classname="tests/unit/reminder-message.test.ts" name="buildReminderMessage (AC-10) &gt; also catches lower-case PAN / GSTIN / TAN (review N-5)" time="0.000749709">
+        </testcase>
+        <testcase classname="tests/unit/reminder-message.test.ts" name="buildReminderMessage (AC-10) &gt; HTML is the same content, escaped, as a simple list" time="0.000619715">
+        </testcase>
+        <testcase classname="tests/unit/reminder-message.test.ts" name="buildReminderMessage (AC-10) &gt; shows the year when the date is in another year" time="0.000411284">
+        </testcase>
+        <testcase classname="tests/unit/reminder-message.test.ts" name="buildReminderMessage (AC-10) &gt; refuses an empty list" time="0.003588307">
+        </testcase>
+        <testcase classname="tests/unit/reminder-message.test.ts" name="whatsappUrl (AC-9) &gt; is wa.me/91&lt;mobile&gt; with the message URL-encoded" time="0.001016191">
+        </testcase>
+        <testcase classname="tests/unit/reminder-message.test.ts" name="whatsappUrl (AC-9) &gt; accepts only a 10-digit Indian mobile" time="0.000568149">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/request-documents.test.tsx" timestamp="2026-11-10T18:25:50.977Z" hostname="runnervm7aw5e" tests="2" failures="0" errors="0" skipped="0" time="0.744482323">
+        <testcase classname="tests/unit/request-documents.test.tsx" name="Request documents (F3) &gt; opens with the link on (locked), one empty row and no open item ticked" time="0.411853532">
+        </testcase>
+        <testcase classname="tests/unit/request-documents.test.tsx" name="Request documents (F3) &gt; sends a link with only the other document when the client has nothing open" time="0.329722216">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/review-actions.test.ts" timestamp="2026-11-10T18:25:50.977Z" hostname="runnervm7aw5e" tests="13" failures="0" errors="0" skipped="0" time="0.046666338">
+        <testcase classname="tests/unit/review-actions.test.ts" name="review actions &gt; Mark reviewed calls review_document with outcome reviewed" time="0.00681355">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="review actions &gt; Needs correction trims the reason and refuses a blank or long one before calling the database" time="0.001767087">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="review actions &gt; Undo is Staff, Manager and Admin — not Limited (the database checks again)" time="0.002036662">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="review actions &gt; a stale action (someone reviewed it first) says so and is marked stale; errors log a code only" time="0.001580658">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="review actions &gt; refuses a malformed id without calling the database" time="0.000725668">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="dispatch actions &gt; creates the packet with the database&apos;s argument names" time="0.023643611">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="dispatch actions &gt; returns field errors without calling the database" time="0.001061687">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="dispatch actions &gt; an ineligible original refuses the packet; the dialog gets the fresh list (AC-9) and nothing personal is logged" time="0.001447329">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="dispatch actions &gt; the dialog&apos;s list is search_documents with return = ready for the client" time="0.001430347">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="dispatch actions &gt; Undo dispatch is Admin/Manager only and needs a reason" time="0.000854219">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="packet race and messages (sdlc-reviewer nits 5, 6) &gt; losing the one-live-packet race is treated as stale and re-lists the originals" time="0.001104687">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="packet race and messages (sdlc-reviewer nits 5, 6) &gt; a signed-out caller is told to sign in, not that only Admins can act" time="0.000323486">
+        </testcase>
+        <testcase classname="tests/unit/review-actions.test.ts" name="reviewErrorMessage &gt; maps codes to plain messages and never echoes database text" time="0.000394568">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/roles.test.ts" timestamp="2026-11-10T18:25:50.980Z" hostname="runnervm7aw5e" tests="5" failures="0" errors="0" skipped="0" time="0.004746242">
+        <testcase classname="tests/unit/roles.test.ts" name="initials &gt; uses first and last name" time="0.001977661">
+        </testcase>
+        <testcase classname="tests/unit/roles.test.ts" name="initials &gt; uses first two letters for a single name" time="0.000259105">
+        </testcase>
+        <testcase classname="tests/unit/roles.test.ts" name="initials &gt; handles extra spaces and empty input" time="0.000212007">
+        </testcase>
+        <testcase classname="tests/unit/roles.test.ts" name="normaliseEmail &gt; trims and lower-cases" time="0.000211516">
+        </testcase>
+        <testcase classname="tests/unit/roles.test.ts" name="role labels &gt; match the mockup wording" time="0.000178074">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/scope-url.test.ts" timestamp="2026-11-10T18:25:50.981Z" hostname="runnervm7aw5e" tests="7" failures="0" errors="0" skipped="0" time="0.006467177">
+        <testcase classname="tests/unit/scope-url.test.ts" name="scopeFilters (AC-2) &gt; defaults to the current FY and fixes the client" time="0.002519481">
+        </testcase>
+        <testcase classname="tests/unit/scope-url.test.ts" name="scopeFilters (AC-2) &gt; keeps an FY the URL chose; &apos;all&apos; means every year (no FY filter)" time="0.000504912">
+        </testcase>
+        <testcase classname="tests/unit/scope-url.test.ts" name="scopeFilters (AC-2) &gt; ignores a client in the URL: the page&apos;s client always wins" time="0.000296123">
+        </testcase>
+        <testcase classname="tests/unit/scope-url.test.ts" name="scopeFilters (AC-2) &gt; with no current FY known, shows every year rather than nothing" time="0.00016641">
+        </testcase>
+        <testcase classname="tests/unit/scope-url.test.ts" name="scopedHref (AC-2) &gt; stays on the client page with tab=all and no client parameter" time="0.000454238">
+        </testcase>
+        <testcase classname="tests/unit/scope-url.test.ts" name="scopedHref (AC-2) &gt; keeps the other filters and the page, in /documents&apos; order" time="0.000440071">
+        </testcase>
+        <testcase classname="tests/unit/scope-url.test.ts" name="scopedHref (AC-2) &gt; &apos;All years&apos; is kept as fy=all so a reload doesn&apos;t fall back to the current FY" time="0.000337931">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/screen-states.test.tsx" timestamp="2026-11-10T18:25:50.982Z" hostname="runnervm7aw5e" tests="10" failures="0" errors="0" skipped="0" time="0.80016395">
+        <testcase classname="tests/unit/screen-states.test.tsx" name="loading states &gt; /clients: announced as a busy status with its own label; blocks hidden from screen readers" time="0.328461447">
+        </testcase>
+        <testcase classname="tests/unit/screen-states.test.tsx" name="loading states &gt; /clients/new: announced as a busy status with its own label; blocks hidden from screen readers" time="0.033801777">
+        </testcase>
+        <testcase classname="tests/unit/screen-states.test.tsx" name="loading states &gt; /clients/import: announced as a busy status with its own label; blocks hidden from screen readers" time="0.033231324">
+        </testcase>
+        <testcase classname="tests/unit/screen-states.test.tsx" name="loading states &gt; /clients/[id]: announced as a busy status with its own label; blocks hidden from screen readers" time="0.061619065">
+        </testcase>
+        <testcase classname="tests/unit/screen-states.test.tsx" name="loading states &gt; /clients/[id]/edit: announced as a busy status with its own label; blocks hidden from screen readers" time="0.106550722">
+        </testcase>
+        <testcase classname="tests/unit/screen-states.test.tsx" name="loading states &gt; /settings/catalogue: announced as a busy status with its own label; blocks hidden from screen readers" time="0.033205463">
+        </testcase>
+        <testcase classname="tests/unit/screen-states.test.tsx" name="error states &gt; /clients: alert with a plain message (no error details) and a working Try again" time="0.062917657">
+        </testcase>
+        <testcase classname="tests/unit/screen-states.test.tsx" name="error states &gt; /clients/new: alert with a plain message (no error details) and a working Try again" time="0.047611155">
+        </testcase>
+        <testcase classname="tests/unit/screen-states.test.tsx" name="error states &gt; /clients/[id] (+ edit): alert with a plain message (no error details) and a working Try again" time="0.042616926">
+        </testcase>
+        <testcase classname="tests/unit/screen-states.test.tsx" name="error states &gt; /settings/catalogue: alert with a plain message (no error details) and a working Try again" time="0.046951067">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/search-actions.test.ts" timestamp="2026-11-10T18:25:50.984Z" hostname="runnervm7aw5e" tests="12" failures="0" errors="0" skipped="0" time="0.025356127">
+        <testcase classname="tests/unit/search-actions.test.ts" name="suggest (AC-2) &gt; does nothing below 2 characters" time="0.004805795">
+        </testcase>
+        <testcase classname="tests/unit/search-actions.test.ts" name="suggest (AC-2) &gt; asks for 5 clients and 5 documents with the normalised text" time="0.002278575">
+        </testcase>
+        <testcase classname="tests/unit/search-actions.test.ts" name="suggest (AC-2) &gt; also looks up an exact DOC-ID" time="0.002552387">
+        </testcase>
+        <testcase classname="tests/unit/search-actions.test.ts" name="searchDocuments / documentFacets (AC-5…AC-8) &gt; re-validates filters from the browser and maps them to the function&apos;s keys" time="0.004923585">
+        </testcase>
+        <testcase classname="tests/unit/search-actions.test.ts" name="searchDocuments / documentFacets (AC-5…AC-8) &gt; tolerates missing input" time="0.001419607">
+        </testcase>
+        <testcase classname="tests/unit/search-actions.test.ts" name="searchDocuments / documentFacets (AC-5…AC-8) &gt; facets use the same input and fill in a missing label" time="0.00116485">
+        </testcase>
+        <testcase classname="tests/unit/search-actions.test.ts" name="errors (AC-11: code + request ID only) &gt; logs the error code and a request ID, never the search text or filters, and tells the user a reference" time="0.001769372">
+        </testcase>
+        <testcase classname="tests/unit/search-actions.test.ts" name="openDocId (AC-3) &gt; rejects text that isn&apos;t a complete DOC-ID without a lookup" time="0.000462235">
+        </testcase>
+        <testcase classname="tests/unit/search-actions.test.ts" name="openDocId (AC-3) &gt; returns the id of a document the user can open" time="0.001168447">
+        </testcase>
+        <testcase classname="tests/unit/search-actions.test.ts" name="openDocId (AC-3) &gt; says so when there is no such document the user can open (RLS returns no row)" time="0.000487332">
+        </testcase>
+        <testcase classname="tests/unit/search-actions.test.ts" name="findClients — Client filter picker (AC-6, review fix 2026-10-01) &gt; leaves archived clients out by default (same call shape as 02&apos;s list)" time="0.000805798">
+        </testcase>
+        <testcase classname="tests/unit/search-actions.test.ts" name="findClients — Client filter picker (AC-6, review fix 2026-10-01) &gt; includes archived clients, marked, when Include archived is on" time="0.000437369">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/search-review.test.tsx" timestamp="2026-11-10T18:25:50.986Z" hostname="runnervm7aw5e" tests="5" failures="0" errors="0" skipped="0" time="0.809543014">
+        <testcase classname="tests/unit/search-review.test.tsx" name="/documents Status and Return (AC-14) &gt; offers To review · Reviewed with counts, and To place · In office · Ready to dispatch · Dispatched" time="0.531509087">
+        </testcase>
+        <testcase classname="tests/unit/search-review.test.tsx" name="/documents Status and Return (AC-14) &gt; choosing Custody writes an enum to the URL; choosing To review also shows filed documents only" time="0.218559407">
+        </testcase>
+        <testcase classname="tests/unit/search-review.test.tsx" name="/documents Status and Return (AC-14) &gt; rows show their shown state" time="0.055777091">
+        </testcase>
+        <testcase classname="tests/unit/search-review.test.tsx" name="/documents Status and Return (AC-14) &gt; the Custody chip and its removal" time="0.000885255">
+        </testcase>
+        <testcase classname="tests/unit/search-review.test.tsx" name="/documents Status and Return (AC-14) &gt; rowState follows the spec order (Inbox rows have no type)" time="0.000572526">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/search-view.test.tsx" timestamp="2026-11-10T18:25:50.987Z" hostname="runnervm7aw5e" tests="13" failures="0" errors="0" skipped="0" time="2.587687515">
+        <testcase classname="tests/unit/search-view.test.tsx" name="helpers &gt; rowText shows type · period, the client or Inbox, and how it came in" time="0.004597453">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="helpers &gt; activeChips names each filter and its value, using facet labels for people" time="0.001267863">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="helpers &gt; withoutFilter clears dependants and goes back to page 1" time="0.002333377">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="SearchView &gt; searches with the session-storage text and URL filters, and lists rows linking to the document (AC-5)" time="0.399786157">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="SearchView &gt; facet counts label the filter options, and a value with no results is not offered (AC-7)" time="0.139861693">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="SearchView &gt; choosing a filter writes the URL (filters only, page 1) and never the text (AC-6, AC-11)" time="0.20874334">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="SearchView &gt; each active filter is a named chip that removes itself; Clear all keeps the sort (AC-6)" time="0.121011893">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="SearchView &gt; typing updates session storage (not the URL) and searches again" time="0.471536958">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="SearchView &gt; no match: says so and offers to clear filters and text (AC-9)" time="0.136287731">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="SearchView &gt; paging: Previous/Next with page N of M (AC-5)" time="0.043316765">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="SearchView &gt; an error shows the message and Try again runs the search again (AC-9)" time="0.323946616">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="SearchView &gt; the client filter finds clients by typing and picks one" time="0.346283667">
+        </testcase>
+        <testcase classname="tests/unit/search-view.test.tsx" name="SearchView &gt; with Include archived on, the client filter also finds archived clients, marked as such (review fix 2026-10-01)" time="0.385385083">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/selection-bar.test.tsx" timestamp="2026-11-10T18:25:50.989Z" hostname="runnervm7aw5e" tests="9" failures="0" errors="0" skipped="0" time="2.770523243">
+        <testcase classname="tests/unit/selection-bar.test.tsx" name="selection (AC-1) &gt; labels each checkbox with its DOC-ID and shows the bar with the count" time="0.298340355">
+        </testcase>
+        <testcase classname="tests/unit/selection-bar.test.tsx" name="selection (AC-1) &gt; Select all on this page selects every row, shows mixed when some are, and Clear empties it" time="0.158809401">
+        </testcase>
+        <testcase classname="tests/unit/selection-bar.test.tsx" name="selection (AC-1) &gt; a new page (or filter) starts with nothing selected (D2)" time="0.10992913">
+        </testcase>
+        <testcase classname="tests/unit/selection-bar.test.tsx" name="selection (AC-1) &gt; Download zip is disabled above 100 files, with the reason (AC-2)" time="0.316996827">
+        </testcase>
+        <testcase classname="tests/unit/selection-bar.test.tsx" name="Mark reviewed (AC-3) &gt; confirm text counts what will be reviewed and why others are skipped" time="0.000565368">
+        </testcase>
+        <testcase classname="tests/unit/selection-bar.test.tsx" name="Mark reviewed (AC-3) &gt; result text" time="0.004548301">
+        </testcase>
+        <testcase classname="tests/unit/selection-bar.test.tsx" name="Mark reviewed (AC-3) &gt; confirms, sends chunks of ≤ 200, then shows the result with skipped DOC-IDs; selection clears" time="1.186846385">
+        </testcase>
+        <testcase classname="tests/unit/selection-bar.test.tsx" name="Mark reviewed (AC-3) &gt; a failed chunk stops, says how many were handled, and keeps the selection" time="0.587466359">
+        </testcase>
+        <testcase classname="tests/unit/selection-bar.test.tsx" name="Mark reviewed (AC-3) &gt; Cancel closes without calling the server" time="0.103265647">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/sender-wiring.test.ts" timestamp="2026-11-10T18:25:50.991Z" hostname="runnervm7aw5e" tests="2" failures="0" errors="0" skipped="0" time="0.0591768">
+        <testcase classname="tests/unit/sender-wiring.test.ts" name="the firm&apos;s name reaches the mailer (AC-6) &gt; Remind by email (06)" time="0.006600779">
+        </testcase>
+        <testcase classname="tests/unit/sender-wiring.test.ts" name="the firm&apos;s name reaches the mailer (AC-6) &gt; an upload-link email (10)" time="0.046710094">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/staff-invite.test.ts" timestamp="2026-11-10T18:25:50.992Z" hostname="runnervm7aw5e" tests="4" failures="0" errors="0" skipped="0" time="0.011184413">
+        <testcase classname="tests/unit/staff-invite.test.ts" name="inviteStaff across firms &gt; 19 AC-1: a super admin&apos;s email gets the same neutral refusal, before any invite (a super admin is never staff)" time="0.005868782">
+        </testcase>
+        <testcase classname="tests/unit/staff-invite.test.ts" name="inviteStaff across firms &gt; an email already used anywhere gets a neutral refusal that names no firm and no account (AC-12)" time="0.000704686">
+        </testcase>
+        <testcase classname="tests/unit/staff-invite.test.ts" name="inviteStaff across firms &gt; the invite email carries the firm&apos;s name for the template (AC-13)" time="0.001352304">
+        </testcase>
+        <testcase classname="tests/unit/staff-invite.test.ts" name="inviteStaff across firms &gt; .test addresses still get an account without any email (unchanged)" time="0.00081877">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/tenancy.test.ts" timestamp="2026-11-10T18:25:50.992Z" hostname="runnervm7aw5e" tests="5" failures="0" errors="0" skipped="0" time="2.378857269">
+        <testcase classname="tests/unit/tenancy.test.ts" name="readTenancyMode (AC-1) &gt; unset or blank is multi" time="0.001912028">
+        </testcase>
+        <testcase classname="tests/unit/tenancy.test.ts" name="readTenancyMode (AC-1) &gt; multi and single in any case, trimmed" time="0.000381001">
+        </testcase>
+        <testcase classname="tests/unit/tenancy.test.ts" name="readTenancyMode (AC-1) &gt; any other value throws rather than guessing" time="0.001167298">
+        </testcase>
+        <testcase classname="tests/unit/tenancy.test.ts" name="TENANCY_MODE fence (AC-2) &gt; only src/lib/tenancy.ts may read TENANCY_MODE; it keeps the other fences" time="2.356120678">
+        </testcase>
+        <testcase classname="tests/unit/tenancy.test.ts" name="TENANCY_MODE fence (AC-2) &gt; tenancyMode() is called only from the listed modules (the mode switches the shell, never business logic)" time="0.017025527">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/test-data.test.ts" timestamp="2026-11-10T18:25:50.993Z" hostname="runnervm7aw5e" tests="4" failures="0" errors="0" skipped="0" time="0.01140827">
+        <testcase classname="tests/unit/test-data.test.ts" name="test data addresses &gt; fixture users have stable addresses on the reserved .test domain" time="0.002856513">
+        </testcase>
+        <testcase classname="tests/unit/test-data.test.ts" name="test data addresses &gt; unique addresses carry the run tag" time="0.000589488">
+        </testcase>
+        <testcase classname="tests/unit/test-data.test.ts" name="synthetic identifiers &gt; are valid under the app&apos;s own validators and carry the requested type letter" time="0.004071135">
+        </testcase>
+        <testcase classname="tests/unit/test-data.test.ts" name="synthetic identifiers &gt; current period codes follow the Indian FY (Q1 = Apr–Jun)" time="0.001668049">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/test-lanes.test.ts" timestamp="2026-11-10T18:25:50.994Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.007743735">
+        <testcase classname="tests/unit/test-lanes.test.ts" name="test lanes — fixture names &gt; local runs keep the pre-lane names (a developer&apos;s machine or a Claude session)" time="0.002399259">
+        </testcase>
+        <testcase classname="tests/unit/test-lanes.test.ts" name="test lanes — fixture names &gt; each lane gets its own office and user names on the reserved .test domain" time="0.001391148">
+        </testcase>
+        <testcase classname="tests/unit/test-lanes.test.ts" name="test lanes — fixture names &gt; refuses anything but 1–9 or local" time="0.001761412">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/today-custody.test.ts" timestamp="2026-11-10T18:25:50.995Z" hostname="runnervm7aw5e" tests="3" failures="0" errors="0" skipped="0" time="0.007481651">
+        <testcase classname="tests/unit/today-custody.test.ts" name="Today custody rows (AC-11) &gt; show=to_place and show=held round-trip through the URL" time="0.002847566">
+        </testcase>
+        <testcase classname="tests/unit/today-custody.test.ts" name="Today custody rows (AC-11) &gt; To place: the review and &apos;not in office yet&apos;" time="0.002041609">
+        </testcase>
+        <testcase classname="tests/unit/today-custody.test.ts" name="Today custody rows (AC-11) &gt; Held: since when it has been in the office" time="0.000459128">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/today-shape.test.ts" timestamp="2026-11-10T18:25:50.996Z" hostname="runnervm7aw5e" tests="11" failures="0" errors="0" skipped="0" time="0.029310977">
+        <testcase classname="tests/unit/today-shape.test.ts" name="Today URL (AC-2, AC-3) &gt; accepts only the enums; defaults to My clients, no filter, first page" time="0.003448093">
+        </testcase>
+        <testcase classname="tests/unit/today-shape.test.ts" name="Today URL (AC-2, AC-3) &gt; builds links with enums only" time="0.000589262">
+        </testcase>
+        <testcase classname="tests/unit/today-shape.test.ts" name="Today rows and cards (AC-4, AC-5) &gt; right-hand label (mockup 01): Overdue · Due today · Due &lt;weekday&gt; &lt;date&gt;" time="0.001336001">
+        </testcase>
+        <testcase classname="tests/unit/today-shape.test.ts" name="Today rows and cards (AC-4, AC-5) &gt; detail line (AC-5): not received, days late, reminded, reminders off" time="0.000609992">
+        </testcase>
+        <testcase classname="tests/unit/today-shape.test.ts" name="Today rows and cards (AC-4, AC-5) &gt; card header, badge and row titles (registration by state, never number)" time="0.002780113">
+        </testcase>
+        <testcase classname="tests/unit/today-shape.test.ts" name="dialog and history (AC-7, AC-12) &gt; history counts sent, suppressed, opened and logged — not failed or pending — and names the latest" time="0.013079079">
+        </testcase>
+        <testcase classname="tests/unit/today-shape.test.ts" name="dialog and history (AC-7, AC-12) &gt; ticks every open item except reminders-off ones; most overdue first" time="0.000963252">
+        </testcase>
+        <testcase classname="tests/unit/today-shape.test.ts" name="dialog and history (AC-7, AC-12) &gt; masks the address" time="0.000360084">
+        </testcase>
+        <testcase classname="tests/unit/today-shape.test.ts" name="step 9: document rows and badges &gt; To review / Ready rows: title, DOC-ID, Original flag, detail text" time="0.001347392">
+        </testcase>
+        <testcase classname="tests/unit/today-shape.test.ts" name="step 9: document rows and badges &gt; cards split expected and document rows; the badge falls back to documents" time="0.001721842">
+        </testcase>
+        <testcase classname="tests/unit/today-shape.test.ts" name="step 9: document rows and badges &gt; accepts the new filter enums" time="0.000408354">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/today-view.test.tsx" timestamp="2026-11-10T18:25:50.998Z" hostname="runnervm7aw5e" tests="5" failures="0" errors="0" skipped="0" time="0.832027305">
+        <testcase classname="tests/unit/today-view.test.tsx" name="TodayView &gt; shows the date, the counts and a card per client with its rows and actions" time="0.414399804">
+        </testcase>
+        <testcase classname="tests/unit/today-view.test.tsx" name="TodayView &gt; a count filters (enum in the URL) and clicking it again clears it; the scope toggle keeps the filter" time="0.251572502">
+        </testcase>
+        <testcase classname="tests/unit/today-view.test.tsx" name="TodayView &gt; empty states: Mine, Everyone, and a filter with nothing in it" time="0.03472074">
+        </testcase>
+        <testcase classname="tests/unit/today-view.test.tsx" name="TodayView &gt; Show more links to the next page" time="0.044931042">
+        </testcase>
+        <testcase classname="tests/unit/today-view.test.tsx" name="TodayView &gt; step 9: To review / Ready to dispatch counts filter too; document rows show DOC-ID, Original and 07&apos;s action" time="0.084177601">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/type-combobox.test.tsx" timestamp="2026-11-10T18:25:50.999Z" hostname="runnervm7aw5e" tests="11" failures="0" errors="0" skipped="0" time="1.159835716">
+        <testcase classname="tests/unit/type-combobox.test.tsx" name="ARIA combobox (AC-4) &gt; is a combobox that opens a listbox on focus, with group headings and frequencies (AC-1)" time="0.304339552">
+        </testcase>
+        <testcase classname="tests/unit/type-combobox.test.tsx" name="ARIA combobox (AC-4) &gt; ↓/↑ move the active option (aria-activedescendant); Enter picks without submitting the form" time="0.087664233">
+        </testcase>
+        <testcase classname="tests/unit/type-combobox.test.tsx" name="ARIA combobox (AC-4) &gt; Esc closes and restores the last pick&apos;s name" time="0.092353675">
+        </testcase>
+        <testcase classname="tests/unit/type-combobox.test.tsx" name="ARIA combobox (AC-4) &gt; clicking an option picks it" time="0.11480114">
+        </testcase>
+        <testcase classname="tests/unit/type-combobox.test.tsx" name="ARIA combobox (AC-4) &gt; has no axe violations while open" time="0.156662685">
+        </testcase>
+        <testcase classname="tests/unit/type-combobox.test.tsx" name="typing (AC-2, AC-3) &gt; other types appear under &apos;Not in existing category plan&apos; with their group name" time="0.088117577">
+        </testcase>
+        <testcase classname="tests/unit/type-combobox.test.tsx" name="typing (AC-2, AC-3) &gt; says how many more match when over 8" time="0.106936098">
+        </testcase>
+        <testcase classname="tests/unit/type-combobox.test.tsx" name="typing (AC-2, AC-3) &gt; with no plan types, the empty field says &apos;Type to search all types&apos;" time="0.038598199">
+        </testcase>
+        <testcase classname="tests/unit/type-combobox.test.tsx" name="no match (AC-5) &gt; offers close types, then &apos;+ Propose a new type…&apos; which hands over the typed text" time="0.119883598">
+        </testcase>
+        <testcase classname="tests/unit/type-combobox.test.tsx" name="no match (AC-5) &gt; without propose rights it says &apos;No matching type&apos; and offers no propose row" time="0.034815744">
+        </testcase>
+        <testcase classname="tests/unit/type-combobox.test.tsx" name="locked (AC-7) &gt; a disabled field shows the type and can&apos;t be opened" time="0.012446525">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/type-match.test.ts" timestamp="2026-11-10T18:25:51.001Z" hostname="runnervm7aw5e" tests="14" failures="0" errors="0" skipped="0" time="0.052625021">
+        <testcase classname="tests/unit/type-match.test.ts" name="normaliseTypeText &gt; ignores case, spaces, hyphens, dots, slashes and underscores" time="0.003780039">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="empty field (AC-1) &gt; shows only the client&apos;s plan types, grouped under group headings in catalogue order" time="0.002268495">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="empty field (AC-1) &gt; with no plan types (no client yet) asks the user to type to search all types" time="0.000511678">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="typing (AC-2, AC-3) &gt; matches the name, ignoring hyphens and spaces: &apos;3b&apos; finds GSTR-3B" time="0.003867629">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="typing (AC-2, AC-3) &gt; matches aliases: &apos;26q&apos; finds Form 26Q working; &apos;form 130&apos; finds Form 16" time="0.000690593">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="typing (AC-2, AC-3) &gt; matches the group name: &apos;banking&apos; lists the group&apos;s plan types, then the others" time="0.00068398">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="typing (AC-2, AC-3) &gt; plan types come first under their group headings; other types follow under one &apos;Not in existing category plan&apos; heading (D4)" time="0.000609591">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="typing (AC-2, AC-3) &gt; within a section, names that start with the text come before names that only contain it" time="0.000348072">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="typing (AC-2, AC-3) &gt; shows at most 8 rows and says how many more match; headings with no rows are not shown" time="0.00430046">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="typing (AC-2, AC-3) &gt; a proposed type is marked so the field can say &apos;Proposed&apos;" time="0.001236915">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="no match (AC-5) &gt; caps close types at 3" time="0.000861673">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="no match (AC-5) &gt; offers up to 3 close types that share a word of 3+ letters, plan types first" time="0.000536174">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="no match (AC-5) &gt; offers nothing close when no word is shared" time="0.000483114">
+        </testcase>
+        <testcase classname="tests/unit/type-match.test.ts" name="speed (spec NFR) &gt; filters 500 types in under 16 ms" time="0.029600342">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/upload-link-message.test.ts" timestamp="2026-11-10T18:25:51.004Z" hostname="runnervm7aw5e" tests="4" failures="0" errors="0" skipped="0" time="0.008959186">
+        <testcase classname="tests/unit/upload-link-message.test.ts" name="upload-link message &gt; adds the link line and the open-until date" time="0.00371934">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-message.test.ts" name="upload-link message &gt; lists ad-hoc items with note and needed-by date, and allows a request of ad-hoc items only" time="0.000613695">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-message.test.ts" name="upload-link message &gt; scrubs notes and refuses any link that isn&apos;t exactly &lt;origin&gt;/u#&lt;token&gt;" time="0.002058551">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-message.test.ts" name="upload-link message &gt; still refuses a message with no items at all" time="0.000322742">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/upload-link-note.test.ts" timestamp="2026-11-10T18:25:51.005Z" hostname="runnervm7aw5e" tests="7" failures="0" errors="0" skipped="0" time="0.006195647">
+        <testcase classname="tests/unit/upload-link-note.test.ts" name="note PII check &gt; finds a PAN" time="0.001843954">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-note.test.ts" name="note PII check &gt; finds a GSTIN" time="0.000408394">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-note.test.ts" name="note PII check &gt; finds a TAN" time="0.000294294">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-note.test.ts" name="note PII check &gt; finds a EMAIL" time="0.000315162">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-note.test.ts" name="note PII check &gt; finds a MOBILE" time="0.000249801">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-note.test.ts" name="note PII check &gt; finds a NUMBER" time="0.000280317">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-note.test.ts" name="note PII check &gt; accepts ordinary notes" time="0.000462705">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/upload-link-token.test.ts" timestamp="2026-11-10T18:25:51.006Z" hostname="runnervm7aw5e" tests="4" failures="0" errors="0" skipped="0" time="0.063549498">
+        <testcase classname="tests/unit/upload-link-token.test.ts" name="token &gt; is 32 random bytes as 43 base64url characters, different every time" time="0.043200104">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-token.test.ts" name="token &gt; is stored only as its SHA-256 hex" time="0.014128782">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-token.test.ts" name="token &gt; goes after # in the link, never in the path or query" time="0.000898389">
+        </testcase>
+        <testcase classname="tests/unit/upload-link-token.test.ts" name="token &gt; is never written to the console" time="0.002700936">
+        </testcase>
+    </testsuite>
+    <testsuite name="tests/unit/zip-download.test.ts" timestamp="2026-11-10T18:25:51.007Z" hostname="runnervm7aw5e" tests="5" failures="0" errors="0" skipped="0" time="0.068005597">
+        <testcase classname="tests/unit/zip-download.test.ts" name="zip helpers &gt; chunks and the zip file name (India date, no client names)" time="0.017275352">
+        </testcase>
+        <testcase classname="tests/unit/zip-download.test.ts" name="runZip (AC-2) &gt; asks for links in batches of ≤ 10 and zips every file as &apos;&lt;DOC-ID&gt; &lt;file name&gt;&apos;" time="0.043327595">
+        </testcase>
+        <testcase classname="tests/unit/zip-download.test.ts" name="runZip (AC-2) &gt; leaves failed and unsigned files out, lists them with missing ones, and still saves the rest" time="0.002108776">
+        </testcase>
+        <testcase classname="tests/unit/zip-download.test.ts" name="runZip (AC-2) &gt; returns the server&apos;s message when the selection is over the cap" time="0.000674999">
+        </testcase>
+        <testcase classname="tests/unit/zip-download.test.ts" name="runZip (AC-2) &gt; Cancel stops asking for links and saves nothing" time="0.002833257">
+        </testcase>
+    </testsuite>
+</testsuites>

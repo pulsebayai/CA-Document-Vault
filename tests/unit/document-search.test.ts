@@ -139,3 +139,24 @@ describe("isFiltered", () => {
     expect(isFiltered({ ...DEFAULT_FILTERS, channel: "email" })).toBe(true);
   });
 });
+
+// R1 feedback round 2 (Sankar, 2026-11-12): "No financial year" in the FY select.
+describe("No financial year (fy=none)", () => {
+  it("reads fy=none from the URL, drops a period, and writes it back", async () => {
+    const { NO_FY } = await import("@/lib/validation/document-search");
+    const f = parseDocumentSearchParams({ fy: "none", period: "11111111-1111-4111-8111-111111111111" });
+    expect(f.fy).toBe(NO_FY);
+    expect(f.period).toBeNull();
+    expect(filtersToQuery(f)).toBe("fy=none");
+  });
+
+  it("is sent to search as no_fy, never as fy_id or period_id", async () => {
+    const { NO_FY } = await import("@/lib/validation/document-search");
+    const input = toSearchInput({ ...DEFAULT_FILTERS, fy: NO_FY, client: "11111111-1111-4111-8111-111111111111" }, "");
+    expect(input.filters).toEqual({ client_id: "11111111-1111-4111-8111-111111111111", no_fy: true });
+  });
+
+  it("any other non-ID fy value is still dropped", () => {
+    expect(parseDocumentSearchParams({ fy: "nonsense" }).fy).toBeNull();
+  });
+});

@@ -5,7 +5,7 @@ import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { createDocumentOffice, mustCreateDocument, periodId, typeId, uploadObject } from "../support/documents";
 import { signIn } from "./helpers";
 
-// Feature 15 — Client › All documents (spec AC-1…AC-7): the /documents table for one client, current FY by default,
+// Feature 15 — Client › All documents (spec AC-1…AC-7): the /documents table for one client, all years by default,
 // with Last activity and the expandable row. The K4 timings are RLS tests (k4-volume.test.ts); this spec covers the screen.
 
 let officeId: string;
@@ -54,7 +54,7 @@ async function seriousAxe(page: Page) {
   return axe.violations.filter((v) => ["serious", "critical"].includes(v.impact ?? "")).map((v) => v.id);
 }
 
-test("AC-1, AC-2: the tab after Documents shows this client's current FY; All years is kept in the URL", async ({ page, baseURL }) => {
+test("AC-1, AC-2: the tab after Documents shows all years by default; an FY can be chosen and is kept in the URL", async ({ page, baseURL }) => {
   await signIn(page, staff.email, baseURL);
   await page.goto(`/clients/${clientId}`);
   const tabs = page.getByRole("navigation", { name: "Client sections" });
@@ -64,15 +64,20 @@ test("AC-1, AC-2: the tab after Documents shows this client's current FY; All ye
   await expect(page).toHaveURL(new RegExp(`/clients/${clientId}\\?tab=all$`));
 
   const rows = page.getByRole("list", { name: "Documents" });
+  await expect(page.getByRole("searchbox", { name: "Client" })).toHaveCount(0); // the client is fixed
+  await expect(page.getByRole("combobox", { name: "FY" })).toHaveValue(""); // R1 feedback: All years by default
+  await expect(rows.getByRole("listitem")).toHaveCount(2); // the tab's count and its rows agree
+  await expect(rows).toContainText(current.doc_code);
+  await expect(rows).toContainText(older.doc_code);
+
+  await page.getByRole("combobox", { name: "FY" }).selectOption({ label: "FY: 2026-27" }); // an FY is a filter the user picks
+  await expect(page).toHaveURL(new RegExp(`/clients/${clientId}\\?tab=all&fy=[0-9a-f-]{36}$`));
   await expect(rows.getByRole("listitem")).toHaveCount(1);
   await expect(rows).toContainText(current.doc_code);
-  await expect(page.getByRole("searchbox", { name: "Client" })).toHaveCount(0); // the client is fixed
-  await expect(page.getByRole("combobox", { name: "FY" })).toHaveValue(/.+/); // the current FY is chosen
-
+  await expect(rows).not.toContainText(older.doc_code);
   await page.getByRole("combobox", { name: "FY" }).selectOption({ label: "FY: All years" });
   await expect(page).toHaveURL(new RegExp(`/clients/${clientId}\\?tab=all&fy=all$`));
   await expect(rows.getByRole("listitem")).toHaveCount(2);
-  await expect(rows).toContainText(older.doc_code);
   await expect(rows).not.toContainText(otherDoc.doc_code); // another client's document never shows
   expect(page.url()).not.toContain("client=");
 });
@@ -114,4 +119,35 @@ test("AC-1: a Limited user sees the tab for a client they can see; 390 px fits",
   // Another client is not visible to the Limited user: the page is Not Found, as every client tab (02 AC-12).
   await page.goto(`/clients/${otherClientId}?tab=all`);
   await expect(page.getByRole("heading", { name: "Other Docs Client" })).toHaveCount(0);
+});
+
+// R1 feedback round 2 (Sankar, 2026-11-12): "No financial year" in the FY select, kept as fy=none.
+test("AC-2: No financial year lists only this client's undated documents and is kept in the URL", async ({ page, baseURL }) => {
+  const asStaff = await signedInClient(staff.email);
+  const { data, error } = await asStaff.rpc("create_client", { p: { name: "Undated Docs Client", client_type: "individual", incharge_id: staff.id } });
+  if (error) throw error;
+  const undatedClient = data.id as string;
+  const obj = await uploadObject(officeId, "pdf");
+  const undated = await mustCreateDocument(asStaff, {
+    received_as: "soft_copy", channel: "email", client_id: undatedClient, doc_type_id: await typeId(officeId, "Statutory registers"),
+    file: { storage_path: obj.path, file_name: "registers.pdf" },
+  });
+  const dated = await mustCreateDocument(asStaff, {
+    received_as: "soft_copy", channel: "email", client_id: undatedClient, doc_type_id: await typeId(officeId, "Sales invoices / sales register"),
+    period_id: await periodId(officeId, "2026-08"), file: { storage_path: (await uploadObject(officeId, "pdf")).path, file_name: "sales.pdf" },
+  });
+
+  await signIn(page, staff.email, baseURL);
+  await page.goto(`/clients/${undatedClient}?tab=all`);
+  const rows = page.getByRole("list", { name: "Documents" });
+  await expect(rows.getByRole("listitem")).toHaveCount(2);
+  await page.getByRole("combobox", { name: "FY" }).selectOption({ label: "FY: No financial year" });
+  await expect(page).toHaveURL(new RegExp(`/clients/${undatedClient}\\?tab=all&fy=none$`));
+  await expect(rows.getByRole("listitem")).toHaveCount(1);
+  await expect(rows).toContainText(undated.doc_code);
+  await expect(rows).not.toContainText(dated.doc_code);
+  await expect(page.getByRole("combobox", { name: "Period" })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: "FY" })).toHaveValue("none");
+  await expect(rows.getByRole("listitem")).toHaveCount(1);
 });

@@ -60,15 +60,22 @@ beforeEach(() => {
 afterEach(cleanup);
 
 const view = (f: Partial<DocumentFilters> = {}) =>
-  render(<AllDocumentsView clientId={C} filters={{ ...DEFAULT_FILTERS, client: C, fy: FY, ...f }} options={options} currentFyId={FY} />);
+  render(<AllDocumentsView clientId={C} filters={{ ...DEFAULT_FILTERS, client: C, fy: FY, ...f }} options={options} />);
 
 describe("All documents tab (AC-2)", () => {
-  it("searches this client in the current FY, with no client picker and no client chip", async () => {
+  it("searches this client in an FY the URL chose, with no client picker and no client chip", async () => {
     view();
     await screen.findByText(/DOC-FY26-27-00042/);
     expect(searchDocuments).toHaveBeenCalledWith(expect.objectContaining({ filters: expect.objectContaining({ client: C, fy: FY }) }));
     expect(screen.queryByRole("searchbox", { name: "Client" })).toBeNull();
-    expect(screen.queryByRole("list", { name: "Active filters" })).toBeNull(); // client and the default FY are no chips
+    expect(screen.queryByRole("list", { name: "Active filters" })).toBeNull(); // the client and the FY are no chips
+  });
+
+  it("defaults to All years: no FY filter, so documents with no financial year show (Sankar, R1)", async () => {
+    view({ fy: null });
+    await screen.findByText(/DOC-FY26-27-00042/);
+    expect(searchDocuments).toHaveBeenCalledWith(expect.objectContaining({ filters: expect.objectContaining({ client: C, fy: null }) }));
+    expect((screen.getByRole("combobox", { name: "FY" }) as HTMLSelectElement).value).toBe("");
   });
 
   it("a filter stays on the client page (tab=all), never with a client parameter", async () => {
@@ -90,7 +97,7 @@ describe("All documents tab (AC-2)", () => {
 });
 
 describe("empty states (AC-4)", () => {
-  it("nothing in the current FY: says so and links to All years", async () => {
+  it("nothing in the chosen FY: says so and links to All years", async () => {
     searchDocuments.mockResolvedValue({ ok: true, total: 0, rows: [] });
     view();
     expect(await screen.findByText("No documents for 2026-27 yet.")).toBeTruthy();
@@ -98,12 +105,12 @@ describe("empty states (AC-4)", () => {
     expect(push).toHaveBeenCalledWith(`/clients/${C}?tab=all&fy=all`, { scroll: false });
   });
 
-  it("filtered and empty: Clear filters goes back to this client's current FY", async () => {
+  it("filtered and empty: Clear filters goes back to this client's All years", async () => {
     searchDocuments.mockResolvedValue({ ok: true, total: 0, rows: [] });
     view({ group: G });
     expect(await screen.findByText("No documents match.")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Clear filters" }));
-    expect(push).toHaveBeenCalledWith(`/clients/${C}?tab=all&fy=${FY}`, { scroll: false });
+    expect(push).toHaveBeenCalledWith(`/clients/${C}?tab=all&fy=all`, { scroll: false });
   });
 });
 
@@ -157,5 +164,32 @@ describe("expanded row (AC-7)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByText("No activity yet.")).toBeTruthy();
     expect(documentEvents).toHaveBeenCalledTimes(2);
+  });
+});
+
+// R1 feedback round 2 (Sankar, 2026-11-12): the FY select offers "No financial year".
+describe("No financial year", () => {
+  it("is offered after the years, kept as fy=none, and hides the Period select", async () => {
+    view({ fy: null });
+    await screen.findByText(/DOC-FY26-27-00042/);
+    const fy = screen.getByRole("combobox", { name: "FY" });
+    const names = within(fy).getAllByRole("option").map((o) => o.textContent);
+    expect(names.at(-1)).toBe("FY: No financial year");
+    await userEvent.selectOptions(fy, "none");
+    expect(push).toHaveBeenCalledWith(`/clients/${C}?tab=all&fy=none`, { scroll: false });
+  });
+
+  it("searches this client with no FY and no Period select", async () => {
+    view({ fy: "none" });
+    await screen.findByText(/DOC-FY26-27-00042/);
+    expect(searchDocuments).toHaveBeenCalledWith(expect.objectContaining({ filters: expect.objectContaining({ client: C, fy: "none" }) }));
+    expect(screen.queryByRole("combobox", { name: "Period" })).toBeNull();
+  });
+
+  it("nothing without an FY: says so and links to All years", async () => {
+    searchDocuments.mockResolvedValue({ ok: true, total: 0, rows: [] });
+    view({ fy: "none" });
+    expect(await screen.findByText("No documents without a financial year.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Show all years" })).toBeTruthy();
   });
 });

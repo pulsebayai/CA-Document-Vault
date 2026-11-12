@@ -20,7 +20,7 @@ import { CustodyButton, InOfficeBadge } from "../custody-controls";
 import { istDate } from "@/lib/documents/period";
 import {
   DEFAULT_FILTERS, DOC_FORMATS, DOC_RETURNS, DOC_STATES, DOC_STATUSES, PAGE_SIZE, SEARCH_TEXT_KEY, SORTS, SUGGEST_DEBOUNCE_MS, filtersToQuery,
-  isFiltered, normaliseSearchText, type DocumentFilters,
+  NO_FY, isFiltered, normaliseSearchText, type DocumentFilters,
 } from "@/lib/validation/document-search";
 
 // Spec 03b AC-5…AC-9, AC-11 — the results page. Filters are the URL (router.push); the text is this tab's session
@@ -66,7 +66,7 @@ export function activeChips(f: DocumentFilters, o: FilterOptions, facets: FacetV
   add("registration", "GSTIN/TAN", o.registrations.find((r) => r.id === f.registration)?.number);
   add("group", "Group", o.groups.find((g) => g.id === f.group)?.name);
   add("type", "Type", o.types.find((t) => t.id === f.type)?.name);
-  add("fy", "FY", o.fys.find((y) => y.id === f.fy)?.code);
+  add("fy", "FY", f.fy === NO_FY ? "No financial year" : o.fys.find((y) => y.id === f.fy)?.code);
   add("period", "Period", o.periods.find((p) => p.id === f.period)?.label);
   add("as", "Received as", f.as ? RECEIVED_LABEL[f.as] : null);
   add("channel", "Channel", f.channel ? CHANNEL_LABEL[f.channel] : null);
@@ -124,13 +124,11 @@ type Answer = { key: string; total: number; rows: DocumentHit[]; facets: FacetVa
 
 /**
  * 15 (spec U4): the same view scoped to one client (Client › All documents). The client is fixed and not offered,
- * the URL stays on the client page, the FY defaults to the current FY (`currentFyId`; null in `filters.fy` = All
- * years), and each row adds Last activity (one call per page) and the expandable activity row. /documents passes
+ * the URL stays on the client page, the FY defaults to All years (null in `filters.fy`), and each row adds Last activity (one call per page) and the expandable activity row. /documents passes
  * no scope and is unchanged.
  */
 export type SearchScope = {
   clientId: string;
-  currentFyId: string | null;
   /** One call per page (the caller passes the server action, so /documents imports nothing new). */
   loadLast: (ids: string[]) => Promise<{ ok: true; rows: Array<LastActivityRow & { document_id: string }> } | { ok: false; error: string }>;
   /** The row's expandable activity (AC-7). */
@@ -186,8 +184,8 @@ export function SearchView({ filters, options, scope }: { filters: DocumentFilte
     const q = filtersToQuery(next);
     router.push(q ? `/documents?${q}` : "/documents", { scroll: false });
   };
-  /** Clear all / Clear filters: back to no filters (15: this client's current FY). */
-  const cleared = (): DocumentFilters => ({ ...DEFAULT_FILTERS, sort: filters.sort, ...(scope ? { client: scope.clientId, fy: scope.currentFyId } : {}) });
+  /** Clear all / Clear filters: back to no filters (15: this client, All years). */
+  const cleared = (): DocumentFilters => ({ ...DEFAULT_FILTERS, sort: filters.sort, ...(scope ? { client: scope.clientId, fy: null } : {}) });
 
   // 15 (AC-5, AC-6): Last activity for the page's rows, one call per page; a failure leaves every row at "—".
   const [last, setLast] = useState<{ key: string; rows: Map<string, LastActivityRow> } | null>(null);
@@ -276,8 +274,9 @@ export function SearchView({ filters, options, scope }: { filters: DocumentFilte
               options={typesOfGroup.map((t) => ({ value: t.id, label: t.name }))} />
           )}
           <Select label="FY" value={filters.fy} onChange={(v) => set({ fy: v, period: null })}
-            options={options.fys.map((y) => ({ value: y.id, label: y.code }))} allLabel={scope ? "FY: All years" : undefined} />
-          {filters.fy && (
+            options={[...options.fys.map((y) => ({ value: y.id, label: y.code })), { value: NO_FY, label: "No financial year" }]}
+            allLabel={scope ? "FY: All years" : undefined} />
+          {filters.fy && filters.fy !== NO_FY && (
             <Select label="Period" value={filters.period} onChange={(v) => set({ period: v })}
               options={periodsOfFy.map((p) => ({ value: p.id, label: p.label }))} />
           )}
@@ -344,7 +343,7 @@ export function SearchView({ filters, options, scope }: { filters: DocumentFilte
       ) : ok.total === 0 && scope && !filtered && !query ? (
         <Card className="px-6 py-10 text-center">
           {/* 15 (AC-4): nothing for this client in the chosen FY. */}
-          <p className="font-medium">{filters.fy ? `No documents for ${options.fys.find((y) => y.id === filters.fy)?.code ?? "this year"} yet.` : "No documents for this client yet."}</p>
+          <p className="font-medium">{filters.fy === NO_FY ? "No documents without a financial year." : filters.fy ? `No documents for ${options.fys.find((y) => y.id === filters.fy)?.code ?? "this year"} yet.` : "No documents for this client yet."}</p>
           {filters.fy && <div className="mt-4 flex justify-center"><Button variant="secondary" onClick={() => go({ ...filters, fy: null, period: null, page: 1 })}>Show all years</Button></div>}
         </Card>
       ) : ok.total === 0 ? (
