@@ -29,7 +29,7 @@ export function DocumentRow({ d, clientId, clientName, today, selected, onToggle
   selected?: boolean; onToggle?: () => void;
 }) {
   const [msg, setMsg] = useState<RowMessage | null>(null);
-  const input = { archived: false, clientId, docTypeId: d.typeName ? "filed" : null, receivedAs: d.receivedAs, status: d.status,
+  const input = { archived: false, clientId, docTypeId: d.typeName && !d.untagged ? "filed" : null, receivedAs: d.receivedAs, status: d.status, // R1 round 2: untagged = not filed
     returnable: d.returnable, correctionKind: d.correctionKind, // 12
     reviewedAt: d.reviewedAt, reviewedByName: d.reviewedByName, correctionReason: d.correctionReason,
     dispatchedOn: d.dispatchedOn, dispatchMethod: d.dispatchMethod,

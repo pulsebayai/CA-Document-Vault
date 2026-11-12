@@ -25,19 +25,23 @@ const doc = (over: Partial<ClientDocument>): ClientDocument => ({
 afterEach(cleanup);
 
 describe("inOfficeDocuments", () => {
-  it("keeps every copy with a custody step and no live packet, any FY, longest held first", () => {
+  // R1 feedback round 2 (Sankar, 2026-11-12): "everything we physically hold" — every hard copy not in a live packet,
+  // whether or not it has been reviewed, marked in office or tagged (13 AC-21 as changed).
+  it("keeps every hard copy not in a live packet, any FY, any step, longest held first", () => {
     const docs = [
       doc({ id: "a", docCode: "DOC-FY25-26-00009", fyCode: "2025-26", custody: "in_office", inOfficeAt: "2026-09-01T04:00:00Z" }),
       doc({ id: "b", docCode: "DOC-FY26-27-00002", custody: "ready", inOfficeAt: "2026-10-20T04:00:00Z" }),
-      // 13 AC-5 / S1: still physically here, whatever their review state shows
       doc({ id: "g", docCode: "DOC-FY26-27-00007", status: "needs_correction", custody: "in_office", inOfficeAt: "2026-10-10T04:00:00Z" }),
       doc({ id: "h", docCode: "DOC-FY26-27-00008", status: "received", custody: "in_office", inOfficeAt: "2026-10-12T04:00:00Z" }),
+      // physically here too: reviewed but not yet placed, not yet reviewed, untagged (held since received on)
+      doc({ id: "c", docCode: "DOC-FY26-27-00003", custody: null, receivedOn: "2026-10-01" }),
+      doc({ id: "i", docCode: "DOC-FY26-27-00009", status: "received", reviewedAt: null, custody: null, receivedOn: "2026-10-15" }),
+      doc({ id: "u", docCode: "DOC-FY26-27-00010", untagged: true, typeName: "Untagged document", status: "received", custody: null, receivedOn: "2026-08-15" }),
       // not held
-      doc({ id: "c", docCode: "DOC-FY26-27-00003", custody: null }), // reviewed, not placed in office yet
       doc({ id: "e", docCode: "DOC-FY26-27-00005", custody: "ready", inOfficeAt: "2026-08-01T04:00:00Z", dispatchedOn: "2026-11-01", dispatchMethod: "courier" }), // left the office
       doc({ id: "f", docCode: "DOC-FY26-27-00006", receivedAs: "soft_copy", custody: null }),
     ];
-    expect(inOfficeDocuments(docs).map((d) => d.id)).toEqual(["a", "g", "h", "b"]);
+    expect(inOfficeDocuments(docs).map((d) => d.id)).toEqual(["u", "a", "c", "g", "h", "i", "b"]);
   });
 });
 
@@ -50,8 +54,21 @@ describe("InOfficeView", () => {
     expect(screen.getByText(/2 documents/)).toBeTruthy();
   });
 
+  it("says how many are not yet placed in office, and shows an untagged copy as Untagged", () => {
+    render(<InOfficeView clientId={C} clientName="Acme" today={TODAY} documents={[
+      doc({ id: "a", custody: "in_office", inOfficeAt: "2026-10-01T04:00:00Z" }),
+      doc({ id: "c", docCode: "DOC-FY26-27-00003", custody: null }),
+      doc({ id: "u", docCode: "DOC-FY26-27-00010", untagged: true, typeName: "Untagged document", status: "received", reviewedAt: null }),
+    ]} />);
+    expect(screen.getByText(/3 documents · 2 not yet placed in office/)).toBeTruthy();
+    const list = screen.getByRole("list", { name: "Hard copies in office" });
+    const row = within(list).getAllByRole("listitem").find((li) => li.textContent?.includes("DOC-FY26-27-00010"))!;
+    expect(within(row).getByTestId("doc-state").textContent).toBe("Untagged");
+    expect(within(row).queryByRole("button", { name: /Mark reviewed|Mark in office/ })).toBeNull();
+  });
+
   it("says so when nothing is held, and links to All documents", () => {
-    render(<InOfficeView clientId={C} clientName="Acme" today={TODAY} documents={[doc({ custody: null })]} />);
+    render(<InOfficeView clientId={C} clientName="Acme" today={TODAY} documents={[doc({ receivedAs: "soft_copy", custody: null })]} />);
     expect(screen.getByText("No hard copies in the office for this client.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "See all documents" }).getAttribute("href")).toBe(`/clients/${C}?tab=all`);
   });

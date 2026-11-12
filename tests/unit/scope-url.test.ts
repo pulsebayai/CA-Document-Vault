@@ -47,3 +47,13 @@ describe("scopedHref (AC-2)", () => {
     expect(scopedHref(C, f({ client: C, fy: null }), { allYears: true })).toBe(`/clients/${C}?tab=all&fy=all`);
   });
 });
+
+// R1 feedback round 2 (Sankar, 2026-11-12): "No financial year" is a filter the user picks and the URL keeps.
+describe("No financial year on the All documents tab", () => {
+  it("is kept by the scope and in the client page's URL", async () => {
+    const { NO_FY } = await import("@/lib/validation/document-search");
+    const { parseScopeParams } = await import("@/lib/search/scope");
+    expect(scopeFilters(C, parseScopeParams({ tab: "all", fy: "none" }))).toMatchObject({ client: C, fy: NO_FY });
+    expect(scopedHref(C, f({ client: C, fy: NO_FY }))).toBe(`/clients/${C}?tab=all&fy=none`);
+  });
+});

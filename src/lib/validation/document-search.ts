@@ -58,6 +58,10 @@ export type DocReturn = (typeof DOC_RETURNS)[number]["value"];
 export const DOC_FORMATS = [{ value: "not_preferred", label: "Not preferred" }] as const;
 export type DocFormat = (typeof DOC_FORMATS)[number]["value"];
 
+/** R1 feedback round 2 (Sankar, 2026-11-12): the FY select's "No financial year" (`fy=none` in the URL; sent to search as
+ *  `no_fy: true`, never as `fy_id`). FY comes from the period, so these are the documents with no period. */
+export const NO_FY = "none";
+
 export type DocumentFilters = {
   client: string | null;
   group: string | null;
@@ -113,6 +117,7 @@ export function parseDocumentSearchParams(params: Params): DocumentFilters {
   const get = (k: string) => first(params[k]);
   const f: DocumentFilters = { ...DEFAULT_FILTERS };
   for (const k of UUID_KEYS) f[k] = uuidOrNull(get(k));
+  if (get("fy") === NO_FY) { f.fy = NO_FY; f.period = null; } // no FY, so no period of one
   f.by = uuidOrNull(get("by"));
   // 12 (spec AC-13): an old shared link with as=original still opens; the database reads it as hard copy + returnable.
   f.as = get("as") === LEGACY_ORIGINAL ? LEGACY_ORIGINAL : oneOf(RECEIVED_AS, get("as"));
@@ -185,6 +190,7 @@ export function toSearchInput(f: DocumentFilters, text: string | null | undefine
     const v = f[k];
     if (typeof v === "string" && v) filters[rpcKey] = k === "held" ? true : v;
   }
+  if (f.fy === NO_FY) { delete filters.fy_id; delete filters.period_id; filters.no_fy = true; } // R1 feedback round 2
   const t = normaliseSearchText(text);
   return { ...(t ? { text: t } : {}), filters, include_archived: f.archived, sort: f.sort, page: f.page };
 }
