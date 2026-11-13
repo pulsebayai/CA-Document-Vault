@@ -1,0 +1,105 @@
+name: Prod backup
+
+# chore prod-backups (2026-11-13). Supabase backs up the prod database (PITR, 7 days) but NOT the files in
+# Storage, and its backups are deleted with the project. This job keeps an off-site copy of both in our own
+# AWS account (ap-south-1, versioned, Object Lock):
+#   storage/documents/...   every object of the `documents` bucket, copied, never deleted or overwritten
+#   db/<YYYY-MM-DD>/<HHMM>/ roles.sql.gz, schema.sql.gz, data.sql.gz (supabase db dump)
+# Restore: sdlc/features/chore-prod-backups/runbook.md. Reads prod; never writes to it.
+on:
+  schedule:
+    # Every 6 h: 03:00, 09:00, 15:00, 21:00 IST. With daily Supabase backups only (pilot, no PITR) this
+    # dump limits real database loss to ≈ 6 h; file copies are incremental, so later runs are quick.
+    - cron: "30 3,9,15,21 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # AWS OIDC: no long-lived AWS keys in GitHub
+
+concurrency:
+  group: prod-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Secrets live only in this environment; its deployment-branch rule allows `main` only.
+    environment: prod-backup
+    env:
+      BACKUP_BUCKET: ${{ vars.BACKUP_BUCKET }}
+      PROD_REF: ${{ vars.PROD_PROJECT_REF }}
+      # rclone remotes from env (no config file). src = Supabase Storage S3 endpoint, dst = our AWS bucket.
+      RCLONE_CONFIG_SRC_TYPE: s3
+      RCLONE_CONFIG_SRC_PROVIDER: Other
+      RCLONE_CONFIG_SRC_ENDPOINT: https://${{ vars.PROD_PROJECT_REF }}.storage.supabase.co/storage/v1/s3
+      RCLONE_CONFIG_SRC_REGION: ap-south-1
+      RCLONE_CONFIG_SRC_FORCE_PATH_STYLE: "true"
+      RCLONE_CONFIG_SRC_ACCESS_KEY_ID: ${{ secrets.PROD_STORAGE_S3_KEY_ID }}
+      RCLONE_CONFIG_SRC_SECRET_ACCESS_KEY: ${{ secrets.PROD_STORAGE_S3_SECRET }}
+      RCLONE_CONFIG_DST_TYPE: s3
+      RCLONE_CONFIG_DST_PROVIDER: AWS
+      RCLONE_CONFIG_DST_ENV_AUTH: "true"
+      RCLONE_CONFIG_DST_REGION: ap-south-1
+      RCLONE_CONFIG_DST_NO_CHECK_BUCKET: "true" # the backup role may not create or configure buckets
+    steps:
+      - name: Check configuration
+        run: |
+          for v in BACKUP_BUCKET PROD_REF; do [ -n "${!v}" ] || { echo "::error::$v is not set (environment prod-backup)"; exit 1; }; done
+          [ "$PROD_REF" = "rryzbijeosprdxpscxsx" ] || echo "::warning::PROD_PROJECT_REF is $PROD_REF, not the R1 prod project"
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.BACKUP_AWS_ROLE_ARN }}
+          aws-region: ap-south-1
+
+      - name: Install rclone (≥ 1.59 for --s3-version-at at restore)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq rclone
+          rclone version | head -1
+
+      # 1. Files. `copy` never deletes in the destination; --immutable fails the run if an object that is
+      # already backed up changed in Storage (the app never overwrites: every version is a new path, D2).
+      - name: Copy Storage → backup
+        run: |
+          rclone copy src:documents "dst:$BACKUP_BUCKET/storage/documents" \
+            --immutable --size-only --transfers 8 --checkers 16 --stats-one-line --stats 60s -v 2>&1 | tail -n 40
+
+      - name: Verify every Storage object is in the backup
+        run: |
+          rclone check src:documents "dst:$BACKUP_BUCKET/storage/documents" --one-way --size-only 2>&1 | tail -n 20
+          n=$(rclone lsf -R --files-only src:documents | wc -l)
+          echo "::notice title=storage objects::$n objects in prod Storage, all present in the backup"
+
+      # 2. Database. The CLI runs pg_dump in Supabase's own image (matching Postgres 17) and filters
+      # Supabase internals. DSC passwords stay encrypted in the dump; their key is never in the database (14).
+      - uses: supabase/setup-cli@v1
+        with: { version: 2.122.0 }
+
+      - name: Dump the database
+        env:
+          DB_URL: ${{ secrets.PROD_DB_URL }} # session pooler URL, port 5432
+        run: |
+          set -euo pipefail
+          mkdir -p dump
+          supabase db dump --db-url "$DB_URL" -f dump/roles.sql --role-only
+          supabase db dump --db-url "$DB_URL" -f dump/schema.sql
+          supabase db dump --db-url "$DB_URL" -f dump/data.sql --use-copy --data-only \
+            -x "storage.buckets_vectors" -x "storage.vector_indexes"
+          # A dump that is suspiciously small is a failure, not a backup.
+          [ "$(stat -c %s dump/schema.sql)" -gt 50000 ] || { echo "::error::schema.sql is too small"; exit 1; }
+          grep -qi "document_version" dump/data.sql || { echo "::error::data.sql has no document_version"; exit 1; }
+          gzip -9 dump/*.sql
+          ls -l dump
+
+      - name: Upload the dump
+        run: |
+          at=$(date -u +%F/%H%M) # UTC
+          rclone copy dump "dst:$BACKUP_BUCKET/db/$at" --immutable -v 2>&1 | tail -n 10
+          rclone lsl "dst:$BACKUP_BUCKET/db/$at"
+          echo "::notice title=db dump::db/$at (UTC) uploaded"
+
+      - name: Clean up
+        if: always()
+        run: rm -rf dump
