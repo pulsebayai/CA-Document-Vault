@@ -26,9 +26,10 @@ Before today prod had Supabase's daily backups only (7 days, Pro plan). Three ga
 - [x] 2. `scripts/restore-check.sql` (counts, versions with no file, newest upload). Proven read-only on dev 2026-11-13: 0 versions missing a file (380 versions, 409 objects).
 - [x] 3. `runbook.md` (AWS setup, GitHub setup, restore scenarios, drill).
 - [ ] 4. Owner: confirm prod's Database → Backups list shows daily backups. Kushal Associates told the pilot's recovery point (done 2026-11-13, Sidambara).
-- [ ] 5. Owner: AWS bucket + OIDC role (runbook §1), GitHub environment `prod-backup` (runbook §2).
-- [ ] 6. PR (docs + workflow only; CI's "What changed" job). Merge, then `workflow_dispatch` the first run; record object count and dump sizes below.
-- [ ] 7. Restore drill (runbook §4) into a throwaway project within 7 days; evidence in `sdlc/releases/R1/evidence/restore-drill.md`.
+- [x] 5. Owner: AWS bucket + OIDC role (runbook §1), GitHub environment `prod-backup` (runbook §2). Done 2026-11-13; trust policy uses the organisation's ID-based subject (runbook §1.3).
+- [x] 6. PR #48 (CI green on 3879f4d), merged 2026-11-13 (bd0390e). First green run 43487098845 (2026-11-13 18:54 UTC): 0 Storage objects (prod had none), dump `db/2026-11-13/1857/`. Three failed runs before it: OIDC subject format, then the DB password (`@` not URL-encoded; reset). Scheduled runs green since (43541541882, 43586854670, 43635216381, 43661888588).
+- [x] 7. Restore drill, database part (2026-11-15): dump `db/2026-11-15/0114/` restored into a throwaway project; counts equal to prod; evidence `sdlc/releases/R1/evidence/restore-drill.md`.
+- [ ] 7b. Repeat ≈ 23 Nov with real documents: file back-fill (runbook B) and restore time at real volume.
 - [ ] 8. Add "PITR 7 days + Small compute on prod" to the firm-onboarding steps in `sdlc/releases/README.md` › Firms and tenancy (trigger: firm #2).
 - [ ] 9. When the architecture lock is free: add the decision row below to architecture.md and a "Backups and restore" section to `sdlc/releases/README.md` pointing at the runbook.
 
@@ -39,3 +40,5 @@ Before today prod had Supabase's daily backups only (7 days, Pro plan). Three ga
 - 2026-11-13 (Opus): checked prod (Pro plan, daily backups only, PITR off). Recommended PITR now that the pilot starts today; owner agreed. Wrote steps 1–3 on the working tree of `chore-r1-sankar-feedback` (uncommitted; move to branch `chore/prod-backups` from main). Found while planning: the 01:00 IST `storage-sweep` cron deletes Storage objects with no `document_version` row after 24 h, so after a PITR restore it would delete files uploaded after the restore point: the runbook pauses it first.
 - 2026-11-13 (owner): PITR deferred to the second firm; daily backups for the pilot (decision above).
 - 2026-11-13 (owner): off-site job every 6 h (dump at each run, path `db/<date>/<HHMM>/`); Kushal Associates informed of the pilot recovery point.
+- 2026-11-13/14 (Opus): PR #48 merged; first run green after two setup fixes (OIDC subject = `repo:pulsebayai@341257753/CA-Document-Vault@1418560479:environment:prod-backup`, read from CloudTrail; `@` in the DB password URL-encoded, then reset). Docs updated in the runbook.
+- 2026-11-15 (Opus): restore drill, database part. Two findings added to the runbook: roles.sql's `GRANT SET ON PARAMETER` line must be commented out; a laptop restore can drop mid-run (keepalives, `caffeinate`, end the leftover session). Prod has 0 clients and 0 documents: Kushal's team starts 2026-11-16, so the file part of the drill waits until ≈ 23 Nov.

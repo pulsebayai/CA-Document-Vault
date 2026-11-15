@@ -26,8 +26,9 @@ Prefer a **separate AWS account** from the one that sends email, so one leaked k
   "Condition": {
     "StringEquals": {
       "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-      "token.actions.githubusercontent.com:sub": "repo:pulsebayai/CA-Document-Vault:environment:prod-backup" } } }] }
+      "token.actions.githubusercontent.com:sub": "repo:pulsebayai@341257753/CA-Document-Vault@1418560479:environment:prod-backup" } } }] }
 ```
+   **Our organisation sends the ID-based subject** (owner and repository IDs after `@`), not `repo:pulsebayai/CA-Document-Vault:…`. The plain form fails with *Not authorized to perform sts:AssumeRoleWithWebIdentity* (first run, 2026-11-13). The IDs also stop a deleted-and-recreated repo of the same name from using the role. To read the exact subject GitHub sent: CloudTrail (ap-south-1) → **Event history** (no trail needed) → Event name `AssumeRoleWithWebIdentity` → event record → `userIdentity.userName`.
    Permissions policy (write and read only, never delete):
 ```json
 { "Version": "2012-10-17", "Statement": [
@@ -44,9 +45,11 @@ Repo → Settings → Environments → **New environment `prod-backup`**: deploy
 - **Variables:** `BACKUP_BUCKET` = the bucket name · `PROD_PROJECT_REF` = `rryzbijeosprdxpscxsx` · `BACKUP_AWS_ROLE_ARN` = the role's ARN.
 - **Secrets:**
   - `PROD_STORAGE_S3_KEY_ID`, `PROD_STORAGE_S3_SECRET`: Supabase prod → Storage → S3 → **New access key** (name it `github-backup`; revoke it there if it ever leaks).
-  - `PROD_DB_URL`: Supabase prod → Connect → **Session pooler** URL with the database password (port 5432).
+  - `PROD_DB_URL`: Supabase prod → Connect → Connection String → Method **Session pooler** (or the transaction pooler string with port 6543 → **5432**). User `postgres.<ref>`, host `aws-N-ap-south-1.pooler.supabase.com` as shown, port 5432. Not the direct `db.<ref>.supabase.co` host: it is IPv6-only and GitHub's runners are IPv4.
+    - The password is the **database password** (no prefix), not an `sb_secret_…` key. Special characters must be URL-encoded (`@` → `%40`, `#` → `%23`, `%` → `%25`, `/` → `%2F`, `:` → `%3A`, `?` → `%3F`, `&` → `%26`); an unencoded `@` gives *password authentication failed*. Prefer a generated password without them. Nothing in the app uses this password (checked 2026-11-14), so resetting it affects only this secret and hand-run tools.
 - **Failure alerts:** a failed scheduled run emails the person who last changed the workflow's schedule. Make sure that is the owner (GitHub → Settings → Notifications → Actions: "Send notifications for failed workflows only").
-- First run: Actions → Prod backup → Run workflow (on `main`). Expect two notices: the Storage object count and `db/<date> uploaded`.
+- First run: Actions → Prod backup → Run workflow (on `main`). Expect two notices: the Storage object count and `db/<date>/<HHMM> (UTC) uploaded`.
+- **Schedule is best-effort:** GitHub starts scheduled runs late or skips them under load (first 30 h: 4 runs instead of ≈ 6, at shifted times). Check the run list weekly; the worst gap so far was ≈ 9 h.
 
 ## 3. Restore
 
@@ -85,14 +88,19 @@ rclone copy "dst:<BUCKET>/storage/documents" src:documents --ignore-existing \
 psql --single-transaction --variable ON_ERROR_STOP=1 --file roles.sql --file schema.sql \
   --command 'SET session_replication_role = replica' --file data.sql --dbname "$NEW_DB_URL"
 ```
-   Known fixes: comment out `ALTER ... OWNER TO "supabase_admin"` lines in schema.sql or the `cli_login_postgres` grant in roles.sql if psql refuses them. Re-apply any changes to the `auth`/`storage` schemas (our migrations add storage policies: replay `supabase/migrations` against a scratch project and diff with `scripts/schema-fingerprint.sql` if unsure).
+   **psql:** any client ≥ 17 (Postgres.app's 18 worked, drill 2026-11-15). Run from a stable machine: the drill took > 16 min the first time and the laptop connection dropped; use `caffeinate -i` on a Mac and add keepalives to the URL: `"$NEW_DB_URL?keepalives=1&keepalives_idle=30&keepalives_interval=10&keepalives_count=6"`. A dropped run commits nothing (one transaction), but its session can stay *idle in transaction* holding locks: end it before retrying (`select pg_terminate_backend(pid) from pg_stat_activity where state = 'idle in transaction';` on the **new** project).
+   **Known fixes** (one transaction, so nothing is written until all pass):
+   - `permission denied for parameter log_min_messages` (roles.sql) — Supabase's own `GRANT SET ON PARAMETER … TO "supabase_realtime_admin"`, present in every new project: `sed -i '' '/^GRANT SET ON PARAMETER/s/^/-- /' roles.sql` (Mac; `sed -i` on Linux). **Seen in the drill.**
+   - `must be member of role "supabase_admin"` (schema.sql): `sed -i '' 's/^ALTER .* OWNER TO "supabase_admin";/-- &/' schema.sql`.
+   - `permission denied to grant role "postgres"` (roles.sql): `sed -i '' 's/^GRANT "postgres" TO "cli_login_postgres".*/-- &/' roles.sql`. Re-apply any changes to the `auth`/`storage` schemas (our migrations add storage policies: replay `supabase/migrations` against a scratch project and diff with `scripts/schema-fingerprint.sql` if unsure).
 3. Files: the back-fill (B) with `RCLONE_CONFIG_SRC_ENDPOINT` = the new project's S3 endpoint and a new S3 key; no `--s3-version-at` (latest copies).
 4. Settings by hand: Auth SMTP (SES), email templates (invite, sign-in), site URL + redirect URLs, storage bucket limits (from the `documents` migration), PITR + compute add-ons.
 5. Vercel prod env: new Supabase URL and keys; `DSC_ENC_KEYS` / `DSC_KEY_ID` **unchanged** (same key, from the password manager); `LINK_IP_SALT` unchanged. Redeploy.
 6. `scripts/restore-check.sql`, compare counts with the last backup run's notice; prod smoke Regression; re-enable the cron; update the backup environment's `PROD_PROJECT_REF`, S3 key and DB URL.
 7. Users: sign-in sessions from the old project are invalid; everyone signs in again (codes by email).
 
-## 4. Restore drill (before 20 Nov 2026, then monthly)
+## 4. Restore drill (database part done 2026-11-15; files + timing again ≈ 23 Nov 2026, then monthly)
+Last drill: `sdlc/releases/R1/evidence/restore-drill.md`.
 Never restore into prod for a drill.
 1. Create a throwaway project (ap-south-1). Restore the newest dump into it (C.2), and copy the files (C.3) into its `documents` bucket.
 2. Run `scripts/restore-check.sql`; counts must match the backup run's notice and the dump date; section 2 empty.
