@@ -1,0 +1,72 @@
+# Chore test-volume: plan
+Drafted 2026-11-24 · Status: **approved** (in chat, 2026-11-24 23:19 IST: open questions 1–3 answered below) · Branch `chore/test-volume` (from origin/main 70c396f) · Locks: **architecture** (changes the nightly rule in Release & regression policy), **no schema change, no migration**.
+
+## Problem (measured 2026-11-24: Supabase logs/SQL + GitHub API)
+- **Dev went down for about 1 h today.** Postgres stopped answering at ~11:20 IST and came back at 12:25 IST ("database system was not properly shut down; automatic recovery"). Supabase emailed "your project is depleting its Disk IO Budget" (dev, Micro compute).
+- **The cause was the scheduled nightly Regression** `45327779016` (`event: schedule`, nobody clicked anything): ~18,500 API calls in 1.5 h from the runner. Full RLS with RUN_SLOW, then e2e. It ended `failure` when the DB stopped.
+- **Every hosted run reseeds about 4,000 clients:** `createCatalogueOffice()` resets the office (`reset_test_office`) by default, then `clients-list`, `clients-mine`, `dsc-due` (+3 DSCs per client) and the `import` timing test each insert 1,000 clients. Today: 10:46–10:57 IST, just before the traffic peak.
+- **The nightly re-tests unchanged code:** the last 9 scheduled runs (Nov 15 → 24) all ran on the same main commit `70c396f`.
+- **GitHub starts the "01:30 IST" nightly 4–9 h late** (cron `0 20 * * *`; actual starts 05:10–10:08 IST), so it lands in the working morning.
+- Not the cause: app queries (cache hit 99.8 %) and the 200k `e2e office k4` activity rows (a persistent K4 fixture, seeded once).
+
+## Approach
+Run less on hosted dev without losing what the nightly is for (drift: paused DB, expired secrets, broken deploy, settings changes):
+1. **Full nightly only when needed:** when main has a new commit since the last green full run, and every Sunday. Other nights: a read-only **dev smoke** (existing `test:smoke` + a secret/DB check), no lane, no writes.
+2. **Seed the perf offices once and reuse them** (the K4 pattern), so full runs stop rewriting ~4,000 clients.
+3. **Move the cron off the top of the hour.**
+Manual `workflow_dispatch` runs (full, `only`, staging, prod, volume) do not change.
+
+## Steps
+- [ ] **1. Decision logic, tests first** (pure function, no network)
+  - New `scripts/nightly-mode.mjs`, exporting `decideNightlyMode({ event, mainSha, lastGreenFullSha, istWeekday, override })` → `"full" | "smoke"`, plus a CLI that reads the GitHub API and writes `mode=<…>` to `$GITHUB_OUTPUT`.
+  - Rules: `event !== "schedule"` → full (dispatches are unchanged) · `override` = full|smoke wins (for proving it, step 2) · no green full run found → full · `mainSha !== lastGreenFullSha` → full · `istWeekday === "Sun"` → full · otherwise smoke.
+  - "Green full run" = a `regression.yml` run whose job named `regression` concluded `success` (the API's jobs list); smoke runs don't count. Look at the last 30 runs; if the API call fails → **full** (fail safe = the current behaviour).
+  - New `tests/unit/nightly-mode.test.ts`, failing first: each rule above + API failure → full + the history case (Nov 17 green on 70c396f, Mon Nov 24 → smoke; Sun Nov 23 → full) + a red full run on unchanged main → the next night is full again (decision 2) + **a dispatch with `target` staging or prod → full, i.e. the existing path, never `smoke-dev`**.
+  - Proof: `npx vitest run --project unit tests/unit/nightly-mode.test.ts` green; `npm run lint`, `npm run typecheck`.
+- [ ] **2. Wire it into `regression.yml`**
+  - `permissions: actions: read` (with `contents: read`).
+  - New first job `plan` (ubuntu, checkout + node, no npm ci) runs `node scripts/nightly-mode.mjs` with `GITHUB_TOKEN`, output `mode`.
+  - Job `regression`: `needs: plan`, add `needs.plan.outputs.mode == 'full'` to its `if` (keep `!inputs.volume`).
+  - New job `smoke-dev`: `needs: plan`, `if: mode == 'smoke'`. Steps: checkout, `npm ci`, Playwright chromium, `node scripts/dev-preflight.mjs` (new: one service-role **read** of `test_lane` with `DEV_SUPABASE_SECRET_KEY`; fails on an expired key or paused DB), `npm run test:smoke` against `https://ca-document-vault.vercel.app` (+ `VERCEL_AUTOMATION_BYPASS_SECRET`), evidence summary with `EXPECT_SUITES: e2e`, upload artifact `regression-evidence-smoke-dev`. No test lane. Timeout 15 min.
+  - New dispatch input `nightly_mode` (choice: auto · full · smoke, default auto) **only for proving this chore**; `plan` treats a dispatch with `nightly_mode != auto` as a schedule with that override.
+  - Cron `0 20 * * *` → `17 20 * * *` (off the hour, [Likely] less delay; GitHub gives no guarantee).
+  - Proof (branch dispatches, `--ref chore/test-volume`): (a) `nightly_mode=smoke` → only `plan` + `smoke-dev` run, green, < 10 min; (b) `nightly_mode=auto` → `plan` says smoke (main unchanged since the Nov 23 green full run) or full on a Sunday. Record run IDs here. Not release evidence.
+- [ ] **3. Reuse the perf offices** (setup only; **no assertion or threshold changes**)
+  - New helper `seededOffice(label, { minClients, seed })` in `tests/support/perf-office.ts`: `createCatalogueOffice(label)` with `reset: true` only when the office is new; otherwise `reset: false`, and it runs `seed()` only when the office has fewer than `minClients` clients. Staff come from `createStaff` (already get-or-create).
+  - Use it in `clients-list` ("list performance with 1,000 clients"), `clients-mine` (perf block) and `dsc-due` (perf block: `test_seed_dsc` only on a fresh seed; `TODAY` is fixed at 2026-10-31, so the reused data stays valid).
+  - Unchanged: the `import` timing test (it must write rows to measure the import; the next run's reset removes them) and every non-perf office (they need a clean start).
+  - Check first, per block: the timed calls are read-only (`search_clients`, the DSC lists). If any block writes into the perf office, that block keeps the reset → `Blocked - needs Opus`.
+  - Proof: on dev in the session, run the three files twice (`npx vitest run --project db tests/rls/clients-list.test.ts tests/rls/clients-mine.test.ts tests/rls/dsc-due.test.ts`): run 1 seeds, run 2 inserts 0 clients (`select count(*) from client where created_at > <run-2 start>` in the perf offices = 0). Both green. Then the RLS job on PR CI (local stack: always fresh, so it seeds every time).
+- [ ] **4. Policy + docs**
+  - architecture.md › Release & regression policy item 2: "Nightly: full suite when main changed since the last green full run, and every Sunday; otherwise a read-only dev smoke (sign-in page, CSP, upload page, cron guard, secret/DB check). Cron 01:47 IST, often hours late." Decision-log row 2026-11-24 with today's evidence.
+  - CLAUDE.md: "Nightly Regression always runs (it catches drift)" → the rule above; a `nightly_mode` dispatch is a proof tool, not evidence.
+  - Done when the PR's CI is green and step 2's proof runs are in the session log.
+
+## Expected effect
+- Nov 15–24 under these rules: **2 full runs instead of 9** (Nov 17: first green run on 70c396f; Nov 23: Sunday) [Certain, from the run history]. Today's run (Monday, unchanged main) would have been smoke.
+- Full runs write ~4,000 fewer clients each (perf offices reused) [Likely, the biggest write burst in the RLS step].
+- [Uncertain] whether a full run alone always fits in Micro's daily IO burst. Check dev's Disk IO report after the first full run on the new setup.
+
+## Files that change
+`.github/workflows/regression.yml` · new `scripts/nightly-mode.mjs`, `scripts/dev-preflight.mjs`, `tests/support/perf-office.ts`, `tests/unit/nightly-mode.test.ts` · setup blocks only: `tests/rls/clients-list.test.ts`, `tests/rls/clients-mine.test.ts`, `tests/rls/dsc-due.test.ts` · docs: `sdlc/product/architecture.md`, `CLAUDE.md`, this plan. **No migration, no product code, no assertion changes.**
+
+## Not doing (and why)
+- **Bigger dev compute** (Micro → Small, ≈ +$5/month): owner, 2026-11-24: no spend now.
+- **Skipping the nightly entirely when unchanged:** we would lose drift detection (paused DB, expired keys, broken deploy). The smoke run keeps that at almost no IO.
+- **Fewer e2e workers:** already `workers: 1`, serial.
+- **Deleting the K4 activity rows:** a persistent fixture; deleting them makes the next run reseed 200k rows.
+- **Archiving the import test's 1,000 clients:** extra writes; the next reset removes them anyway.
+
+## Production safety
+- **No prod data, schema or settings change.** No migration; no product code (`src/` untouched), so the prod deploy that follows the merge to main ships the same app.
+- Scheduled runs only ever test **dev** (unchanged). `smoke-dev` hard-codes dev's URL and `DEV_SUPABASE_SECRET_KEY` and is reachable only from `mode == smoke`, which only a schedule (or a dev proof dispatch) can produce.
+- Manual dispatches with `target` = staging/prod take the existing path unchanged (prod = smoke only, never data-writing tests); covered by a unit case in step 1.
+- Proof runs in step 2 are dispatched with `target` = dev only.
+
+## Decisions (owner, 2026-11-24 23:19 IST)
+1. **Weekly full run on Sunday** (IST date when the run starts): approved.
+2. **After a red full run on unchanged main, the next night runs full again** (no green full run on that commit → full): approved. This is what the rules in step 1 already do.
+3. **The model-routing edits go on their own branch** (`docs/model-routing`, from origin/main 70c396f), not this one.
+
+## Session log
+- **2026-11-24 23:30 IST:** problem measured (Supabase advisors/SQL/logs + GitHub API). Branch `chore-test-volume` from origin/main 70c396f. Plan drafted. **23:19 IST: approved** (decisions 1–3). Model-routing edits moved to `docs/model-routing` (local commit, not pushed). Branch renamed `chore/test-volume` (matches `chore/ci-speed`), no upstream. Next: step 1 via `sdlc-builder` (all agents on Opus 5.5 once `docs/model-routing` merges).
