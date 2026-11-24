@@ -7,6 +7,17 @@
 ## Active feature
 Determined by branch: a branch containing <NN-slug> → sdlc/features/<NN-slug>/. At session start read its plan.md (checkboxes + latest session log). On main: product-level work only.
 
+## Agents and models (2026-11-24; replaces the 2026-11-11 Opus/Sonnet routing)
+- **All work runs on Opus 5.5** (`claude-opus-5-5`): the main session and every subagent. The Opus-plans / Sonnet-builds split was dropped (owner, 2026-11-24): its handoffs cost more than they saved.
+- **Separate agents, separate contexts.** The main session orchestrates; each role is its own subagent so no agent grades its own work:
+  - `sdlc-planner`: intent, specs, plans, plan revisions, architecture/schema/RLS/security design, lock decisions. Writes only `sdlc/**`.
+  - `sdlc-builder`: one approved plan step at a time (tests failing first, code, migrations exactly as planned, doc updates the plan lists). Changes only the plan's "Files that change".
+  - `verifier`: after every build step; runs the verification commands, never edits.
+  - `sdlc-reviewer`: before every PR; reviews the diff against spec/plan/architecture in a fresh context, never edits.
+- **Stop, don't improvise.** The builder stops when a step needs a change to intent/spec/plan, a decision the plan doesn't make, a locked item, two readings of the spec, or a security-relevant choice: it writes `Blocked - needs decision: <question + options>` in plan.md's latest session log; `sdlc-planner` proposes, the owner decides.
+- **The plan file is the handoff** between sessions and agents: checkboxes + session log are updated before a step ends.
+- Mechanism: `.claude/settings.json` sets `model: opus` with the alias pinned to 5.5; each subagent sets `model: opus` in its frontmatter.
+
 ## Verification commands (must all pass before a step is done)
 - `npm run lint` → 0 errors, 0 warnings
 - `npm run typecheck` → 0 errors
@@ -14,7 +25,7 @@ Determined by branch: a branch containing <NN-slug> → sdlc/features/<NN-slug>/
 - `npm run test:db` → RLS/integration tests pass against the **dev** Supabase project in a session (needs SUPABASE_SECRET_KEY in .env.local); PR CI runs them on a local stack
 - `npm run test:e2e` → Playwright passes (runs in CI; browser download is blocked in Cowork)
 - `npm run build` → exits 0
-Subagents: `verifier` (after each step), `sdlc-reviewer` (before a PR). Hook: `.claude/hooks/production-gate.sh`.
+Subagents: `sdlc-builder` (each step), `verifier` (after each step), `sdlc-reviewer` (before a PR). Hook: `.claude/hooks/production-gate.sh`.
 
 ## Test runs — keep the feedback loop short (Raja, 2026-09-29)
 - **New or changed tests run locally before every push (Raja 2026-10-06):** run each new or changed test file on its own in the session first — unit/RLS with `npx vitest run --project <unit|db> <files>` (RUN_SLOW=1 for slow files), e2e with `npx playwright test -c playwright.local.config.ts <files>` against a local build (~5 min). Push only when they pass; CI is for the full suite, not where a new test fails for the first time. If `playwright.local.config.ts` is missing (new session machine), recreate it before running e2e. (05: a new e2e test failed in CI after ~40 min; the local run found two problems in 5 min.)

@@ -20,5 +20,9 @@
         ]
       }
     ]
+  },
+  "model": "opus",
+  "env": {
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-5-5"
   }
 }
