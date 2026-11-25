@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { createCatalogueOffice, groupId, mustInsertClient } from "../support/catalogue";
 import { testGstin, testPan } from "../support/test-data";
+import { clientCount, seededOffice } from "../support/perf-office";
 
 // Feature 02 step 7 — Clients list search (spec AC-7, AC-12, NFR "1,000 clients < 1 s").
 // public.search_clients is SECURITY INVOKER: RLS decides who sees what.
@@ -110,21 +111,30 @@ describe("search_clients (AC-7)", () => {
 });
 
 describe("list performance with 1,000 clients (spec NFR)", () => {
-  let perfOffice: string;
   let perfStaff: { id: string; email: string };
   let c: SupabaseClient;
 
   beforeAll(async () => {
-    perfOffice = await createCatalogueOffice("list-perf");
-    perfStaff = await createStaff(perfOffice, "list-perf-staff", "staff");
-    c = await signedInClient(perfStaff.email);
-    const rows = Array.from({ length: 1000 }, (_, i) => ({
-      office_id: perfOffice, name: `Perf client ${String(i).padStart(4, "0")}`, client_type: "individual",
-      incharge_id: perfStaff.id, pan: testPan("P", i), previous_reference: `P-${i}`,
-    }));
-    // Inserted as the signed-in staff member (the real path; the service role cannot run the PAN check helper).
-    const { error } = await c.from("client").insert(rows);
-    if (error) throw error;
+    // Chore test-volume: seeded once and reused (read-only block); reseeded only when not exactly these 1,000 clients.
+    const perf = await seededOffice("list-perf", {
+      clients: 1000,
+      staff: async (id) => {
+        const s = await createStaff(id, "list-perf-staff", "staff");
+        return { s, c: await signedInClient(s.email) };
+      },
+      isComplete: async (id, { s }) => (await clientCount(id, { incharge_id: s.id })) === 1000,
+      seed: async (id, { s, c: sc }) => {
+        const rows = Array.from({ length: 1000 }, (_, i) => ({
+          office_id: id, name: `Perf client ${String(i).padStart(4, "0")}`, client_type: "individual",
+          incharge_id: s.id, pan: testPan("P", i), previous_reference: `P-${i}`,
+        }));
+        // Inserted as the signed-in staff member (the real path; the service role cannot run the PAN check helper).
+        const { error } = await sc.from("client").insert(rows);
+        if (error) throw error;
+      },
+    });
+    perfStaff = perf.staff.s;
+    c = perf.staff.c;
   }, 120_000);
 
   afterAll(async () => { if (perfStaff) await retireStaff([perfStaff.id]); });

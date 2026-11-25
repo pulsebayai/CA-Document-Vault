@@ -5,6 +5,7 @@ import { createCatalogueOffice } from "../support/catalogue";
 import { createDocumentOffice } from "../support/documents";
 import { bankOnlyClient } from "../support/expected";
 import { testPan } from "../support/test-data";
+import { clientCount, seededOffice } from "../support/perf-office";
 import { isDue } from "@/lib/dsc/expiry";
 import { archiveDsc, dscDue, logCustody, mustSaveDsc, newDsc, setRemindDays, setTestToday } from "../support/dsc";
 
@@ -119,19 +120,36 @@ describe("dsc_due speed (spec NFR, at 1,000 clients × 3 DSCs)", () => {
   let c: SupabaseClient;
 
   beforeAll(async () => {
-    perfOffice = await createCatalogueOffice("dsc-due-perf");
-    perfStaff = await createStaff(perfOffice, "dsd-perf-staff", "staff");
-    c = await signedInClient(perfStaff.email);
-    const rows = Array.from({ length: 1000 }, (_, i) => ({
-      office_id: perfOffice, name: `DSC perf ${String(i).padStart(4, "0")}`, client_type: "individual",
-      incharge_id: perfStaff.id, pan: testPan("P", i),
-    }));
-    const { error } = await c.from("client").insert(rows);
-    if (error) throw error;
-    // test_seed_dsc spreads expiries over the 400 days around p_today, so roughly a tenth are due.
-    const { data, error: e2 } = await adminClient().rpc("test_seed_dsc", { p_office_id: perfOffice, p_per_client: 3, p_today: TODAY });
-    if (e2) throw new Error(e2.message);
-    expect(data).toBe(3000);
+    // Chore test-volume: seeded once and reused (read-only block; TODAY is fixed, so reused DSCs stay valid). Reseeded
+    // (reset, then clients + DSCs) unless exactly 1,000 clients of this staff member and 3,000 DSCs.
+    const perf = await seededOffice("dsc-due-perf", {
+      clients: 1000,
+      staff: async (id) => {
+        const s = await createStaff(id, "dsd-perf-staff", "staff");
+        return { s, c: await signedInClient(s.email) };
+      },
+      isComplete: async (id, { s }) => {
+        if ((await clientCount(id, { incharge_id: s.id })) !== 1000) return false;
+        const { count, error } = await adminClient().from("dsc").select("id", { count: "exact", head: true }).eq("office_id", id);
+        if (error) throw error;
+        return count === 3000;
+      },
+      seed: async (id, { s, c: sc }) => {
+        const rows = Array.from({ length: 1000 }, (_, i) => ({
+          office_id: id, name: `DSC perf ${String(i).padStart(4, "0")}`, client_type: "individual",
+          incharge_id: s.id, pan: testPan("P", i),
+        }));
+        const { error } = await sc.from("client").insert(rows);
+        if (error) throw error;
+        // test_seed_dsc spreads expiries over the 400 days around p_today, so roughly a tenth are due.
+        const { data, error: e2 } = await adminClient().rpc("test_seed_dsc", { p_office_id: id, p_per_client: 3, p_today: TODAY });
+        if (e2) throw new Error(e2.message);
+        expect(data).toBe(3000);
+      },
+    });
+    perfOffice = perf.officeId;
+    perfStaff = perf.staff.s;
+    c = perf.staff.c;
     await setTestToday(perfOffice, TODAY);
   }, 180_000);
 

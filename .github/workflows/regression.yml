@@ -1,12 +1,15 @@
 name: Regression
 
 # Release & regression policy (architecture.md):
-# - nightly full suite against dev (catches drift: settings, paused DB, expired secrets)
+# - nightly against dev (catches drift: settings, paused DB, expired secrets). Chore test-volume (2026-11-24): the
+#   job `plan` (scripts/nightly-mode.mjs) picks the full suite when main changed since the last green full run and
+#   every Sunday (IST), otherwise a read-only dev smoke (job `smoke-dev`). Every dispatch below runs as before (full).
 # - manual run against staging before every release (release gate)
 # - manual run against prod after release: SMOKE ONLY (never data-writing tests)
 on:
   schedule:
-    - cron: "0 20 * * *" # 20:00 UTC = 01:30 IST
+    # 20:17 UTC = 01:47 IST, off the top of the hour (chore test-volume). GitHub may start it late (4–9 h seen in Nov 2026).
+    - cron: "17 20 * * *"
   workflow_dispatch:
     inputs:
       target:
@@ -25,13 +28,42 @@ on:
         description: "09 volume test only (dev): V1–V10 timings in the persistent 'e2e office volume' (needs a seeded office: see scripts/volume-generate.sql; ~10 min). Not part of the nightly; run for 09 and at the R1 gate."
         type: boolean
         default: false
+      nightly_mode:
+        description: "Chore test-volume proof tool, dev only: 'full' or 'smoke' runs this dispatch as if it were the nightly with that mode. 'auto' = an ordinary dispatch (full). Not release evidence."
+        type: choice
+        options: [auto, full, smoke]
+        default: auto
 
 permissions:
   contents: read
 
 jobs:
-  regression:
+  # Chore test-volume (2026-11-24): full suite or read-only dev smoke for this run. Rules and tests:
+  # scripts/nightly-mode.mjs, tests/unit/nightly-mode.test.ts. Any API failure → full (the behaviour before the chore).
+  plan:
     if: ${{ !inputs.volume }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # reads this workflow's earlier runs and their jobs (no writes)
+    outputs:
+      mode: ${{ steps.mode.outputs.mode }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Full or smoke
+        id: mode
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET: ${{ inputs.target || 'dev' }}
+          NIGHTLY_MODE: ${{ inputs.nightly_mode || 'auto' }}
+        run: node scripts/nightly-mode.mjs
+
+  regression:
+    needs: plan
+    if: ${{ !cancelled() && !inputs.volume && needs.plan.outputs.mode != 'smoke' }} # plan failed or empty → full (fail safe)
     runs-on: ubuntu-latest
     # Full suite ≈ 26 min (RLS incl. RUN_SLOW ≈ 7, e2e ≈ 17); 30 left no headroom (run 36439895456).
     # + up to 30 min waiting for a free test lane (chore test-isolation).
@@ -115,6 +147,56 @@ jobs:
       - name: Release the test lane
         if: always() && env.TARGET != 'prod'
         run: node scripts/test-lane.mjs release
+      # Keep this the LAST step of this job, and keep its name (scripts/nightly-mode.mjs FULL_RUN_MARKER_STEP; a unit
+      # test reads this file). It succeeds only on a full dev run (no quick check, no custom base_url, not staging or
+      # prod) whose every earlier step succeeded; `plan` counts only such runs as a green full run (pre-PR review I-1).
+      - name: Full dev run (nightly marker)
+        if: ${{ success() && env.TARGET == 'dev' && env.ONLY == '' && !inputs.base_url }}
+        run: echo "Full dev run on ${GITHUB_SHA}"
+
+  # Chore test-volume (2026-11-24): the nightly on a night when main is unchanged (job `plan` says smoke). Read-only:
+  # one service-role read (scripts/dev-preflight.mjs: expired key, paused DB) + the prod-safe smoke specs against
+  # dev's deployed site. No test lane, no writes. Dev only: every value below is dev's, never staging's or prod's.
+  smoke-dev:
+    needs: plan
+    if: ${{ !inputs.volume && (inputs.target || 'dev') == 'dev' && needs.plan.outputs.mode == 'smoke' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # The smoke specs need only the site and the bypass secret (no Supabase values); the dev key and URL go to the
+    # preflight step alone.
+    env:
+      TARGET: dev-smoke
+      E2E_BASE_URL: https://ca-document-vault.vercel.app
+      VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Dev key and database (one read, no writes)
+        id: preflight
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.DEV_SUPABASE_SECRET_KEY }}
+        run: node scripts/dev-preflight.mjs
+      - name: Smoke against dev's deployed site (read-only)
+        # Runs even when the preflight failed, so one night reports both the database and the site.
+        if: ${{ !cancelled() && (success() || steps.preflight.outcome == 'failure') }}
+        run: npm run test:smoke
+      - name: Evidence summary
+        if: always()
+        env:
+          EXPECT_SUITES: e2e
+        run: node scripts/regression-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: regression-evidence-smoke-dev
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 90
 
   # 09 volume test (chore, R1 gate; plan approved by Raja 2026-10-07). Dev only; one volume run at a time
   # (the office is shared by every lane and overlapping runs would distort the timings). A missed target is
