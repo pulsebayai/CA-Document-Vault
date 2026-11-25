@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  decideNightlyMode, findLastGreenFullSha, isGreenFullRun, istWeekday, nightlyInputs, resolveNightlyMode,
+  FULL_RUN_MARKER_STEP, decideNightlyMode, findLastGreenFullSha, githubApi, isGreenFullRun, istWeekday, nightlyInputs,
+  resolveNightlyMode,
 } from "../../scripts/nightly-mode.mjs";
 
 // Chore test-volume (2026-11-24): the scheduled nightly runs the full suite on hosted dev only when main changed
@@ -105,14 +108,20 @@ type Step = { name: string; conclusion: string | null };
 type Job = { name: string; conclusion: string | null; steps?: Step[] };
 type Run = { id: number; head_sha: string; head_branch: string; event: string; status: string; conclusion: string | null; created_at: string };
 
-const fullSteps = (rls = "success", e2e = "success"): Step[] => [
+// A full dev run reaches the `regression` job's last step, the marker; any other run skips it (pre-PR review I-1).
+const fullSteps = (marker = "success", rls = "success", e2e = "success"): Step[] => [
   { name: "Check the target's settings", conclusion: "skipped" },
   { name: "Check the quick-check filter", conclusion: "skipped" },
   { name: "RLS (database security)", conclusion: rls },
   { name: "E2E (full) against deployed URL", conclusion: e2e },
   { name: "Smoke only (prod — no data-writing tests)", conclusion: "skipped" },
+  { name: "Release the test lane", conclusion: "success" },
+  { name: "Full dev run (nightly marker)", conclusion: marker },
 ];
-const regressionJob = (conclusion: string | null, steps: Step[] = fullSteps()): Job => ({ name: "regression", conclusion, steps });
+// Default steps follow the job: the marker succeeds only when everything before it did.
+const regressionJob = (conclusion: string | null, steps: Step[] = fullSteps(conclusion === "success" ? "success" : "skipped")): Job => ({
+  name: "regression", conclusion, steps,
+});
 const smokeRunJobs = (): Job[] => [
   { name: "plan", conclusion: "success" },
   { name: "regression", conclusion: "skipped", steps: [] },
@@ -144,13 +153,33 @@ describe("isGreenFullRun", () => {
     expect(isGreenFullRun(smokeRunJobs())).toBe(false);
   });
 
-  it("a quick check (only = …), a staging run or a prod smoke is not a full dev run", () => {
-    const quick = fullSteps().map((s) => (s.name === "Check the quick-check filter" ? { ...s, conclusion: "success" } : s));
-    const staging = fullSteps().map((s) => (s.name === "Check the target's settings" ? { ...s, conclusion: "success" } : s));
-    const prod = fullSteps("skipped", "skipped").map((s) => (s.name.startsWith("Smoke only") ? { ...s, conclusion: "success" } : s));
-    expect(isGreenFullRun([regressionJob("success", quick)])).toBe(false);
-    expect(isGreenFullRun([regressionJob("success", staging)])).toBe(false);
-    expect(isGreenFullRun([regressionJob("success", prod)])).toBe(false);
+  it("the marker step's name is the exported constant", () => {
+    expect(FULL_RUN_MARKER_STEP).toBe("Full dev run (nightly marker)");
+  });
+
+  it("a green job without the marker is not green (runs before the marker, quick check, staging, prod smoke, custom base_url)", () => {
+    const withoutMarker = fullSteps().filter((s) => s.name !== FULL_RUN_MARKER_STEP);
+    expect(isGreenFullRun([regressionJob("success", withoutMarker)])).toBe(false);
+    expect(isGreenFullRun([regressionJob("success", [])])).toBe(false);
+    expect(isGreenFullRun([{ name: "regression", conclusion: "success" }])).toBe(false);
+  });
+
+  it("marker skipped (quick check, staging, prod smoke, custom base_url) → not green", () => {
+    const quick = fullSteps("skipped").map((s) => (s.name === "Check the quick-check filter" ? { ...s, conclusion: "success" } : s));
+    const staging = fullSteps("skipped").map((s) => (s.name === "Check the target's settings" ? { ...s, conclusion: "success" } : s));
+    const prod = fullSteps("skipped", "skipped", "skipped").map((s) => (s.name.startsWith("Smoke only") ? { ...s, conclusion: "success" } : s));
+    const customBaseUrl = fullSteps("skipped");
+    for (const steps of [quick, staging, prod, customBaseUrl]) expect(isGreenFullRun([regressionJob("success", steps)])).toBe(false);
+  });
+
+  it("a step with a similar but different name is not the marker", () => {
+    const renamed = fullSteps().map((s) => (s.name === FULL_RUN_MARKER_STEP ? { ...s, name: "Full dev run" } : s));
+    expect(isGreenFullRun([regressionJob("success", renamed)])).toBe(false);
+  });
+
+  it("the marker on another job (smoke-dev) doesn't count", () => {
+    expect(isGreenFullRun([{ name: "regression", conclusion: "skipped", steps: [] },
+      { name: "smoke-dev", conclusion: "success", steps: [{ name: FULL_RUN_MARKER_STEP, conclusion: "success" }] }])).toBe(false);
   });
 
   it("no jobs → not green", () => {
@@ -249,5 +278,38 @@ describe("resolveNightlyMode — API + rules together", () => {
   it("a dev proof dispatch with nightly_mode=smoke → smoke, even on a branch commit", async () => {
     const r = await resolveNightlyMode({ env: env({ GITHUB_EVENT_NAME: "workflow_dispatch", TARGET: "dev", NIGHTLY_MODE: "smoke", GITHUB_SHA: OTHER }), now: NOV_22_SUN, api: history() });
     expect(r.mode).toBe("smoke");
+  });
+});
+
+// The marker lives in regression.yml; renaming it (or the job) would silently make every night full or, worse,
+// let another step count. Read the workflow as text (no YAML parser in package.json).
+describe("regression.yml — the nightly marker", () => {
+  const yml = readFileSync(join(process.cwd(), ".github/workflows/regression.yml"), "utf8");
+  const lines = yml.split("\n");
+  const start = lines.findIndex((l) => l === "  regression:");
+  const rest = lines.slice(start + 1);
+  const next = rest.findIndex((l) => /^  [A-Za-z0-9_-]+:/.test(l) || /^[A-Za-z]/.test(l));
+  const job = next === -1 ? rest : rest.slice(0, next);
+
+  it("has a job keyed `regression` with no name: override", () => {
+    expect(start).toBeGreaterThan(-1);
+    expect(job.some((l) => /^    name:/.test(l))).toBe(false);
+  });
+
+  it("the regression job's last step is the marker, run only on success of a full dev run", () => {
+    const stepStarts = job.map((l, i) => (/^      - /.test(l) ? i : -1)).filter((i) => i >= 0);
+    const last = job.slice(stepStarts[stepStarts.length - 1]);
+    expect(last[0].trim()).toBe(`- name: ${FULL_RUN_MARKER_STEP}`);
+    const cond = last.find((l) => /^        if:/.test(l)) ?? "";
+    for (const part of ["success()", "env.TARGET == 'dev'", "env.ONLY == ''", "!inputs.base_url"]) expect(cond, part).toContain(part);
+  });
+});
+
+describe("githubApi — reads", () => {
+  it("lists only completed runs on main, 30 at a time", async () => {
+    const urls: string[] = [];
+    const fetchImpl = (async (url: string) => { urls.push(url); return { ok: true, json: async () => ({ workflow_runs: [] }) }; }) as unknown as typeof fetch;
+    await githubApi({ token: "t", repository: "o/r", fetchImpl }).getRuns();
+    expect(urls).toEqual(["https://api.github.com/repos/o/r/actions/workflows/regression.yml/runs?branch=main&status=completed&per_page=30"]);
   });
 });

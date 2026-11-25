@@ -7,20 +7,23 @@
 //   not a schedule → full (dispatches are unchanged) · target other than dev → full · override full|smoke wins ·
 //   no green full run found → full · main changed since the last green full run → full · Sunday (IST) → full ·
 //   otherwise smoke.
-// "Green full run" = a regression.yml run on main whose job named `regression` concluded success as a full dev run
-// (not a quick check, a staging run or a prod smoke); smoke runs don't count. The last 30 runs are read.
+// "Green full run" = a completed regression.yml run on main whose job named `regression` reached its last step,
+// `Full dev run (nightly marker)`, with success. That step runs only on a full dev run with every earlier step green
+// (no quick check, no custom base_url, not staging or prod); smoke runs and older runs have no marker and don't count
+// (pre-PR review I-1). The last 30 completed runs on main are read.
 // Any API failure → full (fail safe = the behaviour before this chore).
 //
 // Usage in CI: GITHUB_TOKEN=… GITHUB_REPOSITORY=owner/repo GITHUB_EVENT_NAME=… GITHUB_SHA=… [TARGET=dev]
 //   [NIGHTLY_MODE=auto|full|smoke] node scripts/nightly-mode.mjs   → appends mode=full|smoke to $GITHUB_OUTPUT
 import { appendFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 const OVERRIDES = new Set(["full", "smoke"]);
 const RUNS_LOOKED_AT = 30;
 const WORKFLOW = "regression.yml";
 const JOB = "regression";
-// Step names in regression.yml's `regression` job that mark a run as something other than a full dev run.
-const NOT_FULL_STEPS = [/^Check the quick-check filter$/, /^Check the target's settings$/, /^Smoke only/];
+/** The last step of regression.yml's `regression` job; it succeeds only on a green full dev run (a unit test reads the workflow). */
+export const FULL_RUN_MARKER_STEP = "Full dev run (nightly marker)";
 
 /** The weekday ("Mon" … "Sun") of the date in India (IST, UTC+5:30). */
 export function istWeekday(date) {
@@ -54,12 +57,11 @@ export function nightlyInputs({ eventName, target, nightlyMode }) {
   return { event: eventName ?? "", override: "", target: t };
 }
 
-/** True when the run's `regression` job concluded success as a full dev run. */
+/** True when the run's `regression` job succeeded and its marker step (FULL_RUN_MARKER_STEP) succeeded. */
 export function isGreenFullRun(jobs) {
   const job = (jobs ?? []).find((j) => j.name === JOB);
   if (!job || job.conclusion !== "success") return false;
-  const ranNotFullStep = (job.steps ?? []).some((s) => s.conclusion === "success" && NOT_FULL_STEPS.some((re) => re.test(s.name)));
-  return !ranNotFullStep;
+  return (job.steps ?? []).some((s) => s.name === FULL_RUN_MARKER_STEP && s.conclusion === "success");
 }
 
 /**
@@ -89,7 +91,7 @@ export function githubApi({ token, repository, fetchImpl = fetch }) {
     return res.json();
   };
   return {
-    getRuns: async () => (await get(`/actions/workflows/${WORKFLOW}/runs?per_page=${RUNS_LOOKED_AT}`)).workflow_runs ?? [],
+    getRuns: async () => (await get(`/actions/workflows/${WORKFLOW}/runs?branch=main&status=completed&per_page=${RUNS_LOOKED_AT}`)).workflow_runs ?? [],
     getJobs: async (runId) => (await get(`/actions/runs/${runId}/jobs?per_page=100`)).jobs ?? [],
     getMainSha: async () => (await get(`/commits/main`)).sha,
   };
@@ -118,7 +120,7 @@ export async function resolveNightlyMode({ env, now = new Date(), api }) {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
   let api;
   try {
     api = githubApi({ token: process.env.GITHUB_TOKEN, repository: process.env.GITHUB_REPOSITORY });

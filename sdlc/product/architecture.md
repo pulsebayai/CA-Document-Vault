@@ -214,7 +214,7 @@ Regression = the **whole** suite (unit, RLS, e2e) — tests accumulate feature b
 2. **Nightly (chore test-volume, 2026-11-25):** `regression.yml` is scheduled at 20:17 UTC (= 01:47 IST; GitHub often starts it hours late), against dev only. Its first job `plan` (`scripts/nightly-mode.mjs`) chooses:
    - **Full suite** when main's head has no green full run yet (so a red full run is retried the next night), on Sundays (the IST date when the run starts), or when the choice can't be made (a GitHub API failure, or a failed or empty `plan` job → full).
    - Otherwise a **read-only dev smoke** (job `smoke-dev`): one service-role read of `test_lane` on dev only (`scripts/dev-preflight.mjs`; refuses any other project) + `smoke.spec.ts` against the dev site. No test lane, no writes.
-   - A **green full run** = a `regression.yml` run on main, completed, whose `regression` job succeeded and was not a quick check (`only`), a staging run or a prod smoke. Smoke nights don't count.
+   - A **green full run** = a full dev run on main (completed) whose `regression` job reached its final step `Full dev run (nightly marker)` with success: that step runs only when every earlier step succeeded and the run had no quick check (`only`), no custom `base_url` and was not staging or prod. Smoke nights and runs before the marker existed don't count, so the first scheduled night after the merge is full.
    - Failure emails the owner. Catches drift (settings, paused DB, expired secrets, broken deploy).
    - Manual dispatches are unchanged (always the full path for their target). The `nightly_mode` input (dev only) is a proof tool for this rule, never release evidence.
 3. **Every release (R1, R2 …) — gate before prod:**

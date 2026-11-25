@@ -36,7 +36,6 @@ on:
 
 permissions:
   contents: read
-  actions: read # job `plan` reads this workflow's earlier runs and their jobs (no writes)
 
 jobs:
   # Chore test-volume (2026-11-24): full suite or read-only dev smoke for this run. Rules and tests:
@@ -45,6 +44,9 @@ jobs:
     if: ${{ !inputs.volume }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read # reads this workflow's earlier runs and their jobs (no writes)
     outputs:
       mode: ${{ steps.mode.outputs.mode }}
     steps:
@@ -145,21 +147,26 @@ jobs:
       - name: Release the test lane
         if: always() && env.TARGET != 'prod'
         run: node scripts/test-lane.mjs release
+      # Keep this the LAST step of this job, and keep its name (scripts/nightly-mode.mjs FULL_RUN_MARKER_STEP; a unit
+      # test reads this file). It succeeds only on a full dev run (no quick check, no custom base_url, not staging or
+      # prod) whose every earlier step succeeded; `plan` counts only such runs as a green full run (pre-PR review I-1).
+      - name: Full dev run (nightly marker)
+        if: ${{ success() && env.TARGET == 'dev' && env.ONLY == '' && !inputs.base_url }}
+        run: echo "Full dev run on ${GITHUB_SHA}"
 
   # Chore test-volume (2026-11-24): the nightly on a night when main is unchanged (job `plan` says smoke). Read-only:
   # one service-role read (scripts/dev-preflight.mjs: expired key, paused DB) + the prod-safe smoke specs against
   # dev's deployed site. No test lane, no writes. Dev only: every value below is dev's, never staging's or prod's.
   smoke-dev:
     needs: plan
-    if: ${{ !inputs.volume && needs.plan.outputs.mode == 'smoke' }}
+    if: ${{ !inputs.volume && (inputs.target || 'dev') == 'dev' && needs.plan.outputs.mode == 'smoke' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The smoke specs need only the site and the bypass secret (no Supabase values); the dev key and URL go to the
+    # preflight step alone.
     env:
       TARGET: dev-smoke
       E2E_BASE_URL: https://ca-document-vault.vercel.app
-      NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
-      SUPABASE_SECRET_KEY: ${{ secrets.DEV_SUPABASE_SECRET_KEY }}
       VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
     steps:
       - uses: actions/checkout@v4
@@ -169,6 +176,9 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Dev key and database (one read, no writes)
         id: preflight
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.DEV_SUPABASE_SECRET_KEY }}
         run: node scripts/dev-preflight.mjs
       - name: Smoke against dev's deployed site (read-only)
         # Runs even when the preflight failed, so one night reports both the database and the site.
