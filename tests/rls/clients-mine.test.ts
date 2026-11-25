@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createStaff, retireStaff, signedInClient } from "../support/db";
 import { createCatalogueOffice, groupId, mustInsertClient } from "../support/catalogue";
+import { clientCount, seededOffice } from "../support/perf-office";
 
 // Feature 12 — "My clients" on the Clients list (spec AC-27, AC-28). Written before migration B (plan step 1).
 // Contract: search_clients(…, p_mine boolean default false). Mine = the user is the incharge, or the assigned staff
@@ -87,22 +88,33 @@ describe("My clients (AC-27)", () => {
 // AC-28: with "My clients" on, the list is no slower than 02's list (same 1 s budget, same method: one warm-up call,
 // then the median of 5). 1,000 clients: half with this user as incharge, half with someone else.
 describe("My clients timing with 1,000 clients (AC-28)", () => {
-  let perfOffice: string;
   let me: { id: string; email: string };
   let other: { id: string; email: string };
   let asMe: SupabaseClient;
 
   beforeAll(async () => {
-    perfOffice = await createCatalogueOffice("mine-perf");
-    me = await createStaff(perfOffice, "mine-perf-me", "staff");
-    other = await createStaff(perfOffice, "mine-perf-other", "staff");
-    asMe = await signedInClient(me.email);
-    const rows = Array.from({ length: 1000 }, (_, i) => ({
-      office_id: perfOffice, name: `Mine perf ${String(i).padStart(4, "0")}`, client_type: "individual",
-      incharge_id: i % 2 === 0 ? me.id : other.id,
-    }));
-    const { error } = await asMe.from("client").insert(rows);
-    if (error) throw error;
+    // Chore test-volume: seeded once and reused (read-only block); reseeded unless exactly 1,000 clients, 500 / 500.
+    const perf = await seededOffice("mine-perf", {
+      clients: 1000,
+      staff: async (id) => {
+        const m = await createStaff(id, "mine-perf-me", "staff");
+        const o = await createStaff(id, "mine-perf-other", "staff");
+        return { m, o, c: await signedInClient(m.email) };
+      },
+      isComplete: async (id, { m, o }) =>
+        (await clientCount(id, { incharge_id: m.id })) === 500 && (await clientCount(id, { incharge_id: o.id })) === 500,
+      seed: async (id, { m, o, c }) => {
+        const rows = Array.from({ length: 1000 }, (_, i) => ({
+          office_id: id, name: `Mine perf ${String(i).padStart(4, "0")}`, client_type: "individual",
+          incharge_id: i % 2 === 0 ? m.id : o.id,
+        }));
+        const { error } = await c.from("client").insert(rows);
+        if (error) throw error;
+      },
+    });
+    me = perf.staff.m;
+    other = perf.staff.o;
+    asMe = perf.staff.c;
   }, 120_000);
 
   afterAll(async () => { await retireStaff([me?.id, other?.id].filter(Boolean) as string[]); });
